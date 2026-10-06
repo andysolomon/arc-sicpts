@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // The Laboratory runs in workers and in Node; DOM supplies the shared
+    // timer, MessageChannel and performance declarations.
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["src"]
+}

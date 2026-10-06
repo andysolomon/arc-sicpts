@@ -1,0 +1,229 @@
+import { describe, expect, it } from 'vitest';
+import { factorialProgram } from '../chapter-1/factorial.ts';
+import { LabClient, type WorkerLike } from './client.ts';
+import { createLabHost } from './host.ts';
+import type { LabEvent, LabRequest } from './protocol.ts';
+
+const FOREVER = 'function forever(n) { return forever(n + 1); }\nforever(0);';
+
+/** A host wired to the client through macrotasks, the way a real Worker is. */
+function inProcessWorker(sliceSteps = 1_000): WorkerLike & { terminated: boolean } {
+  const worker: WorkerLike & { terminated: boolean } = {
+    terminated: false,
+    onmessage: null,
+    postMessage(message: LabRequest) {
+      setTimeout(() => {
+        if (!worker.terminated) host.handle(message);
+      }, 0);
+    },
+    terminate() {
+      worker.terminated = true;
+    },
+  };
+  const host = createLabHost({
+    sliceSteps,
+    post: (event) => {
+      setTimeout(() => {
+        if (!worker.terminated) worker.onmessage?.({ data: event });
+      }, 0);
+    },
+  });
+  return worker;
+}
+
+/** A worker that accepts messages and never answers. */
+function deadWorker(): WorkerLike & { terminated: boolean; received: LabRequest[] } {
+  const worker = {
+    terminated: false,
+    received: [] as LabRequest[],
+    onmessage: null,
+    postMessage(message: LabRequest) {
+      worker.received.push(message);
+    },
+    terminate() {
+      worker.terminated = true;
+    },
+  };
+  return worker;
+}
+
+describe('worker protocol', () => {
+  it('runs a program and reports its value, steps and process shape', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const events: LabEvent[] = [];
+    const job = client.submit(
+      { type: 'run', source: factorialProgram, inspect: { processShape: true } },
+      (event) => events.push(event),
+    );
+    const end = await job.finished;
+
+    expect(end).toMatchObject({ type: 'done', id: job.id, value: '720' });
+    expect(events[0]).toEqual({ type: 'started', id: job.id });
+    expect(events.at(-1)).toBe(end);
+    const shapes = events.filter((e) => e.type === 'shape');
+    expect(shapes.at(-1)?.snapshot.runs.map((run) => [run.label, run.kind, run.maxDepth])).toEqual([
+      ['factorial(6)', 'recursive', 6],
+      ['fact_iter(1, 1, 6)', 'iterative', 1],
+    ]);
+  });
+
+  it('streams display output before the result', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const events: LabEvent[] = [];
+    await client.submit({ type: 'run', source: 'display(1); display("two"); 3;' }, (e) => events.push(e))
+      .finished;
+    expect(events.map((e) => (e.type === 'display' ? e.text : e.type))).toEqual([
+      'started',
+      '1',
+      '"two"',
+      'done',
+    ]);
+  });
+
+  it('reports syntax and runtime errors with their location', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const syntax = await client.submit({ type: 'run', source: 'const x = ;' }).finished;
+    expect(syntax).toMatchObject({ type: 'error', steps: 0, error: { phase: 'parse', loc: { line: 1 } } });
+    const runtime = await client.submit({ type: 'run', source: '1;\nmissing;' }).finished;
+    expect(runtime).toMatchObject({
+      type: 'error',
+      error: { phase: 'runtime', message: 'Line 2: Name missing not declared', loc: { line: 2 } },
+    });
+  });
+
+  it('ends a runaway program when the step budget is exhausted', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const end = await client.submit({ type: 'run', source: FOREVER, budget: 5_000 }).finished;
+    expect(end).toMatchObject({ type: 'budget-exhausted', steps: 5_000, budget: 5_000 });
+  });
+
+  it('uses a budget of 100 000 steps by default', async () => {
+    const client = new LabClient(() => inProcessWorker(50_000));
+    const end = await client.submit({ type: 'run', source: FOREVER }).finished;
+    expect(end).toMatchObject({ type: 'budget-exhausted', steps: 100_000, budget: 100_000 });
+  });
+
+  it('cancels a running job cooperatively, between slices', async () => {
+    const worker = inProcessWorker(500);
+    const client = new LabClient(() => worker);
+    const job = client.submit(
+      { type: 'run', source: FOREVER, budget: Number.MAX_SAFE_INTEGER },
+      (event) => {
+        if (event.type === 'started') job.cancel();
+      },
+    );
+    const end = await job.finished;
+    expect(end).toMatchObject({ type: 'cancelled', forced: false });
+    expect(end.type === 'cancelled' && end.steps).toBeGreaterThan(0);
+    expect(worker.terminated).toBe(false);
+
+    // The same worker is still usable afterwards.
+    expect(await client.submit({ type: 'run', source: '1 + 1;' }).finished).toMatchObject({
+      type: 'done',
+      value: '2',
+    });
+  });
+
+  it('keeps other jobs running when one is cancelled', async () => {
+    const client = new LabClient(() => inProcessWorker(500));
+    const runaway = client.submit({ type: 'run', source: FOREVER, budget: Number.MAX_SAFE_INTEGER });
+    const quick = client.submit({ type: 'run', source: factorialProgram });
+    expect(await quick.finished).toMatchObject({ type: 'done', value: '720' });
+    runaway.cancel();
+    expect(await runaway.finished).toMatchObject({ type: 'cancelled', forced: false });
+  });
+
+  it('replaces a worker that does not confirm a cancel', async () => {
+    const spawned: ReturnType<typeof deadWorker>[] = [];
+    const client = new LabClient(
+      () => {
+        const worker = deadWorker();
+        spawned.push(worker);
+        return worker;
+      },
+      { cancelGraceMs: 10 },
+    );
+    const stuck = client.submit({ type: 'run', source: FOREVER });
+    const bystander = client.submit({ type: 'run', source: '1;' });
+    stuck.cancel();
+    stuck.cancel();
+
+    expect(await stuck.finished).toEqual({ type: 'cancelled', id: stuck.id, steps: 0, forced: true });
+    expect(await bystander.finished).toMatchObject({ type: 'cancelled', forced: true });
+    expect(spawned[0]?.terminated).toBe(true);
+    expect(spawned[0]?.received.filter((m) => m.type === 'cancel')).toHaveLength(1);
+
+    client.submit({ type: 'run', source: '2;' });
+    expect(spawned).toHaveLength(2);
+  });
+
+  it('ignores a cancel for a job that already finished', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const job = client.submit({ type: 'run', source: '1;' });
+    await job.finished;
+    job.cancel();
+    expect(await client.submit({ type: 'run', source: '2;' }).finished).toMatchObject({ value: '2' });
+  });
+
+  it('returns the full step log for the stepper', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const end = await client.submit({ type: 'trace', source: 'const square = x => x * x;\nsquare(4);' })
+      .finished;
+    if (end.type !== 'trace-done') throw new Error(end.type);
+    expect(end.outcome).toEqual({ status: 'done', value: '16' });
+    expect(end.truncated).toBe(false);
+    expect(end.records.map((r) => `${r.n} | ${r.text} | ${r.env}`)).toEqual([
+      '1 | declare square = fn[E0] | E0',
+      '2 | evaluate application square(4) | E0',
+      '3 | evaluate name square → fn[E0] | E0',
+      '4 | apply fn[E0] → extend E0 with {x: 4} = E1 | E1',
+      '5 | evaluate name x → 4 | E1',
+      '6 | evaluate name x → 4 | E1',
+      '7 | x * x → 16 | E1',
+      '8 | square(4) → 16 | E0',
+    ]);
+    expect(end.records[1]?.loc).toMatchObject({ line: 2, col: 1, endCol: 10 });
+  });
+
+  it('truncates a step log at its record limit', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const end = await client.submit({ type: 'trace', source: factorialProgram, maxRecords: 5 }).finished;
+    expect(end).toMatchObject({ type: 'trace-done', truncated: true, outcome: { status: 'done' } });
+    expect(end.type === 'trace-done' && end.records).toHaveLength(5);
+  });
+
+  it('checks an exercise against value tests and measured process shape', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const prelude = 'function inc(x) { return x + 1; } function dec(x) { return x - 1; }';
+    const source = `
+      function plus_a(a, b) { return a === 0 ? b : inc(plus_a(dec(a), b)); }
+      function plus_b(a, b) { return a === 0 ? b : plus_b(dec(a), inc(b)); }
+      function classify(f) { return "recursive"; }`;
+    const end = await client.submit({
+      type: 'check',
+      source,
+      prelude,
+      tests: [
+        { name: 'plus_a still adds', kind: 'value', expr: 'plus_a(2, 3)', expected: 5 },
+        { name: 'plus_a', kind: 'shape', expr: 'classify(plus_a)', call: 'plus_a(4, 3)' },
+        { name: 'plus_b', kind: 'shape', expr: 'classify(plus_b)', call: 'plus_b(4, 3)' },
+      ],
+    }).finished;
+    expect(end).toMatchObject({ type: 'check-done', passed: 2, total: 3 });
+    expect(end.type === 'check-done' && end.results[2]).toEqual({
+      name: 'plus_b',
+      pass: false,
+      detail: 'classify(plus_b) is "recursive", but plus_b(4, 3) is iterative',
+    });
+  });
+
+  it('fails every test, without throwing, when the submission does not parse', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const end = await client.submit({
+      type: 'check',
+      source: 'function (',
+      tests: [{ name: 't', kind: 'value', expr: '1', expected: 1 }],
+    }).finished;
+    expect(end).toMatchObject({ type: 'check-done', passed: 0, total: 1, results: [{ pass: false }] });
+  });
+});
