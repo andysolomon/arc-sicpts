@@ -16,6 +16,8 @@ export interface RunRequest {
   budget?: number;
   prelude?: string;
   inspect?: { processShape?: boolean };
+  /** Seeds the scheduler of `concurrent_execute`; see `MachineOptions.seed`. */
+  seed?: number;
 }
 
 /** Evaluate a program and return the whole step log for the stepper. */
@@ -26,6 +28,7 @@ export interface TraceRequest {
   budget?: number;
   prelude?: string;
   maxRecords?: number;
+  seed?: number;
 }
 
 export type TestSpec =
@@ -44,6 +47,8 @@ export interface CheckRequest {
   tests: TestSpec[];
   /** Budget for each test; defaults to 100 000. */
   budget?: number;
+  /** Seeds the scheduler for every test, so that a check with threads is repeatable. */
+  seed?: number;
 }
 
 export interface CancelRequest {

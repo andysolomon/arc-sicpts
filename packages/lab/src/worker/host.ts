@@ -99,6 +99,7 @@ export function createLabHost(deps: HostDeps): LabHost {
         display: (text) => post({ type: 'display', id, text }),
         ...(tracer !== null && { hooks: [tracer.hooks] }),
         ...(request.prelude !== undefined && { prelude: request.prelude }),
+        ...(request.seed !== undefined && { seed: request.seed }),
       }).machine;
     } catch (error) {
       post({ type: 'error', id, error: payload(error), steps: 0, ms: now() - started });
@@ -133,6 +134,7 @@ export function createLabHost(deps: HostDeps): LabHost {
         hooks: [tracer.hooks],
         display: (text) => output.push(text),
         ...(request.prelude !== undefined && { prelude: request.prelude }),
+        ...(request.seed !== undefined && { seed: request.seed }),
       });
       // A trace is bounded by its small budget, so it runs in one go.
       machine.run();
@@ -171,8 +173,10 @@ export function createLabHost(deps: HostDeps): LabHost {
 
     try {
       // Each test gets a fresh run of the program, so tests cannot affect each other.
+      const seed = request.seed === undefined ? {} : { seed: request.seed };
       const session = prepare(request.source, {
         budget,
+        ...seed,
         ...(request.prelude !== undefined && { prelude: request.prelude }),
       });
       if (!(await drive(session.machine, job))) return 'cancelled';
@@ -182,6 +186,7 @@ export function createLabHost(deps: HostDeps): LabHost {
         let count = 0;
         const measured = session.follow(`${test.call};`, {
           budget,
+          ...seed,
           hooks: [{ onCall: (info) => void (info.name === test.fn && count++) }],
         });
         if (!(await drive(measured, job))) return 'cancelled';
@@ -192,7 +197,7 @@ export function createLabHost(deps: HostDeps): LabHost {
           : result(false, `${test.call} applies ${test.fn} ${count} times; at most ${test.atMost} expected`);
       }
 
-      const expr = session.follow(`${test.expr};`, { budget });
+      const expr = session.follow(`${test.expr};`, { budget, ...seed });
       if (!(await drive(expr, job))) return 'cancelled';
       if (expr.status !== 'done') return result(false, describe(expr));
 
@@ -204,7 +209,7 @@ export function createLabHost(deps: HostDeps): LabHost {
 
       const call = `${test.call};`;
       const tracer = createProcessShapeTracer(call);
-      const measured = session.follow(call, { budget, hooks: [tracer.hooks] });
+      const measured = session.follow(call, { budget, ...seed, hooks: [tracer.hooks] });
       if (!(await drive(measured, job))) return 'cancelled';
       if (measured.status !== 'done') return result(false, describe(measured));
       const kind = tracer.snapshot().runs[0]?.kind ?? 'iterative';

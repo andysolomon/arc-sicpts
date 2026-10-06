@@ -83,6 +83,21 @@ export function createGlobalEnvironment(display: (text: string) => void): Enviro
   primitive('is_boolean', 1, (v) => typeof v === 'boolean');
   primitive('is_undefined', 1, (v) => v === undefined);
   primitive('is_function', 1, (v) => isClosure(v) || isPrimitive(v));
+  // §3.4: threads, and the one atomic operation a mutex needs.
+  define(env, 'concurrent_execute', {
+    tag: 'primitive',
+    name: 'concurrent_execute',
+    arity: null,
+    control: 'concurrent_execute',
+    impl: () => fail('concurrent_execute is carried out by the machine'),
+  });
+  primitive('test_and_set', 1, (cell) => {
+    if (!isPair(cell)) fail(`test_and_set expects a pair, got ${typeName(cell)}`);
+    const p = cell as Pair;
+    if (p[0] === true) return true;
+    p[0] = true;
+    return false;
+  });
   primitive('list_to_string', 1, (xs) => listToString(xs));
   primitive('display_list', 1, (xs) => {
     display(listToString(xs));

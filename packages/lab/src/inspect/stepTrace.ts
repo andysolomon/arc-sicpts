@@ -37,7 +37,9 @@ export type StepEvent =
   /** An operator combination or primitive application produced its value. */
   | { kind: 'result'; value: string }
   /** A declaration or assignment bound a name. */
-  | { kind: 'define'; symbol: string; value: string; assignment: boolean; parentEnv: string | null };
+  | { kind: 'define'; symbol: string; value: string; assignment: boolean; parentEnv: string | null }
+  /** `concurrent_execute` started a thread, or a thread's function returned (§3.4). */
+  | { kind: 'thread'; thread: number; change: 'spawn' | 'end' };
 
 export interface StepRecord {
   /** 1-based position in the log. */
@@ -50,6 +52,8 @@ export interface StepRecord {
   nodeKind: Node['kind'];
   /** Index of the top-level statement the step belongs to. */
   statement: number;
+  /** The thread the step ran in, once `concurrent_execute` has started any; 0 is the program. */
+  thread?: number;
   event: StepEvent;
 }
 
@@ -64,19 +68,44 @@ export function createStepTracer(source: string, maxRecords = 400): StepTracer {
   const records: StepRecord[] = [];
   let truncated = false;
   let statement = 0;
+  let thread: number | null = null;
+  let lastNode: Node | null = null;
+  let lastEnv = 'E0';
 
   const record = (text: string, env: string, node: Node, event: StepEvent): void => {
     if (records.length >= maxRecords) {
       truncated = true;
       return;
     }
-    records.push({ n: records.length + 1, text, env, loc: node.loc, nodeKind: node.kind, statement, event });
+    lastNode = node;
+    lastEnv = env;
+    records.push({
+      n: records.length + 1,
+      text,
+      env,
+      loc: node.loc,
+      nodeKind: node.kind,
+      statement,
+      ...(thread !== null && { thread }),
+      event,
+    });
   };
 
   return {
     records,
     truncated: () => truncated,
     hooks: {
+      onThread(id, change) {
+        if (change === 'switch') {
+          thread = id;
+          return;
+        }
+        thread ??= 0;
+        // Spawns happen at the concurrent_execute call; ends after the thread's last step.
+        if (lastNode !== null) {
+          record(`thread ${id} ${change === 'spawn' ? 'starts' : 'ends'}`, lastEnv, lastNode, { kind: 'thread', thread: id, change });
+        }
+      },
       onTopLevelStatement(index) {
         statement = index;
       },

@@ -14,6 +14,8 @@ export interface Primitive {
   /** `null` means any number of arguments. */
   arity: number | null;
   impl: (...args: Value[]) => Value;
+  /** Set for the primitives the machine carries out itself, such as starting threads. */
+  control?: 'concurrent_execute';
 }
 
 /** Pairs are two-element arrays, as in Source. */
