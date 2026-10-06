@@ -1,0 +1,59 @@
+export const blockStructure = `function sqrt(x) {
+  function is_good_enough(guess) {
+    return math_abs(guess * guess - x) < 0.001;
+  }
+  function improve(guess) {
+    return (guess + x / guess) / 2;
+  }
+  function sqrt_iter(guess) {
+    return is_good_enough(guess)
+      ? guess
+      : sqrt_iter(improve(guess));
+  }
+  return sqrt_iter(1);
+}
+
+sqrt(144);
+`;
+
+export const localNames = `function square(x) {
+  return x * x;
+}
+
+function double_square(x) {
+  const y = square(x);
+  return y + y;
+}
+
+const x = 100;
+display(double_square(3));
+x;
+`;
+
+<Prose>
+
+The square-root program is a cluster of functions, and each one does a job that can be stated without saying how it is done. To write `is_good_enough` we need to know that `square` computes a square. We do not need to know whether it multiplies, adds repeatedly, or looks the answer up in a table. A function used this way is a *black box*: an abstraction of a computation, known by what it does.
+
+For that to work, a function's parameter names must be its own business. `square` calls its parameter `x`. So does `double_square`, and so does the program, which has a constant `x`. These are three different names that happen to be spelled alike. A parameter is *bound* by its function: renaming it consistently changes nothing, and nothing outside can see it. Run the program and check that the outer `x` is untouched.
+
+</Prose>
+
+<Example index={0} file="local_names.sicp" source={localNames} />
+
+<Prose>
+
+Names declared inside a function body are local in the same way. That solves a practical problem with the square-root program: only `sqrt` matters to its users, yet `improve`, `is_good_enough` and `sqrt_iter` all occupy the program's namespace, where another library's `improve` would collide with them.
+
+The repair is to move the helpers inside `sqrt`. This nesting of declarations is called *block structure*. It brings a simplification with it. Because the helpers now live inside the body of `sqrt`, they can see its parameter `x` directly, and no longer need to be handed it. A name that a function uses but does not bind is *free* in that function, and it takes its value from the enclosing declaration. That discipline is *lexical scoping*.
+
+</Prose>
+
+<Example index={1} file="block_structure.sicp" source={blockStructure} />
+
+<UnderTheHood file="packages/lab/src/evaluator/environment.ts">
+
+`lookup` in `evaluator/environment.ts` searches the current frame and then each enclosing frame in turn; that loop is lexical scoping in full. Each call of `sqrt` creates a frame binding `x`, and the inner functions are created inside it, so their free `x` is found one frame out. The test `chapter-1/elements.test.ts` runs the block-structured program and asserts that `sqrt(144)` is within 0.001 of 12.
+
+</UnderTheHood>
+
+<Enables items={['1.2.1', '1.3.2', { id: '3.2.4', label: 'Internal declarations in the environment model' }]} />

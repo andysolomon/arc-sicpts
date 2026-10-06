@@ -1,0 +1,40 @@
+export const compound = `function square(x) {
+  return x * x;
+}
+
+function sum_of_squares(x, y) {
+  return square(x) + square(y);
+}
+
+function f(a) {
+  return sum_of_squares(a + 1, a * 2);
+}
+
+f(5);
+`;
+
+<Prose>
+
+Names let us refer to values. A *function declaration* lets us name a computation. `square` below says: to square something, multiply it by itself. The something is called `x`, a *parameter*, a name that stands for whatever the function is eventually given.
+
+Declaring the function runs nothing. The declaration creates a function value and binds it to the name `square` in the environment, where it waits. An *application* such as `square(21)` evaluates the argument, hands the value to the function, and the function's `return` statement produces the value of the whole application.
+
+</Prose>
+
+<Example index={0} file="compound.sicp" source={compound} />
+
+<Prose>
+
+The important thing is what happens next. Once `square` exists, it is used in exactly the same way as a primitive like `math_abs`. `sum_of_squares` is built from `square`; `f` is built from `sum_of_squares`. Looking at the application `f(5)`, you cannot tell whether `f` is built into the interpreter or was written three lines above. A language that keeps this property lets you extend it without limit, and each layer hides the one below.
+
+Try `square(square(3))`, or declare `cube` and use it inside a new function. Nothing you declare is second class.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/evaluator/values.ts">
+
+A function value is a `Closure` record in `evaluator/values.ts`: the parsed function together with the environment it was declared in. The output panel shows one as `fn[E0]`, meaning a function whose home is frame `E0`, the program frame. The test `chapter-1/elements.test.ts` asserts that `f(5)` in the program above is 136.
+
+</UnderTheHood>
+
+<Enables items={['1.1.5', '1.1.8', '1.3.1']} />

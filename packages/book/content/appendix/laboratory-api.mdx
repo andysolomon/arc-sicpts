@@ -1,0 +1,41 @@
+<Prose>
+
+The Laboratory is the TypeScript package `@sicp/lab`. The Book never evaluates code itself: it sends text to the Laboratory and draws the JSON that comes back. Everything on this page is exported from the package root.
+
+## Evaluating
+
+| Export | What it does |
+| --- | --- |
+| `parse(source)` | Text to syntax tree. Throws `SourceError` with a location. |
+| `evaluate(source, options?)` | Runs to completion on the calling thread and returns an `Outcome`: `done`, `error` or `budget-exhausted`. Never throws for a program's own mistakes. |
+| `prepare(source, options?)` | Parses and returns a `Machine` without running it. |
+| `Machine.run(maxSteps?)` | Advances at most `maxSteps` steps and returns the status; `paused` means call again. |
+
+Options are `budget` (steps, default 100 000), `prelude` (source evaluated first in an enclosing frame), `display` (receives output lines) and `hooks`.
+
+## Inspecting
+
+| Export | What it does |
+| --- | --- |
+| `processShape(source)` | Returns a `ProcessShapeSnapshot`: for each top-level statement that makes calls, the call depth at every call and return, the maximum depth, and whether the process is recursive or iterative. |
+| `maxDepth(source)` | The deepest stack of pending calls in a run. |
+| `createStepTracer(source)` | Hooks that record a readable log of evaluation steps, each with its frame id and source span. |
+
+Inspectors attach through `MachineHooks`: `onEval`, `onCall`, `onReturn`, `onResult`, `onDefine`, `onTopLevelStatement`. A hook observes; it cannot change the result.
+
+## Running off the main thread
+
+| Export | What it does |
+| --- | --- |
+| `createLabHost({ post })` | The worker side. Handles `run`, `trace`, `check` and `cancel` requests and posts events. Jobs run in slices so that a cancel can arrive between them. |
+| `LabClient` | The page side. `submit(params, onEvent)` returns a handle with `cancel()` and a `finished` promise that resolves with the terminal event. A worker that does not confirm a cancel is replaced. |
+
+Events for a run are `started`, then any number of `display` and `shape`, then exactly one of `done`, `error`, `budget-exhausted` or `cancelled`.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/index.ts">
+
+The public surface is the export list of `src/index.ts`. The protocol is specified by `worker/protocol.ts` and exercised end to end, including cancellation and budget exhaustion, in `worker/protocol.test.ts`.
+
+</UnderTheHood>

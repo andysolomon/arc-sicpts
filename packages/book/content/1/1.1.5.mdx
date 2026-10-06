@@ -1,0 +1,42 @@
+export const substitution = `function square(x) {
+  return x * x;
+}
+
+function sum_of_squares(x, y) {
+  return square(x) + square(y);
+}
+
+function f(a) {
+  return sum_of_squares(a + 1, a * 2);
+}
+
+f(5);
+`;
+
+<Prose>
+
+How does the interpreter apply a function it has never seen before? A first model: to apply a compound function to arguments, evaluate the return expression of the function with each parameter replaced by the corresponding argument.
+
+Apply it to `f(5)`. The return expression of `f` is `sum_of_squares(a + 1, a * 2)`. Replacing `a` by 5 gives `sum_of_squares(5 + 1, 5 * 2)`. The operands evaluate to 6 and 10, so the problem becomes `square(6) + square(10)`, then `6 * 6 + 10 * 10`, then `36 + 100`, and finally 136. This is the *substitution model*. It is a way to think, good for every program in the first two chapters.
+
+It is not what the machine does. Step through the same program and read the log. No text is ever rewritten. Where the model says "replace `a` by 5", the interpreter creates a new frame in which `a` is bound to 5 and evaluates the body there. The effect is the same; the mechanism is the environment from §1.1.2, and in Chapter 3 it will matter that the two differ.
+
+</Prose>
+
+<Example index={0} mode="step" file="substitution.sicp" source={substitution} />
+
+<Prose>
+
+The log also settles a question the model leaves open: *when* are operands evaluated? Here `a + 1` becomes 6 before `sum_of_squares` is entered. Evaluating arguments first and applying second is *applicative order*. The alternative, *normal order*, would substitute the unevaluated operand expressions and compute them only when a primitive operator needs a value. For functions like these both orders give the same answer, though normal order would compute `5 + 1` twice.
+
+This language, like most, uses applicative order. Section 1.1.6 shows a program on which the two orders disagree, and Chapter 4 builds an interpreter that uses the other one.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/evaluator/machine.ts">
+
+The `apply` method in `evaluator/machine.ts` extends the function's own environment with a frame that binds parameters to argument values, then evaluates the body in it. The line `apply fn[E0] → extend E0 with {a: 5} = E1` in the step log is that moment. The test `chapter-1/elements.test.ts` asserts that the operand's value appears in the log before the application does.
+
+</UnderTheHood>
+
+<Enables items={['1.1.6', '1.2.1', { id: '3.2', label: 'The environment model' }, { id: '4.2', label: 'Normal order, for real' }]} />

@@ -1,0 +1,52 @@
+<Prose>
+
+The command-line tool runs the same evaluator as the Book, outside the browser. It needs Node 22.18 or later, which runs the TypeScript sources directly. From the repository root:
+
+</Prose>
+
+```
+npm run sicp -- run program.sicp            evaluate a file
+npm run sicp -- run program.sicp --shape    also print call depth per top-level call
+npm run sicp -- run program.sicp --budget 5000
+npm run sicp -- repl                        interactive session
+```
+
+<Prose>
+
+## Running a file
+
+Output from `display` is printed first, then the value of the program. The exit code is 0 for a value, 1 for a program error, 2 when the step budget is exhausted, 64 for bad usage and 66 for an unreadable file.
+
+With `--shape`, each top-level statement that makes calls is followed by its process shape:
+
+</Prose>
+
+```
+$ npm run sicp -- run factorial.sicp --shape
+720
+factorial(6) · recursive · max depth 6 · 6 calls
+  1 2 3 4 5 6 6 5 4 3 2 1
+```
+
+<Prose>
+
+## The interactive session
+
+Each line is a complete program fragment. Declarations stay visible to later lines, and a later declaration may shadow an earlier one. An error leaves earlier declarations intact. Press Ctrl-D to leave.
+
+</Prose>
+
+```
+sicp> const x = 20;
+undefined
+sicp> function double(n) { return n * 2; }
+undefined
+sicp> double(x) + 2;
+42
+```
+
+<UnderTheHood file="packages/cli/src/main.ts">
+
+`packages/cli/src/main.ts` parses arguments and prints outcomes; `repl.ts` chains one frame per input so that declarations persist. Both are covered by `packages/cli/src/main.test.ts`, which pins the exit codes and the `--shape` format.
+
+</UnderTheHood>

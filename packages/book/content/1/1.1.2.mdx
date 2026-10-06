@@ -1,0 +1,42 @@
+export const naming = `const size = 2;
+const pi = 3.14159;
+const radius = 10;
+
+const circumference = 2 * pi * radius;
+
+display(5 * size);
+display(pi * radius * radius);
+circumference;
+`;
+
+export const tooEarly = `display(area);
+const area = 3.14159 * 10 * 10;
+`;
+
+<Prose>
+
+A name is the simplest means of abstraction a language has. A *constant declaration* such as `const size = 2;` evaluates the expression on the right and associates the value with the name on the left. From then on the name can stand wherever the value could.
+
+That is already enough to build a computation in steps. `circumference` below is declared in terms of `pi` and `radius`; whoever uses it does not need to know how it was computed. Large programs are built exactly this way, one named piece on top of another.
+
+</Prose>
+
+<Example index={0} file="naming.sicp" source={naming} />
+
+<Prose>
+
+If names can be retrieved, the interpreter must keep them somewhere. That memory is called the *environment*. For now it is a single table, the program environment, that maps each declared name to its value. In Chapter 3 it grows into a chain of tables and becomes the central idea of the book.
+
+A declaration is not an expression and has no value of its own, which is why a program that ends in a declaration reports `undefined`. And a name exists from the start of the program but has no value until its declaration has been evaluated. Run the second program to see what the interpreter says about a name used too early.
+
+</Prose>
+
+<Example index={1} file="too_early.sicp" source={tooEarly} />
+
+<UnderTheHood file="packages/lab/src/evaluator/environment.ts">
+
+The environment is three plain records in `evaluator/environment.ts`: an `Environment` points to a `Frame`, a frame maps names to `Binding`s. Before running a block, the evaluator scans it and reserves every declared name as unassigned, which is how it can tell "used too early" from "never declared". The test `chapter-1/elements.test.ts` checks the circle computation above, and `evaluator/evaluate.test.ts` pins both error messages.
+
+</UnderTheHood>
+
+<Enables items={['1.1.3', '1.1.4', { id: '3.2', label: 'The environment model' }]} />
