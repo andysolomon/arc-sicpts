@@ -1,0 +1,16 @@
+import type { Loc } from './ast.ts';
+
+export type ErrorPhase = 'parse' | 'runtime';
+
+/** Any error a Source program can cause: a syntax error or a runtime error. */
+export class SourceError extends Error {
+  readonly phase: ErrorPhase;
+  readonly loc: Loc | null;
+
+  constructor(phase: ErrorPhase, message: string, loc: Loc | null) {
+    super(loc === null ? message : `Line ${loc.line}: ${message}`);
+    this.name = 'SourceError';
+    this.phase = phase;
+    this.loc = loc;
+  }
+}
