@@ -2,8 +2,10 @@ import type { ReactNode } from 'react';
 import { scenes as scenes31 } from './chapter-3/section-3.1.tsx';
 import { scenes as scenes32 } from './chapter-3/section-3.2.tsx';
 import { scenes as scenes33 } from './chapter-3/section-3.3.tsx';
+import { scenes as scenes33Simulation } from './chapter-3/section-3.3-simulation.tsx';
 import { scenes as scenes34 } from './chapter-3/section-3.4.tsx';
 import { scenes as scenes35 } from './chapter-3/section-3.5.tsx';
+import { scenes as scenes35Paradigm } from './chapter-3/section-3.5-paradigm.tsx';
 import type { SceneRegistry } from './chapter-3/registry.ts';
 import { BranchesScene } from './scenes/BranchesScene.tsx';
 import { CallsScene } from './scenes/CallsScene.tsx';
@@ -63,7 +65,15 @@ export type AnimKind =
   /** Chapter 3's own scenes, registered per section in `chapter-3/`. */
   | Chapter3Kind;
 
-const chapter3 = { ...scenes31, ...scenes32, ...scenes33, ...scenes34, ...scenes35 } satisfies SceneRegistry;
+const chapter3 = {
+  ...scenes31,
+  ...scenes32,
+  ...scenes33,
+  ...scenes33Simulation,
+  ...scenes34,
+  ...scenes35,
+  ...scenes35Paradigm,
+} satisfies SceneRegistry;
 type Chapter3Kind = keyof typeof chapter3;
 
 /** Running a program for its output alone can take many more steps than a full trace allows. */
