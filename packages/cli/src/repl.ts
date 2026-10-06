@@ -1,6 +1,6 @@
 import {
   createFrameIds,
-  createGlobalEnvironment,
+  createLibraryEnvironment,
   Machine,
   outcomeOf,
   parse,
@@ -17,7 +17,7 @@ export interface Repl {
 export function createRepl(budget?: number): Repl {
   const output: string[] = [];
   const frameIds = createFrameIds();
-  let env: Environment = createGlobalEnvironment((text) => output.push(text));
+  let env: Environment = createLibraryEnvironment((text) => output.push(text));
 
   return {
     evaluate(source) {

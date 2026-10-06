@@ -55,4 +55,8 @@ describe('repl', () => {
     expect(repl.evaluate('function double(n) { return n * 2; }')).toMatchObject({ status: 'done' });
     expect(repl.evaluate('double(x) + 2;')).toMatchObject({ status: 'done', text: '42' });
   });
+
+  it('starts with the list library', () => {
+    expect(createRepl().evaluate('length(map(x => x, list(1, 2, 3)));')).toMatchObject({ status: 'done', text: '3' });
+  });
 });

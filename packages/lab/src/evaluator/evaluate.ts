@@ -37,6 +37,12 @@ function declarations(program: Program, parent: Environment, id: 'library' | 'pr
   return machine.programEnv;
 }
 
+/** The global frame of primitives with the library frame on top: where every program starts. */
+export function createLibraryEnvironment(display: (text: string) => void = () => {}): Environment {
+  libraryProgram ??= parse(library);
+  return declarations(libraryProgram, createGlobalEnvironment(display), 'library');
+}
+
 /**
  * Parse a program and set up a machine for it without running anything.
  * Throws a `SourceError` when the program (or the prelude) does not parse.
@@ -46,8 +52,7 @@ function declarations(program: Program, parent: Environment, id: 'library' | 'pr
 export function prepare(source: string, options: PrepareOptions = {}): Session {
   const program = parse(source);
   const frameIds = createFrameIds();
-  libraryProgram ??= parse(library);
-  let parent = declarations(libraryProgram, createGlobalEnvironment(options.display ?? (() => {})), 'library');
+  let parent = createLibraryEnvironment(options.display);
   if (options.prelude !== undefined) parent = declarations(parse(options.prelude), parent, 'prelude');
 
   const machine = new Machine(program, {

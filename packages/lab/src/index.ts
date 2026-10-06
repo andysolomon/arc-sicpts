@@ -37,7 +37,9 @@ export {
   type MachineStatus,
   type ReturnInfo,
 } from './evaluator/machine.ts';
+export { library, listLibrary, streamLibrary } from './evaluator/library.ts';
 export {
+  createLibraryEnvironment,
   evaluate,
   outcomeOf,
   prepare,
