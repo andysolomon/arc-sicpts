@@ -21,7 +21,11 @@ Declaring the function runs nothing. The declaration creates a function value an
 
 </Prose>
 
-<Example index={0} file="compound.sicp" source={compound} />
+<Example index={0} file="compound.sicp" source={compound} anim="calls">
+
+Every compound function application opens a box under the call that made it, and the box closes when its value returns. A dashed edge marks a tail call: the caller had nothing left to do, so the callee took its place.
+
+</Example>
 
 <Prose>
 
@@ -30,6 +34,8 @@ The important thing is what happens next. Once `square` exists, it is used in ex
 Try `square(square(3))`, or declare `cube` and use it inside a new function. Nothing you declare is second class.
 
 </Prose>
+
+<LayersDiagram source={compound} caption={<p>The program's call graph, one layer per level of abstraction. <code>f</code> only needs to know what <code>sum_of_squares</code> does, not how; <code>sum_of_squares</code> treats <code>square</code> the same way; and nothing above the bottom row knows which operations are primitive.</p>} />
 
 <UnderTheHood file="packages/lab/src/evaluator/values.ts">
 

@@ -18,7 +18,11 @@ The simplest expression is a number. Followed by a semicolon it becomes a statem
 
 </Prose>
 
-<Example index={0} file="arithmetic.sicp" source={arithmetic} />
+<Example index={0} file="arithmetic.sicp" source={arithmetic} anim="reduce">
+
+Each statement is rewritten one primitive operation at a time until a single value remains. The highlighted part is the combination about to collapse.
+
+</Example>
 
 <Prose>
 
@@ -28,7 +32,11 @@ Only the last value reaches the output panel on its own. To see an intermediate 
 
 </Prose>
 
-<Example index={1} file="nesting.sicp" source={nested} />
+<Example index={1} file="nesting.sicp" source={nested} anim="tree">
+
+The text of each statement rearranges itself into the tree the parser builds from it, so precedence becomes visible as shape. Then the evaluator's own trace moves values from the leaves to the root.
+
+</Example>
 
 <UnderTheHood file="packages/lab/src/syntax/parse.ts">
 

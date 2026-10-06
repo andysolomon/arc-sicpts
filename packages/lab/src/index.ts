@@ -54,7 +54,7 @@ export {
   type ProcessRun,
   type ProcessShapeSnapshot,
 } from './inspect/processShape.ts';
-export { createStepTracer, type StepRecord } from './inspect/stepTrace.ts';
+export { createStepTracer, type StepEvent, type StepRecord } from './inspect/stepTrace.ts';
 
 export type * from './worker/protocol.ts';
 export { isTerminal } from './worker/protocol.ts';

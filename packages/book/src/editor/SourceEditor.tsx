@@ -26,6 +26,10 @@ export interface SourceEditorProps {
    * Called with `null` when a run starts or the editor is reset.
    */
   onShape?: (snapshot: ProcessShapeSnapshot | null, runId: number) => void;
+  /** Receives the text as it currently reads, on mount and after every edit or reset. */
+  onSource?: ((source: string) => void) | undefined;
+  /** In step mode, receives the stepper's position whenever it moves. */
+  onStep?: ((index: number) => void) | undefined;
 }
 
 type RunState =
@@ -112,7 +116,7 @@ function RunOutput({ state, fading }: { state: RunState; fading: boolean }) {
   );
 }
 
-export function SourceEditor({ file, source: supplied, editorId, mode = 'run', budget, onShape }: SourceEditorProps) {
+export function SourceEditor({ file, source: supplied, editorId, mode = 'run', budget, onShape, onSource, onStep }: SourceEditorProps) {
   const sectionId = useSectionId();
   const { source, setSource, reset } = usePersistentSource(sectionId, editorId, supplied);
   const sourceRef = useRef(source);
@@ -128,6 +132,8 @@ export function SourceEditor({ file, source: supplied, editorId, mode = 'run', b
   const tracing = useRef<Promise<TraceDone | null> | null>(null);
 
   useEffect(() => () => job.current?.cancel(), []);
+  useEffect(() => onSource?.(source), [onSource, source]);
+  useEffect(() => onStep?.(index), [index, onStep]);
 
   const change = useCallback(
     (next: string) => {

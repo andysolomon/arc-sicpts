@@ -42,7 +42,11 @@ The program says this almost word for word. `sqrt_iter` is the method; `improve`
 
 </Prose>
 
-<Example index={0} file="sqrt.sicp" source={sqrt} />
+<Example index={0} file="sqrt.sicp" source={sqrt} anim="newton">
+
+Why averaging works: the curve is *y*² − *x*, whose root is the answer. At each guess the tangent line is drawn, and where it meets the axis is exactly (*y* + *x*/*y*) / 2, the next guess. The guesses are the ones the program printed.
+
+</Example>
 
 <Prose>
 

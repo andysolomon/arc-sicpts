@@ -38,7 +38,11 @@ For that to work, a function's parameter names must be its own business. `square
 
 </Prose>
 
-<Example index={0} file="local_names.sicp" source={localNames} />
+<Example index={0} file="local_names.sicp" source={localNames} anim="frames">
+
+Three frames each bind a name spelled `x`. A lookup starts in the frame of the running call and never wanders into another call's frame, so the three never meet.
+
+</Example>
 
 <Prose>
 
@@ -48,7 +52,13 @@ The repair is to move the helpers inside `sqrt`. This nesting of declarations is
 
 </Prose>
 
-<Example index={1} file="block_structure.sicp" source={blockStructure} />
+<Example index={1} file="block_structure.sicp" source={blockStructure} anim="frames">
+
+Applying `sqrt` makes a frame for `x`, and the helpers declared in its body become functions whose home is that frame. When `improve` uses `x`, the lookup fails in its own frame and succeeds one frame out, in `sqrt`'s.
+
+</Example>
+
+<BlackBoxDiagram source={blockStructure} caption={<p>Block structure as a box. Users of <code>sqrt</code> see only the outer box; the three helpers are internal, and the <code>x</code> each of them mentions is <code>sqrt</code>'s parameter, reached by lexical scoping rather than passed in.</p>} />
 
 <UnderTheHood file="packages/lab/src/evaluator/environment.ts">
 

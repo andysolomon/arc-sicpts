@@ -2,7 +2,12 @@ import type { ProcessShapeSnapshot } from '@sicp/lab';
 import type { MDXComponents } from 'mdx/types';
 import { Children, useCallback, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { Animation, type AnimKind } from '../anim/Animation.tsx';
 import { repoFile } from '../config.ts';
+import { BlackBoxDiagram } from '../diagrams/BlackBoxDiagram.tsx';
+import { Figure } from '../diagrams/Figure.tsx';
+import { LabArchitectureDiagram } from '../diagrams/LabArchitectureDiagram.tsx';
+import { LayersDiagram } from '../diagrams/LayersDiagram.tsx';
 import { SourceEditor } from '../editor/SourceEditor.tsx';
 import { NestedSquaresIcon } from '../shell/icons.tsx';
 import { pages } from '../toc.ts';
@@ -24,13 +29,15 @@ interface ExampleProps {
   mode?: 'run' | 'step';
   /** Show a visualizer beside the editor. */
   viz?: 'processShape';
+  /** Show an animation under the editor, drawn from the text as it currently reads. */
+  anim?: AnimKind;
   budget?: number;
-  /** The note under the visualizer. */
+  /** The note under the visualizer, or under the animation when there is no visualizer. */
   children?: ReactNode;
 }
 
-/** An editor, optionally with a visualizer; side by side when there is room. */
-function Example({ index, file, source, mode = 'run', viz, budget, children }: ExampleProps) {
+/** An editor, optionally with a visualizer beside it and an animation below. */
+function Example({ index, file, source, mode = 'run', viz, anim, budget, children }: ExampleProps) {
   const [shape, setShape] = useState<{ snapshot: ProcessShapeSnapshot | null; runId: number }>({
     snapshot: null,
     runId: 0,
@@ -39,6 +46,9 @@ function Example({ index, file, source, mode = 'run', viz, budget, children }: E
     (snapshot: ProcessShapeSnapshot | null, runId: number) => setShape({ snapshot, runId }),
     [],
   );
+  // The animation follows the editor's text and, in step mode, its stepper.
+  const [text, setText] = useState(source);
+  const [step, setStep] = useState(0);
   const editor = (
     <SourceEditor
       file={file}
@@ -47,15 +57,29 @@ function Example({ index, file, source, mode = 'run', viz, budget, children }: E
       mode={mode}
       {...(budget !== undefined && { budget })}
       {...(viz === 'processShape' && { onShape })}
+      {...(anim !== undefined && { onSource: setText })}
+      {...(anim !== undefined && mode === 'step' && { onStep: setStep })}
     />
   );
-  if (viz === undefined) return editor;
+  const main =
+    viz === undefined ? (
+      editor
+    ) : (
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,380px),1fr))] items-start gap-4">
+        {editor}
+        <ProcessShapeViz snapshot={shape.snapshot} runKey={shape.runId}>
+          {children}
+        </ProcessShapeViz>
+      </div>
+    );
+  if (anim === undefined) return main;
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,380px),1fr))] items-start gap-4">
-      {editor}
-      <ProcessShapeViz snapshot={shape.snapshot} runKey={shape.runId}>
-        {children}
-      </ProcessShapeViz>
+    <div className="flex flex-col gap-4">
+      {main}
+      <Animation kind={anim} source={text} stepIndex={mode === 'step' ? step : undefined} />
+      {viz === undefined && children !== undefined && (
+        <div className="text-sm leading-normal text-pretty text-ink-2 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[0.9em]">{children}</div>
+      )}
     </div>
   );
 }
@@ -147,6 +171,10 @@ export const mdxComponents: MDXComponents = {
   Exercise,
   Solution,
   Enables,
+  Figure,
+  LayersDiagram,
+  BlackBoxDiagram,
+  LabArchitectureDiagram,
   p: (props) => <p className="m-0" {...props} />,
   code: (props) => <code className="rounded bg-paper-2 px-[5px] py-px text-[0.88em]" {...props} />,
   pre: (props) => (
