@@ -43,16 +43,36 @@ export function typeName(value: Value): string {
 }
 
 const MAX_NESTING = 64;
+/**
+ * Pairs written out at most, per value. Shared structure is written out each
+ * time it is met, so without a limit a value built by doubling, such as
+ * `pair(x, x)` applied twenty times, would take millions of characters.
+ */
+const MAX_PAIRS = 2000;
+
+interface Budget {
+  pairs: number;
+}
 
 /** Text form of a value: strings are quoted, functions show their defining frame. */
 export function stringify(value: Value, nesting = 0): string {
+  return write(value, nesting, new Set(), { pairs: MAX_PAIRS });
+}
+
+function write(value: Value, nesting: number, path: Set<Pair>, budget: Budget): string {
   if (value === null) return 'null';
   if (value === undefined) return 'undefined';
   if (typeof value === 'string') return JSON.stringify(value);
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (isPair(value)) {
-    if (nesting >= MAX_NESTING) return '[...]';
-    return `[${stringify(value[0], nesting + 1)}, ${stringify(value[1], nesting + 1)}]`;
+    // A pair inside itself is a cycle: name it instead of following it forever.
+    if (path.has(value)) return '...';
+    if (nesting >= MAX_NESTING || budget.pairs <= 0) return '[...]';
+    budget.pairs--;
+    path.add(value);
+    const text = `[${write(value[0], nesting + 1, path, budget)}, ${write(value[1], nesting + 1, path, budget)}]`;
+    path.delete(value);
+    return text;
   }
   if (value.tag === 'closure') return `fn[${value.env.frame.id}]`;
   return `primitive[${value.name}]`;
@@ -63,19 +83,30 @@ export function stringify(value: Value, nesting = 0): string {
  * `[1, 2]` for a pair whose tail is not a list. A pair met again on the way
  * down, as in a circular list, prints as `...`.
  */
-export function listToString(value: Value, path: ReadonlySet<Pair> = new Set()): string {
+export function listToString(value: Value): string {
+  return writeList(value, new Set(), { pairs: MAX_PAIRS * 5 });
+}
+
+function writeList(value: Value, path: Set<Pair>, budget: Budget): string {
   if (!isPair(value)) return stringify(value);
   if (path.has(value)) return '...';
   const items: string[] = [];
-  const seen = new Set(path);
+  const spine: Pair[] = [];
   let rest: Value = value;
-  while (isPair(rest) && !seen.has(rest)) {
-    seen.add(rest);
-    items.push(listToString(rest[0], seen));
+  while (isPair(rest) && !path.has(rest)) {
+    if (budget.pairs-- <= 0) {
+      items.push('...');
+      rest = null;
+      break;
+    }
+    path.add(rest);
+    spine.push(rest);
+    items.push(writeList(rest[0], path, budget));
     rest = rest[1];
   }
+  for (const pair of spine) path.delete(pair);
   if (rest === null) return `list(${items.join(', ')})`;
-  // An improper or circular tail: fall back to pair notation from the first pair.
+  // An improper or circular tail: pair notation from the first pair.
   const tailText = isPair(rest) ? '...' : stringify(rest);
   return items.reduceRight((text, item) => `[${item}, ${text}]`, tailText);
 }

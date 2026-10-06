@@ -67,3 +67,20 @@ describe('the stream library', () => {
     expect(value('stream_length(stream_append(enum_stream(1, 2), build_stream(i => i, 3)));')).toBe(5);
   });
 });
+
+describe('writing out shared and circular structure', () => {
+  it('stops instead of writing out a structure that doubles at every level', () => {
+    const outcome = evaluate(`
+      function double_up(x, n) { return n === 0 ? x : double_up(pair(x, x), n - 1); }
+      const big = double_up(1, 40);
+      stringify(big);
+    `);
+    expect(outcome.status).toBe('done');
+    if (outcome.status === 'done') expect(String(outcome.value).length).toBeLessThan(100_000);
+  });
+
+  it('names cycles through heads as well as tails', () => {
+    expect(value('const x = pair(1, 2); set_head(x, x); stringify(x);')).toBe('[..., 2]');
+    expect(value('const x = pair(1, 2); set_tail(x, x); set_head(x, x); list_to_string(x);')).toBe('[..., ...]');
+  });
+});

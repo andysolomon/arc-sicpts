@@ -17,7 +17,13 @@ The Laboratory is the TypeScript package `@sicp/lab`. The Book never evaluates c
 | `prepare(source, options?)` | Parses and returns a `Machine` without running it. |
 | `Machine.run(maxSteps?)` | Advances at most `maxSteps` steps and returns the status; `paused` means call again. |
 
-Options are `budget` (steps, default 100 000), `prelude` (source evaluated first in an enclosing frame), `display` (receives output lines) and `hooks`.
+Options are `budget` (steps, default 100 000), `prelude` (source evaluated first in an enclosing frame), `display` (receives output lines), `hooks` and `seed`.
+
+Every program starts in a frame that extends two outer frames: `global`, which holds the primitives, and `library`, which holds the list and stream functions of Source §2 and §3, written in Source (`evaluator/library.ts`). A declaration in the program shadows a library function of the same name. `createLibraryEnvironment(display)` returns that starting environment, which is how the CLI's REPL begins.
+
+## Threads
+
+`concurrent_execute(f, g, ...)` gives each function of no arguments a thread of its own: a separate stack of continuations, with the frames shared. After every step a scheduler may switch to another runnable thread, so an assignment such as `balance = balance - amount`, which takes several steps, can be interrupted between reading `balance` and writing it. The call returns `undefined` once all of its threads have finished. `test_and_set(cell)` is a single primitive step, which is what makes it atomic. The scheduler draws from a seeded generator: a `seed` option, accepted by `prepare`, `evaluate` and the `run`, `trace` and `check` requests, replays an interleaving exactly, and a run without one interleaves differently each time. Trace records carry the thread they ran in, and `thread` events mark where threads start and end.
 
 ## Inspecting
 
@@ -25,9 +31,9 @@ Options are `budget` (steps, default 100 000), `prelude` (source evaluated first
 | --- | --- |
 | `processShape(source)` | Returns a `ProcessShapeSnapshot`: for each top-level statement that makes calls, the call depth at every call and return, the maximum depth, and whether the process is recursive or iterative. |
 | `maxDepth(source)` | The deepest stack of pending calls in a run. |
-| `createStepTracer(source)` | Hooks that record a readable log of evaluation steps, each with its frame id, source span, top-level statement index and a structured `event` (`call`, `return`, `result`, `name`, `define` or `eval`) from which the Book's animations rebuild trees, frames and call stacks. |
+| `createStepTracer(source)` | Hooks that record a readable log of evaluation steps, each with its frame id, source span, top-level statement index and a structured `event` (`call`, `return`, `result`, `name`, `define`, `thread` or `eval`) from which the Book's animations rebuild trees, frames and call stacks. |
 
-Inspectors attach through `MachineHooks`: `onEval`, `onCall`, `onReturn`, `onResult`, `onDefine`, `onTopLevelStatement`. A hook observes; it cannot change the result.
+Inspectors attach through `MachineHooks`: `onEval`, `onCall`, `onReturn`, `onResult`, `onDefine`, `onTopLevelStatement`, `onThread`. A hook observes; it cannot change the result.
 
 ## Running off the main thread
 
