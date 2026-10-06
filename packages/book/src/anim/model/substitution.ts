@@ -310,6 +310,10 @@ export function substitution(source: string, { order = 'applicative', maxSteps =
 
   const isLit = (term: Term): term is Extract<Term, { kind: 'lit' }> => term.kind === 'lit';
 
+  /** A literal, or the name of a function: a function is a value too, and is passed as its name (§1.3.1). */
+  const isValue = (term: Term): boolean =>
+    isLit(term) || (term.kind === 'name' && (resolve(term.symbol)?.kind ?? 'constant') !== 'constant');
+
   const compoundName = (fun: Term): string | null => {
     if (fun.kind !== 'name') return null;
     const target = resolve(fun.symbol);
@@ -357,7 +361,7 @@ export function substitution(source: string, { order = 'applicative', maxSteps =
           const inner = redex(arg);
           if (inner !== null) return inner;
         }
-        return term.args.every(isLit) ? term : null;
+        return term.args.every(isValue) ? term : null;
       }
     }
   };
@@ -527,7 +531,7 @@ export function substitution(source: string, { order = 'applicative', maxSteps =
         const env = new Map(target_.params.map((param, i) => [param, target.args[i] as Term]));
         const body = toTerm(target_.body, env);
         const bindings = target_.params.map((param, i) => `\`${param}\` by ${q(target.args[i] as Term)}`).join(', ');
-        const unevaluated = target.args.some((arg) => !isLit(arg));
+        const unevaluated = target.args.some((arg) => !isValue(arg));
         return {
           term: replace(whole, target.id, body),
           rule: 'apply',

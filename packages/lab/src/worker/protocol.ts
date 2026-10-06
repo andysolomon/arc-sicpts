@@ -32,7 +32,9 @@ export type TestSpec =
   /** `expr`, evaluated after the program, must equal `expected`. */
   | { name: string; kind: 'value'; expr: string; expected: number | string | boolean | null }
   /** `expr` must be the string naming the measured process kind of `call`. */
-  | { name: string; kind: 'shape'; expr: string; call: string };
+  | { name: string; kind: 'shape'; expr: string; call: string }
+  /** Evaluating `call` must apply the compound function `fn` at least once and at most `atMost` times. */
+  | { name: string; kind: 'calls'; call: string; fn: string; atMost: number };
 
 export interface CheckRequest {
   type: 'check';

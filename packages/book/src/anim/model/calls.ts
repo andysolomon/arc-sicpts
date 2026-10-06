@@ -11,6 +11,11 @@ export interface CallNode {
   /** The frame id of the call; the root is `program`. */
   id: string;
   label: string;
+  /** The function's name and the arguments in their text form; empty for the root. */
+  name: string;
+  args: string[];
+  /** The id of an earlier call with the same function and arguments, when there was one. */
+  repeatOf: string | null;
   /** Record at which the call happened; 0 for the root. */
   calledAt: number;
   /** Record at which the value arrived, or null if it never did. */
@@ -32,15 +37,17 @@ export interface CallTree {
   keyframes: CallKeyframe[];
   /** Number of calls recorded. */
   calls: number;
+  /** Number of calls that repeat an earlier call exactly. */
+  repeats: number;
 }
 
 export function callTree(source: string, trace: Trace | null): CallTree {
   const root: TreeInput<CallNode> = {
-    data: { id: 'program', label: 'program', calledAt: 0, returnedAt: null, value: null, tail: false, recursive: false },
+    data: { id: 'program', label: 'program', name: '', args: [], repeatOf: null, calledAt: 0, returnedAt: null, value: null, tail: false, recursive: false },
     children: [],
   };
   const keyframes: CallKeyframe[] = [{ at: 0, active: null, caption: 'Each call is a box; a box closes when its value comes back.' }];
-  if (trace === null) return { root, keyframes, calls: 0 };
+  if (trace === null) return { root, keyframes, calls: 0, repeats: 0 };
 
   interface Open {
     node: TreeInput<CallNode>;
@@ -51,6 +58,9 @@ export function callTree(source: string, trace: Trace | null): CallTree {
   const top = (): Open => stack[stack.length - 1] ?? { node: root, replaced: false };
   const excerpt = (loc: { start: number; end: number }): string => source.slice(loc.start, loc.end).replace(/\s+/g, ' ');
   let calls = 0;
+  let repeats = 0;
+  /** The first call of each function on each argument list, by label. */
+  const firstCall = new Map<string, TreeInput<CallNode>>();
 
   for (const record of trace.records) {
     const { event } = record;
@@ -58,10 +68,16 @@ export function callTree(source: string, trace: Trace | null): CallTree {
       calls++;
       const parent = top();
       if (event.tail) parent.replaced = true;
+      const label = `${event.name}(${event.args.join(', ')})`;
+      const earlier = firstCall.get(label);
+      if (earlier !== undefined) repeats++;
       const node: TreeInput<CallNode> = {
         data: {
           id: record.env,
-          label: `${event.name}(${event.args.join(', ')})`,
+          label,
+          name: event.name,
+          args: event.args,
+          repeatOf: earlier?.data.id ?? null,
           calledAt: record.n,
           returnedAt: null,
           value: null,
@@ -71,13 +87,16 @@ export function callTree(source: string, trace: Trace | null): CallTree {
         children: [],
       };
       parent.node.children.push(node);
+      if (earlier === undefined) firstCall.set(label, node);
       stack.push({ node, replaced: false });
       keyframes.push({
         at: record.n,
         active: record.env,
         caption: event.tail
           ? `\`${excerpt(record.loc)}\` is a tail call: ${parent.node.data.label} has nothing left to do, so the new call takes its place.`
-          : `\`${excerpt(record.loc)}\` opens a new call inside ${parent.node.data.label}.`,
+          : earlier !== undefined && earlier.data.returnedAt !== null
+            ? `\`${excerpt(record.loc)}\` opens ${label} inside ${parent.node.data.label}. ${label} was already computed once, and is computed again from scratch.`
+            : `\`${excerpt(record.loc)}\` opens a new call inside ${parent.node.data.label}.`,
       });
     } else if (event.kind === 'return') {
       let closed = stack.pop();
@@ -100,5 +119,5 @@ export function callTree(source: string, trace: Trace | null): CallTree {
       });
     }
   }
-  return { root, keyframes, calls };
+  return { root, keyframes, calls, repeats };
 }

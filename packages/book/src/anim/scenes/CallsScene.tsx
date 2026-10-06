@@ -17,6 +17,8 @@ export interface CallsSceneProps {
   source: string;
   trace: Trace | null;
   title?: string;
+  /** Mark calls that repeat an earlier call exactly, as tree recursion does (§1.2.2). */
+  repeats?: boolean;
 }
 
 const LEVEL = 58;
@@ -25,11 +27,17 @@ const finalLabel = (node: CallNode): string => (node.value === null ? node.label
 const nodeWidth = (node: CallNode): number => Math.max(36, monoWidth(finalLabel(node), FONT) + 20);
 const PAD = 22;
 
-export function CallsScene({ source, trace, title = 'Calls within calls' }: CallsSceneProps) {
-  const tree = useMemo(() => callTree(source, trace), [source, trace]);
+export function CallsScene({ source, trace, title = 'Calls within calls', repeats = false }: CallsSceneProps) {
+  const tree = useMemo(() => {
+    const built = callTree(source, trace);
+    if (!repeats || built.calls === 0) return built;
+    const last = built.keyframes[built.keyframes.length - 1];
+    const summary = `${built.calls} calls in all, and ${built.repeats} of them (in red) repeat a call that had already been made with the same argument${built.repeats === 1 ? '' : 's'}.`;
+    return { ...built, keyframes: [...built.keyframes, { at: last?.at ?? 0, active: null, caption: summary }] };
+  }, [repeats, source, trace]);
   const layout = useMemo(() => tidy(tree.root, { nodeWidth, gap: 18, level: LEVEL }), [tree]);
   const stage = useRef<HTMLDivElement>(null);
-  const player = usePlayer(tree.keyframes.length, { stage, resetKey: trace });
+  const player = usePlayer(tree.keyframes.length, { stage, resetKey: trace, ...(repeats && { msPerStep: 700 }) });
   const keyframe = tree.keyframes[player.index];
   const at = keyframe?.at ?? 0;
 
@@ -72,12 +80,13 @@ export function CallsScene({ source, trace, title = 'Calls within calls' }: Call
               if (data.calledAt > at) return null;
               const returned = data.returnedAt !== null && data.returnedAt <= at;
               const active = keyframe?.active === data.id;
-              const tone: Tone = active ? 'focus' : returned ? 'value' : data.id === 'program' ? 'dim' : 'plain';
+              const repeated = repeats && data.repeatOf !== null;
+              const tone: Tone = active ? 'focus' : repeated ? 'bad' : returned ? 'value' : data.id === 'program' ? 'dim' : 'plain';
               const label = returned && data.value !== null ? `${data.label} → ${data.value}` : data.label;
               const width_ = Math.max(36, monoWidth(label, FONT) + 20);
               return (
                 <g key={data.id}>
-                  <Pill x={offset + node.x} y={top + node.y} width={width_} text={label} tone={tone} testId="call" />
+                  <Pill x={offset + node.x} y={top + node.y} width={width_} text={label} tone={tone} testId={repeated ? 'repeated-call' : 'call'} />
                   {data.tail && (
                     <text x={offset + node.x} y={top + node.y - NODE_HEIGHT / 2 - 4} textAnchor="middle" fontSize={9.5} className="fill-ink-3">
                       tail call

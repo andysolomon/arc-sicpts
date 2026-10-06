@@ -93,6 +93,12 @@ describe('evaluate', () => {
     expect(outcome).toMatchObject({ status: 'done', value: 2, output: ['[1, [2, null]]', '"hi"'] });
   });
 
+  it('offers random numbers and a clock for §1.2.6', () => {
+    const r = value('math_random();');
+    expect(typeof r === 'number' && r >= 0 && r < 1).toBe(true);
+    expect(value('const start = get_time(); get_time() - start >= 0;')).toBe(true);
+  });
+
   it('evaluates a prelude in a frame the program can see', () => {
     const outcome = evaluate('inc(dec(5));', {
       prelude: 'function inc(x) { return x + 1; } function dec(x) { return x - 1; }',

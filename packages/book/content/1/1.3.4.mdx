@@ -1,0 +1,157 @@
+import { averageDampProgram, newtonProgram, transformProgram } from '@sicp/lab';
+
+<Prose>
+
+The examples so far show that the ability to pass functions as arguments significantly enhances the expressive power of the language. We can do even more by creating functions whose returned values are themselves functions.
+
+Return to the fixed-point example of §1.3.3. The square-root search converged once we used average damping, and the idea of average damping can itself be expressed as a function. Given a function *f*, `average_damp` returns the function whose value at *x* is the average of *x* and *f*(*x*):
+
+</Prose>
+
+<Example index={0} file="average_damp.sicp" source={averageDampProgram} anim="frames">
+
+`average_damp(square)` returns a function and its frame stays behind: the function remembers that its `f` is `square`. When `damped_square(10)` is applied, its frame extends that remembered frame, not the program's, which is how the body finds `f`. The value is the average of 10 and 100.
+
+</Example>
+
+<Prose>
+
+Using `average_damp`, the square-root function of §1.3.3 becomes
+
+```js
+function sqrt(x) {
+  return fixed_point(average_damp(y => x / y), 1);
+}
+```
+
+This formulation makes three ideas explicit: fixed-point search, average damping, and the function *y* ↦ *x* / *y*. It computes the same thing as §1.1.7, but expressing the process in terms of these abstractions makes the method plainer, and each idea is reusable. The cube root of *x* is a fixed point of *y* ↦ *x* / *y*², so
+
+```js
+function cube_root(x) {
+  return fixed_point(average_damp(y => x / square(y)), 1);
+}
+```
+
+**Newton's method.** When §1.1.7 introduced the square-root function, it mentioned that this was a special case of Newton's method. If *x* ↦ *g*(*x*) is a differentiable function, then a solution of *g*(*x*) = 0 is a fixed point of *x* ↦ *f*(*x*), where
+
+*f*(*x*) = *x* − *g*(*x*) / *Dg*(*x*)
+
+and *Dg*(*x*) is the derivative of *g* evaluated at *x*. For many functions and good enough starting guesses, Newton's method converges very rapidly.
+
+Derivative, like average damping, transforms one function into another. The derivative of *x* ↦ *x*³ is the function *x* ↦ 3*x*². In general, if *g* is a function and *dx* a small number, then *Dg*(*x*) = (*g*(*x* + *dx*) − *g*(*x*)) / *dx*, and `deriv` is that formula with the function returned rather than applied. With it, Newton's method is a fixed-point search on `newton_transform(g)`.
+
+</Prose>
+
+<Example index={1} file="newton.sicp" source={newtonProgram} anim="newtons-method">
+
+The picture of §1.1.7, now for any function *g* the program is given. The derivative of `cube` at 5 should be 75, and `deriv(cube)(5)` prints 75.00014999664018. At each guess the tangent's slope is `deriv(g)` there, and the tangent meets the axis at the next guess. Change `square(y) - 2` to `cube(y) - 30` and the same program finds a cube root.
+
+</Example>
+
+<Prose>
+
+**Abstractions and first-class functions.** We have now seen two ways to express the square-root computation as an instance of a more general method: as a fixed-point search and as Newton's method. Each method begins with a function and finds a fixed point of some transformation of it. That general idea can be expressed as a function too, and both square roots become instances of it.
+
+</Prose>
+
+<Example index={2} file="transform.sicp" source={transformProgram}>
+
+`fixed_point_of_transform` takes a function, a transformation and a guess. `average_damp` and `newton_transform` are both transformations, so they can be passed in exactly as `y => x / y` is.
+
+</Example>
+
+<Prose>
+
+As programmers, we should be alert to opportunities to identify the underlying abstractions in our programs, and to build upon them and generalise them to create more powerful abstractions. This is not to say that one should always write programs in the most abstract way possible. Expert programmers know how to choose the level of abstraction appropriate to their task. But it is important to be able to think in terms of these abstractions, so that we can be ready to apply them in new contexts.
+
+The significance of higher-order functions is that they let us represent these abstractions explicitly as elements in our programming language, so that they can be handled just like other computational elements. In general, programming languages impose restrictions on the ways in which computational elements can be manipulated. Elements with the fewest restrictions are said to have *first-class* status. Some of the rights and privileges of first-class elements are that they may be
+
+- referred to using names,
+- passed as arguments to functions,
+- returned as the results of functions, and
+- included in data structures.
+
+JavaScript, like Lisp before it, awards functions full first-class status. Chapter 2 puts the fourth right to use, and chapter 3 explains how a function remembers the frame it was made in.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/evaluator/machine.ts">
+
+A lambda expression evaluates to a `Closure`: the lambda together with the environment it was evaluated in (`evaluator/values.ts`). Applying a closure extends *that* environment, not the caller's, in `apply` in `evaluator/machine.ts`; this one line is why `average_damp(square)` can return a function that still knows `f`. The test `chapter-1/abstractions.test.ts` asserts that `damped_square(10)` is 55, that `deriv(cube)(5)` prints 75.00014999664018, and that both `newtons_method` and `fixed_point_of_transform` find √2 to nine places.
+
+</UnderTheHood>
+
+<Exercises range="1.40 – 1.46" total={7}>
+<Exercise id="1.40">
+
+Declare a function `cubic` that can be used together with `newtons_method` in expressions of the form `newtons_method(cubic(a, b, c), 1)` to approximate zeros of the cubic *x*³ + *ax*² + *bx* + *c*.
+
+<Solution>
+
+**Solution.** `cubic` returns a lambda expression whose body is the polynomial; *a*, *b* and *c* are found in `cubic`'s frame, which the returned function remembers.
+
+</Solution>
+</Exercise>
+<Exercise id="1.41">
+
+Declare a function `double` that takes a function of one argument as argument and returns a function that applies the original function twice. If `inc` adds 1 to its argument, then `double(inc)` adds 2. What value is returned by `double(double(double))(inc)(5)`? Predict it before you run it.
+
+<Solution>
+
+**Solution.** `double(f)` is `x => f(f(x))`. `double(double)` applies `double` twice, so it turns *f* into a function that applies *f* four times. `double(double(double))` applies *that* twice, giving 4 × 4 = 16 applications of `inc`, and 5 + 16 = 21.
+
+</Solution>
+</Exercise>
+<Exercise id="1.42">
+
+Let *f* and *g* be two one-argument functions. The *composition* *f* after *g* is the function *x* ↦ *f*(*g*(*x*)). Declare a function `compose` that implements composition. For example, `compose(square, inc)(6)` is 49.
+
+<Solution>
+
+**Solution.** `compose(f, g)` is `x => f(g(x))`. The order matters: `compose(inc, square)(6)` is 37.
+
+</Solution>
+</Exercise>
+<Exercise id="1.43">
+
+If *f* is a numerical function and *n* is a positive integer, then we can form the *n*th repeated application of *f*, the function whose value at *x* is *f*(*f*(…(*f*(*x*))…)). Write a function `repeated` that takes as inputs a function that computes *f* and a positive integer *n*, and returns the function that computes the *n*th repeated application of *f*. `repeated(square, 2)(5)` should be 625. Hint: you may find it convenient to use `compose`.
+
+<Solution>
+
+**Solution.** `repeated(f, 1)` is `f`, and `repeated(f, n)` is `compose(f, repeated(f, n - 1))`. Building it with successive squaring, as in §1.2.4, also works, and needs only Θ(log *n*) compositions.
+
+</Solution>
+</Exercise>
+<Exercise id="1.44">
+
+The idea of *smoothing* a function is an important concept in signal processing. If *f* is a function and *dx* is some small number, then the smoothed version of *f* is the function whose value at *x* is the average of *f*(*x* − *dx*), *f*(*x*) and *f*(*x* + *dx*). Write `smooth`, and use `repeated` to write `n_fold_smooth`, which smooths a function *n* times.
+
+<Solution>
+
+**Solution.** `smooth(f)` returns the average of the three values. Smoothing is a transformation of functions, so `repeated(smooth, n)` smooths *n* times, and `n_fold_smooth(f, n)` applies that to `f`.
+
+</Solution>
+</Exercise>
+<Exercise id="1.45">
+
+The fixed-point search for *n*th roots, *y* ↦ *x* / *y*ⁿ⁻¹, does not converge for *n* > 3 with a single average damp. Experiment to determine how many average damps are needed to compute *n*th roots as a fixed-point search, and use this to implement a function `nth_root` using `fixed_point`, `average_damp` and `repeated`.
+
+<Solution>
+
+**Solution.** Experiment shows that one damp suffices up to *n* = 3, two up to 7, three up to 15: ⌊log₂ *n*⌋ damps are enough. `repeated(average_damp, k)` builds the *k*-fold damped function directly, since `average_damp` is just another function on functions.
+
+</Solution>
+</Exercise>
+<Exercise id="1.46">
+
+Several of the numerical methods in this chapter are instances of an extremely general computational strategy known as *iterative improvement*: to compute something, start with an initial guess, test whether it is good enough, and otherwise improve it and continue with the improved guess. Write a function `iterative_improve` that takes two functions as arguments, a method for telling whether a guess is good enough and a method for improving a guess, and returns a function that takes a guess and keeps improving it until it is good enough. Rewrite `sqrt` and `fixed_point` in terms of it.
+
+<Solution>
+
+**Solution.** `iterative_improve` declares a local `iter` that tests and improves, and returns `iter` itself: a function returned as a value, which keeps access to both arguments. `sqrt` and `fixed_point` then shrink to a choice of test and improvement each, which is the shape every method in this chapter has had.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '2.1.3', label: 'Pairs as functions' }, { id: '3.2.2', label: 'Applying functions in the environment model' }, { id: '3.5.3', label: 'Streams of approximations' }]} />

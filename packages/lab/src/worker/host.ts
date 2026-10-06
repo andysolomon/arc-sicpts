@@ -178,6 +178,20 @@ export function createLabHost(deps: HostDeps): LabHost {
       if (!(await drive(session.machine, job))) return 'cancelled';
       if (session.machine.status !== 'done') return result(false, describe(session.machine));
 
+      if (test.kind === 'calls') {
+        let count = 0;
+        const measured = session.follow(`${test.call};`, {
+          budget,
+          hooks: [{ onCall: (info) => void (info.name === test.fn && count++) }],
+        });
+        if (!(await drive(measured, job))) return 'cancelled';
+        if (measured.status !== 'done') return result(false, describe(measured));
+        if (count === 0) return result(false, `${test.call} never applies ${test.fn}`);
+        return count <= test.atMost
+          ? result(true, null)
+          : result(false, `${test.call} applies ${test.fn} ${count} times; at most ${test.atMost} expected`);
+      }
+
       const expr = session.follow(`${test.expr};`, { budget });
       if (!(await drive(expr, job))) return 'cancelled';
       if (expr.status !== 'done') return result(false, describe(expr));
