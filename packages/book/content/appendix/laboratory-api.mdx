@@ -2,6 +2,12 @@
 
 The Laboratory is the TypeScript package `@sicp/lab`. The Book never evaluates code itself: it sends text to the Laboratory and draws the JSON that comes back. Everything on this page is exported from the package root.
 
+</Prose>
+
+<LabArchitectureDiagram caption={<p>Every editor, animation and exercise check on a page goes through one <code>LabClient</code> and one worker. The worker runs the machine in slices, so a cancel can arrive between them.</p>} />
+
+<Prose>
+
 ## Evaluating
 
 | Export | What it does |
@@ -19,7 +25,7 @@ Options are `budget` (steps, default 100 000), `prelude` (source evaluated first
 | --- | --- |
 | `processShape(source)` | Returns a `ProcessShapeSnapshot`: for each top-level statement that makes calls, the call depth at every call and return, the maximum depth, and whether the process is recursive or iterative. |
 | `maxDepth(source)` | The deepest stack of pending calls in a run. |
-| `createStepTracer(source)` | Hooks that record a readable log of evaluation steps, each with its frame id and source span. |
+| `createStepTracer(source)` | Hooks that record a readable log of evaluation steps, each with its frame id, source span, top-level statement index and a structured `event` (`call`, `return`, `result`, `name`, `define` or `eval`) from which the Book's animations rebuild trees, frames and call stacks. |
 
 Inspectors attach through `MachineHooks`: `onEval`, `onCall`, `onReturn`, `onResult`, `onDefine`, `onTopLevelStatement`. A hook observes; it cannot change the result.
 

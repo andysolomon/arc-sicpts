@@ -6,8 +6,38 @@ import { excerpt } from './sourceText.ts';
 
 /**
  * A readable log of what the evaluator did, one record per interesting step.
- * The Book's stepper walks this log forwards and backwards.
+ * The Book's stepper walks this log forwards and backwards, and the Book's
+ * animations rebuild pictures (trees, frames, call stacks) from the structured
+ * `event` each record carries.
  */
+
+/** What a step was, with the values involved already in their text form. */
+export type StepEvent =
+  /** A combination, conditional or return is about to be evaluated. */
+  | { kind: 'eval' }
+  /** A name was looked up. */
+  | { kind: 'name'; symbol: string; value: string }
+  /** A compound function was applied and a frame was made for it. */
+  | {
+      kind: 'call';
+      name: string;
+      params: string[];
+      args: string[];
+      /** The frame the function was declared in, which the new frame extends. */
+      closureEnv: string;
+      /** The frame the call was made from. */
+      callerEnv: string;
+      /** Depth of the stack of pending calls, this one included. */
+      depth: number;
+      tail: boolean;
+      recursive: boolean;
+    }
+  /** A compound function call produced its value. */
+  | { kind: 'return'; value: string; depth: number }
+  /** An operator combination or primitive application produced its value. */
+  | { kind: 'result'; value: string }
+  /** A declaration or assignment bound a name. */
+  | { kind: 'define'; symbol: string; value: string; assignment: boolean; parentEnv: string | null };
 
 export interface StepRecord {
   /** 1-based position in the log. */
@@ -18,6 +48,9 @@ export interface StepRecord {
   /** The syntax node the step is about. */
   loc: Loc;
   nodeKind: Node['kind'];
+  /** Index of the top-level statement the step belongs to. */
+  statement: number;
+  event: StepEvent;
 }
 
 export interface StepTracer {
@@ -30,43 +63,53 @@ export interface StepTracer {
 export function createStepTracer(source: string, maxRecords = 400): StepTracer {
   const records: StepRecord[] = [];
   let truncated = false;
+  let statement = 0;
 
-  const record = (text: string, env: string, node: Node): void => {
+  const record = (text: string, env: string, node: Node, event: StepEvent): void => {
     if (records.length >= maxRecords) {
       truncated = true;
       return;
     }
-    records.push({ n: records.length + 1, text, env, loc: node.loc, nodeKind: node.kind });
+    records.push({ n: records.length + 1, text, env, loc: node.loc, nodeKind: node.kind, statement, event });
   };
 
   return {
     records,
     truncated: () => truncated,
     hooks: {
+      onTopLevelStatement(index) {
+        statement = index;
+      },
       onEval(node, env) {
         const id = env.frame.id;
         switch (node.kind) {
           case 'application':
-            record(`evaluate application ${excerpt(source, node)}`, id, node);
+            record(`evaluate application ${excerpt(source, node)}`, id, node, { kind: 'eval' });
             return;
           case 'name': {
             const found = lookup(env, node.symbol);
             if (found.status === 'found' && found.binding.assigned) {
-              record(`evaluate name ${node.symbol} → ${stringify(found.binding.value)}`, id, node);
+              const value = stringify(found.binding.value);
+              record(`evaluate name ${node.symbol} → ${value}`, id, node, {
+                kind: 'name',
+                symbol: node.symbol,
+                value,
+              });
             }
             return;
           }
           case 'conditional':
-            record(`evaluate conditional, test ${excerpt(source, node.test, 32)}`, id, node);
+            record(`evaluate conditional, test ${excerpt(source, node.test, 32)}`, id, node, { kind: 'eval' });
             return;
           case 'if':
-            record(`evaluate if, test ${excerpt(source, node.test, 32)}`, id, node);
+            record(`evaluate if, test ${excerpt(source, node.test, 32)}`, id, node, { kind: 'eval' });
             return;
           case 'return':
             record(
               node.argument === null ? 'return' : `return ${excerpt(source, node.argument, 40)}`,
               id,
               node,
+              { kind: 'eval' },
             );
             return;
           default:
@@ -74,28 +117,48 @@ export function createStepTracer(source: string, maxRecords = 400): StepTracer {
         }
       },
       onCall(info) {
-        const bindings = info.closure.lambda.params
-          .map((param, i) => `${param}: ${stringify(info.args[i])}`)
-          .join(', ');
+        const args = info.args.map((arg) => stringify(arg));
+        const params = [...info.closure.lambda.params];
+        const bindings = params.map((param, i) => `${param}: ${args[i]}`).join(', ');
         record(
           `apply ${stringify(info.closure)} → extend ${info.closure.env.frame.id} with {${bindings}} = ${info.env.frame.id}`,
           info.env.frame.id,
           info.node,
+          {
+            kind: 'call',
+            name: info.name,
+            params,
+            args,
+            closureEnv: info.closure.env.frame.id,
+            callerEnv: info.callerEnv.frame.id,
+            depth: info.depth,
+            tail: info.tail,
+            recursive: info.recursive,
+          },
         );
       },
       onReturn(info) {
-        record(
-          `${excerpt(source, info.node, 32)} → ${stringify(info.value)}`,
-          info.callerEnv.frame.id,
-          info.node,
-        );
+        const value = stringify(info.value);
+        record(`${excerpt(source, info.node, 32)} → ${value}`, info.callerEnv.frame.id, info.node, {
+          kind: 'return',
+          value,
+          depth: info.depth,
+        });
       },
       onResult(node, value, env) {
-        record(`${excerpt(source, node, 32)} → ${stringify(value)}`, env.frame.id, node);
+        const text = stringify(value);
+        record(`${excerpt(source, node, 32)} → ${text}`, env.frame.id, node, { kind: 'result', value: text });
       },
       onDefine(symbol, value, env, node) {
-        const verb = node.kind === 'assignment' ? 'assign' : 'declare';
-        record(`${verb} ${symbol} = ${stringify(value)}`, env.frame.id, node);
+        const assignment = node.kind === 'assignment';
+        const text = stringify(value);
+        record(`${assignment ? 'assign' : 'declare'} ${symbol} = ${text}`, env.frame.id, node, {
+          kind: 'define',
+          symbol,
+          value: text,
+          assignment,
+          parentEnv: env.parent?.frame.id ?? null,
+        });
       },
     },
   };

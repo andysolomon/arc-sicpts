@@ -38,7 +38,11 @@ A *predicate* is an expression whose value is `true` or `false`. Comparisons suc
 
 </Prose>
 
-<Example index={0} file="conditionals.sicp" source={conditionals} />
+<Example index={0} file="conditionals.sicp" source={conditionals} anim="branches">
+
+Each function body is drawn as a decision tree. When a function is applied, the path the evaluator takes lights up and the branches it never visits fade. The `&&` in `is_between` is a gate: its right side is only reached if the left side is true.
+
+</Example>
 
 <Prose>
 
@@ -48,7 +52,11 @@ That is what makes the next program a test of evaluation order. `p` calls itself
 
 </Prose>
 
-<Example index={1} file="order_test.sicp" source={orderTest} budget={20000} />
+<Example index={1} file="order_test.sicp" source={orderTest} budget={20000} anim="order">
+
+The same expression under both orders of the substitution model. Normal order substitutes `p()` unevaluated and never needs it; applicative order has to evaluate it first, and `p()` rewrites to `p()` forever.
+
+</Example>
 
 <UnderTheHood file="packages/lab/src/evaluator/machine.ts">
 

@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4173;
+// Another preview may own 4173; PORT picks a different one for a local run.
+const PORT = Number(process.env['PORT'] ?? 4173);
 
 // Use a system Chromium when one is named or found, so the tests also run on
 // distributions Playwright does not ship browsers for.

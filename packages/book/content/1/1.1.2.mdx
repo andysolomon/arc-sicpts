@@ -21,7 +21,11 @@ That is already enough to build a computation in steps. `circumference` below is
 
 </Prose>
 
-<Example index={0} file="naming.sicp" source={naming} />
+<Example index={0} file="naming.sicp" source={naming} anim="environment">
+
+The program frame starts with every declared name reserved and unassigned. Each declaration fills a row; each use of a name is a lookup that lands on its row.
+
+</Example>
 
 <Prose>
 
@@ -31,7 +35,11 @@ A declaration is not an expression and has no value of its own, which is why a p
 
 </Prose>
 
-<Example index={1} file="too_early.sicp" source={tooEarly} />
+<Example index={1} file="too_early.sicp" source={tooEarly} anim="environment">
+
+`area` is already in the frame when `display(area)` runs, but its row is still unassigned, and the lookup fails with the error the output panel shows.
+
+</Example>
 
 <UnderTheHood file="packages/lab/src/evaluator/environment.ts">
 
