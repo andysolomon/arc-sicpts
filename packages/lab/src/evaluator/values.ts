@@ -55,3 +55,25 @@ export function stringify(value: Value, nesting = 0): string {
   if (value.tag === 'closure') return `fn[${value.env.frame.id}]`;
   return `primitive[${value.name}]`;
 }
+
+/**
+ * List notation, as `display_list` prints it: `list(1, 2, 3)` for a list,
+ * `[1, 2]` for a pair whose tail is not a list. A pair met again on the way
+ * down, as in a circular list, prints as `...`.
+ */
+export function listToString(value: Value, path: ReadonlySet<Pair> = new Set()): string {
+  if (!isPair(value)) return stringify(value);
+  if (path.has(value)) return '...';
+  const items: string[] = [];
+  const seen = new Set(path);
+  let rest: Value = value;
+  while (isPair(rest) && !seen.has(rest)) {
+    seen.add(rest);
+    items.push(listToString(rest[0], seen));
+    rest = rest[1];
+  }
+  if (rest === null) return `list(${items.join(', ')})`;
+  // An improper or circular tail: fall back to pair notation from the first pair.
+  const tailText = isPair(rest) ? '...' : stringify(rest);
+  return items.reduceRight((text, item) => `[${item}, ${text}]`, tailText);
+}
