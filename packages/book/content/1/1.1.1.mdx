@@ -1,0 +1,39 @@
+export const arithmetic = `137 + 349;
+1000 - 334;
+5 * 99;
+2.7 + 10;
+(3 * 5) + (10 - 6);
+`;
+
+export const nested = `display(3 * 5 + 10 / 2);
+display((3 + 5) * (10 - 6) / 2);
+3 * (2 * 4 + (3 + 5)) + (10 - 7 + 6);
+`;
+
+<Prose>
+
+A language for programming gives you three things: primitive expressions, a way to combine them, and a way to name the result so that it can be used as a unit. This section is about the first two. We type an expression, the interpreter evaluates it, and we look at the value.
+
+The simplest expression is a number. Followed by a semicolon it becomes a statement, and a program is a sequence of statements. Numbers combine with operators into *operator combinations* such as `137 + 349`. The editor below holds five statements; the output panel shows the value of the last one. Change any of them and run it again.
+
+</Prose>
+
+<Example index={0} file="arithmetic.sicp" source={arithmetic} />
+
+<Prose>
+
+Combinations nest. An operand can itself be a combination, to any depth, and parentheses group the parts just as they do on paper. Without parentheses, `*` and `/` bind more tightly than `+` and `-`, and operators of equal strength group from the left.
+
+Only the last value reaches the output panel on its own. To see an intermediate value, wrap it in `display`, a primitive function that prints its argument and returns it unchanged.
+
+</Prose>
+
+<Example index={1} file="nesting.sicp" source={nested} />
+
+<UnderTheHood file="packages/lab/src/syntax/parse.ts">
+
+Every run starts in `syntax/tokenize.ts`, which cuts the text into tokens, and `syntax/parse.ts`, which builds a tree with one node per expression. Precedence is not looked up at run time: it is the shape of the tree. The test `syntax/parse.test.ts` asserts that `1 + 2 * 3 < 10` parses as a comparison whose left side is a sum whose right side is a product.
+
+</UnderTheHood>
+
+<Enables items={['1.1.2', '1.1.3', { id: 'A', label: 'Source grammar' }]} />

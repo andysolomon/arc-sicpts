@@ -1,0 +1,48 @@
+import { factorialProgram } from '@sicp/lab';
+
+<Prose>
+
+A function is a static description. A *process* is what happens when the function runs: the sequence of deferred operations, the memory they occupy, the time they take. Two functions can compute the same value and generate processes of completely different shape.
+
+Consider factorial. The first version below says `n * factorial(n - 1)`: it cannot finish its multiplication until the recursive call returns, so each call leaves a pending operation behind. The chain of pending multiplications is the process. It grows to depth *n* and then collapses.
+
+The second version keeps a running product and a counter. Nothing is deferred. At every step the three names in the call fully describe where the computation stands, so the process runs in constant space even though the function calls itself.
+
+</Prose>
+
+<Example index={0} file="factorial.sicp" source={factorialProgram} viz="processShape">
+
+Depth is sampled from the evaluator at every call and every return. Change `6` above and run again; the shape updates from the new trace.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-1/factorial.ts">
+
+The depth trace comes from `inspect/processShape.ts`, which listens to `evaluator/machine.ts` and records the number of pending calls at every application and every return. A call in tail position replaces its caller instead of stacking on it, which is why `fact_iter` stays flat. The test `chapter-1/processes.test.ts` asserts `maxDepth(factorial, 6) === 6` and `maxDepth(fact_iter, 6) === 1`.
+
+</UnderTheHood>
+
+<Exercises range="1.9 – 1.10">
+<Exercise id="1.9">
+
+Each of the two `plus` functions below adds positive integers using only `inc` and `dec`. Decide whether each generates a recursive or an iterative process, then make your answer checkable: `classify(plus_a)` should return `"recursive"` or `"iterative"`, and likewise for `plus_b`.
+
+<Solution>
+
+**Solution.** `plus_a` defers an `inc` on every call, so pending operations accumulate: recursive. `plus_b` passes the updated state forward with nothing pending: iterative. The checker verifies this by measuring depth with `inspect/processShape` rather than inspecting your string.
+
+</Solution>
+</Exercise>
+<Exercise id="1.10">
+
+The function `A` below computes Ackermann's function. Work out by hand the values of `A(1, 10)`, `A(2, 4)` and `A(3, 3)`. Then describe `A(1, n)` for positive `n` as a formula: complete `g` so that it computes the same value without calling `A`.
+
+<Solution>
+
+**Solution.** `A(0, n)` doubles. `A(1, n)` unfolds to `A(0, A(1, n - 1))`, a doubling applied *n* − 1 times to 2, which is 2ⁿ. `A(2, n)` in turn applies "2 to the power of" repeatedly, giving a tower of *n* twos; `A(2, 4)` is 2 to the 16th. `A(3, 3)` reduces to `A(2, 4)`.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['1.2.2', '1.2.3', { id: '5.1', label: 'Stack in the factorial machine' }, { id: '5.5', label: 'Proper tail calls in the compiler' }]} />

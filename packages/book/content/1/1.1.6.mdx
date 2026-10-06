@@ -1,0 +1,72 @@
+export const conditionals = `function abs(x) {
+  return x >= 0 ? x : -x;
+}
+
+function sign(x) {
+  return x > 0
+    ? 1
+    : x === 0
+      ? 0
+      : -1;
+}
+
+function is_between(x, low, high) {
+  return x >= low && x <= high;
+}
+
+display(abs(-12));
+display(sign(-12));
+is_between(5, 1, 10);
+`;
+
+export const orderTest = `function p() {
+  return p();
+}
+
+function test(x, y) {
+  return x === 0 ? 0 : y;
+}
+
+test(0, p());
+`;
+
+<Prose>
+
+So far a function does the same thing whatever it is given. To compute an absolute value we need to test the argument and act on the result. The form for that is the *conditional expression*: a predicate, a question mark, the expression to use if the predicate is true, a colon, and the expression to use if it is false.
+
+A *predicate* is an expression whose value is `true` or `false`. Comparisons such as `x >= 0` and `x === 0` are the primitive ones. They combine with `&&` (and), `||` (or) and `!` (not). Conditionals nest on the false side to make a case analysis, as `sign` does.
+
+</Prose>
+
+<Example index={0} file="conditionals.sicp" source={conditionals} />
+
+<Prose>
+
+Conditionals are not ordinary operator combinations, and the difference is the point. The rule of §1.1.3 evaluates *all* operands first. A conditional evaluates its predicate and then exactly one of the two branches. The other branch is never looked at. `&&` and `||` behave the same way: `a && b` only evaluates `b` when `a` is true.
+
+That is what makes the next program a test of evaluation order. `p` calls itself forever. Under applicative order, the argument `p()` must be evaluated before `test` is entered, so the program never finishes. Under normal order, `y` would never be needed and the answer would be 0. Run it. The step budget stops the runaway computation, and the page stays responsive while it does.
+
+</Prose>
+
+<Example index={1} file="order_test.sicp" source={orderTest} budget={20000} />
+
+<UnderTheHood file="packages/lab/src/evaluator/machine.ts">
+
+In `evaluator/machine.ts` a conditional pushes a single pending note, evaluates the predicate, and then continues with one branch; the other branch's node is never visited. The test `chapter-1/elements.test.ts` proves it by putting a call to an infinite loop, and a call to `error`, in the branch not taken. Budget exhaustion is asserted in `worker/protocol.test.ts`. The order-of-evaluation program is adapted from Exercise 1.5 of SICP JS.
+
+</UnderTheHood>
+
+<Exercises range="1.1 – 1.5" total={5}>
+<Exercise id="1.3">
+
+Declare a function `sum_of_larger_squares` that takes three numbers and returns the sum of the squares of the two larger ones.
+
+<Solution>
+
+**Solution.** The two larger numbers are whatever remains after leaving out the smallest, so the case analysis only has to find one number that is no larger than both others. Using `<=` rather than `<` keeps the answer right when numbers are equal.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['1.1.7', '1.2.1', { id: '4.2', label: 'Lazy evaluation' }]} />

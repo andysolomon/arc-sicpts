@@ -1,0 +1,84 @@
+export const sqrt = `function abs(x) {
+  return x >= 0 ? x : -x;
+}
+
+function square(x) {
+  return x * x;
+}
+
+function average(x, y) {
+  return (x + y) / 2;
+}
+
+function is_good_enough(guess, x) {
+  return abs(square(guess) - x) < 0.001;
+}
+
+function improve(guess, x) {
+  return average(guess, x / guess);
+}
+
+function sqrt_iter(guess, x) {
+  display(guess);
+  return is_good_enough(guess, x)
+    ? guess
+    : sqrt_iter(improve(guess, x), x);
+}
+
+function sqrt(x) {
+  return sqrt_iter(1, x);
+}
+
+sqrt(2);
+`;
+
+<Prose>
+
+Mathematics can define the square root of *x* as the non-negative *y* whose square is *x*. That is a perfectly good definition and a useless program: it tells us how to recognise a square root, not how to find one. Mathematics describes what is; a function has to describe how to.
+
+Newton's method supplies the how. Start with any guess *y*. If it is not good enough, a better guess is the average of *y* and *x / y*: one of the two is too large and the other too small, and the truth lies between them. Repeat until the guess is good enough.
+
+The program says this almost word for word. `sqrt_iter` is the method; `improve` and `is_good_enough` are the two ideas it depends on; each of those is built from `average`, `square` and `abs`. The `display` call prints every guess, so you can watch the answer converge. Try other numbers.
+
+</Prose>
+
+<Example index={0} file="sqrt.sicp" source={sqrt} />
+
+<Prose>
+
+Two things are worth noticing. The first is that nothing here is a loop construct. `sqrt_iter` simply calls itself with a better guess, and that is enough to repeat a step as often as needed. Section 1.2.1 looks closely at why this costs no memory.
+
+The second is the test `is_good_enough`. It stops when the square of the guess is within 0.001 of *x*. Try `sqrt(0.0001)`, whose root is 0.01, and then `sqrt(10000000000000)`. One answer is wrong and the other never arrives. The first exercise below asks you to repair it.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-1/elements.test.ts">
+
+Nothing new in the Laboratory is needed for this section, which is rather the point: seven small functions and the rules of §1.1 compute square roots. The test `chapter-1/elements.test.ts` runs this program and asserts that `sqrt(9)` and `sqrt(2)` are within 0.001 of the true roots. The very large input fails because floating-point numbers that size are spaced more than 0.001 apart, so no guess can ever pass the test.
+
+</UnderTheHood>
+
+<Exercises range="1.6 – 1.8" total={3}>
+<Exercise id="1.7">
+
+The `is_good_enough` test below fails for very small numbers and never succeeds for very large ones. Replace it with a test that watches how much the guess *changes* from one iteration to the next and stops when the change is a small fraction of the guess.
+
+<Solution>
+
+**Solution.** An absolute tolerance has a fixed size, so it is enormous next to 0.0001 and smaller than the gaps between numbers near ten trillion. A relative test scales with the answer. Comparing the guess with its own improvement asks the right question directly: would another step still change anything that matters?
+
+</Solution>
+</Exercise>
+<Exercise id="1.8">
+
+Newton's method for cube roots rests on the fact that if *y* approximates the cube root of *x*, then *(x / y² + 2y) / 3* is a better approximation. Use it to implement `cube_root`, in the manner of the square-root program.
+
+<Solution>
+
+**Solution.** Only `improve` changes. The surrounding method, guess, test, improve, repeat, is identical to the square-root program, which is a hint that the method itself deserves a name. Section 1.3 gives it one.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['1.1.8', '1.2.1', { id: '1.3.3', label: 'Functions as general methods' }, { id: '1.3.4', label: 'Newton’s method, generalised' }]} />

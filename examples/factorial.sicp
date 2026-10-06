@@ -1,0 +1,14 @@
+function factorial(n) {
+  return n === 1
+    ? 1
+    : n * factorial(n - 1);
+}
+
+function fact_iter(product, counter, max) {
+  return counter > max
+    ? product
+    : fact_iter(counter * product, counter + 1, max);
+}
+
+display(factorial(6));
+fact_iter(1, 1, 6);

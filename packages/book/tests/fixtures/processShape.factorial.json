@@ -1,0 +1,20 @@
+{
+  "runs": [
+    {
+      "label": "factorial(6)",
+      "samples": [1, 2, 3, 4, 5, 6, 6, 5, 4, 3, 2, 1],
+      "maxDepth": 6,
+      "calls": 6,
+      "kind": "recursive",
+      "truncated": false
+    },
+    {
+      "label": "fact_iter(1, 1, 6)",
+      "samples": [1, 1, 1, 1, 1, 1, 1, 1],
+      "maxDepth": 1,
+      "calls": 7,
+      "kind": "iterative",
+      "truncated": false
+    }
+  ]
+}

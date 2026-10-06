@@ -1,0 +1,57 @@
+<Prose>
+
+The Laboratory evaluates a subset of JavaScript in the spirit of Source §1, with assignment added for Chapter 3. This is the grammar its parser accepts today. It grows with the book; anything outside it is rejected with a message rather than interpreted loosely.
+
+</Prose>
+
+```
+program     ::= statement*
+
+statement   ::= "const" name "=" expression ";"
+              | "let" name "=" expression ";"
+              | "function" name "(" names? ")" block
+              | "return" expression? ";"
+              | "if" "(" expression ")" block ( "else" ( block | if-statement ) )?
+              | block
+              | expression ";"
+
+block       ::= "{" statement* "}"
+
+expression  ::= number | string | "true" | "false" | "null" | "undefined"
+              | name
+              | expression binary-operator expression
+              | unary-operator expression
+              | expression "&&" expression
+              | expression "||" expression
+              | expression "?" expression ":" expression
+              | expression "(" expressions? ")"
+              | name "=" expression
+              | ( name | "(" names? ")" ) "=>" ( expression | block )
+              | "(" expression ")"
+
+binary-operator ::= "+" | "-" | "*" | "/" | "%" | "===" | "!==" | "<" | ">" | "<=" | ">="
+unary-operator  ::= "!" | "-"
+```
+
+<Prose>
+
+## Differences from JavaScript
+
+- Semicolons are required. A missing one is reported at the end of the statement that needs it.
+- Only strict equality exists: `==` and `!=` are syntax errors.
+- Operators check their operands. `+` takes two numbers or two strings; a conditional's test must be a boolean.
+- A name cannot be used before its declaration has been evaluated, and cannot be declared twice in one block.
+- Loops, classes, objects, arrays and `var` are not part of the language. Words such as `while` are reported as outside the subset.
+- Calls in tail position do not grow the stack.
+
+## Primitive functions
+
+`display`, `stringify`, `error`; `pair`, `head`, `tail`, `list`, `is_null`, `is_pair`; `is_number`, `is_string`, `is_boolean`, `is_undefined`, `is_function`; and the `math_` family, including `math_abs`, `math_sqrt`, `math_floor`, `math_pow`, `math_max`, `math_min`, `math_log`, `math_exp`, with the constants `math_PI` and `math_E`.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/syntax/parse.ts">
+
+The grammar above is a description of `syntax/parse.ts`, a recursive-descent parser with one function per precedence level. `syntax/parse.test.ts` covers precedence, spans, and each rejection listed under "Differences from JavaScript".
+
+</UnderTheHood>

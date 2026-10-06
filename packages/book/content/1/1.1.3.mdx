@@ -1,0 +1,30 @@
+export const tree = `(2 + 4 * 6) * (3 + 12);
+`;
+
+<Prose>
+
+To evaluate an operator combination, the interpreter follows a rule with two steps. First, evaluate the operands. Second, apply the operator to the values that result.
+
+The rule is short, and it refers to itself: the first step asks us to evaluate operands, and an operand may be a combination. A rule that invokes itself is *recursive*. Recursion is what lets two sentences describe the evaluation of an expression of any depth.
+
+Picture the expression as a tree. Numbers sit at the leaves. Each operator is a node whose branches are its operands. Values start at the leaves and move upward, combining at every node, until one value arrives at the root. The stepper below performs exactly that process on a small tree. Press step and watch which part is being evaluated, and in which order the intermediate values appear.
+
+</Prose>
+
+<Example index={0} mode="step" file="tree.sicp" source={tree} />
+
+<Prose>
+
+Notice where the recursion stops. Evaluating a number takes no further steps; it is its own value. Evaluating a name means looking it up in the environment. Everything else is built from those two base cases.
+
+The rule does not cover declarations. `const x = 3;` does not apply an operator called `const` to two operands; it has its own rule, which is to evaluate the right side and bind the name. Each kind of statement has its own rule like this. These rules are the *syntactic forms* of the language, and there are few enough that we will meet every one of them in this chapter.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/evaluator/machine.ts">
+
+`evaluator/machine.ts` implements the two-step rule without using recursion of its own. When it meets a combination it pushes a note onto an explicit stack ("left operand pending"), evaluates the operand, then pops the note and continues. Each line in the step log is one such event, recorded by `inspect/stepTrace.ts`. The test `worker/protocol.test.ts` asserts the exact log for a small program, so the stepper cannot drift from the evaluator.
+
+</UnderTheHood>
+
+<Enables items={['1.1.4', '1.1.5', { id: '4.1', label: 'The metacircular evaluator' }]} />
