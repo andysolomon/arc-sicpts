@@ -110,3 +110,9 @@ export {
   newtonProgram,
   transformProgram,
 } from './chapter-1/returnedValues.ts';
+
+export * from './chapter-3/localState.ts';
+export * from './chapter-3/environmentModel.ts';
+export * from './chapter-3/mutableData.ts';
+export * from './chapter-3/concurrency.ts';
+export * from './chapter-3/streams.ts';

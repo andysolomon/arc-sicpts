@@ -17,6 +17,8 @@ export interface ExerciseSpec {
   tests: TestSpec[];
   /** Evaluator steps allowed for each test, when the default of 100 000 is not right. */
   budget?: number;
+  /** Seeds the thread scheduler (§3.4), so that every check of a concurrent program interleaves the same way. */
+  seed?: number;
   /** A reference answer in the same form as the starter. */
   solution: string;
 }

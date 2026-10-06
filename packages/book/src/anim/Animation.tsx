@@ -1,4 +1,10 @@
 import type { ReactNode } from 'react';
+import { scenes as scenes31 } from './chapter-3/section-3.1.tsx';
+import { scenes as scenes32 } from './chapter-3/section-3.2.tsx';
+import { scenes as scenes33 } from './chapter-3/section-3.3.tsx';
+import { scenes as scenes34 } from './chapter-3/section-3.4.tsx';
+import { scenes as scenes35 } from './chapter-3/section-3.5.tsx';
+import type { SceneRegistry } from './chapter-3/registry.ts';
 import { BranchesScene } from './scenes/BranchesScene.tsx';
 import { CallsScene } from './scenes/CallsScene.tsx';
 import { CobwebScene } from './scenes/CobwebScene.tsx';
@@ -9,6 +15,7 @@ import { IntegralScene } from './scenes/IntegralScene.tsx';
 import { NewtonScene } from './scenes/NewtonScene.tsx';
 import { NewtonsMethodScene } from './scenes/NewtonsMethodScene.tsx';
 import { OrderScene } from './scenes/OrderScene.tsx';
+import { SeriesScene } from './scenes/SeriesScene.tsx';
 import { SubstitutionScene } from './scenes/SubstitutionScene.tsx';
 import { TreeScene } from './scenes/TreeScene.tsx';
 import { useTrace } from './useTrace.ts';
@@ -50,7 +57,17 @@ export type AnimKind =
   /** A fixed-point search as a cobweb on y = f(x) and y = x (§1.3.3). */
   | 'fixed-point'
   /** Tangent lines on any g, as `newtons_method` runs (§1.3.4). */
-  | 'newtons-method';
+  | 'newtons-method'
+  /** The numbers the program displays, plotted as series (§3.1.2, §3.5.3). */
+  | 'series'
+  /** Chapter 3's own scenes, registered per section in `chapter-3/`. */
+  | Chapter3Kind;
+
+const chapter3 = { ...scenes31, ...scenes32, ...scenes33, ...scenes34, ...scenes35 } satisfies SceneRegistry;
+type Chapter3Kind = keyof typeof chapter3;
+
+/** Running a program for its output alone can take many more steps than a full trace allows. */
+const SERIES_BUDGET = 1_000_000;
 
 export interface AnimationProps {
   kind: AnimKind;
@@ -70,6 +87,8 @@ export function Animation({ kind, source, stepIndex }: AnimationProps): ReactNod
       return <SubstitutionScene source={source} title="What the process leaves pending" maxSteps={160} />;
     case 'growth':
       return <GrowthScene source={source} />;
+    case 'series':
+      return <Series source={source} />;
     case 'substitution+frames':
       return (
         <div className="flex flex-col gap-4">
@@ -77,13 +96,22 @@ export function Animation({ kind, source, stepIndex }: AnimationProps): ReactNod
           <Traced kind="frames" source={source} stepIndex={stepIndex} title="What the machine does instead" />
         </div>
       );
-    default:
-      return <Traced kind={kind} source={source} stepIndex={stepIndex} />;
+    default: {
+      const scene = (chapter3 as SceneRegistry)[kind];
+      if (scene !== undefined) return scene({ source, stepIndex });
+      return <Traced kind={kind as TracedProps['kind']} source={source} stepIndex={stepIndex} />;
+    }
   }
 }
 
+function Series({ source }: { source: string }) {
+  // Only the output is drawn, so one record is enough.
+  const { trace } = useTrace(source, { budget: SERIES_BUDGET, maxRecords: 1 });
+  return <SeriesScene trace={trace} />;
+}
+
 interface TracedProps {
-  kind: Exclude<AnimKind, 'reduce' | 'order' | 'process' | 'substitution+frames' | 'growth'>;
+  kind: Exclude<AnimKind, 'reduce' | 'order' | 'process' | 'substitution+frames' | 'growth' | 'series' | Chapter3Kind>;
   source: string;
   stepIndex?: number | undefined;
   title?: string;
