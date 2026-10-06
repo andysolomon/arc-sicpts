@@ -48,6 +48,9 @@ export interface EnvState {
 
 export const PROGRAM_FRAME = 'E0';
 
+/** `E0`, `E1`, ...; the `global`, `library` and `prelude` frames are outside the program. */
+const isProgramFrame = (id: string): boolean => /^E\d+$/.test(id);
+
 const reservedNames = (source: string): string[] => {
   try {
     return parse(source)
@@ -143,7 +146,9 @@ export function environmentStates(source: string, trace: Trace | null): EnvState
         make(
           record.env,
           `${event.name}(${event.args.join(', ')})`,
-          event.closureEnv,
+          // Library and prelude functions were made outside the program; their
+          // frames hang off the global box, which stands for all of that.
+          isProgramFrame(event.closureEnv) ? event.closureEnv : null,
           event.params.map((param, i) => ({ name: param, value: event.args[i] ?? 'undefined' })),
         );
         stack.push(record.env);
@@ -179,7 +184,7 @@ export function environmentStates(source: string, trace: Trace | null): EnvState
           found === record.env
             ? `found in the current frame ${record.env}`
             : found === null
-              ? 'not in any frame of the program, so it is the primitive of that name'
+              ? 'not in any frame of the program, so it comes from the global environment'
               : `not in ${record.env}, so look outward: found in ${found}, ${hops} frame${hops === 1 ? '' : 's'} out`;
         states.push(
           snapshot(record.n, record.env, { symbol: event.symbol, from: record.env, found, value: event.value }, `Look up \`${event.symbol}\` from ${record.env}: ${where}. Its value is ${event.value}.`),

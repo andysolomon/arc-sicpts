@@ -1,6 +1,8 @@
 import { SourceError } from '../syntax/errors.ts';
 import { parse } from '../syntax/parse.ts';
+import type { Program } from '../syntax/ast.ts';
 import type { Environment } from './environment.ts';
+import { library } from './library.ts';
 import { createFrameIds, Machine, type FrameIds, type MachineHooks } from './machine.ts';
 import { createGlobalEnvironment } from './primitives.ts';
 import { stringify, type Value } from './values.ts';
@@ -23,26 +25,30 @@ export interface Session {
 
 const PRELUDE_BUDGET = 1_000_000;
 
+/** The library parses the same way every time, so it is parsed once. */
+let libraryProgram: Program | null = null;
+
+/** Evaluate a program of declarations into a frame `id` that extends `parent`. */
+function declarations(program: Program, parent: Environment, id: 'library' | 'prelude'): Environment {
+  const machine = new Machine(program, { parent, budget: PRELUDE_BUDGET, programFrame: { id, label: id } });
+  if (machine.run() !== 'done') {
+    throw machine.error ?? new SourceError('runtime', `The ${id} did not finish`, null);
+  }
+  return machine.programEnv;
+}
+
 /**
  * Parse a program and set up a machine for it without running anything.
  * Throws a `SourceError` when the program (or the prelude) does not parse.
+ * Frames, outermost first: `global` (primitives), `library` (the list and
+ * stream libraries), `prelude` (when given), then the program's own.
  */
 export function prepare(source: string, options: PrepareOptions = {}): Session {
   const program = parse(source);
   const frameIds = createFrameIds();
-  let parent: Environment = createGlobalEnvironment(options.display ?? (() => {}));
-
-  if (options.prelude !== undefined) {
-    const prelude = new Machine(parse(options.prelude), {
-      parent,
-      budget: PRELUDE_BUDGET,
-      programFrame: { id: 'prelude', label: 'prelude' },
-    });
-    if (prelude.run() !== 'done') {
-      throw prelude.error ?? new SourceError('runtime', 'The prelude did not finish', null);
-    }
-    parent = prelude.programEnv;
-  }
+  libraryProgram ??= parse(library);
+  let parent = declarations(libraryProgram, createGlobalEnvironment(options.display ?? (() => {})), 'library');
+  if (options.prelude !== undefined) parent = declarations(parse(options.prelude), parent, 'prelude');
 
   const machine = new Machine(program, {
     parent,
