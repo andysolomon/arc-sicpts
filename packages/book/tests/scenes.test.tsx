@@ -1,9 +1,14 @@
-import { factorialProgram } from '@sicp/lab';
-import { render, screen, within } from '@testing-library/react';
+import { dampedProgram, factorialProgram, fibProgram, halfIntervalProgram, integralProgram, newtonProgram, oscillatingProgram } from '@sicp/lab';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { Animation } from '../src/anim/Animation.tsx';
+import { CallsScene } from '../src/anim/scenes/CallsScene.tsx';
+import { CobwebScene } from '../src/anim/scenes/CobwebScene.tsx';
 import { EnvironmentScene } from '../src/anim/scenes/EnvironmentScene.tsx';
+import { HalfIntervalScene } from '../src/anim/scenes/HalfIntervalScene.tsx';
+import { IntegralScene } from '../src/anim/scenes/IntegralScene.tsx';
 import { NewtonScene } from '../src/anim/scenes/NewtonScene.tsx';
+import { NewtonsMethodScene } from '../src/anim/scenes/NewtonsMethodScene.tsx';
 import { OrderScene } from '../src/anim/scenes/OrderScene.tsx';
 import { SubstitutionScene } from '../src/anim/scenes/SubstitutionScene.tsx';
 import { TreeScene } from '../src/anim/scenes/TreeScene.tsx';
@@ -68,5 +73,50 @@ describe('scenes', () => {
     expect(screen.getByRole('region', { name: 'What the process leaves pending' })).toBeInTheDocument();
     render(<Animation kind="order" source="1;" />);
     expect(screen.getByRole('region', { name: 'Two evaluation orders' })).toBeInTheDocument();
+  });
+
+  it('marks repeated calls in a tree recursion and sums them up at the end', () => {
+    render(<CallsScene source={fibProgram} trace={traceOf(fibProgram)} repeats />);
+    expect(screen.getByTestId('keyframe-counter')).toHaveTextContent('1 / 32');
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '31' } });
+    expect(screen.getAllByTestId('repeated-call')).toHaveLength(9);
+    expect(screen.getByTestId('caption')).toHaveTextContent('15 calls in all, and 9 of them (in red) repeat a call');
+  });
+
+  it('draws one rectangle per value of the integrand', () => {
+    render(<IntegralScene source={integralProgram} trace={traceOf(integralProgram, 4000)} />);
+    expect(screen.getByRole('img', { name: 'Midpoint rule for cube with 20 rectangles' })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '20' } });
+    expect(screen.getAllByTestId('strip')).toHaveLength(20);
+    expect(screen.getByTestId('caption')).toHaveTextContent('0.249688, the value the program returned');
+  });
+
+  it('halves the interval call by call', () => {
+    render(<HalfIntervalScene source={halfIntervalProgram} trace={traceOf(halfIntervalProgram, 4000)} />);
+    expect(screen.getByTestId('caption')).toHaveTextContent('math_sin is negative at 4 and positive at 2');
+    expect(screen.getByTestId('interval')).toHaveTextContent('call 1 of 12 · interval width 2');
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '12' } });
+    expect(screen.getByTestId('caption')).toHaveTextContent('returns their midpoint, 3.14111');
+  });
+
+  it('draws a fixed-point search as a cobweb, converging or not', () => {
+    const { unmount } = render(<CobwebScene source={dampedProgram} trace={traceOf(dampedProgram, 4000)} />);
+    expect(screen.getByRole('list', { name: 'Guesses' }).children).toHaveLength(4);
+    expect(screen.getByTestId('caption')).toHaveTextContent('gives 1.5. Across to the line y = x');
+    unmount();
+    render(<CobwebScene source={oscillatingProgram} trace={traceOf(oscillatingProgram, 4000)} />);
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '24' } });
+    expect(screen.getByTestId('caption')).toHaveTextContent('The guesses never settle');
+  });
+
+  it("draws Newton's method for the function the program hands it", () => {
+    render(<NewtonsMethodScene source={newtonProgram} trace={traceOf(newtonProgram, 4000)} />);
+    expect(screen.getByRole('img', { name: "Newton's method on y => square(y) - 2" })).toBeInTheDocument();
+    expect(screen.getByTestId('caption')).toHaveTextContent('meets the axis at 1.5');
+  });
+
+  it('explains what is missing when the method call is not there', () => {
+    render(<CobwebScene source="1;" trace={traceOf('1;')} />);
+    expect(screen.getByTestId('caption')).toHaveTextContent('Call fixed_point(f, first_guess) at the top level');
   });
 });

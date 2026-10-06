@@ -1,0 +1,114 @@
+import { fermatProgram, primalityGrowthProgram, smallestDivisorProgram } from '@sicp/lab';
+
+<Prose>
+
+This section describes two ways of checking whether an integer *n* is prime. One has order of growth Θ(√*n*). The other is a *probabilistic* algorithm with order of growth Θ(log *n*).
+
+The direct way is to look for divisors. `smallest_divisor` tries 2, 3, 4 and so on until one divides *n*. It can stop as soon as the test divisor's square exceeds *n*: if *n* is not prime it must have a divisor no larger than √*n*. So *n* is prime exactly when it is its own smallest divisor, and the number of steps grows as Θ(√*n*).
+
+</Prose>
+
+<Example index={0} file="smallest_divisor.sicp" source={smallestDivisorProgram} anim="process">
+
+91 is not divisible by 2, 3, 4, 5 or 6, and is by 7. Every rewrite of `find_divisor` replaces the call by the next one, so the search is an iterative process. Try `is_prime(97)`.
+
+</Example>
+
+<Prose>
+
+The Θ(log *n*) test rests on a result from number theory.
+
+**Fermat's Little Theorem.** If *n* is a prime number and *a* is any positive integer less than *n*, then *a* raised to the *n*th power is congruent to *a* modulo *n*.
+
+Two numbers are *congruent modulo n* if they have the same remainder when divided by *n*. If *n* is not prime, then in general most of the numbers *a* < *n* will not satisfy the relation. That suggests a test: pick a random *a* < *n* and compute the remainder of *a*ⁿ modulo *n*. If it is not *a*, then *n* is certainly not prime. If it is, the chances are good that *n* is prime; try another random *a*, and the more values pass, the more confident we can be. This is the *Fermat test*.
+
+It needs a fast way to compute the exponential of a number modulo another. `expmod` below is `fast_expt` from §1.2.4 with a remainder taken after every multiplication. That keeps the numbers small, and it is correct because (*x* · *y*) mod *m* = ((*x* mod *m*)(*y* mod *m*)) mod *m*. Like `fast_expt`, it takes a logarithmic number of steps. Here are both tests, on primes ten times apart.
+
+</Prose>
+
+<Example index={1} file="primality.sicp" source={primalityGrowthProgram} anim="growth">
+
+The *n*-axis is logarithmic, so each step to the right is ten times larger. The divisor search grows about √10 ≈ 3.2 times per step and curves upward. `expmod` adds a roughly constant number of calls per step, which is the straight line of Θ(log *n*).
+
+</Example>
+
+<Prose>
+
+The Fermat test differs from most algorithms in that its answer is only probably correct. If *n* fails the test, it is certainly not prime. But passing the test, even many times, is not a proof. Worse, there are numbers that fool the Fermat test for *every* *a*: they are not prime, yet *a*ⁿ is congruent to *a* modulo *n* for all *a* < *n*. Such numbers are extremely rare and are called *Carmichael numbers*. The smallest is 561. There are 255 of them below 100 000 000.
+
+Run the test below several times. 1009 is prime and always passes. 1001 = 7 · 11 · 13 fails at once with near certainty. 561 = 3 · 11 · 17 passes every time.
+
+</Prose>
+
+<Example index={2} file="fermat.sicp" source={fermatProgram}>
+
+`fast_is_prime(n, 10)` runs the Fermat test with ten random values of *a*, new ones on every run. The answers stay the same anyway: 1009 and 561 pass for every *a*, and 1001 fails unless all ten values happen to be among the few that fool the test for it.
+
+</Example>
+
+<Prose>
+
+Probabilistic tests are not a curiosity. There are tests for which one can prove that, for any *n*, the chance of error becomes arbitrarily small as more random values are tried, and no number fools them the way Carmichael numbers fool Fermat. The last exercise builds one, the Miller–Rabin test. Algorithms of this kind are why primes hundreds of digits long can be generated quickly for cryptography.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-1/primality.ts">
+
+`math_random` and `get_time` are primitives in `evaluator/primitives.ts`; the second is for timing in Exercise 1.22. The test `chapter-1/processes.test.ts` asserts that the smallest divisor of 91 is 7; that across primes ten times apart the divisor search grows between 2.8 and 3.5 times while `expmod` grows by fewer than 16 calls; and that the Fermat test accepts 1009, rejects 1001 and is fooled by 561.
+
+</UnderTheHood>
+
+<Exercises range="1.21 – 1.28" total={8}>
+<Exercise id="1.21">
+
+Use `smallest_divisor` to find the smallest divisor of each of the following numbers: 199, 1999, 19999.
+
+<Solution>
+
+**Solution.** 199 and 1999 are prime, so each is its own smallest divisor. 19999 = 7 · 2857.
+
+</Solution>
+</Exercise>
+<Exercise id="1.22">
+
+`timed_prime_test` below reads the clock with `get_time()` before and after testing *n*, and displays *n* and the elapsed milliseconds when *n* is prime. Write `search_for_primes`, which checks the primality of consecutive odd integers in a range and returns a list of the first `count` primes. Find the three smallest primes larger than 1000, 10 000, 100 000 and 1 000 000. The search takes Θ(√*n*) steps: do the displayed times grow by about √10 from one range to the next? Is it right to treat time as proportional to steps?
+
+<Solution>
+
+**Solution.** Start at the first odd number above `start` and step by 2, pairing each prime onto the list of those found after it. The times come out roughly √10 apart once the numbers are large enough for the testing to dominate. For small *n* they are dominated by fixed costs and the clock's resolution, which is the usual caveat when reading an order of growth off a stopwatch.
+
+</Solution>
+</Exercise>
+<Exercise id="1.23">
+
+`smallest_divisor` does lots of needless testing: after it checks whether the number is divisible by 2, there is no point in checking any larger even numbers. Change it so that the values of `test_divisor` are 2, 3, 5, 7, 9, …. Declare a function `next` that returns 3 if its input is 2 and otherwise returns its input plus 2, and use `next(test_divisor)` instead of `test_divisor + 1`. The checker counts the calls of `find_divisor`. Should the program run twice as fast?
+
+<Solution>
+
+**Solution.** Half as many divisors are tried, so `find_divisor` is called about half as often: 17 times instead of 31 for 1009. But each step now also applies `next` and evaluates its conditional, so each step costs more than it did, and the measured speedup is less than a factor of 2.
+
+</Solution>
+</Exercise>
+<Exercise id="1.27">
+
+Demonstrate that the Carmichael numbers really do fool the Fermat test. Write `fools_fermat(n)`, which tests whether *a*ⁿ is congruent to *a* modulo *n* for *every* *a* < *n*, and try it on 561, 1105, 1729, 2465, 2821 and 6601.
+
+<Solution>
+
+**Solution.** Walk *a* from 1 up to *n* − 1 and stop at the first failure. Every Carmichael number passes for all *a*, exactly like a prime, while an ordinary composite such as 15 fails almost immediately. The checker limits itself to the three smallest Carmichael numbers, since testing every *a* takes Θ(*n* log *n*) steps.
+
+</Solution>
+</Exercise>
+<Exercise id="1.28">
+
+One variant of the Fermat test that cannot be fooled is the *Miller–Rabin test*. It starts from an alternate form of Fermat's Little Theorem: if *n* is prime and *a* is any positive integer less than *n*, then *a*ⁿ⁻¹ is congruent to 1 modulo *n*. To test *n*, pick a random *a* < *n* and raise it to the (*n* − 1)st power modulo *n* using `expmod`. But whenever the squaring step finds a "nontrivial square root of 1 modulo *n*", a number not equal to 1 or *n* − 1 whose square is 1 modulo *n*, stop: its existence proves *n* is not prime. For an odd composite *n*, at least half the numbers *a* < *n* reveal such a root this way. Write `mr_expmod`, which returns 0 when it finds one.
+
+<Solution>
+
+**Solution.** In the even case, compute the half power first, square it modulo *m*, and check whether the half was a nontrivial square root of 1. Returning 0 makes the final comparison with 1 fail, and 0 propagates harmlessly through later multiplications. Since each trial catches a composite with probability at least ½, twenty trials leave it less than one chance in a million of passing.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['1.3.1', { id: '3.1.2', label: 'Monte Carlo methods' }, { id: '3.5.2', label: 'Primes as an infinite stream' }]} />

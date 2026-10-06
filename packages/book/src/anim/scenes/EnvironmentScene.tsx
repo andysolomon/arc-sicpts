@@ -42,6 +42,18 @@ interface Placed {
 function place(frames: FrameView[], keepReturned: number): { boxes: Placed[]; width: number; height: number } {
   const finished = frames.filter((f) => f.status !== 'live').sort((a, b) => a.order - b.order);
   const dropped = new Set(finished.slice(0, Math.max(0, finished.length - keepReturned)).map((f) => f.id));
+  // A returned frame is still needed while a frame on screen extends it, or a
+  // function on screen was made in it (§1.3.4): keep those.
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const frame of frames) {
+      if (dropped.has(frame.id)) continue;
+      const needed = [frame.parent, ...frame.bindings.flatMap((b) => [...(b.value ?? '').matchAll(/fn\[(E\d+)\]/g)].map((m) => m[1]))];
+      for (const id of needed) {
+        if (id !== null && id !== undefined && dropped.delete(id)) changed = true;
+      }
+    }
+  }
   const shown = frames.filter((f) => !dropped.has(f.id));
   const depth = new Map<string, number>();
   const depthOf = (frame: FrameView): number => {

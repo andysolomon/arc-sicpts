@@ -1,3 +1,4 @@
+import { exercises } from '../content/exercises.ts';
 import { readStored, writeStored } from './storage.ts';
 import type { Chapter, Section } from './toc.ts';
 
@@ -30,19 +31,23 @@ export type SectionStatus = 'complete' | 'in progress' | 'not started';
 
 /**
  * A section is in progress once any of its exercises has been checked, and
- * complete when every exercise of the section passes all of its tests.
+ * complete when every exercise of the section that can be checked passes all
+ * of its tests. Proofs and essays have no checks and do not count.
  */
 export function sectionStatus(chapter: Chapter, section: Section): SectionStatus {
   if (section.exercises === null) return 'not started';
   const [first, last] = section.exercises;
+  const checkable = Array.from({ length: last - first + 1 }, (_, i) => `${chapter.id}.${first + i}`).filter(
+    (id) => exercises[id] !== undefined,
+  );
   let attempted = 0;
   let solved = 0;
-  for (let n = first; n <= last; n++) {
-    const result = readExercise(`${chapter.id}.${n}`);
+  for (const id of checkable) {
+    const result = readExercise(id);
     if (result === null) continue;
     attempted++;
     if (result.total > 0 && result.passed === result.total) solved++;
   }
-  if (solved === last - first + 1) return 'complete';
+  if (checkable.length > 0 && solved === checkable.length) return 'complete';
   return attempted > 0 ? 'in progress' : 'not started';
 }

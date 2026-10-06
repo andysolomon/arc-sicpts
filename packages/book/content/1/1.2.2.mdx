@@ -1,0 +1,79 @@
+import { countChangeProgram, fibCompareProgram, fibProgram } from '@sicp/lab';
+
+<Prose>
+
+Another common shape of process is *tree recursion*. The Fibonacci numbers are the standard example. Each number is the sum of the two before it: 0, 1, 1, 2, 3, 5, 8, 13, 21, and so on. Translated directly, the definition becomes a function that calls itself twice.
+
+Follow `fib(5)`. It calls `fib(4)` and `fib(3)`; `fib(4)` calls `fib(3)` and `fib(2)`; and so on, until every branch ends at `fib(1)` or `fib(0)`. The calls form a tree, and the picture below draws that tree from the evaluator's own trace.
+
+</Prose>
+
+<Example index={0} file="fib.sicp" source={fibProgram} viz="processShape" anim="tree-recursion">
+
+Every box is one call; it closes when its value comes back. A box drawn in red repeats a call that was already made with the same argument. `fib(3)` is worked out twice, `fib(2)` three times, and `fib(1)` five times.
+
+</Example>
+
+<Prose>
+
+The process is wasteful. The number of leaves in the tree is `fib(n + 1)`, and the Fibonacci numbers grow exponentially: `fib(n)` is the integer nearest to φⁿ / √5, where φ = (1 + √5) / 2 ≈ 1.618 is the *golden ratio*. So the number of steps grows exponentially with `n`. The space it needs grows only linearly, though. At any moment the evaluator only has to remember the calls above the current one, and that path is never longer than `n`. The depth chart beside the editor shows it: the stack climbs and falls back many times but never gets deeper than five.
+
+An iterative process is easy to find. Keep two numbers `a` and `b`, starting at `fib(1)` = 1 and `fib(0)` = 0, and apply the transformation *a* ← *a* + *b*, *b* ← *a* `n` times. Then `b` is `fib(n)`. The program below measures both functions at three sizes.
+
+</Prose>
+
+<Example index={1} file="fib_iter.sicp" source={fibCompareProgram} anim="growth">
+
+Going from `fib(10)` to `fib(15)` multiplies the calls by eleven; `fib_iter` makes five more. The tree recursion's depth grows only linearly, and the iteration's stays at 1. Add `fib(20);` and the measurement takes a moment longer.
+
+</Example>
+
+<Prose>
+
+It does not follow that tree-recursive processes are useless. On hierarchically structured data they are the natural tool, and even for numbers a tree-recursive function can be much easier to write and understand. The Fibonacci definition took one line to translate; the iterative version needed the insight that three state variables carry the computation.
+
+Counting change is a problem where that difference is real. How many ways are there to make change of a dollar, given half-dollars, quarters, dimes, nickels and pennies? The number of ways to change an amount using *n* kinds of coins equals:
+
+- the number of ways to change it using all but the first kind of coin, plus
+- the number of ways to change the amount minus the first coin's value, using all *n* kinds.
+
+The first case leaves one kind of coin out entirely; the second uses at least one coin of the first kind. Together they cover every way exactly once. The reduction ends when the amount is 0 (one way), or is negative, or no kinds of coin are left (no ways). This is a tree recursion that is easy to state and not at all obvious to make iterative.
+
+</Prose>
+
+<Example index={2} file="count_change.sicp" source={countChangeProgram} viz="processShape" budget={1000000}>
+
+292 ways, found by about 15 500 applications of `cc`. The program needs more than the usual step budget, so this editor allows a million steps. The depth never exceeds 105, which is the amount plus the number of coin kinds.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-1/treeRecursion.ts">
+
+The red boxes come from `anim/model/calls.ts`, which rebuilds the call tree from the trace's `call` and `return` events and notes when a call's text matches one made earlier. The test `chapter-1/processes.test.ts` asserts that `fib(5)` makes 15 calls with a maximum depth of 5, that `fib(15)` makes 1973 calls where `fib_iter` makes 16 with depth 1, and that `count_change(100)` is 292.
+
+</UnderTheHood>
+
+<Exercises range="1.11 – 1.13" total={3}>
+<Exercise id="1.11">
+
+A function *f* is defined by *f*(*n*) = *n* if *n* < 3, and *f*(*n*) = *f*(*n* − 1) + 2*f*(*n* − 2) + 3*f*(*n* − 3) if *n* ≥ 3. Write `f_recursive`, a function that computes *f* by means of a recursive process, and `f_iterative`, one that computes it by means of an iterative process. The checker measures the shape of each, and computes `f_iterative(30)`, which the recursive version would take millions of steps to reach.
+
+<Solution>
+
+**Solution.** The recursive version is the definition. For the iterative one, carry the last three values: if `a`, `b` and `c` are *f*(*k*), *f*(*k* − 1) and *f*(*k* − 2), the next state is `a + 2 * b + 3 * c`, `a`, `b`. Start from *f*(2), *f*(1), *f*(0) = 2, 1, 0 and take *n* − 2 steps. This is the Fibonacci trick with one more state variable.
+
+</Solution>
+</Exercise>
+<Exercise id="1.12">
+
+The numbers at the edges of Pascal's triangle are 1, and each number inside is the sum of the two above it. Write `pascal(row, col)`, which computes an element of the triangle by means of a recursive process. Rows and positions are counted from 0.
+
+<Solution>
+
+**Solution.** The edges are the base case: position 0 and position `row` are both 1. Every other element is `pascal(row - 1, col - 1) + pascal(row - 1, col)`. Like `fib`, this repeats work: the element in row 10, position 5 is reached by 252 paths.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['1.2.3', '1.2.4', { id: '2.2.2', label: 'Trees as hierarchical data' }, { id: '3.5.2', label: 'Fibonacci as an infinite stream' }]} />

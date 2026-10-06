@@ -38,6 +38,8 @@ Inspectors attach through `MachineHooks`: `onEval`, `onCall`, `onReturn`, `onRes
 
 Events for a run are `started`, then any number of `display` and `shape`, then exactly one of `done`, `error`, `budget-exhausted` or `cancelled`.
 
+A `check` request runs an exercise's hidden tests, each on a fresh run of the submission. A `value` test compares an expression's value with the expected one. A `shape` test compares an answer with the measured kind of process, recursive or iterative. A `calls` test applies a function and bounds how many times a named function is applied along the way, which is how a check tells a logarithmic process from a linear one that computes the same values.
+
 </Prose>
 
 <UnderTheHood file="packages/lab/src/index.ts">

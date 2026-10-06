@@ -24,6 +24,7 @@ async function passed(spec: ExerciseSpec, source: string): Promise<string> {
     source,
     tests: spec.tests,
     ...(spec.prelude !== undefined && { prelude: spec.prelude }),
+    ...(spec.budget !== undefined && { budget: spec.budget }),
   }).finished;
   if (end.type !== 'check-done') throw new Error(`check ended with ${end.type}`);
   const failures = end.results.filter((r) => !r.pass).map((r) => `${r.name}: ${r.detail}`);

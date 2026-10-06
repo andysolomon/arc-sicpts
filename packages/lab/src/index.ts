@@ -68,3 +68,43 @@ export {
 } from './worker/client.ts';
 
 export { factorialDefinitions, factorialProgram } from './chapter-1/factorial.ts';
+export {
+  countChangeDefinitions,
+  countChangeProgram,
+  fibCompareProgram,
+  fibDefinitions,
+  fibIterDefinitions,
+  fibProgram,
+} from './chapter-1/treeRecursion.ts';
+export { growthProgram, sineDefinitions } from './chapter-1/growth.ts';
+export {
+  exptDefinitions,
+  exptGrowthProgram,
+  fastExptProgram,
+} from './chapter-1/exponentiation.ts';
+export { gcdDefinitions, gcdProgram, lameProgram } from './chapter-1/gcd.ts';
+export {
+  expmodDefinitions,
+  fermatDefinitions,
+  fermatProgram,
+  primalityGrowthProgram,
+  smallestDivisorDefinitions,
+  smallestDivisorProgram,
+} from './chapter-1/primality.ts';
+export { integralProgram, piSumProgram, sumDefinitions, sumProgram } from './chapter-1/sums.ts';
+export { conditionalStatementProgram, lambdaProgram, localNamesProgram } from './chapter-1/lambdas.ts';
+export {
+  averageDefinition,
+  dampedProgram,
+  fixedPointDefinitions,
+  fixedPointProgram,
+  halfIntervalDefinitions,
+  halfIntervalProgram,
+  oscillatingProgram,
+} from './chapter-1/generalMethods.ts';
+export {
+  averageDampProgram,
+  newtonDefinitions,
+  newtonProgram,
+  transformProgram,
+} from './chapter-1/returnedValues.ts';

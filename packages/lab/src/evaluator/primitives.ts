@@ -46,6 +46,7 @@ export function createGlobalEnvironment(display: (text: string) => void): Enviro
   primitive('math_pow', 2, (x, y) => Math.pow(number('math_pow', x), number('math_pow', y)));
   primitive('math_max', null, (...xs) => Math.max(...xs.map((x) => number('math_max', x))));
   primitive('math_min', null, (...xs) => Math.min(...xs.map((x) => number('math_min', x))));
+  primitive('math_random', 0, () => Math.random());
   define(env, 'math_PI', Math.PI);
   define(env, 'math_E', Math.E);
 
@@ -53,6 +54,8 @@ export function createGlobalEnvironment(display: (text: string) => void): Enviro
     display(stringify(value));
     return value;
   });
+  // Milliseconds on a monotonic clock, for timing a computation as in Exercise 1.22.
+  primitive('get_time', 0, () => performance.now());
   primitive('stringify', 1, (value) => stringify(value));
   primitive('error', null, (...values) =>
     fail(values.map((v) => (typeof v === 'string' ? v : stringify(v))).join(' ')),

@@ -217,6 +217,28 @@ describe('worker protocol', () => {
     });
   });
 
+  it('checks how many times a function is applied', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const source = `
+      function expt(b, n) { return n === 0 ? 1 : b * expt(b, n - 1); }
+      function square(x) { return x * x; }`;
+    const end = await client.submit({
+      type: 'check',
+      source,
+      tests: [
+        { name: 'few calls', kind: 'calls', call: 'expt(2, 4)', fn: 'expt', atMost: 5 },
+        { name: 'too many calls', kind: 'calls', call: 'expt(2, 32)', fn: 'expt', atMost: 12 },
+        { name: 'not called', kind: 'calls', call: 'expt(2, 4)', fn: 'square', atMost: 12 },
+      ],
+    }).finished;
+    expect(end).toMatchObject({ type: 'check-done', passed: 1, total: 3 });
+    expect(end.type === 'check-done' && end.results.map((r) => r.detail)).toEqual([
+      null,
+      'expt(2, 32) applies expt 33 times; at most 12 expected',
+      'expt(2, 4) never applies square',
+    ]);
+  });
+
   it('fails every test, without throwing, when the submission does not parse', async () => {
     const client = new LabClient(() => inProcessWorker());
     const end = await client.submit({

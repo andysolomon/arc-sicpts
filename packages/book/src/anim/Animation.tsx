@@ -1,8 +1,13 @@
 import type { ReactNode } from 'react';
 import { BranchesScene } from './scenes/BranchesScene.tsx';
 import { CallsScene } from './scenes/CallsScene.tsx';
+import { CobwebScene } from './scenes/CobwebScene.tsx';
 import { EnvironmentScene } from './scenes/EnvironmentScene.tsx';
+import { GrowthScene } from './scenes/GrowthScene.tsx';
+import { HalfIntervalScene } from './scenes/HalfIntervalScene.tsx';
+import { IntegralScene } from './scenes/IntegralScene.tsx';
 import { NewtonScene } from './scenes/NewtonScene.tsx';
+import { NewtonsMethodScene } from './scenes/NewtonsMethodScene.tsx';
 import { OrderScene } from './scenes/OrderScene.tsx';
 import { SubstitutionScene } from './scenes/SubstitutionScene.tsx';
 import { TreeScene } from './scenes/TreeScene.tsx';
@@ -33,7 +38,19 @@ export type AnimKind =
   /** Frames, lexical scoping and lookups (§1.1.8). */
   | 'frames'
   /** Deferred operations piling up, or not (§1.2.1). */
-  | 'process';
+  | 'process'
+  /** The call tree, with calls that repeat earlier ones marked (§1.2.2). */
+  | 'tree-recursion'
+  /** Calls and stack depth measured at several sizes (§1.2.3). */
+  | 'growth'
+  /** Rectangles under the integrand, one per value computed (§1.3.1). */
+  | 'integral'
+  /** The interval around a root, halved call by call (§1.3.3). */
+  | 'half-interval'
+  /** A fixed-point search as a cobweb on y = f(x) and y = x (§1.3.3). */
+  | 'fixed-point'
+  /** Tangent lines on any g, as `newtons_method` runs (§1.3.4). */
+  | 'newtons-method';
 
 export interface AnimationProps {
   kind: AnimKind;
@@ -51,6 +68,8 @@ export function Animation({ kind, source, stepIndex }: AnimationProps): ReactNod
       return <OrderScene source={source} />;
     case 'process':
       return <SubstitutionScene source={source} title="What the process leaves pending" maxSteps={160} />;
+    case 'growth':
+      return <GrowthScene source={source} />;
     case 'substitution+frames':
       return (
         <div className="flex flex-col gap-4">
@@ -64,15 +83,18 @@ export function Animation({ kind, source, stepIndex }: AnimationProps): ReactNod
 }
 
 interface TracedProps {
-  kind: Exclude<AnimKind, 'reduce' | 'order' | 'process' | 'substitution+frames'>;
+  kind: Exclude<AnimKind, 'reduce' | 'order' | 'process' | 'substitution+frames' | 'growth'>;
   source: string;
   stepIndex?: number | undefined;
   title?: string;
 }
 
+/** Scenes that follow a method through many calls need a longer log than the default. */
+const LONG_TRACE: ReadonlySet<TracedProps['kind']> = new Set(['tree-recursion', 'integral', 'half-interval', 'fixed-point', 'newtons-method']);
+
 /** Scenes that need the evaluator's trace of the current text. */
 function Traced({ kind, source, stepIndex, title }: TracedProps) {
-  const { trace } = useTrace(source);
+  const { trace } = useTrace(source, LONG_TRACE.has(kind) ? { maxRecords: 4000 } : {});
   const synced = stepIndex !== undefined ? { stepIndex } : {};
   switch (kind) {
     case 'tree':
@@ -87,5 +109,15 @@ function Traced({ kind, source, stepIndex, title }: TracedProps) {
       return <BranchesScene source={source} trace={trace} />;
     case 'newton':
       return <NewtonScene source={source} trace={trace} />;
+    case 'tree-recursion':
+      return <CallsScene source={source} trace={trace} title="The tree of calls" repeats />;
+    case 'integral':
+      return <IntegralScene source={source} trace={trace} />;
+    case 'half-interval':
+      return <HalfIntervalScene source={source} trace={trace} />;
+    case 'fixed-point':
+      return <CobwebScene source={source} trace={trace} />;
+    case 'newtons-method':
+      return <NewtonsMethodScene source={source} trace={trace} />;
   }
 }

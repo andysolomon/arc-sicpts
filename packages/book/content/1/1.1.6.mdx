@@ -65,6 +65,18 @@ In `evaluator/machine.ts` a conditional pushes a single pending note, evaluates 
 </UnderTheHood>
 
 <Exercises range="1.1 – 1.5" total={5}>
+<Exercise id="1.2">
+
+Translate the following expression into JavaScript, and bind the name `answer` to it:
+
+(5 + 4 + (2 − (3 − (6 + 4/5)))) / (3 (6 − 2)(2 − 7))
+
+<Solution>
+
+**Solution.** Multiplication must be written with `*`, and the parentheses around the denominator keep it a single operand of `/`. The value is −37/150, about −0.2467.
+
+</Solution>
+</Exercise>
 <Exercise id="1.3">
 
 Declare a function `sum_of_larger_squares` that takes three numbers and returns the sum of the squares of the two larger ones.
@@ -72,6 +84,16 @@ Declare a function `sum_of_larger_squares` that takes three numbers and returns 
 <Solution>
 
 **Solution.** The two larger numbers are whatever remains after leaving out the smallest, so the case analysis only has to find one number that is no larger than both others. Using `<=` rather than `<` keeps the answer right when numbers are equal.
+
+</Solution>
+</Exercise>
+<Exercise id="1.4">
+
+Our model of evaluation allows for applications whose function expression is a compound expression. Use this to describe the behaviour of `a_plus_abs_b` below. Then declare `a_minus_abs_b` in the same style, choosing between `plus` and `minus` with a conditional.
+
+<Solution>
+
+**Solution.** The function expression `(b >= 0 ? plus : minus)` is evaluated like any other: its value is one of the two functions, which is then applied to `a` and `b`. So `a_plus_abs_b` adds `b` when it is non-negative and subtracts it otherwise, which is *a* + |*b*|. For *a* − |*b*|, swap the two branches.
 
 </Solution>
 </Exercise>

@@ -1,4 +1,4 @@
-import { evaluate, factorialProgram } from '@sicp/lab';
+import { evaluate, factorialProgram, fastExptProgram, gcdProgram, smallestDivisorProgram, sumProgram } from '@sicp/lab';
 import { describe, expect, it } from 'vitest';
 import { print, substitution, tokens } from '../src/anim/model/substitution.ts';
 
@@ -37,6 +37,15 @@ describe('the substitution model', () => {
       expect(finalValue(source), source).toBe(machineValue(source));
       expect(finalValue(source, 'normal'), source).toBe(machineValue(source));
     }
+  });
+
+  it('agrees with the evaluator on the programs it animates in §1.2 and §1.3', () => {
+    // Only applicative order: in normal order `square` copies its unevaluated
+    // argument, and fast_expt's rewriting grows past the step limit.
+    for (const source of [gcdProgram, fastExptProgram, smallestDivisorProgram, sumProgram]) {
+      expect(finalValue(source), source).toBe(machineValue(source));
+    }
+    expect(finalValue(gcdProgram, 'normal')).toBe('2');
   });
 
   it('rewrites f(5) the way §1.1.5 does, in applicative order', () => {
@@ -122,5 +131,24 @@ describe('the substitution model', () => {
     const [statement] = substitution('display(5 * 2);').statements;
     expect(statement?.steps.at(-1)?.output).toEqual(['10']);
     expect(statement?.steps.at(-1)?.caption).toContain('It prints 10');
+  });
+
+  it('passes functions by name, as §1.3.1 does', () => {
+    const [statement] = substitution(sumProgram).statements;
+    expect(statement?.steps.slice(0, 5).map((step) => print(step.term))).toEqual([
+      'sum_cubes(1, 3)',
+      'sum(cube, 1, inc, 3)',
+      '1 > 3 ? 0 : cube(1) + sum(cube, inc(1), inc, 3)',
+      'false ? 0 : cube(1) + sum(cube, inc(1), inc, 3)',
+      'cube(1) + sum(cube, inc(1), inc, 3)',
+    ]);
+    expect(statement?.steps.at(-1)?.rule).toBe('done');
+  });
+
+  it('counts the 18 remainders of normal-order gcd that Exercise 1.20 asks for', () => {
+    const remainders = (order: 'normal' | 'applicative'): number =>
+      (substitution(gcdProgram, { order }).statements[0]?.steps ?? []).filter((step) => step.caption.includes('primitive `%`')).length;
+    expect(remainders('normal')).toBe(18);
+    expect(remainders('applicative')).toBe(4);
   });
 });

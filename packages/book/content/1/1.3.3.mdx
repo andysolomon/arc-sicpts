@@ -1,0 +1,116 @@
+import { dampedProgram, fixedPointProgram, halfIntervalProgram, oscillatingProgram } from '@sicp/lab';
+
+<Prose>
+
+Section 1.1.4 introduced compound functions to abstract patterns of numerical operations, and §1.3.1 used higher-order functions to express general patterns of computation such as summation. This section takes two more elaborate examples, general methods for finding zeros and fixed points of functions, and shows how they can be expressed directly as functions.
+
+The *half-interval method* finds the roots of an equation *f*(*x*) = 0, where *f* is a continuous function. Given points *a* and *b* such that *f*(*a*) < 0 < *f*(*b*), *f* must have at least one zero between them. To find it, let *x* be the average of *a* and *b* and compute *f*(*x*). If *f*(*x*) > 0, there is a zero between *a* and *x*; if *f*(*x*) < 0, between *x* and *b*. Continuing, we find smaller and smaller intervals that contain a zero, and stop when the interval is small enough. The interval halves at each step, so the number of steps grows as Θ(log(*L* / *T*)), where *L* is the length of the original interval and *T* the error tolerance.
+
+`search` implements the strategy, and `half_interval_method` checks that the endpoints really do have opposite signs before starting it, since otherwise the method would quietly return nonsense.
+
+</Prose>
+
+<Example index={0} file="half_interval.sicp" source={halfIntervalProgram} anim="half-interval">
+
+Each call of `search` is one frame of the animation: the shaded band is the interval it was given, and the sign of the function at the midpoint decides which half survives. `math_sin` is negative at 4 and positive at 2, so the search closes in on π. Replace `math_sin, 2, 4` with `x => x * x * x - 2 * x - 3, 1, 2` to find a root of *x*³ − 2*x* − 3.
+
+</Example>
+
+<Prose>
+
+A number *x* is called a *fixed point* of a function *f* if *f*(*x*) = *x*. For some functions we can locate a fixed point by beginning with an initial guess and applying *f* repeatedly, *f*(*x*), *f*(*f*(*x*)), *f*(*f*(*f*(*x*))), …, until the value does not change very much. `fixed_point` takes a function and an initial guess and does exactly that, stopping when two successive values differ by less than a tolerance. Its helper `try_with` is called once per guess.
+
+</Prose>
+
+<Example index={1} file="fixed_point.sicp" source={fixedPointProgram} anim="fixed-point">
+
+A fixed point lies where the curve *y* = cos *x* crosses the line *y* = *x*. The search climbs to the curve to apply `math_cos`, then crosses to the line to make the result the next guess. Successive guesses fall on alternate sides of the answer and spiral in towards 0.7390822985224023.
+
+</Example>
+
+<Prose>
+
+The fixed-point process recalls the square-root process of §1.1.7: repeatedly improve a guess until it satisfies some criterion. In fact, the square root is a fixed-point computation. The square root of *x* is a *y* with *y*² = *x*, or equivalently *y* = *x* / *y*. So it is a fixed point of the function *y* ↦ *x* / *y*. Unfortunately, the search does not converge.
+
+</Prose>
+
+<Example index={2} file="oscillating.sicp" source={oscillatingProgram} anim="fixed-point">
+
+From a guess *y*₁, the next guess is *y*₂ = *x* / *y*₁, and the one after that is *x* / *y*₂ = *y*₁. The guesses alternate between 1 and 2 for ever, and the cobweb is a rectangle that never shrinks. Running the program uses up its whole step budget.
+
+</Example>
+
+<Prose>
+
+One way to control such oscillations is to prevent the guesses from changing so much. The answer always lies between a guess *y* and *x* / *y*, so a new guess that is not as far from *y* as *x* / *y* is their average, (*y* + *x* / *y*) / 2. Searching for a fixed point of *y* ↦ ½(*y* + *x* / *y*) instead is a simple consequence of the equation *y* = *x* / *y*: add *y* to both sides and divide by 2.
+
+This approach of averaging successive approximations, called *average damping*, often aids the convergence of fixed-point searches. With it, the search converges, and it is in fact precisely the square-root function of §1.1.7.
+
+</Prose>
+
+<Example index={3} file="damped.sicp" source={dampedProgram} anim="fixed-point">
+
+The damped curve is flat where it meets *y* = *x*, so the cobweb collapses onto the answer within a few steps. These are the guesses Newton's method made in §1.1.7.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-1/generalMethods.ts">
+
+The scenes find the method call at the top level of the program, take its first argument as the function to draw, and sample that function by evaluating the program's declarations once and then applying it at each point, every evaluation under a small step budget (`anim/model/plot.ts`). The intervals and guesses come from the trace: the arguments of every call of `search` or `try_with`. The test `chapter-1/abstractions.test.ts` asserts that the half-interval method finds 3.14111328125 and 1.89306640625, that the fixed point of cosine is 0.7390822985224023, that the undamped search for √2 exhausts its budget, and that the damped one converges.
+
+</UnderTheHood>
+
+<Exercises range="1.35 – 1.39" total={5}>
+<Exercise id="1.35">
+
+Show that the golden ratio φ of §1.2.2 is a fixed point of the transformation *x* ↦ 1 + 1/*x*, and use this fact to compute φ by means of `fixed_point`.
+
+<Solution>
+
+**Solution.** φ satisfies φ² = φ + 1; dividing by φ gives φ = 1 + 1/φ. `fixed_point(x => 1 + 1 / x, 1)` gives 1.6180327868852458, within 10⁻⁵ of the true value.
+
+</Solution>
+</Exercise>
+<Exercise id="1.36">
+
+Modify `fixed_point` so that it prints the sequence of approximations it generates, using `display`. Then find a solution to *x*ˣ = 1000 by finding a fixed point of *x* ↦ log(1000) / log(*x*), starting from 2. Compare the number of steps this takes with and without average damping: complete `damped` and watch both sequences.
+
+<Solution>
+
+**Solution.** Add `display(guess)` at the start of `try_with`. Without damping the guesses swing from one side of 4.5555 to the other and take 34 steps to settle. With damping, after the first step they close in from above, and take 9.
+
+</Solution>
+</Exercise>
+<Exercise id="1.37">
+
+An infinite *continued fraction* is an expression *N*₁ / (*D*₁ + *N*₂ / (*D*₂ + *N*₃ / (*D*₃ + ⋯))). With all the *N*ᵢ and *D*ᵢ equal to 1, it equals 1/φ. One way to approximate an infinite continued fraction is to stop after *k* terms. Write `cont_frac(n, d, k)`, where `n` and `d` are functions of one argument, the term index *i*, that return *N*ᵢ and *D*ᵢ. Check your function by approximating 1/φ for successive values of *k*. How large must *k* be to get an approximation within 0.00005 of the true value? If `cont_frac` generates a recursive process, write `cont_frac_iter`, which generates an iterative process; the checker wants both.
+
+<Solution>
+
+**Solution.** The recursive version computes *N*ᵢ / (*D*ᵢ + rest) with the rest computed first, from *i* = 1 outwards. The iterative version starts with the innermost term and works out to *i* = 1, carrying the value so far. *k* = 10 is 0.000056 away; *k* = 11 is the first within 0.00005.
+
+</Solution>
+</Exercise>
+<Exercise id="1.38">
+
+In 1737, Leonhard Euler published a continued fraction expansion for *e* − 2: the *N*ᵢ are all 1, and the *D*ᵢ are 1, 2, 1, 1, 4, 1, 1, 6, 1, 1, 8, …. Write `euler_d`, and use `cont_frac` to approximate *e*.
+
+<Solution>
+
+**Solution.** The larger values sit at positions 2, 5, 8, …, which are exactly those *i* with *i* + 1 divisible by 3, and the value there is 2(*i* + 1)/3. Twenty terms give *e* to the limit of floating-point precision.
+
+</Solution>
+</Exercise>
+<Exercise id="1.39">
+
+A continued fraction representation of the tangent function was published in 1770 by J. H. Lambert: tan *x* = *x* / (1 − *x*² / (3 − *x*² / (5 − ⋯))). Write `tan_cf(x, k)` that computes an approximation based on Lambert's formula, where *k* is the number of terms.
+
+<Solution>
+
+**Solution.** The numerators are *x* for *i* = 1 and −*x*² after that; the denominators are the odd numbers 2*i* − 1. Writing the minus signs into the numerators turns the formula into the form `cont_frac` already computes.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['1.3.4', { id: '3.5.3', label: 'Square roots as a stream of guesses' }, { id: '4.1.4', label: 'Running the evaluator as a program' }]} />
