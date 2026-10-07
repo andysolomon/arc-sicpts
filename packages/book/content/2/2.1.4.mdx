@@ -1,0 +1,168 @@
+import { intervalProgram, intervalRepresentationDefinitions, parallelResistorsProgram } from '@sicp/lab';
+
+<Prose>
+
+Alyssa P. Hacker is designing a system to help people solve engineering problems. One feature she wants to provide is the ability to manipulate inexact quantities, such as measured parameters of physical devices, with known precision, so that when computations are done with such approximate quantities the results will be numbers of known precision.
+
+Electrical engineers will be using Alyssa's system to compute electrical quantities. It is sometimes necessary for them to compute the value of a parallel equivalent resistance *R*ₚ of two resistors *R*₁ and *R*₂ using the formula
+
+*R*ₚ = 1 / (1/*R*₁ + 1/*R*₂).
+
+Resistance values are usually known only up to some tolerance guaranteed by the manufacturer. If you buy a resistor labelled "6.8 ohms with 10% tolerance", you can only be sure that its resistance is between 6.8 − 0.68 = 6.12 and 6.8 + 0.68 = 7.48 ohms. So if you have a 6.8-ohm 10% resistor in parallel with a 4.7-ohm 5% resistor, the resistance of the combination can range from about 2.58 ohms (if both resistors are at their lower bounds) to about 2.97 ohms (if both are at their upper bounds).
+
+Alyssa's idea is to implement "interval arithmetic" as a set of arithmetic operations for combining "intervals", objects that represent the range of possible values of an inexact quantity. The result of adding, subtracting, multiplying or dividing two intervals is itself an interval, representing the range of the result.
+
+Alyssa postulates an abstract object called an interval that has two endpoints, a lower bound and an upper bound, and a constructor `make_interval` that builds one from its endpoints. She first writes a function for adding two intervals: the least the sum could be is the sum of the two lower bounds, and the most it could be is the sum of the two upper bounds. She works out the product by finding the least and the greatest of the products of the bounds; the primitives `math_min` and `math_max` find the least or greatest of any number of arguments. To divide, she multiplies the first interval by the reciprocal of the second, whose bounds are the reciprocals of the upper and the lower bound, in that order.
+
+</Prose>
+
+<Example index={0} file="intervals.sicp" source={intervalProgram} prelude={intervalRepresentationDefinitions} anim="pairs">
+
+`make_interval`, `lower_bound` and `upper_bound` are predefined here, with an interval represented as a pair of its bounds; writing the selectors is Exercise 2.7. The parallel resistance, computed with the formula above, is the interval from 2.5816 to 2.9733 ohms: the "about 2.58 to 2.97" of the text. The program's value is the product of the two resistances, from 27.3258 to 36.9138.
+
+</Example>
+
+<Prose>
+
+After debugging her program, Alyssa shows it to a potential user, who complains that it solves the wrong problem. He wants to work with numbers represented as a center value and an additive tolerance, such as 3.5 ± 0.15 rather than [3.35, 3.65]. Alyssa returns to her desk and supplies an alternate constructor and alternate selectors:
+
+```js
+function make_center_width(c, w) {
+  return make_interval(c - w, c + w);
+}
+
+function center(i) {
+  return (lower_bound(i) + upper_bound(i)) / 2;
+}
+
+function width(i) {
+  return (upper_bound(i) - lower_bound(i)) / 2;
+}
+```
+
+Unfortunately, most of Alyssa's users are engineers. Real engineering situations usually involve measurements with only a small uncertainty, measured as the ratio of the width of the interval to its midpoint. Engineers usually specify percentage tolerances on the parameters of devices, as in the resistor specifications above.
+
+After considerable work, Alyssa delivers her finished system. Several years later, after she has forgotten all about it, she gets a frenzied call from an irate user, Lem E. Tweakit. Lem has noticed that the formula for parallel resistors can be written in two algebraically equivalent ways,
+
+*R*₁*R*₂ / (*R*₁ + *R*₂) and 1 / (1/*R*₁ + 1/*R*₂),
+
+and he has written two programs, `par1` and `par2`, each of which computes the parallel-resistors formula one way. Lem complains that Alyssa's program gives different answers for the two ways of computing. This is a serious complaint.
+
+</Prose>
+
+<Example index={1} file="par1_par2.sicp" source={parallelResistorsProgram} prelude={intervalRepresentationDefinitions} anim="pairs">
+
+The same two resistors, the same formula in two forms, and two different intervals. `par2` gives exactly the range worked out in the text. `par1` gives a range from about 2.20 to 3.49 ohms, whose width is 0.643 against `par2`'s 0.196: more than three times as uncertain about the same physical quantity. Exercises 2.14 to 2.16 ask why.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-2/dataAbstraction.ts">
+
+An example's prelude is evaluated into a frame of its own, between the library frame and the program's, so `make_interval` and its selectors are visible to the program but not shown in the editor (`evaluator/evaluate.ts`). The intervals are ordinary pairs of floating-point numbers, which is why the bounds print with sixteen digits. The test `chapter-2/dataAbstraction.test.ts` asserts that the parallel resistance is `[2.581558809636278, 2.97332259363673]`, that the product of the resistances is `[27.3258, 36.9138]`, and that `par1` gives a width of 0.6432 where `par2` gives 0.1959.
+
+</UnderTheHood>
+
+<Exercises range="2.7 – 2.16" total={10}>
+<Exercise id="2.7">
+
+Alyssa's program is incomplete because she has not specified the implementation of the interval abstraction. The starter has a definition of the interval constructor, `make_interval`, which makes a pair of the two bounds. Define selectors `upper_bound` and `lower_bound` to complete the implementation.
+
+<Solution>
+
+**Solution.** `lower_bound` is `head` and `upper_bound` is `tail`. With them, Alyssa's three operations run unchanged: they never touched the pair directly.
+
+</Solution>
+</Exercise>
+<Exercise id="2.8">
+
+Using reasoning analogous to Alyssa's, describe how the difference of two intervals may be computed. Define a corresponding subtraction function, called `sub_interval`.
+
+<Solution>
+
+**Solution.** The least the difference *x* − *y* can be is the least *x* minus the greatest *y*, and the greatest is the greatest *x* minus the least *y*. So the lower bound is `lower_bound(x) - upper_bound(y)` and the upper bound is `upper_bound(x) - lower_bound(y)`. Subtracting lower from lower and upper from upper is the tempting mistake: [5, 10] − [1, 2] is [3, 9], not [4, 8].
+
+</Solution>
+</Exercise>
+<Exercise id="2.9">
+
+The *width* of an interval is half of the difference between its upper and lower bounds. The width is a measure of the uncertainty of the number specified by the interval. For some arithmetic operations the width of the result of combining two intervals is a function only of the widths of the argument intervals, whereas for others it is not. Show that the width of the sum (or difference) of two intervals is a function only of the widths of the intervals being added (or subtracted): write `width_of_sum` and `width_of_difference`. Give examples to show that this is not true for multiplication or division: complete the counterexample in the starter.
+
+<Solution>
+
+**Solution.** The sum of [*a*, *b*] and [*c*, *d*] is [*a* + *c*, *b* + *d*], whose width is ((*b* − *a*) + (*d* − *c*)) / 2, the sum of the two widths. The difference is [*a* − *d*, *b* − *c*], whose width is the same sum: subtracting an uncertain number adds its uncertainty. For multiplication, [0, 1] and [10, 11] both have width 0.5, but multiplied by [0, 1] they give [0, 1] and [0, 11], of widths 0.5 and 5.5. Division is similar: [1, 2] / [1, 2] has width 0.75, while [1, 2] / [10, 11] has width about 0.055.
+
+</Solution>
+</Exercise>
+<Exercise id="2.10">
+
+Ben Bitdiddle, an expert systems programmer, looks over Alyssa's shoulder and comments that it is not clear what it means to divide by an interval that spans zero. Modify Alyssa's program to check for this condition and to signal an error if it occurs. In the starter, write the test as a predicate `spans_zero` and use it in `div_interval`.
+
+<Solution>
+
+**Solution.** An interval spans zero when its lower bound is at most 0 and its upper bound at least 0. The endpoints matter: dividing by [0, 2] would take the reciprocal of 0. `div_interval` tests its divisor first and calls `error` when `spans_zero(y)` is true. Without the check, [1, 2] / [−1, 1] multiplies by [1, −1], an "interval" whose lower bound is above its upper bound, and every later result is quietly wrong.
+
+</Solution>
+</Exercise>
+<Exercise id="2.11">
+
+In passing, Ben also cryptically comments: "By testing the signs of the endpoints of the intervals, it is possible to break `mul_interval` into nine cases, only one of which requires more than two multiplications." Rewrite this function using Ben's suggestion. Do every multiplication with the provided `mul`, so the checker can count them.
+
+<Solution>
+
+**Solution.** Each interval is nonnegative, nonpositive or spans zero, giving three times three cases. When both are nonnegative the product is [*x*ₗ*y*ₗ, *x*ᵤ*y*ᵤ]; when *x* is nonnegative and *y* spans zero it is [*x*ᵤ*y*ₗ, *x*ᵤ*y*ᵤ]; and so on, each time two products. Only when both intervals span zero can either of two products be the extreme, so that case alone needs four: the lower bound is the lesser of *x*ₗ*y*ᵤ and *x*ᵤ*y*ₗ, the upper the greater of *x*ₗ*y*ₗ and *x*ᵤ*y*ᵤ.
+
+</Solution>
+</Exercise>
+<Exercise id="2.12">
+
+Define a constructor `make_center_percent` that takes a center and a percentage tolerance and produces the desired interval. You must also define a selector `percent` that produces the percentage tolerance for a given interval. The `center` selector is the same as the one shown above.
+
+<Solution>
+
+**Solution.** A tolerance of *p* percent is a width of *c* · *p* / 100, so `make_center_percent` hands that to `make_center_width`. Conversely `percent(i)` is `width(i) / center(i) * 100`. Both are built on Alyssa's center-width layer, not on the pair beneath it.
+
+</Solution>
+</Exercise>
+<Exercise id="2.13">
+
+Show that under the assumption of small percentage tolerances there is a simple formula for the approximate percentage tolerance of the product of two intervals in terms of the tolerances of the factors. You may simplify the problem by assuming that all numbers are positive. Write the formula as `product_percent(p1, p2)`.
+
+<Solution>
+
+**Solution.** Write the tolerances as fractions *t*₁ and *t*₂. The product of *c*₁(1 ± *t*₁) and *c*₂(1 ± *t*₂) runs from *c*₁*c*₂(1 − *t*₁ − *t*₂ + *t*₁*t*₂) to *c*₁*c*₂(1 + *t*₁ + *t*₂ + *t*₁*t*₂). Its center is *c*₁*c*₂(1 + *t*₁*t*₂) and its tolerance (*t*₁ + *t*₂) / (1 + *t*₁*t*₂). When the tolerances are small, *t*₁*t*₂ is negligible: tolerances add. 1% times 2% is about 3%.
+
+</Solution>
+</Exercise>
+<Exercise id="2.14">
+
+Demonstrate that Lem is right. Investigate the behaviour of the system on a variety of arithmetic expressions. Make some intervals *A* and *B*, and use them in computing the expressions *A*/*A* and *A*/*B*. You will get the most insight by using intervals whose width is a small percentage of the center value. Examine the results of the computation in center-percent form (see Exercise 2.12), and record the percentages in the starter.
+
+<Solution>
+
+**Solution.** With *A* = 100 ± 1%, *A*/*A* should be exactly 1, but the system says 1 ± 2%: it divides by *A* as though the second *A* were an independent quantity that could be at its upper bound while the first is at its lower. *A*/*B* with *B* = 200 ± 2% has about 3%, as Exercise 2.13 predicts. Then `par1(A, B)` has about 4.7% and `par2(A, B)` about 1.3%, though they describe one resistor network.
+
+</Solution>
+</Exercise>
+<Exercise id="2.15">
+
+Eva Lu Ator, another user, has also noticed the different intervals computed by different but algebraically equivalent expressions. She says that a formula to compute with intervals using Alyssa's system will produce tighter error bounds if it can be written in such a form that no name that represents an uncertain number is repeated. Thus, she says, `par2` is a "better" program for parallel resistances than `par1`. Is she right? Why? To check, write `exact_par`, which computes the true range of the parallel resistance, and say which program agrees with it.
+
+<Solution>
+
+**Solution.** She is right. Each interval operation assumes its arguments vary independently, so it returns the range over all combinations of their values. In `par1`, `r1` appears twice, and the system lets it take its lower value in the numerator and its upper value in the denominator at the same time, which no real resistor can do; the result is too wide. In `par2` each uncertain quantity appears once, so every combination the operations consider is a real one. Because 1 / (1/*R*₁ + 1/*R*₂) increases with both resistances, the true range runs from its value at the lower bounds to its value at the upper bounds, and that is exactly what `par2` computes.
+
+</Solution>
+</Exercise>
+<Exercise id="2.16">
+
+Explain, in general, why equivalent algebraic expressions may lead to different answers. Can you devise an interval-arithmetic package that does not have this shortcoming, or is this task impossible? (Warning: this problem is very difficult.) In the starter, exhibit the problem in its simplest form, *x* · *x*, and write `square_interval`, which knows its two factors are the same.
+
+<Solution>
+
+**Solution.** Algebra identifies two occurrences of a name as the same number; interval arithmetic, operating one operation at a time, treats them as independent. This is the *dependency problem*. `mul_interval(x, x)` with *x* = [−1, 2] gives [−2, 4], although no square is negative; `square_interval` sees the whole expression and returns [0, 4]. A package without the shortcoming would have to find the true range of an arbitrary expression over a box of inputs, which means knowing where the expression has its extremes. That can be done for some expressions, by rewriting them so that each variable occurs once as Eva suggests, or by subdividing intervals to tighten the bounds, but finding exact ranges is NP-hard in general, so no efficient package can do it for every expression.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '2.5.1', label: 'Generic arithmetic' }, { id: '3.3.5', label: 'Propagation of constraints' }]} />

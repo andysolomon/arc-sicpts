@@ -1,0 +1,341 @@
+import { nestedCoefficientsProgram, polynomialDefinitions, polynomialProgram, symbolicArithmeticDefinitions, termListsProgram, twoVariablesProgram } from '@sicp/lab';
+
+<Prose>
+
+The manipulation of symbolic algebraic expressions is a complex process that illustrates many of the hardest problems that occur in the design of large-scale systems. An algebraic expression can be viewed as a hierarchical structure, a tree of operators applied to operands. We build expressions from primitive objects, such as constants and variables, combined by algebraic operators such as addition and multiplication, and we form abstractions such as linear combination, polynomial, rational function or trigonometric function. We can regard these as compound "types", which are often useful for directing the processing of expressions. For example, we could describe
+
+*x*² sin(*y*² + 1) + *x* cos 2*y* + cos(*y*³ − 2*y*²)
+
+as a polynomial in *x* with coefficients that are trigonometric functions of polynomials in *y* whose coefficients are integers.
+
+We will not develop a complete algebraic-manipulation system; such systems are exceedingly complex programs, embodying deep algebraic knowledge and elegant algorithms. We look instead at a simple but important part of the job, the arithmetic of polynomials, to see the decisions its designer faces and how abstract data and generic operations help organize them.
+
+**Arithmetic on polynomials.** First we must decide what a polynomial is. We restrict ourselves to polynomials in one indeterminate (*univariate* polynomials), though we will allow coefficients that are themselves polynomials in other variables. A polynomial is a sum of terms, each of which is a coefficient, a power of the indeterminate, or a product of the two, where a coefficient is any algebraic expression that does not depend on the indeterminate. So 5*x*² + 3*x* + 7 is a simple polynomial in *x*, and (*y*² + 1)*x*³ + (2*y*)*x* + 1 is a polynomial in *x* whose coefficients are polynomials in *y*.
+
+Already we skirt thorny issues. Is the first polynomial the same as 5*y*² + 3*y* + 7? Yes, if a polynomial is a mathematical function; no, if it is a syntactic form. The second is algebraically equivalent to a polynomial in *y* whose coefficients are polynomials in *x*: should the system recognize that? We finesse these questions by deciding that a "polynomial" is a particular syntactic form, not its mathematical meaning. We consider only addition and multiplication, and we insist that two polynomials to be combined have the same indeterminate.
+
+We follow the discipline of data abstraction. A *poly* consists of a variable and a collection of terms, with selectors `variable` and `term_list` and a constructor `make_poly`. A variable is a string, so `is_same_variable` of §2.3.2 compares variables. Then
+
+```js
+function add_poly(p1, p2) {
+  return is_same_variable(variable(p1), variable(p2))
+    ? make_poly(variable(p1), add_terms(term_list(p1), term_list(p2)))
+    : error("polys not in same var -- add_poly", list(p1, p2));
+}
+```
+
+and `mul_poly` is the same with `mul_terms`. To join the generic arithmetic system, polys get the type tag `"polynomial"`, and an installation function puts the tagged operations in the operation table, just as the packages of §2.5.1 do.
+
+Addition is termwise: terms of the same order are combined into one whose coefficient is the sum of the addends' coefficients, and terms with no partner of the same order are simply accumulated. To multiply two term lists, we multiply each term of the first by all the terms of the second, using `mul_term_by_all_terms`, and add up the results. Multiplying two terms adds their orders and multiplies their coefficients.
+
+We treat terms and term lists as data abstractions too. `the_empty_termlist` is the empty term list, `adjoin_term` adjoins a new highest-order term, `is_empty_termlist` tests for emptiness, and `first_term` and `rest_terms` take a term list apart. `make_term` builds a term from an order and a coefficient, and `order` and `coeff` select them. The most important point in the program below is that `add_terms` combines coefficients with the generic `add`, and `mul_term_by_all_terms` with the generic `mul`.
+
+The prelude of the next example is the generic arithmetic system, a compact copy of §2.5.1 so that this section stands on its own. It declares the operation table (`put` and `get` keep a list of entries in a `let` and compare types with `equal`), `attach_tag`, `type_tag`, `contents` and `apply_generic`, the generic `add`, `sub`, `mul`, `div` and `is_equal_to_zero` (Exercise 2.80), and packages for ordinary numbers and rational numbers. Ordinary numbers are left untagged, as Exercise 2.78 suggests. The book hides a package's internal functions inside its installation function; here they are declared at the top level, so that the exercises can extend them, and `install_polynomial_package` does only the putting.
+
+</Prose>
+
+<Example index={0} file="polynomial.sicp" source={polynomialProgram} prelude={symbolicArithmeticDefinitions} anim="pairs">
+
+`p` is 5*x*² + 3*x* + 7 and `q` is *x*² − 3*x*. Each is the tag `"polynomial"`, the variable `"x"`, and a list of terms, highest order first. Their sum has no *x* term: the coefficients 3 and −3 add to 0, and `adjoin_term` leaves a zero term out. The product is 5*x*⁴ − 12*x*³ − 2*x*² − 21*x*.
+
+</Example>
+
+<Prose>
+
+That is really all there is to polynomial addition and multiplication. Because terms are combined with the generic `add` and `mul`, the package handles any kind of coefficient the generic system knows about. With a coercion mechanism like those of §2.5.2, it could even multiply [3*x*² + (2 + 3*i*)*x* + 7] · [*x*⁴ + ⅔*x*² + (5 + 3*i*)].
+
+And because `add_poly` and `mul_poly` are installed as `add` and `mul` for the type `"polynomial"`, the system can also compute
+
+[(*y* + 1)*x*² + (*y*² + 1)*x* + (*y* − 1)] · [(*y* − 2)*x* + (*y*³ + 7)]
+
+When the system combines coefficients it dispatches through `add` and `mul`, and since the coefficients are polynomials in *y*, they are combined with `add_poly` and `mul_poly`. The result is a kind of *data-directed recursion*: a call to `mul_poly` results in recursive calls to `mul_poly` to multiply the coefficients. If the coefficients' coefficients were polynomials too, the data would direct the system through another level of calls, and so on, as deep as the structure of the data goes.
+
+One more thing is needed first. `adjoin_term` asks `is_equal_to_zero` about each new coefficient, and no such method exists yet for polynomials. The program installs a quick one, which treats a polynomial with no terms as zero; Exercise 2.87 asks for a better one. The prelude is everything the previous example had: the generic system and the polynomial package.
+
+</Prose>
+
+<Example index={1} file="nested_coefficients.sicp" source={nestedCoefficientsProgram} prelude={polynomialDefinitions} budget={400000} anim="pairs">
+
+`a` and `b` are polynomials in *x* with a polynomial in *y* in every coefficient position, and so is the product. The first term of the product, displayed, is (*y*² − *y* − 2)*x*³; the others are (*y*⁴ + 2*y*³ − 2*y*² + 8*y* + 5)*x*², (*y*⁵ + *y*³ + 8*y*² − 3*y* + 9)*x* and *y*⁴ − *y*³ + 7*y* − 7. Delete the `put` at the top and the program stops with "no method" for `is_equal_to_zero` on a polynomial.
+
+</Example>
+
+<Prose>
+
+**Representing term lists.** Finally we must choose a representation for term lists. A term list is in effect a set of coefficients keyed by order, so any representation of sets from §2.3.3 would do. But `add_terms` and `mul_terms` always access term lists sequentially from highest to lowest order, so we use an ordered list.
+
+One consideration is the *density* of the polynomials we intend to manipulate. A polynomial is *dense* if it has nonzero coefficients in terms of most orders, and *sparse* if it has many zero terms. For example,
+
+A: *x*⁵ + 2*x*⁴ + 3*x*² − 2*x* − 5
+
+is dense, whereas
+
+B: *x*¹⁰⁰ + 2*x*² + 1
+
+is sparse. The term list of a dense polynomial is most efficiently represented as a list of its coefficients: A is `list(1, 2, 0, 3, -2, -5)`, and the order of a term is the length of the sublist beginning with its coefficient, less 1. That would be a terrible representation for B: a giant list of zeros punctuated by a few lonely nonzero terms. A sparse polynomial is better represented as a list of its nonzero terms, each a list of the order and the coefficient, so that B is `list(list(100, 1), list(2, 2), list(0, 1))`.
+
+</Prose>
+
+<Example index={2} file="term_lists.sicp" source={termListsProgram} anim="pairs">
+
+Step through the diagrams. A costs six pairs dense and fifteen sparse, since each term is a list of two. B costs three terms sparse, and dense it is 101 coefficients, of which the diagram can draw only the first few. Nearly all are 0.
+
+</Example>
+
+<Prose>
+
+Most polynomial manipulations are performed on sparse polynomials, so we use the second method: a term list is a list of terms, highest order first.
+
+```js
+function adjoin_term(term, term_list) {
+  return is_equal_to_zero(coeff(term))
+    ? term_list
+    : pair(term, term_list);
+}
+const the_empty_termlist = null;
+function first_term(term_list) { return head(term_list); }
+function rest_terms(term_list) { return tail(term_list); }
+function is_empty_termlist(term_list) { return is_null(term_list); }
+function make_term(order, coeff) { return list(order, coeff); }
+function order(term) { return head(term); }
+function coeff(term) { return head(tail(term)); }
+```
+
+`adjoin_term` simply puts the new term at the front. That is safe as long as callers such as `add_terms` always adjoin a term of higher order than any already in the list, which they do. Users of the package create tagged polynomials with
+
+```js
+function make_polynomial(variable, terms) {
+  return get("make", "polynomial")(variable, terms);
+}
+```
+
+**Hierarchies of types in symbolic algebra.** Our polynomial system shows how objects of one type (polynomials) may be complex objects with parts of many different types. That poses no real difficulty for generic operations: we install operations for the parts, and data-directed programming handles even the "recursive data abstraction" in which parts of a polynomial are themselves polynomials.
+
+On the other hand, polynomial algebra is a system whose types cannot be naturally arranged in a tower. Polynomials in *x* may have coefficients that are polynomials in *y*, and polynomials in *y* may have coefficients that are polynomials in *x*. Neither type is "above" the other, yet we often need to add elements from each set. One way is to convert one polynomial to the type of the other by expanding and rearranging terms so that both have the same principal variable. Ordering the variables imposes a towerlike structure: every polynomial is converted to a "canonical form" with the highest-priority variable dominant and the others buried in the coefficients. This works fairly well, though the conversion may expand a polynomial unnecessarily, making it hard to read and perhaps less efficient to work with. And the tower strategy is not natural for this domain, or for any domain where users can invent new types from old ones in various combining forms, such as trigonometric functions, power series and integrals.
+
+</Prose>
+
+<Example index={3} file="two_variables.sicp" source={twoVariablesProgram} prelude={polynomialDefinitions} anim="pairs">
+
+`in_x` and `in_y` are the same polynomial, (*y*² + 1)*x*³ + 2*xy* + 1, built two ways, and the diagrams show how different the two structures are. `equal` says they are not the same, and `add` stops with "polys not in same var". Exercise 2.92 removes the error by ordering the variables.
+
+</Example>
+
+<Prose>
+
+It should not be surprising that controlling coercion is a serious problem in the design of large-scale algebraic-manipulation systems. Much of their complexity concerns relationships among diverse types. Indeed, it is fair to say that we do not yet completely understand coercion, nor even the concept of a data type. Nevertheless, what we know provides powerful structuring and modularity principles to support the design of large systems.
+
+**Extended exercise: rational functions.** We can extend the generic arithmetic system to *rational functions*, "fractions" whose numerator and denominator are polynomials, such as (*x* + 1) / (*x*³ − 1). The system should add, subtract, multiply and divide them, and compute such sums as
+
+(*x* + 1) / (*x*³ − 1) + *x* / (*x*² − 1) = (*x*³ + 2*x*² + 3*x* + 1) / (*x*⁴ + *x*³ − *x* − 1)
+
+Here the sum has been simplified by removing common factors; ordinary cross-multiplication would give a fourth-degree polynomial over a fifth-degree one. If the rational-arithmetic package uses generic operations, it does what we want except reduce fractions to lowest terms (Exercise 2.93).
+
+We can reduce polynomial fractions the way we reduced integer ones: divide numerator and denominator by their greatest common divisor. The notion makes sense for polynomials, and Euclid's algorithm works for them essentially unchanged, because polynomials, like integers, admit a division with a remainder smaller than the divisor (in degree, for polynomials). The integer version is
+
+```js
+function gcd(a, b) {
+  return b === 0 ? a : gcd(b, a % b);
+}
+```
+
+and the obvious modification works on term lists:
+
+```js
+function gcd_terms(a, b) {
+  return is_empty_termlist(b)
+    ? a
+    : gcd_terms(b, remainder_terms(a, b));
+}
+```
+
+where `remainder_terms` picks out the remainder of the term-list division `div_terms` of Exercise 2.91.
+
+Exercise 2.95 shows that this algorithm has trouble when the division introduces fractions. We can fix it, for polynomials with integer coefficients, by multiplying the dividend by an integer constant before each division, chosen so that no fractions arise. Precisely: let *P* and *Q* be polynomials of orders *O*₁ and *O*₂, and let *c* be the leading coefficient of *Q*. If *P* is multiplied by the *integerizing factor* *c*^(1 + *O*₁ − *O*₂), the result can be divided by *Q* with `div_terms` without introducing fractions. Multiplying the dividend by this constant and then dividing is called the *pseudodivision* of *P* by *Q*, and its remainder the *pseudoremainder*. The answer then differs from the true GCD by an integer factor, which does not matter when the GCD divides both numerator and denominator.
+
+So, to reduce a rational function to lowest terms:
+
+- Compute the GCD of the numerator and denominator with the `gcd_terms` of Exercise 2.96.
+- Multiply both numerator and denominator by an integerizing factor before dividing them by the GCD, so that the division introduces no fractions: the leading coefficient of the GCD raised to the power 1 + *O*₁ − *O*₂, where *O*₂ is the order of the GCD and *O*₁ is the larger of the orders of the numerator and denominator.
+- The resulting coefficients are integers, but large. Divide numerator and denominator by the integer GCD of all their coefficients.
+
+The GCD computation is at the heart of any system that operates on rational functions. This algorithm, though mathematically straightforward, is extremely slow, partly because of the many divisions and partly because of the enormous intermediate coefficients the pseudodivisions generate. Better algorithms for polynomial GCDs are an active area of research; one extremely efficient and elegant method, discovered by Richard Zippel, is probabilistic, like the fast primality test of chapter 1.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-2/symbolicAlgebra.ts">
+
+The whole system is Source code in strings that the examples and the exercises' preludes put together: `symbolicArithmeticDefinitions` for the operation table, the tags, `apply_generic` and the number and rational packages; `sparseTermListDefinitions`; and `polynomialPackageDefinitions`. The test `chapter-2/symbolicAlgebra.test.ts` asserts that the sum of `p` and `q` is `list("polynomial", "x", list(2, 6), list(0, 7))` with only two terms, and their product has the terms 5, −12, −2 and −21; that each coefficient of the nested product is the polynomial in *y* given above, and that without the zero test for polynomials it fails with "no method"; that B is 3 terms sparse and 101 coefficients dense; and that `in_x` and `in_y` are not `equal` and cannot be added. The exercises' preludes grow with the section: each starts from the system above plus the reference answers of the exercises it builds on.
+
+</UnderTheHood>
+
+<Exercises range="2.87 – 2.97" total={11}>
+<Exercise id="2.87">
+
+Install `is_equal_to_zero` for polynomials in the generic arithmetic package. This will allow `adjoin_term` to work for polynomials with coefficients that are themselves polynomials. Unlike the quick test of the example, yours should treat a polynomial as zero when every one of its coefficients is zero, as in one made with `make_term(3, 0)`.
+
+<Solution>
+
+**Solution.** A term list is zero when it is empty, or when its first coefficient is zero and so is the rest. Testing the coefficient with the generic `is_equal_to_zero` makes the method recursive in the same data-directed way as `add`: a coefficient that is a polynomial is tested by this same method. Polynomials built by `add` and `mul` never contain zero terms, because `adjoin_term` drops them, so for those the quick test was enough.
+
+</Solution>
+</Exercise>
+<Exercise id="2.88">
+
+Extend the polynomial system to include subtraction of polynomials. (Hint: you may find it helpful to define a generic negation operation.)
+
+<Solution>
+
+**Solution.** `negate` for numbers is `x => -x`. For a polynomial, `negate_terms` negates each coefficient with the generic `negate`, so that coefficients which are polynomials are negated too. Then `sub_poly(p1, p2)` is `add_poly(p1, negate_poly(p2))`, installed as `sub` for two polynomials. Writing a `sub_terms` in the shape of `add_terms` also works, but it must negate the terms that occur only in the second polynomial, which is easy to forget: *x*³ − *x*² catches it.
+
+</Solution>
+</Exercise>
+<Exercise id="2.89">
+
+Declare functions that implement the term-list representation described above as appropriate for dense polynomials.
+
+<Solution>
+
+**Solution.** In a list of coefficients the first term's order is the length of the list less 1, so `first_term` is `make_term(length(term_list) - 1, head(term_list))`, and `rest_terms` is just `tail`. `adjoin_term` drops a zero term as before. Otherwise it may be asked to adjoin a term several orders above the list, for instance when the terms in between cancelled, so it pads the list with zeros until the term's order equals the list's length. Nothing in the polynomial package changes: it used only these functions.
+
+</Solution>
+</Exercise>
+<Exercise id="2.90">
+
+Suppose we want a polynomial system that is efficient for both sparse and dense polynomials. One way is to allow both kinds of term-list representation, as §2.4 allowed both rectangular and polar complex numbers. To do this we must distinguish different types of term lists and make the operations on term lists generic. Redesign the polynomial system to implement this generalization. This is a major effort, not a local change.
+
+Here the redesign of the polynomial package is done for you: term lists carry the tag `"sparse"` or `"dense"`, and `first_term`, `rest_terms`, `is_empty_termlist` and `adjoin_term` dispatch on that tag through the table. Write the two packages that make it work.
+
+<Solution>
+
+**Solution.** The sparse package is the representation of this section, with each result that is a term list tagged. The dense package is Exercise 2.89 behind the same interface; its `adjoin_term` pads with as many zeros as the gap needs. The interesting part is that a sum or product may mix the two: `add_terms` returns whichever list it reaches the end of first and adjoins terms onto it, so x⁵ added to a dense *x* + 1 adjoins the 5th-order term to a dense list, which must grow by three zeros. Terms themselves stay untagged, which is why `adjoin_term` dispatches on the term list alone instead of calling `apply_generic` on both arguments.
+
+</Solution>
+</Exercise>
+<Exercise id="2.91">
+
+A univariate polynomial can be divided by another one to produce a polynomial quotient and a polynomial remainder. For example,
+
+(*x*⁵ − 1) / (*x*² − 1) = *x*³ + *x*, remainder *x* − 1
+
+Division can be performed via long division. Divide the highest-order term of the dividend by the highest-order term of the divisor; the result is the first term of the quotient. Next, multiply the result by the divisor, subtract that from the dividend, and produce the rest of the answer by recursively dividing the difference by the divisor. Stop when the order of the divisor exceeds the order of the dividend, and declare the dividend to be the remainder. Also, if the dividend ever becomes zero, return zero as both quotient and remainder.
+
+We can design `div_poly` on the model of `add_poly` and `mul_poly`: it checks that the two polys have the same variable, passes the term lists to `div_terms`, and reattaches the variable to the result. `div_terms` returns a list of the quotient term list and the remainder term list. Complete `div_terms` by filling in the missing parts, and use it to implement `div_poly`, which takes two polys and returns a list of the quotient and remainder polys.
+
+<Solution>
+
+**Solution.** The rest of the result is `div_terms` applied to the dividend minus `make_term(new_o, new_c)` times the divisor: `add_terms(L1, negate_terms(mul_term_by_all_terms(make_term(new_o, new_c), L2)))`. The subtraction removes the dividend's leading term, so the recursion makes progress. The complete result adjoins the new term to the quotient of the rest, and keeps the remainder of the rest. Coefficients are divided with the generic `div`, so 2*x*² + 1 divided by 4*x* gives the quotient 0.5*x*.
+
+</Solution>
+</Exercise>
+<Exercise id="2.92">
+
+By imposing an ordering on variables, extend the polynomial package so that addition and multiplication of polynomials works for polynomials in different variables. (This is not easy!)
+
+Make the core of it work: order the variables alphabetically, and install `add` and `mul` for two polynomials in any variables and for a polynomial with a number. You may assume that polynomials are already in canonical form, with the variables of the coefficients coming after the principal variable.
+
+<Solution>
+
+**Solution.** Pick the variable that comes first among the arguments, and view each argument as a poly in that variable: a poly already in it stays as it is, and anything else, a number or a poly in a later variable, becomes the constant term of a poly in it. Then `add_poly` or `mul_poly` does the rest, and the generic `add` and `mul` on the coefficients come back through the same new methods. So (*x* + 1) + (*y* + 1) becomes *x* + (*y* + 2), with the 1 and the *y* + 1 combined as a number and a polynomial in *y*. The full exercise also has to rearrange a polynomial that is not in canonical form, such as a polynomial in *y* with coefficients in *x*, by expanding it and collecting terms by powers of *x*. That conversion is the expensive step the text warns about.
+
+</Solution>
+</Exercise>
+<Exercise id="2.93">
+
+Modify the rational-arithmetic package to use generic operations, but change `make_rat` so that it does not attempt to reduce fractions to lowest terms. Test your system by calling `make_rational` on two polynomials to produce a rational function
+
+```js
+const p1 = make_polynomial("x", list(make_term(2, 1), make_term(0, 1)));
+const p2 = make_polynomial("x", list(make_term(3, 1), make_term(0, 1)));
+const rf = make_rational(p2, p1);
+```
+
+Now add `rf` to itself, using `add`. You will observe that this addition function does not reduce fractions to lowest terms.
+
+<Solution>
+
+**Solution.** Replace every `+`, `-` and `*` in the package with `add`, `sub` and `mul`, test for zero with the generic `is_equal_to_zero`, and let `make_rat` be `pair(n, d)`. The sum `add(rf, rf)` is (2*x*⁵ + 2*x*³ + 2*x*² + 2) / (*x*⁴ + 2*x*² + 1): the numerator is twice (*x*³ + 1)(*x*² + 1) and the denominator is (*x*² + 1)², and the common factor *x*² + 1 stays. Ordinary rationals still work, and stay unreduced: ½ + ½ is 4/4.
+
+</Solution>
+</Exercise>
+<Exercise id="2.94">
+
+Using `div_terms`, implement the function `remainder_terms` and use it to define `gcd_terms` as above. Now write a function `gcd_poly` that computes the polynomial GCD of two polys. (The function should signal an error if the two polys are not in the same variable.) Install in the system a generic operation `greatest_common_divisor` that reduces to `gcd_poly` for polynomials and to ordinary `gcd` for ordinary numbers. As a test, try
+
+```js
+const p1 = make_polynomial("x", list(make_term(4, 1), make_term(3, -1),
+                                     make_term(2, -2), make_term(1, 2)));
+const p2 = make_polynomial("x", list(make_term(3, 1), make_term(1, -1)));
+greatest_common_divisor(p1, p2);
+```
+
+and check your result by hand.
+
+<Solution>
+
+**Solution.** `remainder_terms(a, b)` is `head(tail(div_terms(a, b)))`, and `gcd_poly` follows the pattern of `add_poly`. By hand: *p*₁ = *x*(*x* − 1)(*x*² − 2) and *p*₂ = *x*(*x* − 1)(*x* + 1), so their GCD is *x*² − *x*, up to a constant factor. Euclid's algorithm finds −*x*² + *x*: the first remainder, of *p*₁ by *p*₂, is −*x*² + *x*, and it divides *p*₂ exactly.
+
+</Solution>
+</Exercise>
+<Exercise id="2.95">
+
+Define *P*₁, *P*₂ and *P*₃ to be the polynomials
+
+*P*₁: *x*² − 2*x* + 1   *P*₂: 11*x*² + 7   *P*₃: 13*x* + 5
+
+Now define *Q*₁ to be the product of *P*₁ and *P*₂, and *Q*₂ to be the product of *P*₁ and *P*₃, and use `greatest_common_divisor` (Exercise 2.94) to compute the GCD of *Q*₁ and *Q*₂. Note that the answer is not the same as *P*₁. This example introduces noninteger operations into the computation, causing difficulties with the GCD algorithm. To understand what is happening, look at the remainders of `gcd_terms` one at a time. Record what you find: the order of the GCD as computed, and the constant by which the first remainder differs from *P*₁.
+
+<Solution>
+
+**Solution.** The first remainder, of *Q*₁ by *Q*₂, is (1458/169)(*x*² − 2*x* + 1): *P*₁ times a fraction, because dividing by the leading coefficient 13 of *Q*₂ introduced 13ths, twice over. In exact arithmetic the next division would leave no remainder, and the answer would be that multiple of *P*₁. But JavaScript's numbers carry the fractions only approximately, and the next remainder is about −1.2·10⁻¹⁴*x* + 8·10⁻¹⁵ instead of zero. Euclid's algorithm carries on with that, and ends with a polynomial of order 0, a constant: as far as it can tell, *Q*₁ and *Q*₂ have no common factor at all.
+
+</Solution>
+</Exercise>
+<Exercise id="2.96">
+
+Implement the function `pseudoremainder_terms`, which is just like `remainder_terms` except that it multiplies the dividend by the integerizing factor described above before calling `div_terms`. Modify `gcd_terms` to use `pseudoremainder_terms`, and verify that `greatest_common_divisor` now produces an answer with integer coefficients on the example in Exercise 2.95.
+
+The GCD now has integer coefficients, but they are larger than those of *P*₁. Modify `gcd_terms` so that it removes common factors from the coefficients of the answer by dividing all the coefficients by their (integer) greatest common divisor.
+
+<Solution>
+
+**Solution.** The integerizing factor is a term of order 0 whose coefficient is `math_pow(c, 1 + o1 - o2)`, and `mul_term_by_all_terms` multiplies the dividend by it. With pseudoremainders, the GCD of *Q*₁ and *Q*₂ comes out as 1458*x*² − 2916*x* + 1458, all integers, and every remainder that should be zero is exactly zero. Dividing by the gcd of the coefficients, 1458, gives *P*₁ itself. Take the absolute values of the coefficients when computing their gcd, or a negative gcd may flip the sign of the answer.
+
+</Solution>
+</Exercise>
+<Exercise id="2.97">
+
+Implement the algorithm above as a function `reduce_terms` that takes two term lists `n` and `d` as arguments and returns a list `nn`, `dd`, which are `n` and `d` reduced to lowest terms. Also write a function `reduce_poly`, analogous to `add_poly`, that checks that the two polys have the same variable; if so, it strips off the variable, passes the problem to `reduce_terms`, and reattaches the variable to the two term lists it returns.
+
+Then define a function analogous to `reduce_terms` that does what the original `make_rat` did for integers:
+
+```js
+function reduce_integers(n, d) {
+  const g = gcd(n, d);
+  return list(n / g, d / g);
+}
+```
+
+and define `reduce` as a generic operation that calls `apply_generic` to dispatch either to `reduce_poly` (for `polynomial` arguments) or to `reduce_integers` (for `javascript_number` arguments). You can now make the rational-arithmetic package reduce fractions to lowest terms by having `make_rat` call `reduce` before combining the given numerator and denominator into a rational number. The system now handles rational expressions in either integers or polynomials. To test your program, try the example at the beginning of this extended exercise:
+
+```js
+const p1 = make_polynomial("x", list(make_term(1, 1), make_term(0, 1)));
+const p2 = make_polynomial("x", list(make_term(3, 1), make_term(0, -1)));
+const p3 = make_polynomial("x", list(make_term(1, 1)));
+const p4 = make_polynomial("x", list(make_term(2, 1), make_term(0, -1)));
+const rf1 = make_rational(p1, p2);
+const rf2 = make_rational(p3, p4);
+add(rf1, rf2);
+```
+
+See if you get the correct answer, correctly reduced to lowest terms.
+
+<Solution>
+
+**Solution.** `reduce_terms` computes the GCD *g* with `gcd_terms`, multiplies `n` and `d` by the integerizing factor, divides each by *g* and keeps the quotients, and finally divides both by the integer gcd of all their coefficients. `reduce` installed for polynomials must tag the two polys it returns. The sum comes out as (−*x*³ − 2*x*² − 3*x* − 1) / (−*x*⁴ − *x*³ + *x* + 1), which is the answer in the text with both signs flipped, because the GCD the algorithm finds has a negative leading coefficient. Making the denominator's leading coefficient positive, by dividing by the negated integer gcd when it is not, gives exactly (*x*³ + 2*x*² + 3*x* + 1) / (*x*⁴ + *x*³ − *x* − 1). The checker accepts either form.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '3.3.3', label: 'Tables, and put and get' }, { id: '3.5.2', label: 'Power series as streams' }]} />

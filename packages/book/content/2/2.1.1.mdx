@@ -1,0 +1,117 @@
+import { pairGlueProgram, ratLowestTermsProgram, ratProgram } from '@sicp/lab';
+
+<Prose>
+
+In §1.1.8 we noted that a function used as an element in a more complex function can be regarded not only as a collection of operations but as a *functional abstraction*: the details of how it was implemented can be suppressed, and it can be replaced by any other function with the same overall behaviour. The analogous notion for compound data is *data abstraction*, a methodology that isolates how a compound data object is used from the details of how it is constructed from more primitive data.
+
+The idea is to structure programs so that they operate on "abstract data", making no assumptions about the data beyond what the task at hand needs. Separately, a "concrete" representation is defined, independent of the programs that use it. The interface between the two parts is a set of functions, called *selectors* and *constructors*, that implement the abstract data in terms of the concrete representation. To illustrate the technique, we will design a set of functions for manipulating rational numbers.
+
+Suppose we want to add, subtract, multiply and divide rational numbers, and to test whether two of them are equal. Let us begin by assuming that we already have a way of constructing a rational number from a numerator and a denominator, and of extracting them again:
+
+- `make_rat(n, d)` returns the rational number whose numerator is the integer *n* and whose denominator is the integer *d*.
+- `numer(x)` returns the numerator of the rational number *x*.
+- `denom(x)` returns the denominator of the rational number *x*.
+
+This is a powerful strategy of synthesis: *wishful thinking*. We have not said how a rational number is represented, or how the three functions are implemented. Even so, if we had them, we could compute with rational numbers by these relations:
+
+- *n*₁/*d*₁ + *n*₂/*d*₂ = (*n*₁*d*₂ + *n*₂*d*₁) / (*d*₁*d*₂)
+- *n*₁/*d*₁ − *n*₂/*d*₂ = (*n*₁*d*₂ − *n*₂*d*₁) / (*d*₁*d*₂)
+- *n*₁/*d*₁ · *n*₂/*d*₂ = (*n*₁*n*₂) / (*d*₁*d*₂)
+- (*n*₁/*d*₁) / (*n*₂/*d*₂) = (*n*₁*d*₂) / (*d*₁*n*₂)
+- *n*₁/*d*₁ = *n*₂/*d*₂ if and only if *n*₁*d*₂ = *n*₂*d*₁
+
+Each relation becomes a function:
+
+```js
+function add_rat(x, y) {
+  return make_rat(numer(x) * denom(y) + numer(y) * denom(x),
+                  denom(x) * denom(y));
+}
+
+function sub_rat(x, y) {
+  return make_rat(numer(x) * denom(y) - numer(y) * denom(x),
+                  denom(x) * denom(y));
+}
+
+function mul_rat(x, y) {
+  return make_rat(numer(x) * numer(y),
+                  denom(x) * denom(y));
+}
+
+function div_rat(x, y) {
+  return make_rat(numer(x) * denom(y),
+                  denom(x) * numer(y));
+}
+
+function equal_rat(x, y) {
+  return numer(x) * denom(y) === numer(y) * denom(x);
+}
+```
+
+The operations are now defined in terms of `make_rat`, `numer` and `denom`, which are not yet defined. What we need is some way to glue a numerator and a denominator together into a single value.
+
+**Pairs.** To implement the concrete level of a data abstraction, the language provides a compound structure called a *pair*, constructed with the primitive function `pair`. It takes two arguments and returns a compound data object that contains them as parts. Given a pair, the primitive functions `head` and `tail` extract the parts. A pair is a data object that can be named and passed around like a number, and `pair` can be applied to pairs, so pairs can contain pairs.
+
+</Prose>
+
+<Example index={0} file="pairs.sicp" source={pairGlueProgram} anim="pairs">
+
+Each pair is drawn as two boxes, the head on the left and the tail on the right, with an arrow to what each part holds. `z` holds `x` and `y` themselves, so `head(head(z))` is 1 and `head(tail(z))` is 3. Section 2.2 shows how this single ability to put pairs inside pairs builds every data structure we will need.
+
+</Example>
+
+<Prose>
+
+The single compound-data primitive *pair*, implemented by the functions `pair`, `head` and `tail`, is the only glue we need. Data objects constructed from pairs are called *list-structured* data.
+
+**Representing rational numbers.** Pairs offer a natural way to complete the rational-number system: represent a rational number as a pair of two integers, a numerator and a denominator. Then `make_rat`, `numer` and `denom` are one line each.
+
+To display results, `print_rat` prints the numerator, a slash and the denominator. The primitive `stringify` turns any value, here a number, into a string, and the operator `+` applied to two strings *concatenates* them. `display` shows a string with its quotation marks, as the Laboratory prints every string.
+
+</Prose>
+
+<Example index={1} file="rational.sicp" source={ratProgram} anim="pairs">
+
+A rational number is nothing more than the pair of its numerator and denominator: `one_half` is one pair, and so is every result. The last value is the sum of one third and one third, and it comes out as 6 / 9, which is correct but not in lowest terms.
+
+</Example>
+
+<Prose>
+
+As the final example shows, this implementation does not reduce rational numbers to lowest terms. We can remedy that by changing `make_rat`. With the `gcd` function of §1.2.5, which produces the greatest common divisor of two integers, `make_rat` can divide the numerator and the denominator by their greatest common divisor before constructing the pair:
+
+```js
+function make_rat(n, d) {
+  const g = gcd(n, d);
+  return pair(n / g, d / g);
+}
+```
+
+</Prose>
+
+<Example index={2} file="lowest_terms.sicp" source={ratLowestTermsProgram} anim="pairs">
+
+The same program with the new `make_rat`: the sum of one third and one third is now the pair of 2 and 3. Nothing else changed. `add_rat` and `mul_rat`, which do the actual arithmetic, were not touched; only the constructor knows that rational numbers are reduced.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-2/dataAbstraction.ts">
+
+A pair in the Laboratory is a two-element array, made by the `pair` primitive in `evaluator/primitives.ts`; `head` and `tail` read its two slots and complain about anything that is not a pair. Values print in box notation, `[6, 9]`, and the box-and-pointer diagram is rebuilt from that text by `anim/model/pairs.ts`. The test `chapter-2/dataAbstraction.test.ts` asserts that `head(tail(z))` is 3, that the first package prints `"5 / 6"` and `"1 / 6"` and ends with `[6, 9]`, and that with `gcd` in `make_rat` the same program prints the same lines and ends with `[2, 3]`.
+
+</UnderTheHood>
+
+<Exercises range="2.1" total={1}>
+<Exercise id="2.1">
+
+Define a better version of `make_rat` that handles both positive and negative arguments. `make_rat` should normalise the sign so that if the rational number is positive, both the numerator and denominator are positive, and if the rational number is negative, only the numerator is negative.
+
+<Solution>
+
+**Solution.** In JavaScript, `%` takes the sign of its left operand, so `gcd` can return a negative divisor: `gcd(-3, 6)` is −3, and the version above makes `make_rat(-3, 6)` into 1 / −2. Divide by the absolute value of the divisor, and multiply both parts by −1 when the denominator is negative. Then the denominator is always positive, and the numerator carries the sign of the whole number.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['2.1.2', '2.2.1', { id: '2.5.1', label: 'Rational numbers in a generic arithmetic system' }]} />

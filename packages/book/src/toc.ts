@@ -94,13 +94,13 @@ export const chapters: Chapter[] = [
     title: 'Building Abstractions with Data',
     blurb:
       'Compound data lets a program talk about rational numbers, pictures and polynomials instead of bare numbers. The chapter is about the walls we build between how data is used and how it is represented.',
-    readingTime: null,
+    readingTime: '~4 h reading',
     sections: [
       {
         id: '2.1',
         title: 'Introduction to Data Abstraction',
         blurb: 'Constructors and selectors as a contract, and what it means for something to be data at all.',
-        exercises: null,
+        exercises: [1, 16],
         subsections: subs('2.1', [
           'Example: Arithmetic Operations for Rational Numbers',
           'Abstraction Barriers',
@@ -112,7 +112,7 @@ export const chapters: Chapter[] = [
         id: '2.2',
         title: 'Hierarchical Data and the Closure Property',
         blurb: 'Pairs that hold pairs: lists, trees, and sequence operations as a shared interface between program parts.',
-        exercises: null,
+        exercises: [17, 52],
         subsections: subs('2.2', [
           'Representing Sequences',
           'Hierarchical Structures',
@@ -124,7 +124,7 @@ export const chapters: Chapter[] = [
         id: '2.3',
         title: 'Symbolic Data',
         blurb: 'Strings as symbols: differentiation of expressions, sets in three representations, and Huffman codes.',
-        exercises: null,
+        exercises: [53, 72],
         subsections: subs('2.3', [
           'Strings',
           'Example: Symbolic Differentiation',
@@ -136,7 +136,7 @@ export const chapters: Chapter[] = [
         id: '2.4',
         title: 'Multiple Representations for Abstract Data',
         blurb: 'Two representations of complex numbers living side by side, kept apart by type tags and dispatch tables.',
-        exercises: null,
+        exercises: [73, 76],
         subsections: subs('2.4', [
           'Representations for Complex Numbers',
           'Tagged data',
@@ -147,7 +147,7 @@ export const chapters: Chapter[] = [
         id: '2.5',
         title: 'Systems with Generic Operations',
         blurb: 'One arithmetic package over many kinds of number, with coercion between types and polynomials on top.',
-        exercises: null,
+        exercises: [77, 97],
         subsections: subs('2.5', [
           'Generic Arithmetic Operations',
           'Combining Data of Different Types',

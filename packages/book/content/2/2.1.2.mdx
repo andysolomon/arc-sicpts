@@ -1,0 +1,64 @@
+import { ratAccessReductionProgram, ratLayersProgram } from '@sicp/lab';
+
+<Prose>
+
+Before continuing with more examples of compound data, consider some of the issues the rational-number example raises. We defined the rational-number operations in terms of a constructor `make_rat` and selectors `numer` and `denom`. In general, the idea of data abstraction is to identify for each type of data object a basic set of operations in terms of which all manipulations of that type will be expressed, and then to use only those operations in manipulating the data.
+
+The rational-number system therefore has a structure in levels. Programs that use rational numbers manipulate them solely through the functions supplied "for public use" by the package: `add_rat`, `sub_rat`, `mul_rat`, `div_rat` and `equal_rat`. These in turn are implemented solely in terms of `make_rat`, `numer` and `denom`, which are implemented in terms of pairs. How pairs themselves are implemented is irrelevant to the rest of the package, so long as they can be manipulated with `pair`, `head` and `tail`. The functions at each level are the interfaces that define the *abstraction barriers* between levels, and connect them.
+
+</Prose>
+
+<LayersDiagram source={ratLayersProgram} caption={<p>The rational-number package as layers, drawn from a small program that uses it. The program above the top barrier sees only <code>add_rat</code>, <code>mul_rat</code> and <code>equal_rat</code>; they see only <code>make_rat</code>, <code>numer</code> and <code>denom</code>; and only those three know that a rational number is a pair.</p>} />
+
+<Prose>
+
+This simple idea has many advantages. One is that it makes programs much easier to maintain and to modify. Any complex data structure can be represented in a variety of ways with the primitive data structures a language provides. The choice of representation influences the programs that operate on it, so if the representation changes later, all such programs might have to change with it. In a large program that is time-consuming and expensive, unless the dependence on the representation has been confined by design to a very few program modules.
+
+For example, another way to reduce rational numbers to lowest terms is to reduce whenever we access the parts of a rational number, rather than when we construct it. That gives a different constructor and different selectors.
+
+</Prose>
+
+<Example index={0} file="reduce_on_access.sicp" source={ratAccessReductionProgram} anim="pairs">
+
+The pair stored for `two_thirds` is 6 and 9: nothing was reduced when it was made. Yet `print_rat` shows 2 / 3, because `numer` and `denom` divide by the greatest common divisor every time they are asked. `add_rat`, `equal_rat` and `print_rat` are exactly the functions of §2.1.1; only the three functions below the barrier changed.
+
+</Example>
+
+<Prose>
+
+The difference between the two implementations lies in when `gcd` is computed. If a typical use of rational numbers accesses the numerator and denominator of the same rational number many times, it is better to compute `gcd` once, when the number is constructed. If not, it may be better to wait until access time. Either way, `add_rat`, `sub_rat` and the rest need not change at all.
+
+Constraining the dependence on the representation to a few interface functions helps us design programs as well as modify them, because it keeps open the choice between alternative implementations. Suppose we are designing a rational-number package and cannot decide at first whether to perform the `gcd` at construction time or at selection time. The data-abstraction methodology lets us defer that decision without losing the ability to make progress on the rest of the system.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-2/dataAbstraction.ts">
+
+The layers figure is drawn by `diagrams/LayersDiagram.tsx` from the parsed text of `ratLayersProgram`: each function sits one row below the highest function that calls it, and whatever no declaration in the program defines falls to the row of primitives. The test `chapter-2/dataAbstraction.test.ts` asserts that the program behind the figure runs and finds 1/3 + 1/3 equal to 2 · 1/3, and that with reduction at access time `two_thirds` is stored as `[6, 9]` yet prints `"2 / 3"` and is `equal_rat` to `make_rat(2, 3)`.
+
+</UnderTheHood>
+
+<Exercises range="2.2 – 2.3" total={2}>
+<Exercise id="2.2">
+
+Consider the problem of representing line segments in a plane. Each segment is represented as a pair of points: a starting point and an ending point. Declare a constructor `make_segment` and selectors `start_segment` and `end_segment` that define the representation of segments in terms of points. Furthermore, a point can be represented as a pair of numbers: the *x* coordinate and the *y* coordinate. Accordingly, specify a constructor `make_point` and selectors `x_point` and `y_point` that define this representation. Finally, using your selectors and constructors, declare a function `midpoint_segment` that takes a line segment as argument and returns its midpoint, the point whose coordinates are the average of the coordinates of the endpoints. The function `print_point` in the starter prints a point.
+
+<Solution>
+
+**Solution.** Both representations are a `pair` and two selectors, `head` and `tail`. `midpoint_segment` uses only the segment selectors to find the endpoints and only the point constructor and selectors to make the midpoint. It never mentions `pair`, `head` or `tail`, so it would survive a change to either representation.
+
+</Solution>
+</Exercise>
+<Exercise id="2.3">
+
+Implement a representation for rectangles in a plane, with sides parallel to the axes. (Hint: you may want to make use of Exercise 2.2.) In terms of your constructors and selectors, create functions that compute the perimeter and the area of a given rectangle. Now implement a different representation for rectangles. Can you design your system with suitable abstraction barriers, so that the same perimeter and area functions will work using either representation? In the starter, write `perimeter` and `area` in terms of `width_rect` and `height_rect` alone, then give two representations whose selectors agree.
+
+<Solution>
+
+**Solution.** The barrier is the pair of selectors `width_rect` and `height_rect`. `perimeter` is 2(*w* + *h*) and `area` is *w* · *h*, and neither looks inside a rectangle. Representation 1 stores two opposite corners, so its selectors take the absolute difference of their coordinates; representation 2 stores a corner and a pair of the width and height, so its selectors simply read them. To switch representations, rename the second set to `make_rect`, `width_rect` and `height_rect`: `perimeter` and `area` do not change. Section 2.4 shows how both representations can even live in one program at once.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['2.1.3', { id: '2.4.1', label: 'Two representations for complex numbers' }, { id: '2.4.2', label: 'Tagged data' }]} />

@@ -110,3 +110,11 @@ export {
   newtonProgram,
   transformProgram,
 } from './chapter-1/returnedValues.ts';
+
+export * from './chapter-2/dataAbstraction.ts';
+export * from './chapter-2/sequences.ts';
+export * from './chapter-2/pictures.ts';
+export * from './chapter-2/symbolicData.ts';
+export * from './chapter-2/multipleRepresentations.ts';
+export * from './chapter-2/genericArithmetic.ts';
+export * from './chapter-2/symbolicAlgebra.ts';

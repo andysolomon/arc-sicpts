@@ -1,0 +1,123 @@
+import { complexPackagePrelude, complexPackageProgram, genericBaseDefinitions, javascriptNumberProgram, rationalPackageProgram } from '@sicp/lab';
+
+<Prose>
+
+The previous section showed how to design systems in which data objects can be represented in more than one way. The key idea was to link the code that specifies the data operations to the several representations by means of generic interface functions. Now we use the same idea to define operations that are generic not only over different representations but also over different kinds of arguments. We already have several packages of arithmetic operations: the primitive arithmetic (`+`, `-`, `*`, `/`) of the language, the rational-number arithmetic (`add_rat`, `sub_rat`, `mul_rat`, `div_rat`) of §2.1.1, and the complex-number arithmetic of §2.4.3. We will use data-directed techniques to build one package of arithmetic operations that incorporates all of them.
+
+The system has several abstraction barriers. To someone using "numbers" there is a single function `add` that operates on whatever numbers are supplied. `add` is part of a generic interface that lets programs reach the ordinary, rational and complex packages uniformly. Any one package, such as the complex package, may itself be reached through generic functions (such as `add_complex`) that combine packages designed for different representations (rectangular and polar). And the structure is additive: the individual packages can be designed separately and then combined into one generic arithmetic system.
+
+We would like a generic addition `add` that acts like `+` on ordinary numbers, like `add_rat` on rational numbers and like `add_complex` on complex numbers. We get it by the strategy of §2.4.3: attach a type tag to each kind of number, and have the generic function dispatch to the right package according to the types of its arguments.
+
+```js
+function add(x, y) { return apply_generic("add", list(x, y)); }
+
+function sub(x, y) { return apply_generic("sub", list(x, y)); }
+
+function mul(x, y) { return apply_generic("mul", list(x, y)); }
+
+function div(x, y) { return apply_generic("div", list(x, y)); }
+```
+
+The first package handles *ordinary* numbers, the primitive numbers of the language, tagged with the string `"javascript_number"`. Its operations are the primitive arithmetic operations, so there is nothing new to define for the untagged numbers. Since each operation takes two arguments, each is installed in the table under the list `list("javascript_number", "javascript_number")`. Users of the package make tagged ordinary numbers with `make_javascript_number`.
+
+The Laboratory has no operation table built in, so the program below declares one, together with everything else §2.4 provided: `put` and `get` keep a list of entries in a `let` and compare types with `equal`; `attach_tag`, `type_tag` and `contents` are those of §2.4.2; and `apply_generic` is that of §2.4.3. Source has no way to spread a list into arguments, so `apply` takes the list apart by hand.
+
+</Prose>
+
+<Example index={0} file="javascript_number.sicp" source={javascriptNumberProgram} anim="pairs">
+
+Three and four go in as tagged numbers and seven comes out the same way: `seven` is the pair of the tag `"javascript_number"` and the number 7. `add` never looks at the 3 or the 4. It hands both to `apply_generic`, which finds the method under `"add"` and the types `list("javascript_number", "javascript_number")`, strips the tags, and applies it.
+
+</Example>
+
+<Prose>
+
+With the framework in place, new kinds of number are easy to include. Here is a package for rational arithmetic. As a benefit of additivity, the rational-number code of §2.1.1 is used without modification as the package's internal functions; only the interface at the bottom is new.
+
+</Prose>
+
+<Example index={1} file="rational_package.sicp" source={rationalPackageProgram} prelude={genericBaseDefinitions} anim="pairs">
+
+The table, the tags, `apply_generic`, and `add`, `sub`, `mul` and `div` are predefined here, exactly as in the previous example. Installing the package adds five entries to the table and changes nothing else. A rational number is the tag `"rational"` on the pair of §2.1.1: `one_half` is `pair("rational", pair(1, 2))`, and the sum ½ + ⅓ is ⅚.
+
+</Example>
+
+<Prose>
+
+A similar package handles complex numbers, with the tag `"complex"`. In creating it, we extract from the table the operations `make_from_real_imag` and `make_from_mag_ang` defined by the rectangular and polar packages. Additivity lets us use, as the internal operations, the same `add_complex`, `sub_complex`, `mul_complex` and `div_complex` as §2.4.1. Programs outside the package construct complex numbers with `make_complex_from_real_imag` or `make_complex_from_mag_ang`; notice how the constructors, defined in the rectangular and polar packages, are exported to the complex package and from there to the outside world.
+
+What we have here is a *two-level* tag system. A typical complex number such as 3 + 4*i* in rectangular form carries two tags. The outer tag, `"complex"`, directs the number to the complex package. Once within it, the next tag, `"rectangular"`, directs it to the rectangular package. In a large and complicated system there might be many levels, each interfaced with the next by generic operations. As a datum is passed "downward", the outer tag used to direct it is stripped off by `contents`, and the next tag, if any, becomes visible for further dispatching.
+
+</Prose>
+
+<Example index={2} file="complex_package.sicp" source={complexPackageProgram} prelude={complexPackagePrelude} anim="pairs">
+
+The prelude holds the base of the first example and the rectangular and polar packages of §2.4.3, installed, with the generic selectors `real_part`, `imag_part`, `magnitude` and `angle`. The first diagram is the book's figure 2.24: `z` is `"complex"` on `"rectangular"` on the pair of 3 and 4. `mul_complex` multiplies magnitudes and adds angles, so `z` times `z` comes back from the polar package: magnitude 25, angle 1.8546 radians.
+
+</Example>
+
+<Prose>
+
+In these packages we used `add_rat`, `add_complex` and the other arithmetic functions exactly as originally written. Once these declarations are internal to different installation functions, however, they no longer need names that are distinct from each other: we could simply call them `add`, `sub`, `mul` and `div` in both packages.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-2/genericArithmetic.ts">
+
+The system is ordinary Source code, split into strings that the examples and the exercises' preludes put together: `operationTableDefinitions` for `put` and `get`, `typeTagDefinitions`, `applyGenericDefinition`, and one string per package. The test `chapter-2/genericArithmetic.test.ts` asserts that `seven` is `["javascript_number", 7]`, that ½ + ⅓ is `["rational", [5, 6]]`, that `z` is `["complex", ["rectangular", [3, 4]]]` and its square is polar with magnitude 25, and that `magnitude(z)` fails with "no method" on `list("complex")` until the four lines of Exercise 2.77 are added, after which it is 5.
+
+</UnderTheHood>
+
+<Exercises range="2.77 – 2.80" total={4}>
+<Exercise id="2.77">
+
+Louis Reasoner tries to evaluate `magnitude(z)` where `z` is the object of figure 2.24. To his surprise, instead of the answer 5 he gets an error message from `apply_generic`, saying there is no method for the operation `magnitude` on the types `list("complex")`. He shows this interaction to Alyssa P. Hacker, who says "The problem is that the complex-number selectors were never defined for `"complex"` numbers, just for `"polar"` and `"rectangular"` numbers. All you have to do to make this work is add the following to the `complex` package:"
+
+```js
+put("real_part", list("complex"), real_part);
+put("imag_part", list("complex"), imag_part);
+put("magnitude", list("complex"), magnitude);
+put("angle",     list("complex"), angle);
+```
+
+Describe in detail why this works. As an example, trace through all the functions called in evaluating `magnitude(z)`. In particular, how many times is `apply_generic` invoked? What function is dispatched to in each case? In the starter, add Alyssa's lines, set `apply_generic_calls` to your count, and set `dispatched_on` to the list of type tags the invocations dispatch on, in order. The checker counts the invocations too.
+
+<Solution>
+
+**Solution.** The selectors installed for `"complex"` are the generic selectors themselves. `magnitude(z)` calls `apply_generic("magnitude", list(z))`, which sees the tag `"complex"`, finds `magnitude` in the table, strips the outer tag and applies `magnitude` to `pair("rectangular", pair(3, 4))`. That is the second invocation, `apply_generic("magnitude", …)` on the tag `"rectangular"`, which finds the rectangular package's internal `magnitude` and applies it to `pair(3, 4)`: √(3² + 4²) = 5. So `apply_generic` is invoked twice, dispatching first on `"complex"` (to the generic `magnitude`) and then on `"rectangular"` (to the package's own). Each level of tag costs one dispatch, which is the two-level tag system at work.
+
+</Solution>
+</Exercise>
+<Exercise id="2.78">
+
+The internal functions in the `javascript_number` package are essentially nothing more than calls to the primitive functions `+`, `-` and so on. It was not possible to use the primitives directly because our type-tag system requires every data object to have a type attached to it. In fact, however, all JavaScript implementations do have a type system, which they use internally. Primitive predicates such as `is_string` and `is_number` determine whether data objects have particular types. Modify the definitions of `type_tag`, `contents` and `attach_tag` from §2.4.2 so that our generic system takes advantage of JavaScript's internal type system. That is to say, the system should work as before except that ordinary numbers should be represented simply as JavaScript numbers rather than as pairs whose `head` is the string `"javascript_number"`.
+
+<Solution>
+
+**Solution.** `type_tag` answers `"javascript_number"` for anything `is_number` accepts, and the head of the pair otherwise; `contents` returns a number itself; and `attach_tag` leaves a number alone when the tag is `"javascript_number"`. Nothing else changes: the package's `tag` is still called, it just no longer builds a pair, so `add(3, 4)` is the plain number 7. The exercises that follow use the system in this form.
+
+</Solution>
+</Exercise>
+<Exercise id="2.79">
+
+Define a generic equality predicate `is_equal` that tests the equality of two numbers, and install it in the generic arithmetic package. This operation should work for ordinary numbers, rational numbers and complex numbers.
+
+<Solution>
+
+**Solution.** Each type gets its own method. Ordinary numbers compare with `===`. Rational numbers *n*₁/*d*₁ and *n*₂/*d*₂ are equal when *n*₁*d*₂ = *n*₂*d*₁. Complex numbers are equal when their real parts and their imaginary parts are; the method uses the generic selectors, so it compares a rectangular and a polar number correctly, where comparing their contents with `equal` would not.
+
+</Solution>
+</Exercise>
+<Exercise id="2.80">
+
+Define a generic predicate `is_equal_to_zero` that tests if its argument is zero, and install it in the generic arithmetic package. This operation should work for ordinary numbers, rational numbers and complex numbers.
+
+<Solution>
+
+**Solution.** An ordinary number is zero when it is `=== 0`, a rational number when its numerator is 0, and a complex number when its magnitude is 0. Testing only the real part would call 0 + *i* zero, and the magnitude test works whichever representation the number has: a polar number of magnitude 0 is zero whatever its angle.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['2.5.2', { id: '2.5.3', label: 'Polynomials as one more kind of number' }, { id: '3.3.3', label: 'Tables, built properly' }]} />

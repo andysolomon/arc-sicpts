@@ -1,0 +1,65 @@
+import { dispatchProgram, taggedComplexDefinitions, taggedComplexProgram, taggedLayersProgram, typeTagProgram } from '@sicp/lab';
+
+<Prose>
+
+One way to view data abstraction is as an application of the *principle of least commitment*. The barrier formed by the selectors and constructors let us defer the choice between Ben's representation and Alyssa's to the last possible moment, and so keep the most flexibility in the design.
+
+The principle can be carried further. If we like, we can keep the ambiguity of representation even *after* the selectors and constructors are designed, and use Ben's representation *and* Alyssa's. Then we need a way to tell polar data from rectangular data. Asked for the `magnitude` of the pair (3, 4), we could not otherwise say whether to answer 5 (reading the pair as rectangular) or 3 (reading it as polar). A straightforward way to make the distinction is to include a *type tag*, the string `"rectangular"` or `"polar"`, as part of each complex number, and to use the tag to decide which selector to apply.
+
+We need a function `attach_tag` that takes a tag and contents and produces a tagged data object, and functions `type_tag` and `contents` that take it apart again. Ordinary list structure will do: the tag is the head, the contents the tail.
+
+</Prose>
+
+<Example index={0} file="type_tags.sicp" source={typeTagProgram} anim="pairs">
+
+The same pair (3, 4), tagged two ways. Each tagged datum is one more pair whose head is the tag; below it hangs the untagged pair that Ben's or Alyssa's code expects. `contents` strips the tag off, and `type_tag` says which code to give the contents to.
+
+</Example>
+
+<Prose>
+
+With `type_tag` we define the predicates `is_rectangular` and `is_polar`, which compare the tag with `"rectangular"` and `"polar"`. Ben and Alyssa now change their code so that the two representations can coexist. Whenever Ben constructs a complex number he tags it as rectangular, and whenever Alyssa constructs one she tags it as polar. They must also make sure that the names of their functions do not conflict, since one program has room for only one `real_part`. One way is for Ben to append the suffix `rectangular` to the name of each of his functions and for Alyssa to append `polar` to hers.
+
+Each generic selector is then a function that checks the tag of its argument and calls the appropriate function for that type. To find the real part, `real_part` looks at the tag to decide between Ben's `real_part_rectangular` and Alyssa's `real_part_polar`; either way it uses `contents` to extract the bare, untagged datum and passes that on. The arithmetic functions `add_complex` and the rest are those of §2.4.1, unchanged, because the selectors they call are generic and work with either representation. Finally we must choose which representation to construct, and a reasonable choice is rectangular numbers whenever we have real and imaginary parts and polar numbers whenever we have magnitudes and angles.
+
+</Prose>
+
+<Example index={1} file="tagged_complex.sicp" source={taggedComplexProgram} anim="complex-plane">
+
+3 + *i* is made from its real and imaginary parts, so it is Ben's, tagged `"rectangular"`; 1 + *i* is made from magnitude √2 and angle π/4, so it is Alyssa's, tagged `"polar"`. The two kinds meet in `add_complex` and `mul_complex`, and the plane is the one §2.4.1 drew. The sum comes out rectangular and the product polar, because each arithmetic function chooses its constructor.
+
+</Example>
+
+<Prose>
+
+The system now has three relatively independent parts: the complex-arithmetic operations, Alyssa's polar implementation and Ben's rectangular implementation. The two implementations could have been written by Ben and Alyssa working separately, and either can serve a third programmer who writes the arithmetic in terms of the abstract constructor-and-selector interface. The layers below are drawn from a program that uses the whole system: the arithmetic on top, the generic selectors below it, and underneath them, side by side, the two representations.
+
+</Prose>
+
+<LayersDiagram source={taggedLayersProgram} caption={<p>The complex-number system of figure 2.21, drawn from the declarations it uses. <code>add_complex</code> and <code>mul_complex</code> see only the generic <code>real_part</code>, <code>magnitude</code> and the rest; only those look at the tag; and only Ben's functions, suffixed <code>rectangular</code>, and Alyssa's, suffixed <code>polar</code>, know what is inside a pair.</p>} />
+
+<Prose>
+
+Because each data object is tagged with its type, the selectors operate on the data *generically*: each selector's behaviour depends on the type of data it is applied to. Notice the mechanism that joins the separate representations. Within Alyssa's package a complex number is an untyped pair (magnitude, angle). When a generic selector meets a number of type `"polar"`, it strips off the tag and passes the contents on to Alyssa's code. Conversely, when Alyssa constructs a number for general use, she tags it, so that the higher-level functions can recognise it. The program below follows two real parts through the dispatch.
+
+</Prose>
+
+<Example index={2} file="dispatch.sicp" source={dispatchProgram} prelude={taggedComplexDefinitions} anim="calls">
+
+The tagging functions, Ben's and Alyssa's suffixed representations, the generic selectors and the two constructors of the program above are predefined here. `real_part(z1)` asks `is_rectangular`, which says yes, and hands the contents to `real_part_rectangular`. `real_part(z2)` is turned away by `is_rectangular`, accepted by `is_polar`, and handed to `real_part_polar`, which computes 2 · cos 0 from Alyssa's magnitude and angle. Each call to `contents` is the tag coming off on the way down.
+
+</Example>
+
+<Prose>
+
+This discipline of stripping off and attaching tags as data objects pass from level to level is an important organisational strategy, as §2.5 will show. It also has weaknesses, and §2.4.3 starts from them.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-2/multipleRepresentations.ts">
+
+Nothing in the Laboratory knows about tags: a tagged datum is an ordinary pair, and dispatch is an ordinary conditional. The layers figure is `diagrams/LayersDiagram.tsx` reading the declarations of `taggedLayersProgram`. The test `chapter-2/multipleRepresentations.test.ts` asserts that `contents(as_polar)` is `[3, 4]`, that 3 + *i* is stored as `["rectangular", [3, 1]]` and 1 + *i* as `["polar", [1.4142135623730951, 0.7853981633974483]]`, that their product is a polar number, and that `real_part(z1) + real_part(z2)` is 5 and calls both `real_part_rectangular` and `real_part_polar`.
+
+</UnderTheHood>
+
+<Enables items={['2.4.3', { id: '2.5.1', label: 'Tags passed from level to level' }]} />
