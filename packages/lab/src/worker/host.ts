@@ -1,5 +1,6 @@
 import { prepare } from '../evaluator/evaluate.ts';
 import { DEFAULT_BUDGET, type Machine } from '../evaluator/machine.ts';
+import type { Segment } from '../evaluator/primitives.ts';
 import { stringify } from '../evaluator/values.ts';
 import { createProcessShapeTracer } from '../inspect/processShape.ts';
 import { createStepTracer } from '../inspect/stepTrace.ts';
@@ -42,6 +43,9 @@ interface Job {
 }
 
 const TRACE_BUDGET = 20_000;
+
+/** Lines a single job may draw; a runaway painter stops being shown here. */
+export const MAX_SEGMENTS = 20_000;
 
 function defaultYield(): Promise<void> {
   // A message channel avoids the 4 ms clamp that nested timers get.
@@ -92,11 +96,26 @@ export function createLabHost(deps: HostDeps): LabHost {
     const started = now();
     const tracer = request.inspect?.processShape === true ? createProcessShapeTracer(source) : null;
 
+    // Lines are sent in batches, after each slice, rather than one message each.
+    let drawn = 0;
+    let batch: Segment[] = [];
+    const flush = (): void => {
+      if (batch.length === 0) return;
+      post({ type: 'draw', id, segments: batch });
+      batch = [];
+    };
+
     let machine: Machine;
     try {
       machine = prepare(source, {
         budget: request.budget ?? DEFAULT_BUDGET,
-        display: (text) => post({ type: 'display', id, text }),
+        display: (text) => {
+          flush();
+          post({ type: 'display', id, text });
+        },
+        draw: (segment) => {
+          if (drawn++ < MAX_SEGMENTS) batch.push(segment);
+        },
         ...(tracer !== null && { hooks: [tracer.hooks] }),
         ...(request.prelude !== undefined && { prelude: request.prelude }),
       }).machine;
@@ -107,6 +126,7 @@ export function createLabHost(deps: HostDeps): LabHost {
 
     let sent = 0;
     const finished = await drive(machine, job, () => {
+      flush();
       if (tracer !== null && tracer.version() !== sent) {
         sent = tracer.version();
         post({ type: 'shape', id, snapshot: tracer.snapshot() });
@@ -126,12 +146,16 @@ export function createLabHost(deps: HostDeps): LabHost {
     const { id, source } = request;
     const tracer = createStepTracer(source, request.maxRecords);
     const output: string[] = [];
+    const drawing: Segment[] = [];
     let outcome: TraceOutcome;
     try {
       const { machine } = prepare(source, {
         budget: request.budget ?? TRACE_BUDGET,
         hooks: [tracer.hooks],
         display: (text) => output.push(text),
+        draw: (segment) => {
+          if (drawing.length < MAX_SEGMENTS) drawing.push(segment);
+        },
         ...(request.prelude !== undefined && { prelude: request.prelude }),
       });
       // A trace is bounded by its small budget, so it runs in one go.
@@ -149,6 +173,7 @@ export function createLabHost(deps: HostDeps): LabHost {
       truncated: tracer.truncated(),
       outcome,
       output,
+      drawing,
     });
   }
 
@@ -190,6 +215,17 @@ export function createLabHost(deps: HostDeps): LabHost {
         return count <= test.atMost
           ? result(true, null)
           : result(false, `${test.call} applies ${test.fn} ${count} times; at most ${test.atMost} expected`);
+      }
+
+      if (test.kind === 'error') {
+        const failing = session.follow(`${test.call};`, { budget });
+        if (!(await drive(failing, job))) return 'cancelled';
+        if (failing.status === 'done') return result(false, `${test.call} is ${stringify(failing.value)}, but an error was expected`);
+        if (failing.status !== 'error') return result(false, describe(failing));
+        const message = failing.error?.message ?? '';
+        return test.message === undefined || message.includes(test.message)
+          ? result(true, null)
+          : result(false, `${test.call} stops with "${message}", not with an error about "${test.message}"`);
       }
 
       const expr = session.follow(`${test.expr};`, { budget });

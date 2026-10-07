@@ -26,7 +26,7 @@ export {
   type Primitive,
   type Value,
 } from './evaluator/values.ts';
-export { createGlobalEnvironment } from './evaluator/primitives.ts';
+export { createGlobalEnvironment, type Segment } from './evaluator/primitives.ts';
 export {
   createFrameIds,
   DEFAULT_BUDGET,

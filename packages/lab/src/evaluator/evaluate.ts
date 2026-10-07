@@ -4,7 +4,7 @@ import type { Program } from '../syntax/ast.ts';
 import type { Environment } from './environment.ts';
 import { library } from './library.ts';
 import { createFrameIds, Machine, type FrameIds, type MachineHooks } from './machine.ts';
-import { createGlobalEnvironment } from './primitives.ts';
+import { createGlobalEnvironment, type Segment } from './primitives.ts';
 import { stringify, type Value } from './values.ts';
 
 export interface PrepareOptions {
@@ -12,6 +12,8 @@ export interface PrepareOptions {
   hooks?: readonly MachineHooks[];
   /** Receives each line written by `display`. */
   display?: (text: string) => void;
+  /** Receives each line drawn by `draw_line`. */
+  draw?: (segment: Segment) => void;
   /** Source evaluated first, in a frame the program can see but not disturb. */
   prelude?: string;
 }
@@ -38,9 +40,12 @@ function declarations(program: Program, parent: Environment, id: 'library' | 'pr
 }
 
 /** The global frame of primitives with the library frame on top: where every program starts. */
-export function createLibraryEnvironment(display: (text: string) => void = () => {}): Environment {
+export function createLibraryEnvironment(
+  display: (text: string) => void = () => {},
+  draw?: (segment: Segment) => void,
+): Environment {
   libraryProgram ??= parse(library);
-  return declarations(libraryProgram, createGlobalEnvironment(display), 'library');
+  return declarations(libraryProgram, createGlobalEnvironment(display, draw), 'library');
 }
 
 /**
@@ -52,7 +57,7 @@ export function createLibraryEnvironment(display: (text: string) => void = () =>
 export function prepare(source: string, options: PrepareOptions = {}): Session {
   const program = parse(source);
   const frameIds = createFrameIds();
-  let parent = createLibraryEnvironment(options.display);
+  let parent = createLibraryEnvironment(options.display, options.draw);
   if (options.prelude !== undefined) parent = declarations(parse(options.prelude), parent, 'prelude');
 
   const machine = new Machine(program, {

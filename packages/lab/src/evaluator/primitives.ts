@@ -28,11 +28,17 @@ const MATH_UNARY = [
   'atan',
 ] as const;
 
+/** A line from (x1, y1) to (x2, y2), drawn by `draw_line` (§2.2.4). */
+export type Segment = [x1: number, y1: number, x2: number, y2: number];
+
 /**
  * The outermost frame: the primitive functions and constants every program can see.
- * `display` output is handed to the caller instead of being printed.
+ * `display` output and `draw_line` lines are handed to the caller instead of being shown.
  */
-export function createGlobalEnvironment(display: (text: string) => void): Environment {
+export function createGlobalEnvironment(
+  display: (text: string) => void,
+  draw: (segment: Segment) => void = () => {},
+): Environment {
   const env = extend(null, 'global', 'global');
 
   const primitive = (name: string, arity: number | null, impl: (...args: Value[]) => Value): void => {
@@ -87,6 +93,17 @@ export function createGlobalEnvironment(display: (text: string) => void): Enviro
   primitive('display_list', 1, (xs) => {
     display(listToString(xs));
     return xs;
+  });
+
+  // The picture language (§2.2.4): a vector is a pair of numbers, and the
+  // canvas is the unit square with its origin at the bottom left.
+  const point = (v: Value): [number, number] => {
+    if (isPair(v) && typeof v[0] === 'number' && typeof v[1] === 'number') return [v[0], v[1]];
+    return fail(`draw_line expects two vectors, pairs of numbers, got ${stringify(v)}`);
+  };
+  primitive('draw_line', 2, (start, end) => {
+    draw([...point(start), ...point(end)]);
+    return undefined;
   });
 
   return env;

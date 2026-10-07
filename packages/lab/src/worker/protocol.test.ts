@@ -165,6 +165,32 @@ describe('worker protocol', () => {
     expect(await client.submit({ type: 'run', source: '2;' }).finished).toMatchObject({ value: '2' });
   });
 
+  it('sends drawn lines in batches, flushed before any display that follows them', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const events: LabEvent[] = [];
+    const source = 'draw_line(pair(0, 0), pair(1, 1)); draw_line(pair(0, 1), pair(1, 0)); display("drawn"); draw_line(pair(0, 0), pair(0, 1));';
+    await client.submit({ type: 'run', source }, (e) => events.push(e)).finished;
+    expect(events.flatMap((e): unknown[] => (e.type === 'draw' ? [e.segments] : e.type === 'display' ? [e.text] : []))).toEqual([
+      [
+        [0, 0, 1, 1],
+        [0, 1, 1, 0],
+      ],
+      '"drawn"',
+      [[0, 0, 0, 1]],
+    ]);
+
+    const end = await client.submit({ type: 'trace', source }).finished;
+    if (end.type !== 'trace-done') throw new Error(end.type);
+    expect(end.drawing).toHaveLength(3);
+    expect(end.output).toEqual(['"drawn"']);
+  });
+
+  it('reports a vector that is not a pair of numbers', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const end = await client.submit({ type: 'run', source: 'draw_line(pair(0, 0), 1);' }).finished;
+    expect(end).toMatchObject({ type: 'error', error: { message: 'Line 1: draw_line expects two vectors, pairs of numbers, got 1' } });
+  });
+
   it('returns the full step log for the stepper', async () => {
     const client = new LabClient(() => inProcessWorker());
     const end = await client.submit({ type: 'trace', source: 'const square = x => x * x;\nsquare(4);' })
@@ -236,6 +262,27 @@ describe('worker protocol', () => {
       null,
       'expt(2, 32) applies expt 33 times; at most 12 expected',
       'expt(2, 4) never applies square',
+    ]);
+  });
+
+  it('checks that a call stops with an error', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const source = `function div(a, b) { return b === 0 ? error("division by zero:", a) : a / b; }`;
+    const end = await client.submit({
+      type: 'check',
+      source,
+      tests: [
+        { name: 'any error', kind: 'error', call: 'div(1, 0)' },
+        { name: 'the right error', kind: 'error', call: 'div(1, 0)', message: 'division by zero' },
+        { name: 'the wrong error', kind: 'error', call: 'div(1, 0)', message: 'overflow' },
+        { name: 'no error', kind: 'error', call: 'div(1, 2)' },
+      ],
+    }).finished;
+    expect(end.type === 'check-done' && end.results.map((r) => r.detail)).toEqual([
+      null,
+      null,
+      'div(1, 0) stops with "Line 1: division by zero: 1", not with an error about "overflow"',
+      'div(1, 2) is 0.5, but an error was expected',
     ]);
   });
 

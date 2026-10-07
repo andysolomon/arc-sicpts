@@ -17,7 +17,7 @@ The Laboratory is the TypeScript package `@sicp/lab`. The Book never evaluates c
 | `prepare(source, options?)` | Parses and returns a `Machine` without running it. |
 | `Machine.run(maxSteps?)` | Advances at most `maxSteps` steps and returns the status; `paused` means call again. |
 
-Options are `budget` (steps, default 100 000), `prelude` (source evaluated first in an enclosing frame), `display` (receives output lines) and `hooks`.
+Options are `budget` (steps, default 100 000), `prelude` (source evaluated first in an enclosing frame), `display` (receives output lines), `draw` (receives each line drawn by `draw_line`, as a `Segment` `[x1, y1, x2, y2]`) and `hooks`.
 
 ## Inspecting
 
@@ -36,9 +36,11 @@ Inspectors attach through `MachineHooks`: `onEval`, `onCall`, `onReturn`, `onRes
 | `createLabHost({ post })` | The worker side. Handles `run`, `trace`, `check` and `cancel` requests and posts events. Jobs run in slices so that a cancel can arrive between them. |
 | `LabClient` | The page side. `submit(params, onEvent)` returns a handle with `cancel()` and a `finished` promise that resolves with the terminal event. A worker that does not confirm a cancel is replaced. |
 
-Events for a run are `started`, then any number of `display` and `shape`, then exactly one of `done`, `error`, `budget-exhausted` or `cancelled`.
+Events for a run are `started`, then any number of `display`, `draw` and `shape`, then exactly one of `done`, `error`, `budget-exhausted` or `cancelled`.
 
-A `check` request runs an exercise's hidden tests, each on a fresh run of the submission. A `value` test compares an expression's value with the expected one. A `shape` test compares an answer with the measured kind of process, recursive or iterative. A `calls` test applies a function and bounds how many times a named function is applied along the way, which is how a check tells a logarithmic process from a linear one that computes the same values.
+A `trace` request returns the step log in one `trace-done` event, together with the program's output and everything it drew.
+
+A `check` request runs an exercise's hidden tests, each on a fresh run of the submission. A `value` test compares an expression's value with the expected one. A `shape` test compares an answer with the measured kind of process, recursive or iterative. A `calls` test applies a function and bounds how many times a named function is applied along the way, which is how a check tells a logarithmic process from a linear one that computes the same values. An `error` test passes when a call stops with an error, optionally one whose message contains given text, which is how a check confirms that a program refuses bad input.
 
 </Prose>
 
