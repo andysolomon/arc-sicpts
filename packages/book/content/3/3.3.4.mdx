@@ -1,4 +1,4 @@
-import { circuitAgendaProgram, fullAdderSimulationProgram, halfAdderSimulationProgram, halfAdderWiresProgram } from '@sicp/lab';
+import { circuitAgendaProgram, circuitSimulatorDefinitions, fullAdderSimulationRun, halfAdderSimulationRun, halfAdderWiresRun } from '@sicp/lab';
 
 <Prose>
 
@@ -189,13 +189,13 @@ function probe(name, wire) {
 }
 ```
 
-`display` takes a single argument here, so the message is assembled with `+` and `stringify`. Because `display` prints a string with its quotation marks, each line appears as a string, just as the REPL prints it in the book. Now the run: create the agenda, choose the delays (inverter 2, and-gate 3, or-gate 5), make four wires, probe the two outputs, build a half-adder, then set `input_1` to 1 and propagate, and finally set `input_2` to 1 and propagate again.
+`display` takes a single argument here, so the message is assembled with `+` and `stringify`. Because `display` prints a string with its quotation marks, each line appears as a string, just as the REPL prints it in the book. In the editors below, the whole simulator of this page is predefined: the queue, the agenda, wires, gates, adders, `probe` and `propagate`, with the agenda already made and the delays set (inverter 2, and-gate 3, or-gate 5). The editor shows only the run: make four wires, probe the two outputs, build a half-adder, then set `input_1` to 1 and propagate, and finally set `input_2` to 1 and propagate again.
 
 </Prose>
 
-<Example index={0} file="half_adder_simulation.sicp" source={halfAdderSimulationProgram} anim="circuit-timing">
+<Example index={0} file="half_adder_simulation.sicp" source={halfAdderSimulationRun} prelude={circuitSimulatorDefinitions} anim="circuit-timing">
 
-The run is at the bottom of the program, after the simulator. Each probe prints once when it is attached, at time 0. Setting `input_1` makes `sum` rise at time 8: the or-gate's 5 plus the last and-gate's 3. The second `propagate` starts at time 8; the carry rises 3 later, at 11, and its inverse travels on to pull `sum` down at 16, which is 1 + 1 = 10 in binary. Change the delays (they are declared just before `after_delay`) and watch the times move.
+Each probe prints once when it is attached, at time 0. Setting `input_1` makes `sum` rise at time 8: the or-gate's 5 plus the last and-gate's 3. The second `propagate` starts at time 8; the carry rises 3 later, at 11, and its inverse travels on to pull `sum` down at 16, which is 1 + 1 = 10 in binary. Add `set_signal(input_1, 0);` and a third `propagate();` at the end, and the diagram grows by the carry falling and the sum rising again.
 
 </Example>
 
@@ -205,7 +205,7 @@ The probes only show the outputs. Building the half-adder by hand, as in the fir
 
 </Prose>
 
-<Example index={1} file="half_adder_wires.sicp" source={halfAdderWiresProgram} anim="circuit-timing">
+<Example index={1} file="half_adder_wires.sicp" source={halfAdderWiresRun} prelude={circuitSimulatorDefinitions} anim="circuit-timing">
 
 Before any input changes, the first `propagate` lets the circuit settle: `e` becomes 1 at time 2, because the inverter's input `c` is 0. Then `a` rises at 5, `d` follows at 10, and `s` at 13. When `b` rises, `c` goes up 3 later, `e` drops 2 after that, and `s` falls at 21. Make the inverter slower, with `inverter_delay` set to 10, and see how much longer `s` shows the wrong sum after `b` rises.
 
@@ -217,7 +217,7 @@ A full-adder, adding 1 + 1 with a carry in of 1, should produce a sum of 1 and a
 
 </Prose>
 
-<Example index={2} file="full_adder_simulation.sicp" source={fullAdderSimulationProgram} anim="circuit-timing">
+<Example index={2} file="full_adder_simulation.sicp" source={fullAdderSimulationRun} prelude={circuitSimulatorDefinitions} anim="circuit-timing">
 
 At time 21, `sum` drops to 0 and comes back to 1 at the very same moment: two actions were due at 21, and the agenda ran them in the order they were scheduled. A real circuit could show a brief *glitch* there. Try other inputs by changing the three `set_signal` lines.
 
@@ -288,7 +288,7 @@ The agenda on its own, with the queue of §3.3.2 above it. Four actions are adde
 
 <UnderTheHood file="packages/lab/src/chapter-3/simulation.ts">
 
-The simulator lives in `chapter-3/simulation.ts` as separate strings of declarations (queue, agenda, wires, gates, adders, simulation), which every program on this page and the exercise checks put together. The timing diagrams come from the lines the probes print: the animation runs the program with a budget of two million steps and reads its output, keeping no step records. The test `chapter-3/simulation.test.ts` asserts that the sample run prints exactly the book's five lines, that a full-adder gets every row of its truth table right, and it checks the answers to Exercises 3.31 and 3.32 by running the changed simulators.
+The simulator lives in `chapter-3/simulation.ts` as separate strings of declarations (queue, agenda, wires, gates, adders, simulation), which the exercise checks put together as they need. The editors on this page get the whole simulator as a hidden prelude, evaluated in a frame of its own around the program, so they show only the circuit. The timing diagrams come from the lines the probes print: the animation runs the program with a budget of two million steps and reads its output, keeping no step records. The test `chapter-3/simulation.test.ts` asserts that the sample run prints exactly the book's five lines, that a full-adder gets every row of its truth table right, and it checks the answers to Exercises 3.31 and 3.32 by running the changed simulators.
 
 </UnderTheHood>
 

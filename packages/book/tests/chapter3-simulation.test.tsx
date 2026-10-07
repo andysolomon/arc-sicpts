@@ -1,5 +1,9 @@
 import {
   celsiusFahrenheitProgram,
+  celsiusFahrenheitRun,
+  circuitSimulatorDefinitions,
+  constraintSystemDefinitions,
+  halfAdderSimulationRun,
   constraintContradictionProgram,
   constraintNetworkProgram,
   createLabHost,
@@ -34,10 +38,10 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
 }
 
 /** The trace the scenes ask for: a budget large enough for a whole simulation, and one record. */
-function simulationTrace(source: string): Trace {
+function simulationTrace(source: string, prelude?: string): Trace {
   const events: LabEvent[] = [];
   const host = createLabHost({ post: (event) => events.push(event) });
-  host.handle({ type: 'trace', id: 1, source, budget: 2_000_000, maxRecords: 1 });
+  host.handle({ type: 'trace', id: 1, source, budget: 2_000_000, maxRecords: 1, ...(prelude !== undefined && { prelude }) });
   const done = events.find((event): event is Trace => event.type === 'trace-done');
   if (done === undefined) throw new Error('trace did not finish synchronously');
   return done;
@@ -126,8 +130,17 @@ describe('the circuit timing scene', () => {
     expect(screen.getByTestId('caption')).toHaveTextContent('Running the simulation…');
   });
 
+  it('prints the same run when the simulator is a hidden prelude, as on the page', () => {
+    expect(simulationTrace(halfAdderSimulationRun, circuitSimulatorDefinitions).output).toEqual(
+      simulationTrace(halfAdderSimulationProgram).output,
+    );
+    expect(simulationTrace(celsiusFahrenheitRun, constraintSystemDefinitions).output).toEqual(
+      simulationTrace(celsiusFahrenheitProgram).output,
+    );
+  });
+
   it('is registered under its kind', () => {
-    render(<Animation kind="circuit-timing" source={halfAdderSimulationProgram} />);
+    render(<Animation kind="circuit-timing" source={halfAdderSimulationRun} prelude={circuitSimulatorDefinitions} />);
     expect(screen.getByRole('region', { name: 'Signals over simulated time' })).toBeInTheDocument();
   });
 });

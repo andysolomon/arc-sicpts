@@ -1,4 +1,4 @@
-import { celsiusFahrenheitProgram, constraintContradictionProgram, constraintNetworkProgram } from '@sicp/lab';
+import { celsiusFahrenheitRun, constraintContradictionRun, constraintNetworkRun, constraintSystemDefinitions } from '@sicp/lab';
 
 <Prose>
 
@@ -47,13 +47,13 @@ If we now try to give `F` the value 212, the connector already holds 77 and comp
 
 </Prose>
 
-<Example index={0} file="celsius_fahrenheit.sicp" source={celsiusFahrenheitProgram} anim="constraint-network">
+<Example index={0} file="celsius_fahrenheit.sicp" source={celsiusFahrenheitRun} prelude={constraintSystemDefinitions} anim="constraint-network">
 
-The three statements at the bottom are the whole session. The same network converts both ways; nothing in `celsius_fahrenheit_converter` says which connector is the input. Only `C` and `F` carry probes, so only they light up; the inner connectors are worked out but not reported. Add `forget_value(F, "user");` and then `set_value(F, -40, "user");` at the end: the one temperature that reads the same on both scales.
+The constraint system of this page (connectors, `adder`, `multiplier`, `constant` and `probe`) is predefined, so the editor holds only the converter and the session. The same network converts both ways; nothing in `celsius_fahrenheit_converter` says which connector is the input. Only `C` and `F` carry probes, so only they light up; the inner connectors are worked out but not reported. Add `forget_value(F, "user");` and then `set_value(F, -40, "user");` at the end: the one temperature that reads the same on both scales.
 
 </Example>
 
-<Example index={1} file="contradiction.sicp" source={constraintContradictionProgram} anim="constraint-network">
+<Example index={1} file="contradiction.sicp" source={constraintContradictionRun} prelude={constraintSystemDefinitions} anim="constraint-network">
 
 Here `F` is set while `C` still determines it. The connector holds 77 and is offered 212, so `set_my_value` signals an error naming both values. Add `forget_value(C, "user");` before the last line and the error goes away.
 
@@ -170,7 +170,7 @@ To see the propagation in full, the last program builds the converter's network 
 
 </Prose>
 
-<Example index={2} file="constraint_network.sicp" source={constraintNetworkProgram} anim="constraint-network">
+<Example index={2} file="constraint_network.sicp" source={constraintNetworkRun} prelude={constraintSystemDefinitions} anim="constraint-network">
 
 The constants report first, as they are created. Then `C` = 25 travels through `u` and `v` to `F`, but the probe on `C` speaks *last*: the connector informs its constraints in the order of its list, and the multiplier was connected after the probe, so it sits in front. Forgetting `C` empties `F`, `v` and `u`, while `w`, `x` and `y` keep their values, because no one asked their constants to retract. Setting `F` then runs the same chain backwards.
 

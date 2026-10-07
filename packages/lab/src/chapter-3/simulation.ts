@@ -348,8 +348,7 @@ export const halfAdderSimulationProgram = `${circuitSimulatorDefinitions}
 ${halfAdderSimulationRun}`;
 
 /** The half-adder of Figure 3.25 wired by hand, with a probe on every one of its six wires. */
-export const halfAdderWiresProgram = `${circuitSimulatorDefinitions}
-const a = make_wire();
+export const halfAdderWiresRun = `const a = make_wire();
 const b = make_wire();
 const c = make_wire();
 const d = make_wire();
@@ -377,9 +376,11 @@ set_signal(b, 1);
 propagate();
 `;
 
+export const halfAdderWiresProgram = `${circuitSimulatorDefinitions}
+${halfAdderWiresRun}`;
+
 /** A full-adder adding 1 + 1 with a carry in of 1. */
-export const fullAdderSimulationProgram = `${circuitSimulatorDefinitions}
-const a = make_wire();
+export const fullAdderSimulationRun = `const a = make_wire();
 const b = make_wire();
 const c_in = make_wire();
 const sum = make_wire();
@@ -399,6 +400,9 @@ set_signal(b, 1);
 set_signal(c_in, 1);
 propagate();
 `;
+
+export const fullAdderSimulationProgram = `${circuitSimulatorDefinitions}
+${fullAdderSimulationRun}`;
 
 /** The agenda on its own: actions scheduled out of order run in order of time, and in order of scheduling within a time. */
 export const circuitAgendaProgram = `${circuitQueueDefinitions}
@@ -643,8 +647,7 @@ export const celsiusFahrenheitDefinition = `function celsius_fahrenheit_converte
 `;
 
 /** The book's run: set C to 25, forget it, then set F to 212. */
-export const celsiusFahrenheitProgram = `${constraintSystemDefinitions}
-${celsiusFahrenheitDefinition}
+export const celsiusFahrenheitRun = `${celsiusFahrenheitDefinition}
 const C = make_connector();
 const F = make_connector();
 celsius_fahrenheit_converter(C, F);
@@ -657,9 +660,11 @@ forget_value(C, "user");
 set_value(F, 212, "user");
 `;
 
+export const celsiusFahrenheitProgram = `${constraintSystemDefinitions}
+${celsiusFahrenheitRun}`;
+
 /** Setting F while C still holds 25 contradicts the 77 the network computed. */
-export const constraintContradictionProgram = `${constraintSystemDefinitions}
-${celsiusFahrenheitDefinition}
+export const constraintContradictionRun = `${celsiusFahrenheitDefinition}
 const C = make_connector();
 const F = make_connector();
 celsius_fahrenheit_converter(C, F);
@@ -671,9 +676,11 @@ set_value(C, 25, "user");
 set_value(F, 212, "user");
 `;
 
+export const constraintContradictionProgram = `${constraintSystemDefinitions}
+${constraintContradictionRun}`;
+
 /** The converter's network built at the top level, so that every connector can carry a probe. */
-export const constraintNetworkProgram = `${constraintSystemDefinitions}
-const C = make_connector();
+export const constraintNetworkRun = `const C = make_connector();
 const F = make_connector();
 const u = make_connector();
 const v = make_connector();
@@ -700,3 +707,6 @@ set_value(C, 25, "user");
 forget_value(C, "user");
 set_value(F, 212, "user");
 `;
+
+export const constraintNetworkProgram = `${constraintSystemDefinitions}
+${constraintNetworkRun}`;
