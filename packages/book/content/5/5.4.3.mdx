@@ -1,0 +1,86 @@
+import { ecevalBlockProgram, ecevalControllerSource, ecevalMachineSource } from '@sicp/lab';
+
+<Prose>
+
+**Blocks.** The body of a block is evaluated with respect to the current environment extended by a frame that binds all local names to the value `"*unassigned*"`. We temporarily make use of the `val` register to hold the list of all names declared in the block, which is obtained by `scan_out_declarations`, the function of the metacircular evaluator that collects the names declared directly in a body. The functions `scan_out_declarations` and `list_of_unassigned` are assumed to be available as machine operations. (An actual implementation would scan out the names in a preprocessing step rather than each time a block is evaluated, in the same way as it would transform operator combinations before running the program.)
+
+```js
+"ev_block",
+  assign("comp", list(op("block_body"), reg("comp"))),
+  assign("val", list(op("scan_out_declarations"), reg("comp"))),
+  save("comp"),    // so we can use it to temporarily hold *unassigned* values
+  assign("comp", list(op("list_of_unassigned"), reg("val"))),
+  assign("env", list(op("extend_environment"),
+                     reg("val"), reg("comp"), reg("env"))),
+  restore("comp"), // the block body
+  go_to(label("eval_dispatch")),
+```
+
+**Assignments and declarations.** Assignments are handled by `ev_assignment`, reached from `eval_dispatch` with the assignment expression in `comp`. The code at `ev_assignment` first evaluates the value part of the expression and then installs the new value in the environment. The function `assign_symbol_value` is assumed to be available as a machine operation.
+
+```js
+"ev_assignment",
+  assign("unev", list(op("assignment_symbol"), reg("comp"))),
+  save("unev"), // save variable for later
+  assign("comp", list(op("assignment_value_expression"), reg("comp"))),
+  save("env"),
+  save("continue"),
+  assign("continue", label("ev_assignment_install")),
+  go_to(label("eval_dispatch")), // evaluate assignment value
+"ev_assignment_install",
+  restore("continue"),
+  restore("env"),
+  restore("unev"),
+  perform(list(op("assign_symbol_value"),
+               reg("unev"), reg("val"), reg("env"))),
+  go_to(reg("continue")),
+```
+
+Declarations of variables and constants are handled in a similar way. Note that whereas the value of an assignment is the value that was assigned, the value of a declaration is `undefined`. This is handled by setting `val` to `undefined` before continuing. As in the metacircular evaluator, we transform a function declaration into a constant declaration whose value expression is a lambda expression. This happens at `ev_function_declaration`, which makes the transformation in place in `comp` and falls through to `ev_declaration`.
+
+```js
+"ev_function_declaration",
+  assign("comp",
+         list(op("function_decl_to_constant_decl"), reg("comp"))),
+"ev_declaration",
+  assign("unev", list(op("declaration_symbol"), reg("comp"))),
+  save("unev"), // save declared name
+  assign("comp",
+         list(op("declaration_value_expression"), reg("comp"))),
+  save("env"),
+  save("continue"),
+  assign("continue", label("ev_declaration_assign")),
+  go_to(label("eval_dispatch")), // evaluate declaration value
+"ev_declaration_assign",
+  restore("continue"),
+  restore("env"),
+  restore("unev"),
+  perform(list(op("assign_symbol_value"),
+               reg("unev"), reg("val"), reg("env"))),
+  assign("val", constant(undefined)),
+  go_to(reg("continue")),
+```
+
+A declaration is evaluated as an assignment to a name that is already bound: the names were bound to `"*unassigned*"` when the block, the function body or the program around the declaration was entered, and `ev_declaration` only gives the name its value.
+
+</Prose>
+
+<Example index={0} file="block.sicp" source={ecevalBlockProgram} prelude={ecevalControllerSource + ecevalMachineSource} anim="machine">
+
+Three inputs. The first declares `x` in the program environment that the driver loop keeps from one input to the next. The second is a block that declares `y`: `ev_block` extends `env` with a frame for `y`, unassigned, before the body runs, and the assignment then changes `x` in the frame outside it. Its value, 3, is the value assigned. The third input finds `x` changed. Change the block to `{ let x = 2; x = x + 1; }`: the assignment then changes the block's own `x`, and the last input prints 1.
+
+</Example>
+
+<Prose>
+
+The book's two exercises here are not included. Exercise 5.25 extends the evaluator with `while` loops, which the language of this book does not have; exercise 5.26 makes the evaluator use normal-order evaluation, based on the lazy evaluator of chapter 4, a major project.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-5/eceval.ts">
+
+The code blocks are the strings `ecevalBlock`, `ecevalAssignment` and `ecevalDeclaration` of `chapter-5/eceval.ts`. `scan_out_declarations`, `list_of_unassigned`, `extend_environment` and `assign_symbol_value` are in `machines/evaluatorSupport.ts`; frames are pairs of a list of names and a list of values, and assignment changes the value in the nearest frame that binds the name. The test `chapter-5/section-5-4.test.ts` asserts the three values the Example prints, and that with the block `{ let x = 2; x = x + 1; }` the last one is 1.
+
+</UnderTheHood>
+
+<Enables items={['5.4.4', { id: '5.5.2', label: 'Compiling blocks, assignments and declarations' }]} />

@@ -16,12 +16,31 @@ export interface Primitive {
   impl: (...args: Value[]) => Value;
   /** Set for the primitives the machine carries out itself, such as starting threads. */
   control?: 'concurrent_execute';
+  /**
+   * For primitives that apply another function, such as
+   * `apply_in_underlying_javascript`: the function and arguments to apply in
+   * their place. The machine applies them on its own stack, so the call stays
+   * visible to hooks and keeps its tail position. `impl` is used only when the
+   * primitive is called from outside a machine.
+   */
+  tailApply?: (...args: Value[]) => { fn: Value; args: Value[] };
 }
 
 /** Pairs are two-element arrays, as in Source. */
 export type Pair = [Value, Value];
 
-export type Value = number | string | boolean | null | undefined | Closure | Primitive | Pair;
+/**
+ * A place in a register machine's controller: what `label("after_fact")`
+ * evaluates to inside a machine (§5.2). Only `go_to` can use it.
+ */
+export interface Label {
+  tag: 'label';
+  name: string;
+  /** Index of the instruction the label marks, in the machine's instruction vector. */
+  at: number;
+}
+
+export type Value = number | string | boolean | null | undefined | Closure | Primitive | Pair | Label;
 
 export function isPair(value: Value): value is Pair {
   return Array.isArray(value);
@@ -35,11 +54,33 @@ export function isPrimitive(value: Value): value is Primitive {
   return typeof value === 'object' && value !== null && !Array.isArray(value) && value.tag === 'primitive';
 }
 
+export function isLabel(value: Value): value is Label {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && value.tag === 'label';
+}
+
 export function typeName(value: Value): string {
   if (value === null) return 'null';
   if (isPair(value)) return 'pair';
+  if (isLabel(value)) return 'label';
   if (typeof value === 'object') return 'function';
   return typeof value;
+}
+
+/** The elements of a list, or `null` when the value is not a proper list. */
+export function listToArray(value: Value): Value[] | null {
+  const items: Value[] = [];
+  let rest = value;
+  while (isPair(rest)) {
+    items.push(rest[0]);
+    rest = rest[1];
+  }
+  return rest === null ? items : null;
+}
+
+export function arrayToList(items: readonly Value[]): Value {
+  let list: Value = null;
+  for (let i = items.length - 1; i >= 0; i--) list = [items[i], list];
+  return list;
 }
 
 const MAX_NESTING = 64;
@@ -75,6 +116,7 @@ function write(value: Value, nesting: number, path: Set<Pair>, budget: Budget): 
     return text;
   }
   if (value.tag === 'closure') return `fn[${value.env.frame.id}]`;
+  if (value.tag === 'label') return `<label ${value.name}>`;
   return `primitive[${value.name}]`;
 }
 

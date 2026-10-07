@@ -1,0 +1,115 @@
+import { lexicalAddressingFramesProgram, lexicalAddressingSearchProgram } from '@sicp/lab';
+
+<Prose>
+
+One of the most common optimizations performed by compilers is the optimization of name lookup. Our compiler, as we have implemented it so far, generates code that uses the `lookup_symbol_value` operation of the evaluator machine. This searches for a name by comparing it with each name that is currently bound, working frame by frame outward through the runtime environment. This search can be expensive if the frames are deeply nested or if there are many names. For example, consider the problem of looking up the value of `x` while evaluating the expression `x * y * z` in an application of the function of five arguments that is returned by
+
+```js
+((x, y) =>
+   (a, b, c, d, e) =>
+     ((y, z) => x * y * z)(a * b * x, c + d + x))(3, 4)
+```
+
+Each time `lookup_symbol_value` searches for `x`, it must determine that the symbol `"x"` is not equal to `"y"` or `"z"` (in the first frame), nor to `"a"`, `"b"`, `"c"`, `"d"`, or `"e"` (in the second frame).
+
+</Prose>
+
+<Example index={0} file="nested.sicp" source={lexicalAddressingFramesProgram} anim="frames">
+
+The function of five arguments applied to 1, 2, 3, 4 and 5, so that `x * y * z` is evaluated. When it is, the innermost frame binds `y` and `z`, the frame around it `a` to `e`, and only the third binds `x`. Step to the lookup of `x` in `x * y * z` (step 19): it is found 2 frames out, the first name of its frame. That is so every time this body runs, whatever the arguments, because the frames follow the nesting of the lambda expressions in the text.
+
+</Example>
+
+<Prose>
+
+Because our language is lexically scoped, the runtime environment for any component will have a structure that parallels the lexical structure of the program in which the component appears. Thus, the compiler can know, when it analyzes the above expression, that each time the function is applied the binding for `x` in `x * y * z` will be found two frames out from the current frame and will be the first binding in that frame.
+
+We can exploit this fact by inventing a new kind of name-lookup operation, `lexical_address_lookup`, that takes as arguments an environment and a *lexical address* that consists of two numbers: a *frame number*, which specifies how many frames to pass over, and a *displacement number*, which specifies how many bindings to pass over in that frame. The operation `lexical_address_lookup` will produce the value of the name stored at that lexical address relative to the current environment. If we add the `lexical_address_lookup` operation to our machine, we can make the compiler generate code that references names using this operation, rather than `lookup_symbol_value`. Similarly, our compiled code can use a new `lexical_address_assign` operation instead of `assign_symbol_value`. With lexical addressing, there is no need to include any symbolic references to names in the object code, and frames do not need to include symbols at run time.
+
+</Prose>
+
+<Example index={1} file="search.sicp" source={lexicalAddressingSearchProgram}>
+
+The runtime environment at the moment `x * y * z` is evaluated, built with `extend_environment` as the evaluator builds it, and a function that counts the symbols `lookup_symbol_value` compares on its way: 8 to find `x`. A lexical address, (2, 0), would go straight to it. Try `comparisons("z", env)` and `comparisons("e", env)`.
+
+</Example>
+
+<Prose>
+
+In order to generate such code, the compiler must be able to determine the lexical address of a name it is about to compile a reference to. The lexical address of a name in a program depends on where one is in the code. For example, in the following program, the address of `x` in expression *e*₁ is (2, 0): two frames back and the first name in the frame. At that point `y` is at address (0, 0) and `c` is at address (1, 2). In expression *e*₂, `x` is at (1, 0), `y` is at (1, 1), and `c` is at (0, 2).
+
+```js
+((x, y) =>
+   (a, b, c, d, e) =>
+     ((y, z) => e₁)(e₂, c + d + x))(3, 4);
+```
+
+One way for the compiler to produce code that uses lexical addressing is to maintain a data structure called a *compile-time environment*. This keeps track of which bindings will be at which positions in which frames in the runtime environment when a particular name-access operation is executed. The compile-time environment is a list of frames, each containing a list of symbols. There will be no values associated with the symbols, since values are not computed at compile time. (Exercise 5.47 will change this, as an optimization for constants.) The compile-time environment becomes an additional argument to `compile` and is passed along to each code generator. The top-level call to `compile` uses a compile-time environment that includes the names of all primitive functions and primitive values. When the body of a lambda expression is compiled, `compile_lambda_body` extends the compile-time environment by a frame containing the function's parameters, so that the body is compiled with that extended environment. Similarly, when the body of a block is compiled, `compile_block` extends the compile-time environment by a frame containing the scanned-out local names of the body. At each point in the compilation, `compile_name` and `compile_assignment_declaration` use the compile-time environment in order to generate the appropriate lexical addresses.
+
+Exercises 5.42 through 5.45 describe how to complete this sketch of the lexical-addressing strategy in order to incorporate lexical lookup into the compiler. Exercises 5.46 and 5.47 describe other uses for the compile-time environment.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-5/section-5-5-5.ts">
+
+The frames are drawn from the Laboratory's own evaluator (`evaluator/machine.ts`), which extends the environment of a function's creation exactly as §4.1 does. The second editor uses the §4.1 environment operations of `machines/evaluatorSupport.ts`, where a frame is a pair of a list of symbols and a list of values, the representation `lookup_symbol_value` searches. The test `chapter-5/section-5-5-5.test.ts` asserts that the first program's value is 3 × 6 × 10 = 180, that `x` is found after 8 comparisons, and that compiling the nested lambda expression produces 15 instructions that call `lookup_symbol_value`, 3 of them for `x`, each of which lexical addressing would replace.
+
+</UnderTheHood>
+
+<Exercises range="5.42 – 5.47" total={6}>
+<Exercise id="5.42">
+
+Write a function `lexical_address_lookup` that implements the new lookup operation. It should take two arguments, a lexical address and a runtime environment, and return the value of the name stored at the specified lexical address. The function `lexical_address_lookup` should signal an error if the value of the name is the string `"*unassigned*"`. Also write a function `lexical_address_assign` that implements the operation that changes the value of the name at a specified lexical address.
+
+A lexical address is `list(frame_number, displacement_number)`. Environments are those of §4.1.3, made by `extend_environment`, and you can use `first_frame`, `enclosing_environment` and `frame_values`. The checker builds the environment of the example above with `e` still unassigned, looks up and assigns at several addresses, and checks that looking up `e` stops with an error.
+
+<Solution>
+
+**Solution.** Both operations find the same place: skip *frame number* frames with `enclosing_environment`, take the values of that frame, and skip *displacement number* values. The lookup takes the head of what remains, refusing `"*unassigned*"`; the assignment replaces that head with `set_head`, which changes the frame itself, so every function sharing the frame sees the new value.
+
+</Solution>
+</Exercise>
+<Exercise id="5.44">
+
+Write a function `find_symbol` that takes as arguments a symbol and a compile-time environment and returns the lexical address of the symbol with respect to that environment. For example, in the program fragment that is shown above, the compile-time environment during the compilation of expression *e*₁ is
+
+```js
+list(list("y", "z"),
+     list("a", "b", "c", "d", "e"),
+     list("x", "y"))
+```
+
+The function `find_symbol` should produce
+
+```js
+find_symbol("c", list(list("y", "z"),
+                      list("a", "b", "c", "d", "e"),
+                      list("x", "y")));
+// list(1, 2)
+
+find_symbol("x", list(list("y", "z"),
+                      list("a", "b", "c", "d", "e"),
+                      list("x", "y")));
+// list(2, 0)
+
+find_symbol("w", list(list("y", "z"),
+                      list("a", "b", "c", "d", "e"),
+                      list("x", "y")));
+// "not found"
+```
+
+<Solution>
+
+**Solution.** `search` walks the frames counting them, and `scan` walks the symbols of one frame counting the displacement; when a frame runs out, the search goes on in the next one with the frame number increased. Because the search starts with the innermost frame, `find_symbol("y", …)` is (0, 0), the `y` that shadows the outer one.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Prose>
+
+Exercises 5.43 and 5.45 to 5.47 are not shown. Exercise 5.43 adds a compile-time-environment argument to `compile` and every code generator, extending it in `compile_lambda_body` and `compile_block`; exercise 5.45 then rewrites `compile_name` and `compile_assignment_declaration` to emit `lexical_address_lookup` and `lexical_address_assign` with the addresses `find_symbol` gives, reporting a compile-time error for a name that is not found; exercise 5.46 records in the compile-time environment whether each name is a constant and reports assignments to constants at compile time; and exercise 5.47 uses it for constant propagation, for resolving at compile time whether a function is compiled or primitive, and for constant folding. Each changes nearly every function of the compiler at once, so they are left as projects, without a checker.
+
+</Prose>
+
+<Enables items={[{ id: '5.5.7', label: 'Running compiled code' }]} />

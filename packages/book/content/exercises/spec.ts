@@ -13,6 +13,13 @@ export interface ExerciseSpec {
   starter: string;
   /** Definitions the submission can use without seeing them. */
   prelude?: string;
+  /**
+   * Definitions evaluated in the submission's own frame, before it. Unlike a
+   * prelude, they call the submission's functions: this is how a reader
+   * replaces one function of the simulator of §5.2 and the rest of the
+   * simulator uses the replacement.
+   */
+  context?: string;
   /** The hidden tests; the reader sees only how many pass. */
   tests: TestSpec[];
   /** Evaluator steps allowed for each test, when the default of 100 000 is not right. */

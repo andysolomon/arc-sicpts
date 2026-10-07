@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { hasContent } from '../content.ts';
 import { pathOf, type Chapter, type Section } from '../toc.ts';
 import { PageHeader } from './parts.tsx';
+import { Introduction } from './SectionPage.tsx';
 
 /** A numbered section such as 1.2: its summary and the pages it holds. */
 export function SectionLanding({ chapter, section }: { chapter: Chapter; section: Section }) {
@@ -11,6 +12,7 @@ export function SectionLanding({ chapter, section }: { chapter: Chapter; section
         <PageHeader eyebrow={`§ ${section.id} · ${chapter.title}`} title={section.title} />
         <p className="m-0 mt-1 max-w-[62ch] text-lg leading-[1.55] text-pretty text-ink-2">{section.blurb}</p>
       </div>
+      <Introduction id={section.id} />
       <ol className="m-0 flex list-none flex-col border-t border-line p-0">
         {section.subsections.map((subsection) => {
           const written = hasContent(subsection.id);

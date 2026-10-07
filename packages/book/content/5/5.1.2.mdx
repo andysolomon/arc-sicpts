@@ -1,0 +1,71 @@
+import { gcdElaboratedProgram } from '@sicp/lab';
+
+<Prose>
+
+We will often define a machine to include primitive operations that are actually very complex. For example, in §5.4 and §5.5 we will treat JavaScript's environment manipulations as primitive. Such abstraction is valuable because it allows us to ignore the details of parts of a machine so that we can concentrate on other aspects of the design. The fact that we have swept a lot of complexity under the rug, however, does not mean that a machine design is unrealistic. We can always replace the complex primitives by simpler primitive operations.
+
+Consider the GCD machine. The machine has an instruction that computes the remainder of the contents of registers `a` and `b` and assigns the result to register `t`. If we want to construct the GCD machine without using a primitive remainder operation, we must specify how to compute remainders in terms of simpler operations, such as subtraction. Indeed, we can write a JavaScript function that finds remainders in this way:
+
+```js
+function remainder(n, d) {
+    return n < d
+           ? n
+           : remainder(n - d, d);
+}
+```
+
+We can thus replace the remainder operation in the GCD machine's data paths with a subtraction operation and a comparison test. The instruction
+
+```js
+assign("t", list(op("rem"), reg("a"), reg("b")))
+```
+
+in the GCD controller is replaced by a sequence of instructions that contains a loop: copy `a` into `t`, then subtract `b` from `t` until `t` is less than `b`.
+
+</Prose>
+
+<Example index={0} file="gcd_elaborated.sicp" source={gcdElaboratedProgram} anim="machine">
+
+The data paths have lost the `rem` trapezoid and gained a `-` operation, whose output is wired back into `t`, a `<` test, and a button `t<-a`. In the controller, the loop from `rem_loop` to `rem_done` sits where the single `assign` was. The machine still finds that the GCD of 206 and 40 is 2, but takes 90 instructions instead of 26: each remainder now costs one trip round the inner loop per subtraction.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-5/machines.ts">
+
+`chapter-5/machines.ts` holds the elaborated controller exactly as the book gives it. The test `chapter-5/section-5-1.test.ts` checks that it computes the GCD of 206 and 40 in 90 instructions, against 26 for the machine with a primitive `rem`.
+
+</UnderTheHood>
+
+<Exercises range="5.3">
+<Exercise id="5.3">
+
+Design a machine to compute square roots using Newton's method, as in §1.1.7:
+
+```js
+function sqrt(x) {
+    function is_good_enough(guess) {
+        return math_abs(square(guess) - x) < 0.001;
+    }
+    function improve(guess) {
+        return average(guess, x / guess);
+    }
+    function sqrt_iter(guess) {
+        return is_good_enough(guess)
+               ? guess
+               : sqrt_iter(improve(guess));
+    }
+    return sqrt_iter(1);
+}
+```
+
+Begin by assuming that `good_enough` and `improve` operations are available as primitives: complete `sqrt_machine_1`, whose operations are given. Then show how to expand these in terms of arithmetic operations: complete `sqrt_machine_2`, adding the registers and operations it needs. Both machines take *x* in register `x` and leave the root in register `guess`. The checker runs each on a few numbers and compares with the true root to within 0.001; it checks that the first machine uses `good_enough` and `improve` and that the second uses only arithmetic and comparison operations, named after the JavaScript operators (`+`, `-`, `*`, `/`, `<` and so on; `abs` is allowed too). The book also asks for data-path diagrams: paste a machine into the editor above, with its inputs and `start`, and the animation draws them.
+
+<Solution>
+
+**Solution.** The first machine is a two-register loop: start `guess` at 1, test `good_enough` on `guess` and `x`, and if it fails assign `improve` of `guess` and `x` to `guess` and go round again. In the second, each primitive becomes a short sequence on a temporary register `t`, just as `rem` became a loop above: *guess*², minus *x*, its absolute value, then the `<` test against the constant 0.001 replaces `good_enough`; *x* / *guess*, plus *guess*, divided by 2 replaces `improve`. Nothing needs to loop inside these sequences, so the second machine has the same shape as the first, with longer straight runs between test and branch. The absolute value could also be done with a test for a negative `t` and a subtraction from 0.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['5.1.3', { id: '5.4', label: 'Environment operations as primitives' }]} />

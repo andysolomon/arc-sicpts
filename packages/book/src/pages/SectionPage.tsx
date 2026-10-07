@@ -31,3 +31,21 @@ export function SectionPage({ id, eyebrow, title }: SectionPageProps) {
     </SectionContext>
   );
 }
+
+/**
+ * The prose that opens a chapter or a numbered section, such as `5.1`, shown
+ * on its landing page above the list of what it holds. Nothing when unwritten.
+ */
+export function Introduction({ id }: { id: string }) {
+  const Content = contentFor(id);
+  if (Content === null) return null;
+  return (
+    <SectionContext value={id}>
+      <Suspense fallback={<p className="m-0 font-mono text-xs text-ink-3">loading introduction…</p>}>
+        <div className="contents" data-testid="introduction">
+          <Content components={mdxComponents} />
+        </div>
+      </Suspense>
+    </SectionContext>
+  );
+}

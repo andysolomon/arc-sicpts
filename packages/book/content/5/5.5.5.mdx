@@ -1,0 +1,429 @@
+import { compiledCodeAlternativeProgram, compiledCodeFactorialProgram } from '@sicp/lab';
+
+<Prose>
+
+Now that we have seen all the elements of the compiler, let us examine an example of compiled code to see how things fit together. We will compile the declaration of a recursive `factorial` function by passing as first argument to `compile` the result of applying `parse` to a string representation of the program (here using back quotes, which work like single and double quotation marks but allow the string to span multiple lines):
+
+```js
+compile(parse(`
+function factorial(n) {
+    return n === 1
+           ? 1
+           : factorial(n - 1) * n;
+}
+              `),
+        "val",
+        "next");
+```
+
+We have specified that the value of the declaration should be placed in the `val` register. We don't care what the compiled code does after executing the declaration, so our choice of `"next"` as the linkage descriptor is arbitrary.
+
+The function `compile` determines that it was given a function declaration, so it transforms it to a constant declaration and then calls `compile_declaration`. This compiles code to compute the value to be assigned (targeted to `val`), followed by code to install the declaration, followed by code to put the value of the declaration (which is the value `undefined`) into the target register, followed finally by the linkage code. The `env` register is preserved around the computation of the value, because it is needed in order to install the declaration. Because the linkage is `"next"`, there is no linkage code in this case. The skeleton of the compiled code is thus
+
+```js
+save env if modified by code to compute value
+compilation of declaration value, target val, linkage "next"
+restore env if saved above
+perform(list(op("assign_symbol_value"),
+             constant("factorial"),
+             reg("val"),
+             reg("env"))),
+assign("val", constant(undefined))
+```
+
+The expression that is compiled to produce the value for the name `factorial` is a lambda expression whose value is the function that computes factorials. The function `compile` handles this by calling `compile_lambda_expression`, which compiles the function body, labels it as a new entry point, and generates the instruction that will combine the function body at the new entry point with the runtime environment and assign the result to `val`. The sequence then skips around the compiled function code, which is inserted at this point. The function code itself begins by extending the function's declaration environment by a frame that binds the parameter `n` to the function argument. Then comes the actual function body. Since this code for the value of the name doesn't modify the `env` register, the optional `save` and `restore` shown above aren't generated. (The function code at `entry1` isn't executed at this point, so its use of `env` is irrelevant.) Therefore, the skeleton for the compiled code becomes
+
+```js
+  assign("val", list(op("make_compiled_function"),
+                     label("entry1"),
+                     reg("env"))),
+  go_to(label("after_lambda2")),
+"entry1",
+  assign("env", list(op("compiled_function_env"), reg("fun"))),
+  assign("env", list(op("extend_environment"),
+                     constant(list("n")),
+                     reg("argl"),
+                     reg("env"))),
+  compilation of function body
+"after_lambda2",
+  perform(list(op("assign_symbol_value"),
+               constant("factorial"),
+               reg("val"),
+               reg("env"))),
+  assign("val", constant(undefined))
+```
+
+A function body is always compiled (by `compile_lambda_body`) with target `val` and linkage `"next"`. The body in this case consists of a single return statement. (Because of the `append_return_undefined` in `compile_lambda_body`, the body is actually a sequence of two return statements, but the dead-code check in `compile_sequence` stops after the first.)
+
+```js
+return n === 1
+       ? 1
+       : factorial(n - 1) * n;
+```
+
+The function `compile_return_statement` generates code to revert the stack using the marker and to restore the `continue` register, and then compiles the return expression with target `val` and linkage `"return"`, because its value is to be returned from the function. The return expression is a conditional expression, for which `compile_conditional` generates code that first computes the predicate (targeted to `val`), then checks the result and branches around the true branch if the predicate is false. Registers `env` and `continue` are preserved around the predicate code, since they may be needed for the rest of the conditional expression. The true and false branches are both compiled with target `val` and linkage `"return"`. (That is, the value of the conditional, which is the value computed by either of its branches, is the value of the function.)
+
+```js
+  revert_stack_to_marker(),
+  restore("continue"),
+  save continue, env if modified by predicate and needed by branches
+  compilation of predicate, target val, linkage "next"
+  restore continue, env if saved above
+  test(list(op("is_falsy"), reg("val"))),
+  branch(label("false_branch4")),
+"true_branch3",
+  compilation of true branch, target val, linkage "return"
+"false_branch4",
+  compilation of false branch, target val, linkage "return"
+"after_cond5",
+```
+
+The predicate `n === 1` is a function application (after transformation of the operator combination). This looks up the function expression (the symbol `"==="`) and places this value in `fun`. It then assembles the arguments `1` and the value of `n` into `argl`. Then it tests whether `fun` contains a primitive or a compound function, and dispatches to a primitive branch or a compound branch accordingly. Both branches resume at the `after_call` label. The compound branch must set up `continue` to jump past the primitive branch and push a marker to the stack to match the revert operation in the compiled return statement of the function. The requirements to preserve registers around the evaluation of the function and argument expressions don't result in any saving of registers, because in this case those evaluations don't modify the registers in question.
+
+```js
+  assign("fun", list(op("lookup_symbol_value"),
+                     constant("==="), reg("env"))),
+  assign("val", constant(1)),
+  assign("argl", list(op("list"), reg("val"))),
+  assign("val", list(op("lookup_symbol_value"),
+                     constant("n"), reg("env"))),
+  assign("argl", list(op("pair"), reg("val"), reg("argl"))),
+  test(list(op("is_primitive_function"), reg("fun"))),
+  branch(label("primitive_branch6")),
+"compiled_branch7",
+  assign("continue", label("after_call8")),
+  save("continue"),
+  push_marker_to_stack(),
+  assign("val", list(op("compiled_function_entry"), reg("fun"))),
+  go_to(reg("val")),
+"primitive_branch6",
+  assign("val", list(op("apply_primitive_function"),
+                     reg("fun"),
+                     reg("argl"))),
+"after_call8",
+```
+
+The true branch, which is the constant 1, compiles (with target `val` and linkage `"return"`) to
+
+```js
+  assign("val", constant(1)),
+  go_to(reg("continue")),
+```
+
+The code for the false branch is another function call, where the function is the value of the symbol `"*"`, and the arguments are `n` and the result of another function call (a call to `factorial`). Each of these calls sets up `fun` and `argl` and its own primitive and compound branches. Here is the complete compilation of the declaration of the `factorial` function, exactly as the Laboratory's compiler produces it, with comments added:
+
+```js
+// construct the function and skip over the code for the function body
+  assign("val", list(op("make_compiled_function"),
+                     label("entry1"), reg("env"))),
+  go_to(label("after_lambda2")),
+"entry1",                           // calls to factorial will enter here
+  assign("env", list(op("compiled_function_env"), reg("fun"))),
+  assign("env", list(op("extend_environment"), constant(list("n")),
+                     reg("argl"), reg("env"))),
+// begin actual function body
+  revert_stack_to_marker(),         // starts with a return statement
+  restore("continue"),
+  save("continue"),                 // preserve registers across predicate
+  save("env"),
+// compute n === 1
+  assign("fun", list(op("lookup_symbol_value"), constant("==="), reg("env"))),
+  assign("val", constant(1)),
+  assign("argl", list(op("list"), reg("val"))),
+  assign("val", list(op("lookup_symbol_value"), constant("n"), reg("env"))),
+  assign("argl", list(op("pair"), reg("val"), reg("argl"))),
+  test(list(op("is_primitive_function"), reg("fun"))),
+  branch(label("primitive_branch6")),
+"compiled_branch7",
+  assign("continue", label("after_call8")),
+  save("continue"),
+  push_marker_to_stack(),
+  assign("val", list(op("compiled_function_entry"), reg("fun"))),
+  go_to(reg("val")),
+"primitive_branch6",
+  assign("val", list(op("apply_primitive_function"), reg("fun"), reg("argl"))),
+"after_call8",                      // val now contains result of n === 1
+  restore("env"),
+  restore("continue"),
+  test(list(op("is_falsy"), reg("val"))),
+  branch(label("false_branch4")),
+"true_branch3",                     // return 1
+  assign("val", constant(1)),
+  go_to(reg("continue")),
+"false_branch4",
+// compute and return factorial(n - 1) * n
+  assign("fun", list(op("lookup_symbol_value"), constant("*"), reg("env"))),
+  save("continue"),
+  save("fun"),                      // save * function
+  assign("val", list(op("lookup_symbol_value"), constant("n"), reg("env"))),
+  assign("argl", list(op("list"), reg("val"))),
+  save("argl"),                     // save partial argument list for *
+// compute factorial(n - 1), which is the other argument for *
+  assign("fun", list(op("lookup_symbol_value"),
+                     constant("factorial"), reg("env"))),
+  save("fun"),                      // save factorial function
+// compute n - 1, which is the argument for factorial
+  assign("fun", list(op("lookup_symbol_value"), constant("-"), reg("env"))),
+  assign("val", constant(1)),
+  assign("argl", list(op("list"), reg("val"))),
+  assign("val", list(op("lookup_symbol_value"), constant("n"), reg("env"))),
+  assign("argl", list(op("pair"), reg("val"), reg("argl"))),
+  test(list(op("is_primitive_function"), reg("fun"))),
+  branch(label("primitive_branch10")),
+"compiled_branch11",
+  assign("continue", label("after_call12")),
+  save("continue"),
+  push_marker_to_stack(),
+  assign("val", list(op("compiled_function_entry"), reg("fun"))),
+  go_to(reg("val")),
+"primitive_branch10",
+  assign("val", list(op("apply_primitive_function"), reg("fun"), reg("argl"))),
+"after_call12",                     // val now contains result of n - 1
+  assign("argl", list(op("list"), reg("val"))),
+  restore("fun"),                   // restore factorial
+// apply factorial
+  test(list(op("is_primitive_function"), reg("fun"))),
+  branch(label("primitive_branch14")),
+"compiled_branch15",
+  assign("continue", label("after_call16")),
+  save("continue"),                 // set up for compiled function -
+  push_marker_to_stack(),           //   return in function will restore stack
+  assign("val", list(op("compiled_function_entry"), reg("fun"))),
+  go_to(reg("val")),
+"primitive_branch14",
+  assign("val", list(op("apply_primitive_function"), reg("fun"), reg("argl"))),
+"after_call16",                     // val now contains result of factorial(n - 1)
+  restore("argl"),                  // restore partial argument list for *
+  assign("argl", list(op("pair"), reg("val"), reg("argl"))),
+  restore("fun"),                   // restore *
+  restore("continue"),
+// apply * and return its value
+  test(list(op("is_primitive_function"), reg("fun"))),
+  branch(label("primitive_branch18")),
+"compiled_branch19",  // note that a compound function here is called tail-recursively
+  save("continue"),
+  push_marker_to_stack(),
+  assign("val", list(op("compiled_function_entry"), reg("fun"))),
+  go_to(reg("val")),
+"primitive_branch18",
+  assign("val", list(op("apply_primitive_function"), reg("fun"), reg("argl"))),
+  go_to(reg("continue")),
+"after_call20",
+"after_cond5",
+"after_lambda2",
+// assign the function to the name factorial
+  perform(list(op("assign_symbol_value"),
+               constant("factorial"), reg("val"), reg("env"))),
+  assign("val", constant(undefined))
+```
+
+Notice that the possible `save` and `restore` of `continue` and `env` around the predicate, shown in the skeleton above, are in fact generated, because these registers are modified by the function call in the predicate and needed for the function call and the `"return"` linkage in the branches.
+
+</Prose>
+
+<Example index={0} file="factorial.sicp" source={compiledCodeFactorialProgram} anim="compiled">
+
+The same code, compiled from the declaration in the editor, with the stack operations highlighted. Of the 10 saves, 4 belong to function calls (the `save("continue")` before each `push_marker_to_stack()`) and are undone by the callee: the `restore("continue")` after `revert_stack_to_marker()` at `entry1` is the one that matches them. The other 6 were inserted by `preserving`, each paired with a restore.
+
+</Example>
+
+<Example index={1} file="compile.sicp" source={compiledCodeAlternativeProgram} anim="compiled">
+
+A second compiler for the exercises below: it compiles whatever program the editor holds, here the `factorial_alt` of exercise 5.36. Replace it with the iterative factorial of exercise 5.37, or with any program of your own, to see its code.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-5/section-5-5-5.test.ts">
+
+Both editors' programs are compiled in the Laboratory's worker by the Source compiler of `chapter-5/compiler.ts`, the book's own code. The test `chapter-5/evaluator.test.ts` checks the listing above against the compiler's output, and `chapter-5/section-5-5-5.test.ts` asserts its 72 instructions and 17 labels, its 10 saves and 7 restores, that `factorial_alt` compiles to as many instructions while saving `env` where `factorial` saves `argl`, and the stack use measured for exercise 5.37.
+
+</UnderTheHood>
+
+<Exercises range="5.36 – 5.41" total={6}>
+<Exercise id="5.36">
+
+Consider the following declaration of a factorial function, which is slightly different from the one given above:
+
+```js
+function factorial_alt(n) {
+    return n === 1
+           ? 1
+           : n * factorial_alt(n - 1);
+}
+```
+
+Compile this function (the second editor above does) and compare the resulting code with that produced for `factorial`. Explain any differences you find. Does either program execute more efficiently than the other? Record your findings: `factorial_saves` and `factorial_alt_saves` name the register that each function's code saves on the stack, in addition to `continue` and `fun`, while it computes the recursive call; `more_efficient` is `"factorial"`, `"factorial_alt"` or `"neither"`.
+
+<Solution>
+
+**Solution.** The arguments are evaluated from right to left. In `factorial`, the last argument is `n`, so `n` is evaluated first and put into `argl`; then `argl` must be saved around the computation of `factorial(n - 1)`. In `factorial_alt`, the recursive call is evaluated first, and `n` is looked up afterwards, so it is `env` that must be saved around the call, and `argl` is only built after it. Otherwise the code is the same: both have 72 instructions with 10 saves and 7 restores, and each recursive call executes the same number of instructions and stack operations, so neither is more efficient. The Laboratory measures 7*n* + 1 pushes and maximum depth 3*n* − 1 for both.
+
+</Solution>
+</Exercise>
+<Exercise id="5.37">
+
+Compile the iterative factorial function
+
+```js
+function factorial(n) {
+    function iter(product, counter) {
+        return counter > n
+               ? product
+               : iter(product * counter, counter + 1);
+    }
+    return iter(1, 1);
+}
+```
+
+and annotate the resulting code, showing the essential difference between the code for iterative and recursive versions of `factorial` that makes one process build up stack space and the other run in constant stack space. Then measure it: the exercise's editor has `compile_and_go` (§5.5.7) loaded, which prints the total pushes and the maximum depth for each call it is given. Write `recursive_depth(n)` and `iterative_depth(n)`, the maximum stack depth for computing `factorial(n)` with *n* ≥ 2 by the compiled recursive and iterative versions; the checker compares them with what it measures.
+
+<Solution>
+
+**Solution.** The difference is in the call. In the recursive version, `factorial(n - 1)` is an argument of `*`, so it is compiled with target `val` and an `after_call` label as linkage: before the call the code saves `continue`, `fun` (holding `*`) and `argl` (holding `n`), and pushes `continue` and a marker for the call itself, and all of this waits on the stack until the recursive call returns. In `iter`, the call `iter(product * counter, counter + 1)` is the returned value, compiled with linkage `"return"`:
+
+```js
+"compiled_branch21",
+  save("continue"),             // the caller's continuation, not a new one
+  push_marker_to_stack(),
+  assign("val", list(op("compiled_function_entry"), reg("fun"))),
+  go_to(reg("val")),
+```
+
+and the first thing the body of `iter` does is `revert_stack_to_marker()` and `restore("continue")`, which pops both again. The `save("continue")` and `save("env")` around the predicate are restored before the branches, and those around the argument computations before the call. So each iteration pushes 7 values but leaves none behind: the Laboratory measures 7*n* + 9 pushes and a maximum depth of 3 for every *n*, against 7*n* + 1 pushes and depth 3*n* − 1 for the recursive version.
+
+</Solution>
+</Exercise>
+<Exercise id="5.38">
+
+What program was compiled to produce the code shown below? (The book's figure leaves out the second instruction; it is restored here.)
+
+```js
+  assign("val", list(op("make_compiled_function"),
+                     label("entry1"), reg("env"))),
+  go_to(label("after_lambda2")),
+"entry1",
+  assign("env", list(op("compiled_function_env"), reg("fun"))),
+  assign("env", list(op("extend_environment"),
+                     constant(list("x")), reg("argl"), reg("env"))),
+  revert_stack_to_marker(),
+  restore("continue"),
+  assign("fun", list(op("lookup_symbol_value"), constant("+"), reg("env"))),
+  save("continue"),
+  save("fun"),
+  save("env"),
+  assign("fun", list(op("lookup_symbol_value"), constant("g"), reg("env"))),
+  save("fun"),
+  assign("fun", list(op("lookup_symbol_value"), constant("+"), reg("env"))),
+  assign("val", constant(2)),
+  assign("argl", list(op("list"), reg("val"))),
+  assign("val", list(op("lookup_symbol_value"), constant("x"), reg("env"))),
+  assign("argl", list(op("pair"), reg("val"), reg("argl"))),
+  test(list(op("is_primitive_function"), reg("fun"))),
+  branch(label("primitive_branch3")),
+"compiled_branch4",
+  assign("continue", label("after_call5")),
+  save("continue"),
+  push_marker_to_stack(),
+  assign("val", list(op("compiled_function_entry"), reg("fun"))),
+  go_to(reg("val")),
+"primitive_branch3",
+  assign("val", list(op("apply_primitive_function"), reg("fun"), reg("argl"))),
+"after_call5",
+  assign("argl", list(op("list"), reg("val"))),
+  restore("fun"),
+  test(list(op("is_primitive_function"), reg("fun"))),
+  branch(label("primitive_branch7")),
+"compiled_branch8",
+  assign("continue", label("after_call9")),
+  save("continue"),
+  push_marker_to_stack(),
+  assign("val", list(op("compiled_function_entry"), reg("fun"))),
+  go_to(reg("val")),
+"primitive_branch7",
+  assign("val", list(op("apply_primitive_function"), reg("fun"), reg("argl"))),
+"after_call9",
+  assign("argl", list(op("list"), reg("val"))),
+  restore("env"),
+  assign("val", list(op("lookup_symbol_value"), constant("x"), reg("env"))),
+  assign("argl", list(op("pair"), reg("val"), reg("argl"))),
+  restore("fun"),
+  restore("continue"),
+  test(list(op("is_primitive_function"), reg("fun"))),
+  branch(label("primitive_branch11")),
+"compiled_branch12",
+  save("continue"),
+  push_marker_to_stack(),
+  assign("val", list(op("compiled_function_entry"), reg("fun"))),
+  go_to(reg("val")),
+"primitive_branch11",
+  assign("val", list(op("apply_primitive_function"), reg("fun"), reg("argl"))),
+  go_to(reg("continue")),
+"after_call13",
+"after_lambda2",
+  perform(list(op("assign_symbol_value"),
+               constant("f"), reg("val"), reg("env"))),
+  assign("val", constant(undefined))
+```
+
+Write the program as the string `program`. The checker compiles it with target `val` and linkage `"next"`, numbering labels from 1, and compares the result with this code instruction by instruction.
+
+<Solution>
+
+**Solution.** The code declares `f` as a function of `x` whose body is a single return statement (the revert and restore at `entry1`). The returned value is an application of `+`, called with linkage `"return"` at the end. Its last argument is computed first: `+` applied to `2` and `x`, that is `x + 2`, and the result is the single argument of `g`. Then `env` is restored and `x` is looked up and put in front: the first argument of the outer `+` is `x`.
+
+```js
+function f(x) {
+    return x + g(x + 2);
+}
+```
+
+</Solution>
+</Exercise>
+<Exercise id="5.39">
+
+What order of evaluation does our compiler produce for arguments of an application? Is it left-to-right (as mandated by the ECMAScript specification), right-to-left, or some other order? Where in the compiler is this order determined? Modify the compiler so that it produces some other order of evaluation. (See the discussion of order of evaluation for the explicit-control evaluator in §5.4.1.) How does changing the order of argument evaluation affect the efficiency of the code that constructs the argument list?
+
+Set `argument_order` to `"left to right"`, `"right to left"` or `"some other order"`, and change `construct_arglist` and `code_to_get_rest_args` so that compiled code evaluates arguments from left to right. The rest of the compiler and the evaluator of §5.5.7 are loaded around your functions. The checker runs, with `compile_and_go`, a program that records the order in which three arguments are evaluated, and checks that compiled `factorial(5)` is still 120 and that arguments still arrive in their places.
+
+<Solution>
+
+**Solution.** Right to left: `construct_arglist` reverses the argument codes, so that each argument can be added to the front of `argl` with `pair` and the list comes out in the right order. To evaluate from left to right, keep the codes in their order, start `argl` with the first argument and add each later one at the end, with the evaluator's operation `adjoin_arg` (§5.4.1). The order is decided in `construct_arglist`, and the efficiency question is the same as for the evaluator: `pair` adds an argument in one step, while adding at the end with `adjoin_arg` copies the list built so far, so constructing a list of *k* arguments takes time proportional to *k*² rather than *k*. (One could instead build the list backwards and reverse it once, at the cost of one more operation per call.)
+
+</Solution>
+</Exercise>
+<Exercise id="5.40">
+
+One way to understand the compiler's `preserving` mechanism for optimizing stack usage is to see what extra operations would be generated if we did not use this idea. Modify `preserving` so that it always generates the `save` and `restore` operations, for every register in its list, whether or not `seq1` modifies it and `seq2` needs it. Compile some simple expressions and identify the unnecessary stack operations that are generated. Compare the code to that generated with the `preserving` mechanism intact. The checker counts the saves and restores in compiled `factorial` and runs it with `compile_and_go`.
+
+<Solution>
+
+**Solution.** Drop the test and always take the branch that wraps `seq1`. Compiled `factorial` now has 45 saves and 42 restores instead of 10 and 7, and computing `factorial(5)` makes 167 pushes instead of 36. Most are useless: `env` is saved around `assign("val", constant(1))`, `continue` around a lookup, `fun` and `continue` around argument code that touches neither. The answer is the same, because a save and its restore around code that does not change the register leave everything as it was.
+
+</Solution>
+</Exercise>
+<Exercise id="5.41">
+
+Our compiler is clever about avoiding unnecessary stack operations, but it is not clever at all when it comes to compiling calls to the primitive functions of the language in terms of the primitive operations supplied by the machine. For example, consider how much code is compiled to compute `a + 1`: the code sets up an argument list in `argl`, puts the primitive addition function (which it finds by looking up the symbol `"+"` in the environment) into `fun`, and tests whether the function is primitive or compound. The compiler always generates code to perform the test, as well as code for primitive and compound branches (only one of which will be executed). Consider how much less code would be generated if the compiler could *open-code* primitives, that is, if it could generate code to directly use these primitive machine operations. The expression `a + 1` might be compiled into something as simple as
+
+```js
+assign("val", list(op("lookup_symbol_value"), constant("a"), reg("env"))),
+assign("val", list(op("+"), reg("val"), constant(1)))
+```
+
+In this exercise we extend the compiler to open-code selected primitives. The machine gets two argument registers `arg1` and `arg2`; its primitive arithmetic operations take their inputs from `arg1` and `arg2` and may put their results into `val`, `arg1` or `arg2`.
+
+1. The open-coded primitives, unlike the syntactic forms, all need their argument expressions evaluated. Write a code generator `spread_arguments` that compiles a list of two argument expressions targeted to `arg1` and `arg2`. An argument expression may contain a call to an open-coded primitive, so argument registers will have to be preserved during argument-expression evaluation.
+2. The operators `===`, `*`, `-` and `+` are primitive functions referred to in the global environment by the symbols `"==="`, `"*"`, `"-"` and `"+"`. In JavaScript these names cannot be redeclared, so it is safe to open-code them. Write `compile_open_coded`, which takes an application of one of them to two arguments, together with a target and a linkage descriptor, and produces code to spread the arguments into the registers and then perform the operation (`op("+")` and so on) targeted to the given target with the given linkage. Make `compile` dispatch to it.
+3. Try your new compiler on the `factorial` example. Compare the resulting code with the result produced without open coding.
+
+The rest of the compiler and the evaluator are loaded around your functions; the evaluator machine has the registers `arg1` and `arg2` and the operations `===`, `*`, `-` and `+`, and `all_regs` includes `arg1` and `arg2`, since a compiled function may change them. The checker verifies that compiled `factorial` no longer looks up `===`, `*` or `-`, runs `factorial` and `factorial_alt`, and computes `(1 + 2) * (3 + 4) - (10 - 2 * 3)`.
+
+<Solution>
+
+**Solution.** `spread_arguments` compiles the first argument to `arg1` and the second to `arg2`, preserving `env` around the first and `arg1` around the second. The final sequence that needs `arg1` makes `preserving` save it exactly when the second argument modifies it, as in `(1 + 2) * (3 + 4)`, where `3 + 4` uses `arg1` too. `compile_open_coded` appends one `assign` of the operation to the spread code and ends with the linkage, and `compile` tests for these applications before the general case. The compiled `factorial` shrinks from 72 instructions to 37; only `factorial` is still looked up and called through `fun` and `argl`. Run by `compile_and_go`, `factorial(5)` now takes 18 pushes and a maximum depth of 9 instead of 36 and 14: in general 3*n* + 3 pushes and depth 2*n* − 1.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '5.5.6', label: 'Lexical addressing' }, { id: '5.5.7', label: 'Running compiled factorial' }]} />

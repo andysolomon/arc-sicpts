@@ -17,6 +17,7 @@ import {
 } from '../syntax/ast.ts';
 import { SourceError } from '../syntax/errors.ts';
 import { assign, declare, define, extend, lookup, type Environment } from './environment.ts';
+import { isLibraryLoc } from './library.ts';
 import { isClosure, isPrimitive, stringify, typeName, type Closure, type Value } from './values.ts';
 
 /**
@@ -167,10 +168,22 @@ export class Machine {
       this.status = 'error';
       this.error =
         error instanceof SourceError
-          ? error
+          ? this.locate(error)
           : new SourceError('runtime', error instanceof Error ? error.message : String(error), null);
     }
     return this.status;
+  }
+
+  /** An error inside a library function is reported at the program's call into the library. */
+  private locate(error: SourceError): SourceError {
+    if (error.loc === null || !isLibraryLoc(error.loc)) return error;
+    for (let i = this.stack.length - 1; i >= 0; i--) {
+      const frame = this.stack[i];
+      if (frame?.k === 'call' && !isLibraryLoc(frame.node.loc)) {
+        return new SourceError(error.phase, error.reason, frame.node.loc);
+      }
+    }
+    return new SourceError(error.phase, error.reason, null);
   }
 
   private step(): void {
@@ -504,6 +517,19 @@ export class Machine {
     if (isPrimitive(fn)) {
       if (fn.arity !== null && fn.arity !== args.length) {
         this.fail(`${fn.name} expects ${fn.arity} argument(s), got ${args.length}`, node);
+      }
+      if (fn.tailApply !== undefined) {
+        let target: { fn: Value; args: Value[] };
+        try {
+          target = fn.tailApply(...args);
+        } catch (error) {
+          if (error instanceof SourceError && error.loc === null) {
+            throw new SourceError('runtime', error.message, node.loc);
+          }
+          throw error;
+        }
+        this.apply(target.fn, target.args, node, callerEnv);
+        return;
       }
       let result: Value;
       try {

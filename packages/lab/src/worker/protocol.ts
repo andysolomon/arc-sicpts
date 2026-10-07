@@ -1,5 +1,7 @@
 import type { Segment } from '../evaluator/primitives.ts';
+import type { GcRun } from '../chapter-5/memory.ts';
 import type { ProcessShapeSnapshot } from '../inspect/processShape.ts';
+import type { MachineView } from '../machines/inspect.ts';
 import type { StepRecord } from '../inspect/stepTrace.ts';
 import type { Loc } from '../syntax/ast.ts';
 import type { ErrorPhase } from '../syntax/errors.ts';
@@ -37,16 +39,78 @@ export type TestSpec =
   /** Evaluating `call` must apply the compound function `fn` at least once and at most `atMost` times. */
   | { name: string; kind: 'calls'; call: string; fn: string; atMost: number }
   /** Evaluating `call` must stop with an error, whose message contains `message` when given. */
-  | { name: string; kind: 'error'; call: string; message?: string };
+  | { name: string; kind: 'error'; call: string; message?: string }
+  /**
+   * What evaluating `call` displays: exactly `lines` when given, exactly
+   * `count` lines when given, and lines containing each of `contains`.
+   */
+  | { name: string; kind: 'output'; call: string; lines?: string[]; count?: number; contains?: string[] };
 
 export interface CheckRequest {
   type: 'check';
   id: number;
   source: string;
   prelude?: string;
+  /** Declarations evaluated in the submission's own frame, before it (see `PrepareOptions.context`). */
+  context?: string;
   tests: TestSpec[];
   /** Budget for each test; defaults to 100 000. */
   budget?: number;
+}
+
+/** Run a program and record every register machine it makes and starts (§5.1, §5.2). */
+export interface MachinesRequest {
+  type: 'machines';
+  id: number;
+  source: string;
+  prelude?: string;
+  budget?: number;
+  /** Steps recorded per run of a machine; defaults to 4000. */
+  maxSteps?: number;
+}
+
+/** Lay a program's pairs out in memory and collect the garbage (§5.3). */
+export interface MemoryRequest {
+  type: 'memory';
+  id: number;
+  source: string;
+  /** Index of the first pair; the book's exercise 5.19 starts at 1. */
+  start?: number;
+}
+
+/**
+ * Measure a function interpreted by the explicit-control evaluator and
+ * compiled by the compiler, at each argument in `ns` (§5.4.4, §5.5.7).
+ */
+export interface CompareRequest {
+  type: 'compare';
+  id: number;
+  /** A program declaring the function. */
+  definition: string;
+  /** The function's name; each measurement evaluates `call(n)`. */
+  call: string;
+  ns: number[];
+  /**
+   * Optionally, a program declaring `special_statistics(n)`, which returns
+   * `list(value, total_pushes, maximum_depth)` for a special-purpose machine.
+   */
+  special?: string;
+}
+
+/** Compile a program with the compiler of §5.5 and list the instructions. */
+export interface CompileRequest {
+  type: 'compile';
+  id: number;
+  source: string;
+  target?: string;
+  linkage?: string;
+}
+
+/** One line of compiled code. */
+export interface CompiledLine {
+  text: string;
+  /** `label`, or the instruction type such as `assign` or `save`. */
+  kind: string;
 }
 
 export interface CancelRequest {
@@ -54,8 +118,24 @@ export interface CancelRequest {
   id: number;
 }
 
-export type LabRequest = RunRequest | TraceRequest | CheckRequest | CancelRequest;
-export type JobRequest = RunRequest | TraceRequest | CheckRequest;
+export type LabRequest =
+  | RunRequest
+  | TraceRequest
+  | CheckRequest
+  | MachinesRequest
+  | MemoryRequest
+  | CompareRequest
+  | CompileRequest
+  | CancelRequest;
+export type JobRequest = Exclude<LabRequest, CancelRequest>;
+
+/** One measurement of a run on a register machine. */
+export interface StackMeasure {
+  n: number;
+  value: string;
+  totalPushes: number;
+  maximumDepth: number;
+}
 
 export interface ErrorPayload {
   message: string;
@@ -95,11 +175,42 @@ export type LabEvent =
       /** Every line drawn by `draw_line`, up to the drawing limit. */
       drawing: Segment[];
     }
-  | { type: 'check-done'; id: number; results: TestResult[]; passed: number; total: number };
+  | { type: 'check-done'; id: number; results: TestResult[]; passed: number; total: number }
+  | { type: 'machines-done'; id: number; machines: MachineView[]; outcome: TraceOutcome; output: string[] }
+  | { type: 'memory-done'; id: number; run: GcRun | null; error: string | null }
+  | {
+      type: 'compile-done';
+      id: number;
+      lines: CompiledLine[];
+      /** Registers the code needs and modifies, as `compile` computed them. */
+      needs: string[];
+      modifies: string[];
+      error: string | null;
+    }
+  | {
+      type: 'compare-done';
+      id: number;
+      interpreted: StackMeasure[];
+      compiled: StackMeasure[];
+      special: StackMeasure[] | null;
+      error: string | null;
+    };
 
 export type TerminalEvent = Extract<
   LabEvent,
-  { type: 'done' | 'error' | 'budget-exhausted' | 'cancelled' | 'trace-done' | 'check-done' }
+  {
+    type:
+      | 'done'
+      | 'error'
+      | 'budget-exhausted'
+      | 'cancelled'
+      | 'trace-done'
+      | 'check-done'
+      | 'machines-done'
+      | 'memory-done'
+      | 'compare-done'
+      | 'compile-done';
+  }
 >;
 
 const TERMINAL: ReadonlySet<LabEvent['type']> = new Set([
@@ -109,6 +220,10 @@ const TERMINAL: ReadonlySet<LabEvent['type']> = new Set([
   'cancelled',
   'trace-done',
   'check-done',
+  'machines-done',
+  'memory-done',
+  'compare-done',
+  'compile-done',
 ]);
 
 export function isTerminal(event: LabEvent): event is TerminalEvent {

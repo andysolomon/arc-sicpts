@@ -17,7 +17,21 @@ The Laboratory is the TypeScript package `@sicp/lab`. The Book never evaluates c
 | `prepare(source, options?)` | Parses and returns a `Machine` without running it. |
 | `Machine.run(maxSteps?)` | Advances at most `maxSteps` steps and returns the status; `paused` means call again. |
 
-Options are `budget` (steps, default 100 000), `prelude` (source evaluated first in an enclosing frame), `display` (receives output lines), `draw` (receives each line drawn by `draw_line`, as a `Segment` `[x1, y1, x2, y2]`) and `hooks`.
+Options are `budget` (steps, default 100 000), `prelude` (source evaluated first in an enclosing frame), `context` (declarations evaluated in the program's own frame before it, so that they call the program's functions), `display` (receives output lines), `draw` (receives each line drawn by `draw_line`, as a `Segment` `[x1, y1, x2, y2]`), `onMachine` (receives every register machine `make_machine` creates), `onPair` (receives every pair `pair` and `list` allocate, in order) and `hooks`.
+
+## Register machines
+
+| Export | What it does |
+| --- | --- |
+| `RegisterMachine` | The simulator behind `make_machine`, organised as in §5.2: `assemble(controller)` turns each instruction into an execution function, `start()` runs from the first instruction until the controller ends. Registers, a monitored stack with markers (`totalPushes`, `maxDepth`), an instruction count and observers that see every instruction. |
+| `readController(list)`, `instructionText(value)` | The register-machine language as data: a controller list read into typed instructions, and instructions printed as the book writes them, e.g. `assign("a", reg("b"))`. |
+| `dataPaths(registers, lines)` | The registers, operations, buttons, entry-point registers and saved registers a controller uses: the analysis of exercise 5.11, and what the Book draws as a machine's data paths. |
+| `recordMachine(machine)` | Records every run of a machine as JSON: the code, the data paths, and for each instruction the registers it wrote and what it did to the stack. |
+| `parseComponent(text)`, `unparse(component)` | Program text to the tagged-list representation of §4.1.2, which `parse` returns in Source, and back to one line of text. |
+| `runEceval(inputs)`, `runCompiled(program, inputs)`, `compileProgram(text)` | The explicit-control evaluator of §5.4 and the compiler of §5.5, both Source programs, run from TypeScript, with the stack statistics of every input. |
+| `memoryImage(source)`, `collectGarbage(image)` | A program's pairs as the vectors of typed pointers of §5.3.1, and the stop-and-copy collector of §5.3.2 run on them step by step. |
+
+In Source, `make_machine(register_names, operations, controller)` returns a machine as the message-passing object of §5.2.1, so `start`, `get_register_contents` and `set_register_contents` work as in the book. Besides `"print_statistics"`, a machine's stack answers `"statistics"` with `list(total_pushes, maximum_depth)`, which exercise checks read. `prompt()` and the evaluator's `user_read` return the strings queued by `set_inputs(list(...))`, and `null` when there are none. Operations may be primitives or Source functions; a Source function is applied on a machine of its own.
 
 ## Inspecting
 
@@ -33,14 +47,16 @@ Inspectors attach through `MachineHooks`: `onEval`, `onCall`, `onReturn`, `onRes
 
 | Export | What it does |
 | --- | --- |
-| `createLabHost({ post })` | The worker side. Handles `run`, `trace`, `check` and `cancel` requests and posts events. Jobs run in slices so that a cancel can arrive between them. |
+| `createLabHost({ post })` | The worker side. Handles `run`, `trace`, `check`, `machines`, `memory`, `compare`, `compile` and `cancel` requests and posts events. Jobs run in slices so that a cancel can arrive between them. |
 | `LabClient` | The page side. `submit(params, onEvent)` returns a handle with `cancel()` and a `finished` promise that resolves with the terminal event. A worker that does not confirm a cancel is replaced. |
 
 Events for a run are `started`, then any number of `display`, `draw` and `shape`, then exactly one of `done`, `error`, `budget-exhausted` or `cancelled`.
 
 A `trace` request returns the step log in one `trace-done` event, together with the program's output and everything it drew.
 
-A `check` request runs an exercise's hidden tests, each on a fresh run of the submission. A `value` test compares an expression's value with the expected one. A `shape` test compares an answer with the measured kind of process, recursive or iterative. A `calls` test applies a function and bounds how many times a named function is applied along the way, which is how a check tells a logarithmic process from a linear one that computes the same values. An `error` test passes when a call stops with an error, optionally one whose message contains given text, which is how a check confirms that a program refuses bad input.
+A `machines` request runs a program and returns, in one `machines-done` event, the record of every register machine it made. A `memory` request lays a program's pairs out in memory and collects the garbage; a `compare` request measures a function interpreted by the explicit-control evaluator and compiled; a `compile` request returns the compiler's code for a program, line by line.
+
+A `check` request runs an exercise's hidden tests, each on a fresh run of the submission. A `value` test compares an expression's value with the expected one. A `shape` test compares an answer with the measured kind of process, recursive or iterative. A `calls` test applies a function and bounds how many times a named function is applied along the way, which is how a check tells a logarithmic process from a linear one that computes the same values. An `error` test passes when a call stops with an error, optionally one whose message contains given text, which is how a check confirms that a program refuses bad input. An `output` test compares what a call displays, line by line, by count, or by text the lines must contain. A check may give a `context`, which is how an exercise replaces a few functions of the simulator or compiler of chapter 5 and runs the rest around them.
 
 </Prose>
 

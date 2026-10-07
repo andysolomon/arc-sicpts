@@ -1,0 +1,139 @@
+import { ecevalControllerSource, ecevalMachineSource, ecevalSimpleProgram } from '@sicp/lab';
+
+<Prose>
+
+The central element in the evaluator is the sequence of instructions beginning at `eval_dispatch`. This corresponds to the `evaluate` function of the metacircular evaluator. When the controller starts at `eval_dispatch`, it evaluates the component specified by `comp` in the environment specified by `env`. When evaluation is complete, the controller will go to the entry point stored in `continue`, and the `val` register will hold the value of the component. As with the metacircular `evaluate`, the structure of `eval_dispatch` is a case analysis on the syntactic type of the component to be evaluated. (The dispatch is written as a sequence of `test` and `branch` instructions. Alternatively, it could have been written in a data-directed style, which avoids the need to perform sequential tests and facilitates the definition of new component types.)
+
+```js
+"eval_dispatch",
+  test(list(op("is_literal"), reg("comp"))),
+  branch(label("ev_literal")),
+  test(list(op("is_name"), reg("comp"))),
+  branch(label("ev_name")),
+  test(list(op("is_application"), reg("comp"))),
+  branch(label("ev_application")),
+  test(list(op("is_operator_combination"), reg("comp"))),
+  branch(label("ev_operator_combination")),
+  test(list(op("is_conditional"), reg("comp"))),
+  branch(label("ev_conditional")),
+  test(list(op("is_lambda_expression"), reg("comp"))),
+  branch(label("ev_lambda")),
+  test(list(op("is_sequence"), reg("comp"))),
+  branch(label("ev_sequence")),
+  test(list(op("is_block"), reg("comp"))),
+  branch(label("ev_block")),
+  test(list(op("is_return_statement"), reg("comp"))),
+  branch(label("ev_return")),
+  test(list(op("is_function_declaration"), reg("comp"))),
+  branch(label("ev_function_declaration")),
+  test(list(op("is_declaration"), reg("comp"))),
+  branch(label("ev_declaration")),
+  test(list(op("is_assignment"), reg("comp"))),
+  branch(label("ev_assignment")),
+  go_to(label("unknown_component_type")),
+```
+
+**Evaluating simple expressions.** Numbers and strings, names, and lambda expressions have no subexpressions to be evaluated. For these, the evaluator simply places the correct value in the `val` register and continues execution at the entry point specified by `continue`:
+
+```js
+"ev_literal",
+  assign("val", list(op("literal_value"), reg("comp"))),
+  go_to(reg("continue")),
+
+"ev_name",
+  assign("val", list(op("symbol_of_name"), reg("comp"))),
+  assign("val", list(op("lookup_symbol_value"),
+                     reg("val"), reg("env"))),
+  go_to(reg("continue")),
+
+"ev_lambda",
+  assign("unev", list(op("lambda_parameter_symbols"), reg("comp"))),
+  assign("comp", list(op("lambda_body"), reg("comp"))),
+  assign("val", list(op("make_function"),
+                     reg("unev"), reg("comp"), reg("env"))),
+  go_to(reg("continue")),
+```
+
+Observe how `ev_lambda` uses the `unev` and `comp` registers to hold the parameters and body of the lambda expression so that they can be passed to the `make_function` operation, along with the environment in `env`.
+
+**Conditionals.** As with the metacircular evaluator, syntactic forms are handled by selectively evaluating fragments of the component. For a conditional, we must evaluate the predicate and decide, based on its value, whether to evaluate the consequent or the alternative.
+
+Before evaluating the predicate, we save the conditional itself, which is in `comp`, so that we can later extract the consequent or alternative. To evaluate the predicate expression, we move it to the `comp` register and go to `eval_dispatch`. The environment in the `env` register is already the correct one in which to evaluate the predicate. However, we save `env` because we will need it later to evaluate the consequent or the alternative. We set up `continue` so that evaluation will resume at `ev_conditional_decide` after the predicate has been evaluated. First, however, we save the old value of `continue`, which we will need later in order to return to the evaluation of the statement that is waiting for the value of the conditional.
+
+```js
+"ev_conditional",
+  save("comp"), // save conditional for later
+  save("env"),
+  save("continue"),
+  assign("continue", label("ev_conditional_decide")),
+  assign("comp", list(op("conditional_predicate"), reg("comp"))),
+  go_to(label("eval_dispatch")), // evaluate the predicate
+```
+
+When we resume at `ev_conditional_decide` after evaluating the predicate, we test whether it was true or false and, depending on the result, place either the consequent or the alternative in `comp` before going to `eval_dispatch`. The test uses `is_falsy`, the opposite of the `is_truthy` with which the metacircular evaluator tests predicates; that lets us write the consequent and alternative in the same order as in a conditional, and simply fall through to the consequent when the predicate holds. Notice that restoring `env` and `continue` here sets up `eval_dispatch` to have the correct environment and to continue at the right place to receive the value of the conditional.
+
+```js
+"ev_conditional_decide",
+  restore("continue"),
+  restore("env"),
+  restore("comp"),
+  test(list(op("is_falsy"), reg("val"))),
+  branch(label("ev_conditional_alternative")),
+"ev_conditional_consequent",
+  assign("comp", list(op("conditional_consequent"), reg("comp"))),
+  go_to(label("eval_dispatch")),
+"ev_conditional_alternative",
+  assign("comp", list(op("conditional_alternative"), reg("comp"))),
+  go_to(label("eval_dispatch")),
+```
+
+**Sequence evaluation.** The portion of the explicit-control evaluator beginning at `ev_sequence`, which handles sequences of statements, is analogous to the metacircular evaluator's `eval_sequence` function.
+
+The entries at `ev_sequence_next` and `ev_sequence_continue` form a loop that successively evaluates each statement in a sequence. The list of unevaluated statements is kept in `unev`. At `ev_sequence` we place the sequence of statements to be evaluated in `unev`. If the sequence is empty, we set `val` to `undefined` and jump to `continue` via `ev_sequence_empty`. Otherwise we start the sequence-evaluation loop, first saving the value of `continue` on the stack, because the `continue` register will be used for local flow of control in the loop, and the original value is needed for continuing after the statement sequence. Before evaluating each statement, we check to see if there are additional statements to be evaluated in the sequence. If so, we save the rest of the unevaluated statements (held in `unev`) and the environment in which these must be evaluated (held in `env`) and call `eval_dispatch` to evaluate the statement, which has been placed in `comp`. The two saved registers are restored after this evaluation, at `ev_sequence_continue`.
+
+The final statement in the sequence is handled differently, at the entry point `ev_sequence_last_statement`. Since there are no more statements to be evaluated after this one, we need not save `unev` or `env` before going to `eval_dispatch`. The value of the whole sequence is the value of the last statement, so after the evaluation of the last statement there is nothing left to do except continue at the entry point that was saved at `ev_sequence`. Rather than setting up `continue` to arrange for `eval_dispatch` to return here and then restoring `continue` from the stack and continuing at that entry point, we restore `continue` from the stack before going to `eval_dispatch`, so that `eval_dispatch` will continue at that entry point after evaluating the statement.
+
+```js
+"ev_sequence",
+  assign("unev", list(op("sequence_statements"), reg("comp"))),
+  test(list(op("is_empty_sequence"), reg("unev"))),
+  branch(label("ev_sequence_empty")),
+  save("continue"),
+"ev_sequence_next",
+  assign("comp", list(op("first_statement"), reg("unev"))),
+  test(list(op("is_last_statement"), reg("unev"))),
+  branch(label("ev_sequence_last_statement")),
+  save("unev"),
+  save("env"),
+  assign("continue", label("ev_sequence_continue")),
+  go_to(label("eval_dispatch")),
+"ev_sequence_continue",
+  restore("env"),
+  restore("unev"),
+  assign("unev", list(op("rest_statements"), reg("unev"))),
+  go_to(label("ev_sequence_next")),
+"ev_sequence_last_statement",
+  restore("continue"),
+  go_to(label("eval_dispatch")),
+"ev_sequence_empty",
+  assign("val", constant(undefined)),
+  go_to(reg("continue")),
+```
+
+Unlike `eval_sequence` in the metacircular evaluator, `ev_sequence` does not need to check whether a return statement was evaluated so as to terminate the sequence evaluation. The explicit control in this evaluator allows a return statement to jump directly to the continuation of the current function application without resuming the sequence evaluation. Thus sequence evaluation does not need to be concerned with returns, or even be aware of the existence of return statements in the language. Because a return statement jumps out of the sequence-evaluation code, the restores of saved registers at `ev_sequence_continue` won't be executed. We will see in §5.4.2 how the return statement removes these values from the stack.
+
+</Prose>
+
+<Example index={0} file="simple.sicp" source={ecevalSimpleProgram} prelude={ecevalControllerSource + ecevalMachineSource} anim="machine">
+
+One program, a sequence of a literal and a conditional, goes through the dispatcher, the sequence loop, a conditional, a literal and a name. `ev_sequence` saves `continue`, then `unev` and `env` while it evaluates `"one"`, and restores them at `ev_sequence_continue`. The conditional is the last statement, so `continue` is restored *before* it is evaluated. `ev_conditional` saves three registers for the predicate; it is false, and the alternative, the name `math_PI`, is looked up in `env`. The stack never holds more than three entries. Change `false` to `true`, or add statements.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-5/eceval.ts">
+
+Each code block on this page is the text of a string exported by `chapter-5/eceval.ts` (`ecevalDispatch`, `ecevalLiteral`, `ecevalName`, `ecevalLambda`, `ecevalConditional`, `ecevalSequence`), and the controller that runs is those strings joined. The predicates and selectors they call are machine operations from `machines/evaluatorSupport.ts`. The test `chapter-5/section-5-4.test.ts` asserts that the program above prints the value of `math_PI` after 7 pushes with a maximum depth of 3.
+
+</UnderTheHood>
+
+<Enables items={['5.4.2', { id: '5.5.2', label: 'Compiling the same components' }]} />

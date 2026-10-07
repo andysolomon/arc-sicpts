@@ -1,0 +1,56 @@
+import { compilationOverviewProgram } from '@sicp/lab';
+
+<Prose>
+
+The explicit-control evaluator of §5.4 is a register machine whose controller interprets JavaScript programs. In this section we will see how to run JavaScript programs on a register machine whose controller is not a JavaScript interpreter.
+
+The explicit-control evaluator machine is universal: it can carry out any computational process that can be described in JavaScript. The evaluator's controller orchestrates the use of its data paths to perform the desired computation. Thus, the evaluator's data paths are universal: they are sufficient to perform any computation we desire, given an appropriate controller. (This is a theoretical statement. The evaluator's data paths are not a particularly convenient or efficient set of data paths for a general-purpose computer; they would be poor at high-performance floating-point arithmetic, for example.)
+
+Commercial general-purpose computers are register machines organised around a collection of registers and operations that constitute an efficient and convenient universal set of data paths. The controller for a general-purpose machine is an interpreter for a register-machine language like the one we have been using. This language is called the *native language* of the machine, or simply *machine language*. Programs written in machine language are sequences of instructions that use the machine's data paths. For example, the explicit-control evaluator's instruction sequence can be thought of as a machine-language program for a general-purpose computer rather than as the controller for a specialised interpreter machine.
+
+There are two common strategies for bridging the gap between higher-level languages and register-machine languages. The explicit-control evaluator illustrates the strategy of interpretation. An interpreter written in the native language of a machine configures the machine to execute programs written in a language (called the *source language*) that may differ from the native language of the machine performing the evaluation. The primitive functions of the source language are implemented as a library of subroutines written in the native language of the given machine. A program to be interpreted (called the *source program*) is represented as a data structure. The interpreter traverses this data structure, analysing the source program. As it does so, it simulates the intended behaviour of the source program by calling appropriate primitive subroutines from the library.
+
+In this section, we explore the alternative strategy of *compilation*. A compiler for a given source language and machine translates a source program into an equivalent program (called the *object program*) written in the machine's native language. The compiler that we implement in this section translates programs written in JavaScript into sequences of instructions to be executed using the explicit-control evaluator machine's data paths. (The machine that runs compiled code can in fact be simpler than the interpreter machine: it never uses the `comp` and `unev` registers, which the interpreter needs to hold pieces of unevaluated components, nor the operations on component syntax, because the components are built into the compiled code. It does need a few operations to represent compiled functions.)
+
+Compared with interpretation, compilation can provide a great increase in the efficiency of program execution, as we will explain below. On the other hand, an interpreter provides a more powerful environment for interactive program development and debugging, because the source program being executed is available at run time to be examined and modified. In addition, because the entire library of primitives is present, new programs can be constructed and added to the system during debugging.
+
+In view of the complementary advantages of compilation and interpretation, modern program-development environments pursue a mixed strategy. These systems are generally organised so that interpreted functions and compiled functions can call each other. This enables a programmer to compile those parts of a program that are assumed to be debugged, thus gaining the efficiency advantage of compilation, while retaining the interpretive mode of execution for those parts of the program that are in the flux of interactive development and debugging. (Many implementations delay compiling even debugged parts until they have evidence, gathered by counting how often the parts are interpreted, that compiling them would pay off. This technique is called *just-in-time compilation*.) In §5.5.7, after we have implemented the compiler, we will show how to interface it with our interpreter to produce an integrated interpreter–compiler system.
+
+## An overview of the compiler
+
+Our compiler is much like our interpreter, both in its structure and in the function it performs. Accordingly, the mechanisms used by the compiler for analysing components will be similar to those used by the interpreter. Moreover, to make it easy to interface compiled and interpreted code, we will design the compiler to generate code that obeys the same conventions of register usage as the interpreter: the environment will be kept in the `env` register, argument lists will be accumulated in `argl`, a function to be applied will be in `fun`, functions will return their answers in `val`, and the location to which a function should return will be kept in `continue`. In general, the compiler translates a source program into an object program that performs essentially the same register operations as would the interpreter in evaluating the same source program.
+
+This description suggests a strategy for implementing a rudimentary compiler: we traverse the component in the same way the interpreter does. When we encounter a register instruction that the interpreter would perform in evaluating the component, we do not execute the instruction but instead accumulate it into a sequence. The resulting sequence of instructions will be the object code. Observe the efficiency advantage of compilation over interpretation. Each time the interpreter evaluates a component, for example `f(96, 22)`, it performs the work of classifying the component (discovering that this is a function application) and testing for the end of the list of argument expressions (discovering that there are two argument expressions). With a compiler, the component is analysed only once, when the instruction sequence is generated at compile time. The object code produced by the compiler contains only the instructions that evaluate the function expression and the two argument expressions, assemble the argument list, and apply the function (in `fun`) to the arguments (in `argl`).
+
+This is the same kind of optimisation we implemented in the analysing evaluator of §4.1.7. But there are further opportunities to gain efficiency in compiled code. As the interpreter runs, it follows a process that must be applicable to any component in the language. In contrast, a given segment of compiled code is meant to execute some particular component. This can make a big difference, for example in the use of the stack to save registers. When the interpreter evaluates a component, it must be prepared for any contingency. Before evaluating a subcomponent, the interpreter saves all registers that will be needed later, because the subcomponent might require an arbitrary evaluation. A compiler, on the other hand, can exploit the structure of the particular component it is processing to generate code that avoids unnecessary stack operations.
+
+As a case in point, consider the application `f(96, 22)`. Before the interpreter evaluates the function expression of the application, it prepares for this evaluation by saving the registers containing the argument expressions and the environment, whose values will be needed later. The interpreter then evaluates the function expression to obtain the result in `val`, restores the saved registers, and finally moves the result from `val` to `fun`. However, in the particular expression we are dealing with, the function expression is the name `f`, whose evaluation is accomplished by the machine operation `lookup_symbol_value`, which does not alter any registers. The compiler that we implement in this section will take advantage of this fact and generate code that evaluates the function expression using the instruction
+
+```js
+assign("fun",
+       list(op("lookup_symbol_value"), constant("f"), reg("env")))
+```
+
+where the argument to `lookup_symbol_value` is extracted at compile time from the parser's representation of `f(96, 22)`. This code not only avoids the unnecessary saves and restores but also assigns the value of the lookup directly to `fun`, whereas the interpreter would obtain the result in `val` and then move this to `fun`.
+
+</Prose>
+
+<Example index={0} file="overview.sicp" source={compilationOverviewProgram} anim="compiled">
+
+The application with a primitive in place of `f`, so that it also runs. The function expression is looked up straight into `fun`, the two literals go into `val` and onto `argl`, last one first, and nothing is saved around any of it. The one highlighted `save` belongs to the branch that calls a compiled function, which a primitive like `math_max` never takes. The explicit-control evaluator, evaluating the same application, pushes eight registers onto the stack. Replace `22` by `math_abs(22)` and see what changes.
+
+</Example>
+
+<Prose>
+
+A compiler can also optimise access to the environment. Having analysed the code, the compiler can know in which frame the value of a particular name will be located and access that frame directly, rather than performing the `lookup_symbol_value` search. We will discuss how to implement such lexical addressing in §5.5.6. Until then, however, we will focus on the kind of register and stack optimisations described above. There are many other optimisations that can be performed by a compiler, such as coding primitive operations "in line" instead of using a general `apply` mechanism (see exercise 5.41); but we will not emphasise these here. Our main goal in this section is to illustrate the compilation process in a simplified (but still interesting) context.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-5/compiler.ts">
+
+The compiler is the book's code, run as a Source program by the Laboratory: `chapter-5/compiler.ts` holds it one subsection at a time, and the animation runs `compile(parse(…), "val", "next")` on the editor's program in the worker and lists the instructions. The test `chapter-5/section-5-5.test.ts` asserts that the code for `math_max(96, 22)` has 13 instructions and 3 labels, that its only `save` is of `continue` in the compiled branch, that the evaluator of §5.4 makes 9 pushes for the application (one of them the driver loop's `save("comp")`), and that the compiled code, run by `compile_and_go` of §5.5.7, makes none.
+
+</UnderTheHood>
+
+<Enables items={['5.5.1', '5.5.5', { id: '5.5.7', label: 'Compiled and interpreted code together' }]} />

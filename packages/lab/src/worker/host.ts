@@ -1,4 +1,11 @@
-import { prepare } from '../evaluator/evaluate.ts';
+import { compilerSource, runCompiled } from '../chapter-5/compiler.ts';
+import { quote } from '../chapter-5/eceval.ts';
+import { instructionText } from '../machines/controller.ts';
+import { runEceval } from '../chapter-5/eceval.ts';
+import { collectGarbage, memoryImage } from '../chapter-5/memory.ts';
+import { evaluate, prepare } from '../evaluator/evaluate.ts';
+import { listToArray } from '../evaluator/values.ts';
+import { recordMachine, type MachineRecorder } from '../machines/inspect.ts';
 import { DEFAULT_BUDGET, type Machine } from '../evaluator/machine.ts';
 import type { Segment } from '../evaluator/primitives.ts';
 import { stringify } from '../evaluator/values.ts';
@@ -7,6 +14,12 @@ import { createStepTracer } from '../inspect/stepTrace.ts';
 import { SourceError } from '../syntax/errors.ts';
 import type {
   CheckRequest,
+  CompareRequest,
+  CompiledLine,
+  CompileRequest,
+  MachinesRequest,
+  MemoryRequest,
+  StackMeasure,
   ErrorPayload,
   LabEvent,
   LabRequest,
@@ -43,6 +56,9 @@ interface Job {
 }
 
 const TRACE_BUDGET = 20_000;
+/** Building and running machines is mostly simulator work, which the step budget does not count. */
+const MACHINES_BUDGET = 2_000_000;
+const MAX_MACHINES = 6;
 
 /** Lines a single job may draw; a runaway painter stops being shown here. */
 export const MAX_SEGMENTS = 20_000;
@@ -196,9 +212,12 @@ export function createLabHost(deps: HostDeps): LabHost {
 
     try {
       // Each test gets a fresh run of the program, so tests cannot affect each other.
+      const output: string[] = [];
       const session = prepare(request.source, {
         budget,
+        display: (text) => output.push(text),
         ...(request.prelude !== undefined && { prelude: request.prelude }),
+        ...(request.context !== undefined && { context: request.context }),
       });
       if (!(await drive(session.machine, job))) return 'cancelled';
       if (session.machine.status !== 'done') return result(false, describe(session.machine));
@@ -226,6 +245,23 @@ export function createLabHost(deps: HostDeps): LabHost {
         return test.message === undefined || message.includes(test.message)
           ? result(true, null)
           : result(false, `${test.call} stops with "${message}", not with an error about "${test.message}"`);
+      }
+
+      if (test.kind === 'output') {
+        const from = output.length;
+        const measured = session.follow(`${test.call};`, { budget });
+        if (!(await drive(measured, job))) return 'cancelled';
+        if (measured.status !== 'done') return result(false, describe(measured));
+        const lines = output.slice(from);
+        const shown = lines.length === 0 ? 'nothing' : lines.slice(0, 3).join(' | ') + (lines.length > 3 ? ' | …' : '');
+        if (test.lines !== undefined && (lines.length !== test.lines.length || lines.some((line, i) => line !== test.lines?.[i]))) {
+          return result(false, `${test.call} displays ${shown}`);
+        }
+        if (test.count !== undefined && lines.length !== test.count) {
+          return result(false, `${test.call} displays ${lines.length} line(s); ${test.count} expected`);
+        }
+        const missing = (test.contains ?? []).find((text) => !lines.some((line) => line.includes(text)));
+        return missing === undefined ? result(true, null) : result(false, `${test.call} displays no line containing ${missing}`);
       }
 
       const expr = session.follow(`${test.expr};`, { budget });
@@ -272,6 +308,95 @@ export function createLabHost(deps: HostDeps): LabHost {
     });
   }
 
+  function machines(request: MachinesRequest): void {
+    const recorders: MachineRecorder[] = [];
+    const output: string[] = [];
+    let outcome: TraceOutcome;
+    try {
+      const { machine } = prepare(request.source, {
+        budget: request.budget ?? MACHINES_BUDGET,
+        display: (text) => output.push(text),
+        onMachine: (made) => {
+          if (recorders.length < MAX_MACHINES) recorders.push(recordMachine(made, { maxSteps: request.maxSteps ?? 4000 }));
+        },
+        ...(request.prelude !== undefined && { prelude: request.prelude }),
+      });
+      machine.run();
+      if (machine.status === 'done') outcome = { status: 'done', value: stringify(machine.value) };
+      else if (machine.status === 'error') outcome = { status: 'error', error: payload(machine.error) };
+      else outcome = { status: 'budget-exhausted' };
+    } catch (error) {
+      outcome = { status: 'error', error: payload(error) };
+    }
+    post({ type: 'machines-done', id: request.id, machines: recorders.map((r) => r.view()), outcome, output });
+  }
+
+  function memory(request: MemoryRequest): void {
+    const { image, error } = memoryImage(request.source, { start: request.start ?? 0 });
+    if (image === null) {
+      post({ type: 'memory-done', id: request.id, run: null, error });
+      return;
+    }
+    try {
+      post({ type: 'memory-done', id: request.id, run: collectGarbage(image), error: null });
+    } catch (failure) {
+      post({ type: 'memory-done', id: request.id, run: null, error: payload(failure).message });
+    }
+  }
+
+  async function compare(request: CompareRequest, job: Job): Promise<void> {
+    const { definition, call, ns } = request;
+    const inputs = ns.map((n) => `${call}(${n});`);
+    const measures = (run: { results: { value: string; totalPushes: number; maximumDepth: number }[] }, skip: number) =>
+      run.results.slice(skip).map((r, i): StackMeasure => ({ n: ns[i] ?? 0, value: r.value, totalPushes: r.totalPushes, maximumDepth: r.maximumDepth }));
+    const interpretedRun = runEceval([definition, ...inputs]);
+    await pause();
+    if (job.cancelled) return post({ type: 'cancelled', id: request.id, steps: 0, forced: false });
+    const compiledRun = runCompiled(definition, inputs);
+    await pause();
+    if (job.cancelled) return post({ type: 'cancelled', id: request.id, steps: 0, forced: false });
+    let special: StackMeasure[] | null = null;
+    let error = interpretedRun.failure ?? compiledRun.failure;
+    if (request.special !== undefined) {
+      const outcome = evaluate(`list(${ns.map((n) => `special_statistics(${n})`).join(', ')});`, {
+        prelude: request.special,
+        budget: MACHINES_BUDGET,
+      });
+      if (outcome.status === 'done') {
+        special = (listToArray(outcome.value) ?? []).map((entry, i): StackMeasure => {
+          const [value, pushes, depth] = listToArray(entry) ?? [];
+          return { n: ns[i] ?? 0, value: stringify(value), totalPushes: Number(pushes), maximumDepth: Number(depth) };
+        });
+      } else error ??= outcome.status === 'error' ? outcome.error.message : 'budget exhausted';
+    }
+    post({
+      type: 'compare-done',
+      id: request.id,
+      interpreted: measures(interpretedRun, 1),
+      compiled: measures(compiledRun, 1),
+      special,
+      error,
+    });
+  }
+
+  function compile(request: CompileRequest): void {
+    const outcome = evaluate(
+      `compile(parse(${quote(request.source)}), ${quote(request.target ?? 'val')}, ${quote(request.linkage ?? 'next')});`,
+      { prelude: compilerSource, budget: MACHINES_BUDGET },
+    );
+    if (outcome.status !== 'done') {
+      const error = outcome.status === 'error' ? outcome.error.reason : 'the compiler ran out of steps';
+      post({ type: 'compile-done', id: request.id, lines: [], needs: [], modifies: [], error });
+      return;
+    }
+    const [needs, modifies, instructions] = listToArray(outcome.value) ?? [];
+    const lines = (listToArray(instructions ?? null) ?? []).map(
+      (item): CompiledLine => (typeof item === 'string' ? { text: item, kind: 'label' } : { text: instructionText(item), kind: String((listToArray(item) ?? [])[0]) }),
+    );
+    const strings = (value: unknown): string[] => (listToArray((value ?? null) as never) ?? []).map(String);
+    post({ type: 'compile-done', id: request.id, lines, needs: strings(needs), modifies: strings(modifies), error: null });
+  }
+
   async function start(request: Exclude<LabRequest, { type: 'cancel' }>): Promise<void> {
     const job: Job = { cancelled: false };
     jobs.set(request.id, job);
@@ -279,6 +404,10 @@ export function createLabHost(deps: HostDeps): LabHost {
     try {
       if (request.type === 'run') await run(request, job);
       else if (request.type === 'trace') trace(request);
+      else if (request.type === 'machines') machines(request);
+      else if (request.type === 'memory') memory(request);
+      else if (request.type === 'compare') await compare(request, job);
+      else if (request.type === 'compile') compile(request);
       else await check(request, job);
     } catch (error) {
       post({ type: 'error', id: request.id, error: payload(error), steps: 0, ms: 0 });

@@ -12,13 +12,15 @@ const ATOMS = new Set(['true', 'false', 'null', 'undefined']);
 
 interface ModeState {
   inBlockComment: boolean;
+  /** Inside a backquoted string, which may span lines. */
+  inTemplate: boolean;
   /** Number of unclosed brackets, for indentation. */
   depth: number;
 }
 
 const sourceMode = StreamLanguage.define<ModeState>({
   name: 'source',
-  startState: () => ({ inBlockComment: false, depth: 0 }),
+  startState: () => ({ inBlockComment: false, inTemplate: false, depth: 0 }),
   token(stream, state) {
     if (state.inBlockComment) {
       if (stream.skipTo('*/')) {
@@ -29,6 +31,17 @@ const sourceMode = StreamLanguage.define<ModeState>({
         stream.skipToEnd();
       }
       return 'comment';
+    }
+    if (state.inTemplate) {
+      while (!stream.eol()) {
+        const ch = stream.next();
+        if (ch === '\\') stream.next();
+        else if (ch === '`') {
+          state.inTemplate = false;
+          break;
+        }
+      }
+      return 'string';
     }
     if (stream.eatSpace()) return null;
     if (stream.match('//')) {
@@ -41,6 +54,10 @@ const sourceMode = StreamLanguage.define<ModeState>({
     }
     if (stream.match(/^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/)) return 'number';
     if (stream.match(/^"(?:[^"\\]|\\.)*"?/) || stream.match(/^'(?:[^'\\]|\\.)*'?/)) return 'string';
+    if (stream.eat('`')) {
+      state.inTemplate = true;
+      return 'string';
+    }
 
     const word = stream.match(/^[A-Za-z_$][\w$]*/);
     if (word !== null && typeof word !== 'boolean') {

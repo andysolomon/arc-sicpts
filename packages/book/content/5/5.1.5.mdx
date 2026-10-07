@@ -1,0 +1,49 @@
+import { everyInstructionProgram } from '@sicp/lab';
+
+<Prose>
+
+A controller instruction in our register-machine language has one of the following forms, where each *input* is `reg(register-name)` or `constant(constant-value)`.
+
+These instructions were introduced in §5.1.1:
+
+| Instruction | What it does |
+| --- | --- |
+| `assign(register-name, reg(register-name))` | copy one register into another |
+| `assign(register-name, constant(constant-value))` | put a constant in a register |
+| `assign(register-name, list(op(operation-name), input₁, …, inputₙ))` | put the value of an operation in a register |
+| `perform(list(op(operation-name), input₁, …, inputₙ))` | perform an action |
+| `test(list(op(operation-name), input₁, …, inputₙ))` | perform a test, setting the flag |
+| `branch(label(label-name))` | go to the label if the flag is true |
+| `go_to(label(label-name))` | go to the label |
+
+The use of registers to hold labels was introduced in §5.1.3:
+
+| Instruction | What it does |
+| --- | --- |
+| `assign(register-name, label(label-name))` | put an entry point in a register |
+| `go_to(reg(register-name))` | go to the entry point the register holds |
+
+Instructions to use the stack were introduced in §5.1.4:
+
+| Instruction | What it does |
+| --- | --- |
+| `save(register-name)` | push the register's contents on the stack |
+| `restore(register-name)` | pop the top of the stack into the register |
+
+The only kind of *constant-value* we have seen so far is a number, but later we will also use strings and lists. For example, `constant("abc")` is the string `"abc"`, `constant(null)` is the empty list, and `constant(list("a", "b", "c"))` is the list `list("a", "b", "c")`.
+
+</Prose>
+
+<Example index={0} file="sum_machine.sicp" source={everyInstructionProgram} anim="machine">
+
+A machine built like the factorial machine of §5.1.4 that computes 1 + 2 + 3 + 4 recursively and displays each partial sum, 1, 3, 6 and 10, as the recursion unwinds. Its comments name the instruction forms it uses: all of them but the copy of one register into another, which the GCD machine's `assign("a", reg("b"))` shows. Change the base case's `constant(0)` to `constant(100)` and every partial sum moves up by 100.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/machines/controller.ts">
+
+`machines/controller.ts` reads exactly these forms (plus `push_marker_to_stack` and `revert_stack_to_marker`, which the evaluator of §5.4 needs) and reports anything else as `Unknown instruction type -- assemble`. The test `chapter-5/section-5-1.test.ts` checks that the sum machine displays 1, 3, 6 and 10, pushes 8 values, and uses the seven instruction types `assign`, `perform`, `test`, `branch`, `go_to`, `save` and `restore`.
+
+</UnderTheHood>
+
+<Enables items={[{ id: '5.2', label: 'A simulator that runs these instructions' }, '5.2.2', '5.2.3']} />

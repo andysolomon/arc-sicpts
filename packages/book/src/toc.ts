@@ -287,13 +287,13 @@ export const chapters: Chapter[] = [
     title: 'Computing with Register Machines',
     blurb:
       'We remove the last mystery: how the evaluator itself runs. Registers, a stack and a controller are enough to interpret our language, to manage its memory, and to compile it.',
-    readingTime: null,
+    readingTime: '~4 h reading',
     sections: [
       {
         id: '5.1',
         title: 'Designing Register Machines',
         blurb: 'Data paths and controllers, subroutines, and a stack to implement recursion.',
-        exercises: null,
+        exercises: [1, 6],
         subsections: subs('5.1', [
           'A Language for Describing Register Machines',
           'Abstraction in Machine Design',
@@ -306,7 +306,7 @@ export const chapters: Chapter[] = [
         id: '5.2',
         title: 'A Register-Machine Simulator',
         blurb: 'An assembler and a simulator that run any machine we can describe, and count what it does.',
-        exercises: null,
+        exercises: [7, 18],
         subsections: subs('5.2', [
           'The Machine Model',
           'The Assembler',
@@ -318,14 +318,14 @@ export const chapters: Chapter[] = [
         id: '5.3',
         title: 'Storage Allocation and Garbage Collection',
         blurb: 'Pairs as cells in two vectors, and a stop-and-copy collector that keeps memory looking infinite.',
-        exercises: null,
+        exercises: [19, 21],
         subsections: subs('5.3', ['Memory as Vectors', 'Maintaining the Illusion of Infinite Memory']),
       },
       {
         id: '5.4',
         title: 'The Explicit-Control Evaluator',
         blurb: 'The evaluator of Chapter 4 as a register machine, with every stack operation in view.',
-        exercises: null,
+        exercises: [22, 31],
         subsections: subs('5.4', [
           'The Dispatcher and Basic Evaluation',
           'Evaluating Function Applications',
@@ -337,7 +337,7 @@ export const chapters: Chapter[] = [
         id: '5.5',
         title: 'Compilation',
         blurb: 'Translating programs into register-machine instructions, and comparing compiled runs with interpreted ones.',
-        exercises: null,
+        exercises: [32, 55],
         subsections: subs('5.5', [
           'Structure of the Compiler',
           'Compiling Components',
