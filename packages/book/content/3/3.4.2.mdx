@@ -1,0 +1,328 @@
+import {
+  exchangeDeadlockProgram,
+  interleavingCountProgram,
+  mutexCounterProgram,
+  serializedAccountProgram,
+  serializedExchangeProgram,
+  serializedSquareIncrementProgram,
+  squareIncrementProgram,
+  unserializedExchangeProgram,
+} from '@sicp/lab';
+
+<Prose>
+
+The trouble with concurrent threads is that we must think about how their steps can be ordered relative to each other. Suppose one thread has three steps *a*, *b*, *c* that must happen in that order, and another has *x*, *y*, *z*. If nothing constrains how they interleave, there are twenty orders of the six steps that keep each thread's own steps in sequence. A programmer reasoning about such a system has to consider every one of them, and the count grows explosively with more threads and more steps.
+
+</Prose>
+
+<Example index={0} file="interleavings.sicp" source={interleavingCountProgram}>
+
+`interleave` builds every merge of two lists that keeps each list in order: the first step comes from one list or the other, and the rest is a merge of what remains. Two threads of three steps give 20 orders; try four steps each, then five. Two threads of *n* steps interleave in (2*n*)! / (*n*!)² ways.
+
+</Example>
+
+<Prose>
+
+A more practical approach is to build mechanisms that rule out most of the orders, so that a correct program has few behaviours to think about. Several have been invented; this section develops one of them, the *serializer*.
+
+**Serializing access to shared state.** Serialization lets threads run concurrently but marks certain groups of functions as never running concurrently with one another. Think of each group as a room with one door: a thread that wants to run a function of the group must enter the room, and if another thread is inside, it waits at the door until that thread leaves. Each group is a *serialized set*.
+
+This is how we control access to shared variables. To update a variable from its old value, we put the read and the write into one function and put every function that assigns the variable into the same serialized set. Then no other assignment to the variable can happen between our read and our write.
+
+**Serializers in JavaScript.** In this Laboratory, `concurrent_execute(f1, f2, ..., fk)` takes functions of no arguments, runs each one in its own thread, and returns once all of them have finished. Here is a program with two threads that both change `x`:
+
+</Prose>
+
+<Example index={1} file="square_and_increment.sicp" source={squareIncrementProgram} anim="outcomes">
+
+Five final values, as SICP predicts. 101 and 121 are the two serial orders. 110: the increment changed `x` from 10 to 11 between the two lookups in `x * x`. 11: the increment looked `x` up, the squaring stored 100, and then the increment stored 11. 100: the squaring looked `x` up twice, the increment stored 11, and the squaring stored 100 over it.
+
+</Example>
+
+<Prose>
+
+A *serializer* is made by `make_serializer()`. It takes a function and returns a function that behaves the same way but is serialized: functions returned by the same serializer belong to one serialized set. With one serializer `s` for both threads, the program can only end with 101 or 121.
+
+Source has no rest parameters (`...args`), so our serializers protect functions *of no arguments*, which is exactly what `concurrent_execute` wants. To protect a call that does take arguments, wrap it in a function of none and call that: `protect(() => withdraw(amount))()`. The serializer's code is at the top of the program below; how it works is the subject of "Implementing serializers", further down.
+
+</Prose>
+
+<Example index={2} file="serialized.sicp" source={serializedSquareIncrementProgram} anim="outcomes">
+
+The same two threads, each wrapped in `s(...)`. All sixty runs end with 101 or 121: the histogram has collapsed onto the serial orders. Wrap only one of them in `s` and run it a few times: serializing one side alone protects nothing.
+
+</Example>
+
+<Prose>
+
+Here is a bank account whose withdrawals and deposits are serialized. Each account has its own serializer, so two threads can never update the same account at once, while transactions on different accounts can still go ahead concurrently.
+
+</Prose>
+
+<Example index={3} file="serialized_account.sicp" source={serializedAccountProgram} anim="interleaving">
+
+Peter's and Paul's withdrawals from the same serialized account. Whichever thread reaches `test_and_set` first (in green) holds the mutex; when the other tries, `test_and_set` returns true and it goes round again, as often as the count shows, until the holder releases it with `clear`. Every seed ends at 65. Try a few.
+
+</Example>
+
+<Prose>
+
+**Complexity of using multiple shared resources.** Serializers make concurrent programs manageable, but only as long as each operation touches one shared resource. Suppose we want to swap the balances of two accounts:
+
+```js
+function exchange(account1, account2) {
+    const difference = account1("balance") - account2("balance");
+    account1("withdraw")(difference);
+    account2("deposit")(difference);
+}
+```
+
+With one thread this is fine. Now let Peter exchange accounts *a* and *b* while Paul exchanges *a* and *c*. Each account serializes its own withdrawals and deposits, yet the result can be wrong: Peter can compute his difference from *a*'s balance, and before he withdraws it, Paul can change *a*'s balance. To exchange correctly, a thread must hold both accounts for the whole exchange.
+
+</Prose>
+
+<Example index={4} file="exchange.sicp" source={unserializedExchangeProgram} anim="outcomes">
+
+Accounts *a*, *b* and *c* hold $10, $20 and $30. In sixty runs every outcome is the same wrong one: *a* ends with $40 and the others with $10, because both threads read *a*'s balance before either withdrew from it, and an exchange takes many steps, so this is the usual case here. Notice that the total is still $60 (exercise 3.43 asks why).
+
+</Example>
+
+<Prose>
+
+One fix is to let the accounts' serializers out: each account answers the message `"serializer"` with the serializer that protects its balance, and leaves withdrawals and deposits unserialized. Code that uses one account must then serialize its operations itself. A deposit, for example, becomes:
+
+```js
+function deposit(account, amount) {
+    const s = account("serializer");
+    const d = account("deposit");
+    s(() => d(amount))();
+}
+```
+
+`serialized_exchange` can then take both serializers and run `exchange` inside both. Exporting the serializer gives us flexibility, but it breaks modularity: every program that uses an account is now responsible for its correct use. Exercise 3.45 shows why the accounts cannot simply keep serializing their own operations as well.
+
+</Prose>
+
+<Example index={5} file="serialized_exchange.sicp" source={serializedExchangeProgram} anim="outcomes">
+
+The same two exchanges, each holding both accounts' serializers. Only the two serial results remain: "30 10 20" when Peter goes first, and "20 30 10" when Paul does. The balances are always 10, 20 and 30 in some order.
+
+</Example>
+
+<Prose>
+
+**Implementing serializers.** A serializer is built on a simpler mechanism, the *mutex*, an object that can be *acquired* and *released*. Once a thread has acquired a mutex, any other thread that tries to acquire it waits until it is released. (The name abbreviates *mutual exclusion*; E. W. Dijkstra's semaphores, the subject of exercise 3.47, are a related idea.) The serializer in the programs above owns one mutex, acquires it before running the function it protects, and releases it afterwards, returning the function's value.
+
+The mutex keeps its state in a *cell*, a one-element list holding true when the mutex is taken. To acquire it, a thread calls `test_and_set(cell)`: if the cell is already true, it gets true back and tries again; if not, the cell becomes true and the thread gets false, which means it now holds the mutex. Releasing sets the cell back to false.
+
+Everything depends on `test_and_set` being *atomic*. Between looking at the cell and setting it, no other thread may look at it; otherwise two threads could both see false and both believe they hold the mutex (exercise 3.46). On a real computer this needs help from below. A single processor that switches threads on a timer can turn the timer off during `test_and_set`; machines with several processors provide special instructions that test and set a memory location in one indivisible operation. In this Laboratory, `test_and_set` is a primitive, and a primitive is applied in one step of the evaluator, so the scheduler can never switch threads in the middle of it.
+
+</Prose>
+
+<Example index={6} file="mutex.sicp" source={mutexCounterProgram} anim="interleaving">
+
+Three threads each add 1 to `count` under one serializer. Follow a lane: the thread calls `the_mutex("acquire")`, wins or loses `test_and_set`, and once it wins, reads and writes `count` while the others spin, then releases the cell with `clear`. The count always ends at 3. Remove the `s(...)` around the increments and look for a seed that ends at 2.
+
+</Example>
+
+<Prose>
+
+**Deadlock.** Even with serializers, exchanging accounts has a danger. Peter exchanges *a* with *b* while Paul exchanges *b* with *a*. Peter's thread takes *a*'s serializer; at the same moment Paul's takes *b*'s. Now Peter waits for *b*, which Paul holds, and Paul waits for *a*, which Peter holds. Neither can go on, and neither will ever let go. This is a *deadlock*, and it threatens any system where threads need more than one shared resource at once.
+
+</Prose>
+
+<Example index={7} file="deadlock.sicp" source={exchangeDeadlockProgram} anim="outcomes">
+
+In runs where one exchange gets both accounts first, the two exchanges cancel out and the balances end as they started, "10 20". In about half the runs each thread grabs one account and then spins forever waiting for the other; the run stops only when its steps run out (the red bar). Run the program in the editor a few times: sometimes it answers, sometimes it uses up its budget.
+
+</Example>
+
+<Prose>
+
+One way to avoid this deadlock is to give each account a unique number and make every thread that needs several accounts take their serializers in order, the lowest-numbered account first (exercise 3.48). Then two threads can never each hold what the other needs. When the resources a thread needs cannot be known in advance, more elaborate techniques are needed, or the system must detect deadlock and back out of it, undoing some threads' work and retrying. No method avoids deadlock in every situation.
+
+**Concurrency, time, and communication.** We have seen how programming concurrent systems requires controlling the order of events when threads share state, and how serializers can enforce that order. But what "shared state" means is less obvious than it looks. `test_and_set` requires a global flag that every thread can inspect at any moment. On large machines with many processors, or across a network, such instant global access is costly or impossible, and designers look for other ways to coordinate.
+
+The bank shows that this is not only a technical matter. Each branch might keep its own copy of the balance and reconcile with the others now and then. The balance then has no single value at any instant: a customer's view of it depends on where and when they ask. If the copies are reconciled reliably, the account still behaves correctly over time, even though its state at any one moment is not well defined.
+
+Other mechanisms aim at agreement in time rather than exclusion. A *barrier*, for instance, lets a group of threads run independently until each reaches the barrier, and none goes past it until all have arrived: a point at which the threads are known to have finished one phase before any begins the next. Modern processors similarly let a program state that every memory operation before a certain point is visible to all processors before any after it begins.
+
+Underneath all of these is the observation that a concurrent system's notion of time is bound up with communication. When two threads synchronise, they establish an order between their events, and they do so by exchanging information. It is a little like physics, where no signal travels faster than light and the order of distant events depends on who observes them. The complexity of time and state in concurrent programs is, in this sense, the complexity of the world they model.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/evaluator/primitives.ts">
+
+`test_and_set` is a primitive in `evaluator/primitives.ts`: it reads the head of its cell and, if that is false, sets it, all inside one application, which is one step of the machine in `evaluator/machine.ts`. The machine only switches threads between steps, so the operation is atomic. `chapter-3/concurrency.test.ts` checks the claims of this page over hundreds of seeded runs: x ends at one of 11, 100, 101, 110, 121 unserialized and at 101 or 121 serialized; the serialized account always ends at 65; three serialized increments always count to 3; `serialized_exchange` leaves the balances in one of the two serial orders; and opposite exchanges sometimes run out of steps, which is how a deadlock shows up here.
+
+</UnderTheHood>
+
+<Exercises range="3.39 – 3.49" total={11}>
+<Exercise id="3.39">
+
+Which of the five values of the squaring-and-increment program remain possible if we serialize like this instead?
+
+```js
+let x = 10;
+const s = make_serializer();
+concurrent_execute(() => { x = s(() => x * x)(); },
+                   s(() => { x = x + 1; }));
+```
+
+The check also runs this program 100 times and expects every value it sees to be on your list.
+
+<Solution>
+
+**Solution.** Four remain: 101, 121, 100 and 11. Only the computation of `x * x` is serialized, not the assignment of its result. So the squaring can compute 100, leave the serializer, and be overtaken by the whole increment before it stores 100 (giving 100); or the increment can read 10 after the squaring left the serializer, the squaring store 100, and the increment store 11 (giving 11). What disappears is 110: both lookups of `x * x` happen inside the serializer, so the increment cannot change `x` between them.
+
+</Solution>
+</Exercise>
+<Exercise id="3.40">
+
+Give all possible values of `x` after
+
+```js
+let x = 10;
+concurrent_execute(() => { x = x * x; },
+                   () => { x = x * x * x; });
+```
+
+Which of them remain if both functions are serialized by one serializer `s`?
+
+<Solution>
+
+**Solution.** Each lookup of `x` sees either 10 or the other thread's result, and the last write wins. The squaring multiplies two lookups, each 10 or the cubing's 1000, so it can store 100, 10 000 or 1 000 000. The cubing multiplies three lookups, each 10 or the squaring's 100, so it can store 1000, 10 000, 100 000 or 1 000 000. In all, `x` can end with 100, 1000, 10 000, 100 000 or 1 000 000. Serialized, one runs entirely before the other, and (10²)³ = (10³)² = 1 000 000 is the only result.
+
+</Solution>
+</Exercise>
+<Exercise id="3.41">
+
+Ben Bitdiddle worries that reading an account's balance without serializing it could give anomalous results, so he changes `make_account` to serialize the balance as well: `m === "balance" ? protect(() => balance)() : ...`. Do you agree? Answer with a boolean, and pick the reason.
+
+<Solution>
+
+**Solution.** Ben's change is not needed. Reading `balance` is a single lookup, and every withdrawal or deposit changes `balance` with a single assignment, so an unserialized read sees the balance from before or after each transaction, never something in between. It may be out of date a moment later, but so may a serialized read. Ben would have a point if the balance were stored in a way that takes several steps to update, say as two numbers, since then a read could see one part changed and the other not.
+
+</Solution>
+</Exercise>
+<Exercise id="3.42">
+
+Ben Bitdiddle suggests it is a waste of time to build a new serialized function each time `withdraw` or `deposit` is requested. He builds `protected_withdraw` and `protected_deposit` once, when the account is made, and `dispatch` returns them. Complete his version and say whether the change is safe, and whether it changes what concurrency the account allows. The check runs 60 days of three concurrent transactions on one of Ben's accounts.
+
+<Solution>
+
+**Solution.** It is safe, and it makes no difference. What serializes the operations is the one mutex inside `protect`, and every serialized function `protect` returns, whenever it was made, takes that same mutex. Two concurrent calls of the same serialized function exclude each other just as two different ones do.
+
+</Solution>
+</Exercise>
+<Exercise id="3.43">
+
+Suppose three accounts hold $10, $20 and $30, and several threads exchange balances between them. Argue that if the threads run one at a time, the balances are always $10, $20 and $30 in some order. Argue that with the first `exchange` of this section, run on accounts whose withdrawals and deposits are each serialized, that can fail, but the sum is still $60. And show that if even the individual transactions are not serialized, the sum can change too.
+
+To check your reasoning, write `check_balances(a, b, c)`, which classifies three balances. The check runs three concurrent exchanges many times under each arrangement and expects your function to find what the argument predicts. (The accounts in this check never refuse a withdrawal, as the argument assumes.)
+
+<Solution>
+
+**Solution.** One exchange swaps two balances, so any sequence of exchanges permutes {10, 20, 30}. With unserialized `exchange`, a thread can compute its difference from a balance that another exchange then changes, so the balances need not be a permutation; but every exchange withdraws some amount from one account and deposits the *same* amount in another, and each of those transactions happens whole, so the total stays 60. Without serialized transactions, a withdrawal and a deposit on the same account can overlap and one of them can be lost, and then money appears or disappears.
+
+</Solution>
+</Exercise>
+<Exercise id="3.44">
+
+Transferring an amount from one account to another needs no exchange of balances:
+
+```js
+function transfer(from_account, to_account, amount) {
+    from_account("withdraw")(amount);
+    to_account("deposit")(amount);
+}
+```
+
+Louis Reasoner claims this has the same problem as `exchange` and needs a more sophisticated method. Ben Bitdiddle says it is fine as long as the source account has enough money. Write `transfer` and say whether Louis is right. The check runs three concurrent transfers 40 times.
+
+<Solution>
+
+**Solution.** Louis is wrong. `exchange` goes wrong because it computes the amount from both balances and the balances can change before it is moved. `transfer` is given its amount; the withdrawal and the deposit are each serialized on their own account, and since adding and subtracting fixed amounts commute, any interleaving of transfers leaves the same balances (provided no withdrawal is refused).
+
+</Solution>
+</Exercise>
+<Exercise id="3.45">
+
+Louis Reasoner thinks exporting the serializer was a mistake. He makes `make_account_and_serializer` serialize withdrawals and deposits automatically, as `make_account` did, while still answering `"serializer"`, and he keeps `serialized_exchange` as it was:
+
+```js
+return m => m === "withdraw"
+            ? amount => balance_serializer(() => withdraw(amount))()
+            : m === "deposit"
+            ? amount => balance_serializer(() => deposit(amount))()
+            : m === "balance"
+            ? balance
+            : m === "serializer"
+            ? balance_serializer
+            : error(m, "unknown request -- make_account");
+```
+
+What happens when `serialized_exchange` is called?
+
+<Solution>
+
+**Solution.** It never finishes, even with no other thread running. `serialized_exchange` acquires the mutexes of both accounts and calls `exchange`, which reads the balances and then asks the first account to withdraw. Louis's withdrawal tries to acquire the first account's mutex, which this same thread already holds and will release only after `exchange` returns. The thread waits for itself forever. (The Laboratory's test shows the run using up its whole budget of steps.)
+
+</Solution>
+</Exercise>
+<Exercise id="3.46">
+
+Suppose `test_and_set` were an ordinary function, as SICP first writes it:
+
+```js
+function test_and_set(cell) {
+    if (head(cell)) {
+        return true;
+    } else {
+        set_head(cell, true);
+        return false;
+    }
+}
+```
+
+Show how two threads can then both acquire the same mutex. Write it as `non_atomic_test_and_set`; the check races two threads for one cell 200 times and expects at least one race in which both win. Use the *interleaving* animation of the mutex example, with your function in place of `test_and_set`, to draw the timing diagram.
+
+<Solution>
+
+**Solution.** Both threads look at the cell while it is still false; each then takes the `else` branch, sets the cell and returns false. Each believes it has acquired the mutex, and both enter the serialized function together. The check finds such a race because the scheduler may switch threads between `head(cell)` and `set_head`, which are separate steps of an ordinary function but never of the primitive.
+
+</Solution>
+</Exercise>
+<Exercise id="3.47">
+
+A *semaphore* of size *n* generalises a mutex: up to *n* threads may hold it at once, and further threads that try to acquire it wait until some holder releases it. Implement semaphores (a) in terms of mutexes and (b) in terms of atomic `test_and_set` operations. The check runs four workers through your semaphores many times, counting how many are inside at once.
+
+<Solution>
+
+**Solution.** Keep a count of holders, guarded by a mutex (a) or by a cell that you lock by spinning on `test_and_set` (b). To acquire, take the guard; if fewer than *n* hold the semaphore, add one and release the guard; otherwise release the guard and try again. To release, take the guard, subtract one, and release the guard. Releasing the guard before retrying is essential, or the holders could never get in to release.
+
+</Solution>
+</Exercise>
+<Exercise id="3.48">
+
+Explain why the deadlock-avoidance method described above works: number the accounts, and have each thread take the serializer of the lower-numbered account first. Rewrite `serialized_exchange` to use it, and give `make_account_and_serializer` a number for each account, answered to the message `"number"`. The check runs opposite exchanges and a ring of three exchanges many times; each run must finish.
+
+<Solution>
+
+**Solution.** A deadlock needs a cycle: a thread holding one account and waiting for a second, while another thread holds the second and waits for the first (or a longer chain back to the start). If every thread acquires in increasing order of number, a thread waiting for an account always holds only lower-numbered ones, so following "waits for" always leads to higher numbers and can never come back to where it started. The numbers come from a counter that `make_account_and_serializer` increments; in this program accounts are made one at a time, so the counter itself needs no protection.
+
+</Solution>
+</Exercise>
+<Exercise id="3.49">
+
+Give a scenario where the deadlock-avoidance mechanism of Exercise 3.48 does not work. Hint: in the exchange problem, each thread knows in advance which accounts it will need. Consider a situation where a thread must get access to some shared resources before it can know which additional shared resources it will require. The editor describes one such scenario; answer its questions.
+
+<Solution>
+
+**Solution.** Here a thread must hold an account before it may read whom that account points to, so it learns its second account only after taking the first. Thread A holds account 2 and then discovers it needs account 1; numbering would have it take 1 first, but it could not have known that, and letting go of 2 to start again in order would let the partner change in between, so the rule cannot be followed. Meanwhile thread B holds account 1 and discovers it needs 2. Each waits for the account the other holds: a cycle, and a deadlock. Ordering works only when every thread can name all its resources before it takes any.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '3.5.5', label: 'Modularity, objects and time' }, { id: '3.5.1', label: 'Streams as delayed lists' }]} />

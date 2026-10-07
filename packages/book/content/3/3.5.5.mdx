@@ -1,0 +1,186 @@
+import {
+  paradigmJointAccountProgram,
+  paradigmMonteCarloProgram,
+  paradigmRandomStreamProgram,
+  paradigmWithdrawProgram,
+} from '@sicp/lab';
+
+<Prose>
+
+One of the big arguments for assignment in §3.1.2 was modularity: a random-number generator could keep its state in a local variable, hidden from every program that used it. Streams can give the same modularity with no assignment at all. To see how, we redo the Monte Carlo estimate of π from §3.1.2 as stream processing.
+
+The hidden state there was the generator's current value. We started from a function `rand_update` whose successive values supply the random numbers, and wrapped it in an object that remembered the last one:
+
+```js
+function make_rand() {
+  let x = random_init;
+  return () => {
+    x = rand_update(x);
+    return x;
+  };
+}
+const rand = make_rand();
+```
+
+In the stream version there is no generator object, just the stream of all the numbers that repeated applications of `rand_update` produce:
+
+```js
+const random_numbers =
+  pair(random_init, memo(() => stream_map(rand_update, random_numbers)));
+```
+
+For `rand_update` we use a linear congruential generator, *x* ↦ 48271 *x* mod (2³¹ − 1), so that every run of the program sees the same sequence and the results below can be checked.
+
+Cesàro's experiment from §3.1.2 asks whether two random integers have no common factor. Applied to consecutive pairs of `random_numbers`, it gives a stream of outcomes, `true` or `false`. A helper, `map_successive_pairs`, applies a function to elements 0 and 1, then 2 and 3, and so on:
+
+```js
+function map_successive_pairs(f, s) {
+  return pair(f(head(s), head(stream_tail(s))),
+              memo(() => map_successive_pairs(f, stream_tail(stream_tail(s)))));
+}
+const dirichlet_stream =
+  map_successive_pairs((r1, r2) => gcd(r1, r2) === 1, random_numbers);
+```
+
+</Prose>
+
+<Example index={0} file="random_numbers.sicp" source={paradigmRandomStreamProgram}>
+
+The first five random numbers, and the outcomes of the first twenty experiments. Run it twice: the generator is deterministic, so the numbers never change. Change `random_init` and you get a different, equally repeatable, sequence.
+
+</Example>
+
+<Prose>
+
+The stream of outcomes now goes into a `monte_carlo` function that produces a stream of estimates of the probability of success, one more experiment per element. Since the probability that two random integers are coprime is 6/π², each estimate *p* turns into an estimate √(6/*p*) of π:
+
+```js
+function monte_carlo(experiment_stream, passed, failed) {
+  function next(passed, failed) {
+    return pair(passed / (passed + failed),
+                memo(() => monte_carlo(stream_tail(experiment_stream),
+                                       passed, failed)));
+  }
+  return head(experiment_stream)
+    ? next(passed + 1, failed)
+    : next(passed, failed + 1);
+}
+const pi = stream_map(p => math_sqrt(6 / p),
+                      monte_carlo(dirichlet_stream, 0, 0));
+```
+
+Unlike the version in §3.1.2, this one has no parameter for the number of trials. All the estimates are in the stream, and a better one is simply further along.
+
+</Prose>
+
+<Example index={1} file="monte_carlo.sicp" source={paradigmMonteCarloProgram} anim="series" budget={1000000}>
+
+Every fifth estimate of π up to 500 experiments. The early estimates jump around by tenths; later each new experiment moves the running fraction less and less, and the curve settles near π, at 3.176 after 500 experiments (the statistical error at that size is about ±0.06). The plot's whole history is one value, the stream `pi`; nothing in the program is assigned except inside `memo`. To look further, change `stream_ref(pi, 500)` to `stream_ref(pi, 2000)` and raise the budget.
+
+</Example>
+
+<Prose>
+
+The modularity survives: `monte_carlo` is still a general function that works with any stream of experiments, and still nothing outside the stream of random numbers knows how it is made. Yet there is no assignment and no local state.
+
+## A functional-programming view of time
+
+Back, then, to the questions about objects and state that opened this chapter. We introduced assignment and mutable objects so that a program could model a system with state in modular pieces: computational objects with local state variables, changed by assignment, whose behaviour over time stood for the behaviour over time of things in the world.
+
+Streams offer another way. A changing quantity, such as the state of some object, can be modelled as a stream: the history of its successive values. Time is then represented explicitly, as positions in a stream, and it is decoupled from the order in which the evaluator happens to do things. With delayed evaluation, the two may have little to do with each other.
+
+To compare the two approaches, recall the simplified withdrawal processor of §3.1.3:
+
+```js
+function make_simplified_withdraw(balance) {
+  return amount => {
+    balance = balance - amount;
+    return balance;
+  };
+}
+```
+
+Each call of `make_simplified_withdraw` creates an object with a state variable `balance` that successive calls decrease. Picture someone typing amounts into such an object and watching the balances it returns. The stream alternative is a function from a starting balance and a stream of amounts to the stream of balances:
+
+```js
+function stream_withdraw(balance, amount_stream) {
+  return pair(balance,
+              () => stream_withdraw(balance - head(amount_stream),
+                                    stream_tail(amount_stream)));
+}
+```
+
+</Prose>
+
+<Example index={2} file="withdraw.sicp" source={paradigmWithdrawProgram} anim="frames">
+
+Both models produce the balances 150, 50 and 10 from withdrawals of 50, 100 and 40 out of 200. In the frames, the object version keeps one frame with `balance` in it and assigns to it three times; each call of `stream_withdraw` gets a frame of its own, and no binding is ever changed. (Our version stops when the amounts run out, so that `stream_to_list` can show the whole history.)
+
+</Example>
+
+<Prose>
+
+`stream_withdraw` is a mathematical function: its output is completely determined by its input. Now suppose the input stream consists of the amounts a user types and the output stream is shown on the screen as it comes. To that user, the stream version behaves exactly like the object made by `make_simplified_withdraw`. Yet there is no assignment, no local state variable, and none of the difficulties of §3.1.3, and still the system seems to have state.
+
+That is remarkable. A function whose behaviour never changes gives its user the impression of a system with changing state. One way to dissolve the paradox: it is the user's own existence in time that puts the state there. A user who could step back and see the whole stream of balances, rather than one transaction after another, would see nothing that changes. (Physics offers a parallel: we say a moving particle's position changes, but the particle's world line in space-time is a fixed thing.)
+
+Seen from one part of a complex process, the other parts seem to change over time: they have hidden, time-varying local state. To build programs that decompose the world the way we perceive it from inside it, we make computational objects that are not functional; they must change over time. State lives in local variables, changes of state are assignments, and the time it takes the computer to run becomes a model of time in the world. That is how we get objects.
+
+Modelling with objects is powerful and intuitive, largely because it matches the experience of acting in a world we are part of. But, as this chapter has shown again and again, it raises hard problems of ordering events and synchronizing processes. The hope of avoiding them has driven the development of *functional programming languages*, which have no assignment and no mutable data at all. Every function implements a fixed mathematical function of its arguments, which makes the functional approach very attractive for concurrent systems. (John Backus, who created Fortran, made the case for it prominently in his 1978 Turing Award lecture.)
+
+Look closely, though, and problems of time creep into functional models too. They are hardest with interactive systems, especially ones that model independent agents interacting. Take the joint bank account once more. With objects, Peter and Paul share an account by sending their requests to the same account object, as in §3.1.3. With streams there are no objects: an account is a process from a stream of requests to a stream of responses. So Peter and Paul's joint account must be modelled by *merging* Peter's stream of requests with Paul's and feeding the result to the account process.
+
+</Prose>
+
+<ParadigmJointAccountDiagram caption={<p>Two streams of requests, one stream of balances. Everything hard is inside <code>merge</code>.</p>} />
+
+<Prose>
+
+The trouble is the merge. Taking one request from Peter and then one from Paul, in strict alternation, will not do: if Paul uses the account rarely, Peter could not make his second withdrawal until Paul had made his first.
+
+</Prose>
+
+<Example index={3} file="joint_account.sicp" source={paradigmJointAccountProgram}>
+
+Peter asks for 10, 20, 30 and 40; Paul asks once, for 100. `alternate` takes one request from each in turn, so after Peter's 20 it waits for Paul's second request, which never comes, and Peter's 30 and 40 are never processed. Try swapping `peter` and `paul` in the call: now only Peter's first request gets through.
+
+</Example>
+
+<Prose>
+
+Whatever the merge does, it has to interleave the two streams in a way constrained by real time as Peter and Paul experience it: if they meet, they must be able to agree which transactions happened before the meeting and which after. And for two given streams there is generally more than one acceptable interleaving, so a merge of this kind is not even a function of its inputs but a relation, one more appearance of the nondeterminism that concurrency brings (§3.4.1, and §4.3 from another angle). It is exactly the constraint of §3.4, where the order of events had to be enforced with explicit synchronization. In trying to support the functional style, the need to merge inputs from different agents brings back the very problems the functional style was meant to escape.
+
+This chapter set out to build models whose structure matches our perception of the world they model. We can see the world as a collection of separate, time-bound objects with state that interact, or as a single, timeless, stateless whole. Each view has strong advantages, and neither alone is entirely satisfying; a grand unification has yet to appear. (The object view divides the world into separate pieces, and it works well when the objects' unshared state is much larger than what they share. It fails, for instance, in quantum mechanics, where thinking of things as individual particles leads to paradoxes. Reconciling the two views may have less to do with programming than with questions about what we can know.)
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-3/streamParadigm.ts">
+
+`rand_update` is the "minimal standard" multiplicative generator, written so that 48271 *x* stays well inside the integers a double can hold exactly, so the Laboratory and any JavaScript engine produce the same numbers. `chapter-3/streamParadigm.test.ts` checks that two runs print identical random streams, that the 500th estimate is within 0.05 of π, that the object and the stream model of the withdrawal processor give the same balances, and that strict alternation leaves Peter's last two requests unprocessed.
+
+</UnderTheHood>
+
+<Exercises range="3.81 – 3.82" total={2}>
+<Exercise id="3.81">
+
+Exercise 3.6 extended the random-number generator so that its sequence could be reset to make runs repeatable. Write a stream version of that generator: a function `random_stream` that takes a stream of requests, each either `"generate"` (produce a new random number) or `list("reset", x)` (restart the sequence from *x*), and returns the stream of random numbers they ask for. Answer a reset with *x* itself. Do not use assignment.
+
+<Solution>
+
+**Solution.** Carry the current value as a parameter instead of a variable. A helper `from(x, requests)` looks at the first request: `"generate"` makes the next value `rand_update(x)`, a reset makes it the given number; either way that value is the head of the output, and the tail is `from` of that value and the remaining requests. The "state" of the generator is just the argument passed along the stream, so two resets to the same value replay the same numbers.
+
+</Solution>
+</Exercise>
+<Exercise id="3.82">
+
+Redo exercise 3.5, Monte Carlo integration, with streams. The stream version of `estimate_integral` takes the predicate *P* and the rectangle *x*₁ to *x*₂ by *y*₁ to *y*₂, but no number of trials: it returns a stream of estimates, each based on one more trial than the one before.
+
+<Solution>
+
+**Solution.** Turn successive pairs of `random_numbers` into points of the rectangle (*x*₁ + *r*/*m* · (*x*₂ − *x*₁), and the same for *y*, where *m* = 2³¹ − 1), test each point with *P* using `map_successive_pairs`, feed the stream of outcomes to `monte_carlo`, and scale every fraction by the area of the rectangle. With the unit circle in the square from −1 to 1, the estimates of the area approach π.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '4.2.3', label: 'Streams as lazy lists' }, { id: '4.3.1', label: 'Nondeterminism and amb' }]} />

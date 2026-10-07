@@ -16,13 +16,15 @@ export interface PrepareOptions {
   draw?: (segment: Segment) => void;
   /** Source evaluated first, in a frame the program can see but not disturb. */
   prelude?: string;
+  /** Seeds the scheduler of `concurrent_execute`, so that the interleaving can be repeated. */
+  seed?: number;
 }
 
 export interface Session {
   machine: Machine;
   frameIds: FrameIds;
   /** Continue in a child frame of the finished program, e.g. to evaluate a check. */
-  follow(source: string, options?: Pick<PrepareOptions, 'budget' | 'hooks'>): Machine;
+  follow(source: string, options?: Pick<PrepareOptions, 'budget' | 'hooks' | 'seed'>): Machine;
 }
 
 const PRELUDE_BUDGET = 1_000_000;
@@ -82,6 +84,7 @@ export function prepare(source: string, options: PrepareOptions = {}): Session {
     frameIds,
     ...(options.budget !== undefined && { budget: options.budget }),
     ...(options.hooks !== undefined && { hooks: options.hooks }),
+    ...(options.seed !== undefined && { seed: options.seed }),
   });
 
   return {
@@ -93,6 +96,7 @@ export function prepare(source: string, options: PrepareOptions = {}): Session {
         frameIds,
         ...(followOptions.budget !== undefined && { budget: followOptions.budget }),
         ...(followOptions.hooks !== undefined && { hooks: followOptions.hooks }),
+        ...(followOptions.seed !== undefined && { seed: followOptions.seed }),
       }),
   };
 }

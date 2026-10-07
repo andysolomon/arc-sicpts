@@ -60,6 +60,7 @@ export function Exercise({ id, children }: ExerciseProps) {
       tests: spec.tests,
       ...(spec.prelude !== undefined && { prelude: spec.prelude }),
       ...(spec.budget !== undefined && { budget: spec.budget }),
+      ...(spec.seed !== undefined && { seed: spec.seed }),
     });
     job.current = handle;
     const end = await handle.finished;

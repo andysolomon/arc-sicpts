@@ -1,0 +1,340 @@
+import {
+  doubleStreamProgram,
+  fibgenProgram,
+  implicitFibsProgram,
+  implicitIntegersProgram,
+  noSevensProgram,
+  primesFromPrimesProgram,
+  sieveProgram,
+} from '@sicp/lab';
+
+<Prose>
+
+A stream computes only as much of itself as anyone reads, so a very long sequence costs no more than the part we look at. Taken one step further, a stream can be *infinitely* long. Here are the positive integers:
+
+```js
+function integers_starting_from(n) {
+  return pair(n, () => integers_starting_from(n + 1));
+}
+
+const integers = integers_starting_from(1);
+```
+
+`integers` is a pair whose head is 1 and whose tail promises the integers from 2 on. The stream never ends, but at any moment only a finite piece of it has been built, and no program can tell that the rest is missing. From it we can derive other infinite streams, such as the integers that 7 does not divide, and read elements off them as needed.
+
+</Prose>
+
+<Example index={0} file="no_sevens.sicp" source={noSevensProgram}>
+
+The 100th element of `no_sevens` (counting from 0) is 117: 101 numbers survive among the first 117 integers, which hold 16 multiples of 7. `stream_filter` here is the library's, the same function as in §3.5.1. Ask for `stream_ref(integers, 1000)` and the program simply makes a thousand more pairs.
+
+</Example>
+
+<Prose>
+
+The Fibonacci numbers come out of a generator in the same way. `fibgen(a, b)` is a stream that starts with *a* and promises `fibgen(b, a + b)`, so `fibgen(0, 1)` starts with 0 and promises `fibgen(1, 1)`, which starts with 1 and promises `fibgen(1, 2)`, and so on.
+
+</Prose>
+
+<Example index={1} file="fibgen.sicp" source={fibgenProgram}>
+
+`eval_stream(s, n)` is a library function that makes a list of the first *n* elements, and `display_list` prints it. Each element costs one call of `fibgen`, so the 50th Fibonacci number comes out in a few thousand steps, unlike the tree recursion of §1.2.2.
+
+</Example>
+
+<Prose>
+
+**The sieve of Eratosthenes.** A more striking infinite stream is the stream of all primes, produced by a sieve. Start with the integers from 2; the first, 2, is prime. Remove the multiples of 2 from the rest: what is left starts with 3, the next prime. Remove the multiples of 3 from that: what is left starts with 5. In general, to *sieve* a stream, keep its first element, and sieve what remains of the rest once the multiples of that first element are filtered out. In streams that description is the program:
+
+```js
+function sieve(stream) {
+  return pair(head(stream),
+              () => sieve(stream_filter(
+                              x => ! is_divisible(x, head(stream)),
+                              stream_tail(stream))));
+}
+
+const primes = sieve(integers_starting_from(2));
+```
+
+and any prime is ours for the asking. (The method is named for Eratosthenes, a Greek mathematician of the third century BCE. Strictly it is not his sieve: as Melissa O'Neill (2009) points out, it tests each candidate against every prime found so far, a form of trial division, rather than crossing off multiples, and it is far slower than the real thing.)
+
+</Prose>
+
+<Example index={2} file="sieve.sicp" source={sieveProgram} anim="sieve" budget={1000000}>
+
+The 51st prime is 233. Every filter the sieve builds calls `is_divisible(x, p)`, and the animation replays those calls: each number enters from the left, passes the filters of the primes it is not a multiple of, and is stopped by the first one it is. A number that gets through them all is the next prime, and the sieve builds a filter for it. Notice how many filters 31 has to pass: the sieve tries all of them, even those above √31.
+
+</Example>
+
+<Prose>
+
+It helps to picture `sieve` as a signal-processing system, as in figure 3.31, drawn in the style Peter Henderson used to show stream programs. The input stream goes into a splitter that separates its first element from the rest. The first element configures a filter that removes its multiples; the rest flows through that filter into another `sieve`; and the first element is joined back onto the front of what that inner sieve produces. So the stream is infinite and so is the machine: there is a sieve inside every sieve.
+
+</Prose>
+
+<SieveDiagram caption="Solid lines carry streams; the dashed line from the head carries one value. The inner sieve has the same structure again, without end." />
+
+<Prose>
+
+**Defining streams implicitly.** `integers` and `fibs` above were given by generating functions that compute one element after another. Delayed evaluation also allows streams to be defined *implicitly*, in terms of themselves. The simplest is an endless stream of ones:
+
+```js
+const ones = pair(1, () => ones);
+```
+
+This works much as a recursive function declaration does: `ones` is a pair whose head is 1 and whose tail promises `ones`, which gives a 1 and the same promise again. With an operation on whole streams such as `add_streams`, which adds two streams element by element using the `stream_map_2` of exercise 3.50,
+
+```js
+function add_streams(s1, s2) {
+  return stream_map_2((x1, x2) => x1 + x2, s1, s2);
+}
+```
+
+the integers can be defined from themselves: they start with 1, and after that each element is 1 more than the element before.
+
+</Prose>
+
+<Example index={3} file="implicit_integers.sicp" source={implicitIntegersProgram}>
+
+`integers` is 1 followed by `ones` plus `integers`. The second element is 1 plus the first, the third 1 plus the second, and so on. The definition can't run dry, because whenever we need the next element, the element it depends on has already been made.
+
+</Example>
+
+<Prose>
+
+The Fibonacci numbers fit the same style. They start with 0 and 1, and the rest are `fibs` added to itself shifted one place:
+
+```js
+const fibs = pair(0,
+                  () => pair(1,
+                             () => add_streams(stream_tail(fibs),
+                                               fibs)));
+```
+
+|  |  |   |   |   |   |   |    |    |    |     |                     |
+| - | - | - | - | - | - | - | -- | -- | -- | --- | ------------------- |
+|  |  | 1 | 1 | 2 | 3 | 5 | 8  | 13 | 21 | … | `stream_tail(fibs)` |
+|  |  | 0 | 1 | 1 | 2 | 3 | 5  | 8  | 13 | … | `fibs`              |
+| 0 | 1 | 1 | 2 | 3 | 5 | 8 | 13 | 21 | 34 | … | `fibs`              |
+
+</Prose>
+
+<Example index={4} file="implicit_fibs.sicp" source={implicitFibsProgram} anim="stream-forcing">
+
+Here each addition prints its sum, so the animation counts additions. Element 8, 21, takes 79 additions though only seven different sums exist: no tail is memoized, so every time `fibs` is read from the start, its elements are added up again. The first sum, 1, is computed 33 times. Exercise 3.57 counts this exactly, and asks what `memo` would save.
+
+</Example>
+
+<Prose>
+
+`scale_stream` is another useful operation for such definitions; it multiplies every element of a stream by a constant:
+
+```js
+function scale_stream(stream, factor) {
+  return stream_map(x => x * factor,
+                    stream);
+}
+```
+
+With it, the powers of 2 are a stream that starts with 1 and continues with itself doubled.
+
+</Prose>
+
+<Example index={5} file="double.sicp" source={doubleStreamProgram} budget={1000000}>
+
+`double` prints 1, 2, 4, …, 1024, and its 50th element is 2⁵⁰. Each element is the previous one times 2, read from `double` itself; the unmemoized tails make that rereading cost more and more as the index grows.
+
+</Example>
+
+<Prose>
+
+The primes, too, can be defined implicitly: start from 2 and keep the integers from 3 on that pass a primality test. The test is the interesting part. To decide whether *n* is prime it is enough to try dividing *n* by the *primes* up to √*n*, and it takes those primes from the very stream being defined:
+
+```js
+function is_prime(n) {
+  function iter(ps) {
+    return square(head(ps)) > n
+      ? true
+      : is_divisible(n, head(ps))
+      ? false
+      : iter(stream_tail(ps));
+  }
+  return iter(primes);
+}
+```
+
+So `primes` uses `is_prime`, which uses `primes`. The definition works because enough of `primes` is always there to test the next candidate: either *n* is composite, and an already-found prime divides it, or *n* is prime, and an already-found prime smaller than *n* is larger than √*n*. That last claim relies on the fact that the next prime after *p* is less than *p*², which is far from obvious. Euclid's proof that the primes never run out only bounds the next prime by the product of all the earlier ones plus one; the much better bound that there is always a prime between *n* and 2*n* (Bertrand's postulate, conjectured in 1845) was proved by Chebyshev in 1851.
+
+</Prose>
+
+<Example index={6} file="primes.sicp" source={primesFromPrimesProgram} budget={1000000}>
+
+The same 233 as the sieve, and each candidate meets only the primes up to its square root. Without memoization it is still slow: every call of `is_prime` walks `primes` from the start, which re-runs the filter over the integers already seen. Add `memo` around the tail of `primes` (and use a memoizing `stream_filter`) and the step count falls from about 197,000 to about 56,000.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-3/streams.test.ts">
+
+The Laboratory runs these definitions exactly as written: `pair(1, () => ones)` stores a closure whose environment is the program frame, where `ones` is bound by the time the closure is called. The tests in `chapter-3/streams.test.ts` check each value above, and count additions in the implicit `fibs`: 79 for element 8, 221 for element 10, against 9 for element 10 with memoized tails. The sieve animation's model (`src/anim/chapter-3/sieveCascade.ts`) is checked in `tests/chapter3-streams.test.tsx` against the trace of the sieve.
+
+</UnderTheHood>
+
+<Exercises range="3.53 – 3.62" total={10}>
+<Exercise id="3.53">
+
+Without running the program, describe the elements of the stream
+
+```js
+const s = pair(1, () => add_streams(s, s));
+```
+
+by writing `element_of_s(n)`, a formula for the element at position *n*.
+
+<Solution>
+
+**Solution.** `s` starts with 1, and the rest of `s` is `s` added to itself, so every element is twice the one before it: 1, 2, 4, 8, …, and element *n* is 2ⁿ.
+
+</Solution>
+</Exercise>
+<Exercise id="3.54">
+
+Declare `mul_streams`, the elementwise product of two streams, after the model of `add_streams`. Then use it with `integers` to complete the declaration of `factorials`, the stream whose element *n* (counting from 0) is (*n* + 1)!:
+
+```js
+const factorials = pair(1, () => mul_streams(??, ??));
+```
+
+<Solution>
+
+**Solution.** `mul_streams` is `stream_map_2` with multiplication. Element *n* + 1 is element *n* times *n* + 2, and *n* + 2 is element *n* of `stream_tail(integers)`, so the blanks are `factorials` and `stream_tail(integers)`. (Using `integers` itself gives *n*! instead.)
+
+</Solution>
+</Exercise>
+<Exercise id="3.55">
+
+Declare `partial_sums`, which takes a stream *S* and returns the stream of *S*₀, *S*₀ + *S*₁, *S*₀ + *S*₁ + *S*₂, …. For example, `partial_sums(integers)` is 1, 3, 6, 10, 15, ….
+
+<Solution>
+
+**Solution.** The first partial sum is the head of *S*. Each later one is the previous partial sum plus the next element of *S*, so the rest of the result is `add_streams(stream_tail(s), partial_sums(s))`: the tail of *S* added to the partial sums themselves.
+
+</Solution>
+</Exercise>
+<Exercise id="3.56">
+
+R. Hamming posed the problem of listing, in increasing order and without repeats, the positive integers with no prime factors other than 2, 3 and 5. Testing every integer in turn is wasteful, since such numbers thin out quickly. Instead, call the wanted stream `S` and observe: it starts with 1; `scale_stream(S, 2)`, `scale_stream(S, 3)` and `scale_stream(S, 5)` contain only elements of `S`; and those three streams together hold all of `S` after the 1. So `S` is 1 followed by the three merged. The function `merge` (provided) combines two increasing streams into one, dropping duplicates. Fill in the blanks in
+
+```js
+const S = pair(1, () => merge(??, ??));
+```
+
+The starter wraps the tail in `memo`: without it, each scaled copy of `S` would recompute `S` from scratch, and the cost would explode.
+
+<Solution>
+
+**Solution.** `merge` takes two streams, so nest it: `merge(scale_stream(S, 2), merge(scale_stream(S, 3), scale_stream(S, 5)))`. Like `integers`, this works because each new element is at least twice an element already produced.
+
+</Solution>
+</Exercise>
+<Exercise id="3.57">
+
+How many additions does it take to compute the *n*th Fibonacci number with the implicit `fibs` of this section? Show that it is exponentially more than when `add_streams` is built on `stream_map_2_optimized` (exercise 3.50) and `fibs` memoizes its own tails:
+
+```js
+const fibs = pair(0,
+                  memo(() => pair(1,
+                                  memo(() => add_streams(stream_tail(fibs),
+                                                         fibs)))));
+```
+
+Answer with two functions of *n*.
+
+<Solution>
+
+**Solution.** With memoization each element from position 2 on is one addition, made once: *n* − 1 additions for *n* ≥ 1. Without it, reaching element *n* rebuilds the elements before it each time `fibs` is read again from its start, and counting gives *A*(*n*) = *A*(*n* − 1) + *A*(*n* − 2) + *n* − 1, whose solution is fib(*n* + 3) − *n* − 2: 221 additions for *n* = 10, 4163 for *n* = 16. That grows like φⁿ, exponentially faster than *n* − 1. The animation of the implicit `fibs` above shows the repeats as they happen.
+
+</Solution>
+</Exercise>
+<Exercise id="3.58">
+
+Interpret the stream computed by
+
+```js
+function expand(num, den, radix) {
+  return pair(math_trunc((num * radix) / den),
+              () => expand((num * radix) % den, den, radix));
+}
+```
+
+where `math_trunc` drops the fractional part of its argument. Give the first eight elements of `expand(1, 7, 10)` and of `expand(3, 8, 10)`.
+
+<Solution>
+
+**Solution.** It is long division: each step multiplies the remainder by the radix, takes the integer quotient as the next digit, and carries the new remainder on. The stream is the digits of *num* / *den* after the point, in base *radix*. 1/7 = 0.142857142…, so `expand(1, 7, 10)` repeats 1, 4, 2, 8, 5, 7 for ever; 3/8 = 0.375, so `expand(3, 8, 10)` is 3, 7, 5 and then zeros.
+
+</Solution>
+</Exercise>
+<Exercise id="3.59">
+
+Power series, like the polynomials of §2.5.3, can be represented as streams: *a*₀ + *a*₁*x* + *a*₂*x*² + ⋯ as the infinite stream of its coefficients *a*₀, *a*₁, *a*₂, …. Then
+
+- *e*ˣ = 1 + *x* + *x*²/2 + *x*³/(3·2) + *x*⁴/(4·3·2) + ⋯
+- cos *x* = 1 − *x*²/2 + *x*⁴/(4·3·2) − ⋯
+- sin *x* = *x* − *x*³/(3·2) + *x*⁵/(5·4·3·2) − ⋯
+
+a. The integral of *a*₀ + *a*₁*x* + *a*₂*x*² + ⋯ is *c* + *a*₀*x* + *a*₁*x*²/2 + *a*₂*x*³/3 + ⋯ for a constant *c*. Declare `integrate_series`, which takes the coefficients *a*₀, *a*₁, *a*₂, … and returns *a*₀, *a*₁/2, *a*₂/3, …, the coefficients of the integral after its constant term. (The result has no constant term, so it is not itself a series; we add the constant with `pair` when we use it.) Since *e*ˣ is its own derivative, *e*ˣ and its integral differ only in the constant term, *e*⁰ = 1, which gives
+
+```js
+const exp_series = pair(1, () => integrate_series(exp_series));
+```
+
+b. The derivative of sine is cosine and the derivative of cosine is minus sine. Use this to complete `cosine_series` and `sine_series`, each starting from its constant term. The coefficients are plain JavaScript numbers, so the tests allow for rounding.
+
+<Solution>
+
+**Solution.** a. Divide the coefficients by 1, 2, 3, …: `stream_map_2((a, n) => a / n, s, integers)`. b. Cosine is 1 plus the integral of minus sine, and sine is 0 plus the integral of cosine, so each series is defined from the other: `pair(1, () => scale_stream(integrate_series(sine_series), -1))` and `pair(0, () => integrate_series(cosine_series))`. As with `integers`, each new coefficient needs only coefficients already computed.
+
+</Solution>
+</Exercise>
+<Exercise id="3.60">
+
+With series as streams of coefficients, `add_streams` adds two series. Complete
+
+```js
+function mul_series(s1, s2) {
+  return pair(??, () => add_streams(??, ??));
+}
+```
+
+to multiply them. Check it by verifying that sin² *x* + cos² *x* = 1 with the series of exercise 3.59.
+
+<Solution>
+
+**Solution.** Write *S*₁ = *a*₀ + *x*·*R*₁. Then *S*₁ · *S*₂ = *a*₀*S*₂ + *x*·*R*₁·*S*₂. The constant term is *a*₀ times the constant term of *S*₂; the rest is the rest of *a*₀*S*₂, which is `scale_stream(stream_tail(s2), head(s1))`, plus *R*₁ · *S*₂, which is `mul_series(stream_tail(s1), s2)`. The sum of the two products has constant term 1 and every other coefficient 0, up to rounding.
+
+</Solution>
+</Exercise>
+<Exercise id="3.61">
+
+Let *S* be a series with constant term 1, and write *S* = 1 + *S*ᵣ. We want *X* = 1/*S*, that is, *S* · *X* = 1. Then (1 + *S*ᵣ) · *X* = 1, so *X* = 1 − *S*ᵣ · *X*: the series with constant term 1 whose other terms are minus *S*ᵣ times *X*. Use this to declare `invert_unit_series`, with `mul_series` from exercise 3.60.
+
+<Solution>
+
+**Solution.** Transcribe the equation: `pair(1, () => scale_stream(mul_series(stream_tail(s), invert_unit_series(s)), -1))`. It refers to the series being defined, as `exp_series` does; declaring the result once with `const x = pair(1, () => ... x ...)` inside the function avoids building it again on each forcing. Applied to `exp_series`, it gives the series of *e*⁻ˣ.
+
+</Solution>
+</Exercise>
+<Exercise id="3.62">
+
+Use exercises 3.60 and 3.61 to declare `div_series`, which divides one series by another. It should work whenever the denominator's constant term is not 0, and signal an error if it is. Then use it with the series of exercise 3.59 to produce the series for the tangent.
+
+<Solution>
+
+**Solution.** If the denominator *D* has constant term *c* ≠ 0, then *D*/*c* has constant term 1 and can be inverted, and *N*/*D* = (*N* · invert(*D*/*c*))/*c*. `tangent_series` is `div_series(sine_series, cosine_series)`: 0, 1, 0, 1/3, 0, 2/15, …. (The tests can't observe the error for a zero constant term, since an error stops the check, but the solution's `error` call is there.)
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['3.5.3', '3.5.4', '3.5.5', '4.2.3']} />

@@ -161,13 +161,13 @@ export const chapters: Chapter[] = [
     title: 'Modularity, Objects, and State',
     blurb:
       'Assignment gives objects a history, and takes away the substitution model. We rebuild our understanding of evaluation around environments, then meet two answers to the problem of time: concurrency and streams.',
-    readingTime: null,
+    readingTime: '~4 h reading',
     sections: [
       {
         id: '3.1',
         title: 'Assignment and Local State',
         blurb: 'What a program gains when a name can change its value, and exactly what it loses.',
-        exercises: null,
+        exercises: [1, 8],
         subsections: subs('3.1', [
           'Local State Variables',
           'The Benefits of Introducing Assignment',
@@ -178,7 +178,7 @@ export const chapters: Chapter[] = [
         id: '3.2',
         title: 'The Environment Model of Evaluation',
         blurb: 'Frames, bindings and enclosing environments: the model that explains closures and local state.',
-        exercises: null,
+        exercises: [9, 11],
         subsections: subs('3.2', [
           'The Rules for Evaluation',
           'Applying Simple Functions',
@@ -190,7 +190,7 @@ export const chapters: Chapter[] = [
         id: '3.3',
         title: 'Modeling with Mutable Data',
         blurb: 'Mutable pairs, queues and tables, then two simulators built from them: digital circuits and constraints.',
-        exercises: null,
+        exercises: [12, 37],
         subsections: subs('3.3', [
           'Mutable List Structure',
           'Representing Queues',
@@ -203,7 +203,7 @@ export const chapters: Chapter[] = [
         id: '3.4',
         title: 'Concurrency: Time Is of the Essence',
         blurb: 'Interleaved processes sharing state, the orders in which they can go wrong, and serializers to tame them.',
-        exercises: null,
+        exercises: [38, 49],
         subsections: subs('3.4', [
           'The Nature of Time in Concurrent Systems',
           'Mechanisms for Controlling Concurrency',
@@ -213,7 +213,7 @@ export const chapters: Chapter[] = [
         id: '3.5',
         title: 'Streams',
         blurb: 'Delayed lists model a whole history as one value, so state can be described without assignment.',
-        exercises: null,
+        exercises: [50, 82],
         subsections: subs('3.5', [
           'Streams Are Delayed Lists',
           'Infinite Streams',

@@ -1,0 +1,50 @@
+import { envModelSumOfSquaresProgram } from '@sicp/lab';
+
+<Prose>
+
+Section 1.1.5 used the substitution model to show that `f(5)` is 136, given three small declarations. Here is the same program again, this time run under the environment model.
+
+Declaring the three functions puts three function objects in the program frame. Each pairs its own code with a pointer to the program environment, because that is where each declaration was evaluated. Nothing else happens until `f(5)`.
+
+The call to `f` creates a frame binding `a` to 5, which extends the program environment (the environment `f` points to). Call it E1. In E1 we evaluate the body of `f`, `return sum_of_squares(a + 1, a * 2);`. Finding `sum_of_squares` takes one step outward: E1 binds only `a`, so the search continues into the program frame, which has it. The arguments `a + 1` and `a * 2` are combinations of primitives, and come to 6 and 10.
+
+Applying `sum_of_squares` to 6 and 10 creates E2, binding `x` to 6 and `y` to 10. Its body evaluates `square(x)`: `square` is found in the program frame, `x` in E2, so `square` is applied to 6 and creates E3, with `x` bound to 6. Then `square(y)` creates E4, with `x` bound to 10. Each body `x * x` is evaluated in its own frame.
+
+</Prose>
+
+<Example index={0} mode="step" file="f.sicp" source={envModelSumOfSquaresProgram} anim="frames">
+
+Step to the call of `square(6)` and then `square(10)`. Three frames bind a name spelled `x`, and none of them is confused with another: each lookup starts in its own frame. All four call frames point straight back to E0, not to the frame of their caller, because all three function objects point to E0. When `sum_of_squares` is applied, the stepper says it takes the place of E1: see the note below.
+
+</Example>
+
+<Prose>
+
+The point to take away is that every call of `square` gets a fresh frame with its own binding for `x`, and that is how frames keep apart the many local names that share one spelling. And every frame `square` makes extends the program environment, because that is the environment its function object names. Where the call came from does not matter.
+
+The values flow back the way the calls went in: the two squares are added in E2, and that sum becomes the value of `f(5)`. The environment model is silent on how returned values travel from call to call, and on what happens to a frame once its call is over. Both questions are real, and Chapter 5 answers them with an explicit stack.
+
+One detail of the animation goes beyond the model. `return sum_of_squares(...)` is the last thing `f` does, so the Laboratory lets the new frame take the place of `f`'s instead of keeping `f`'s frame waiting for nothing. That is the tail-call behaviour that made iterative processes run in constant space in §1.2.1. The environment model itself cannot show that, because it says nothing about which frames are still needed; Exercise 3.9 shows the difference it makes.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-3/environmentModel.test.ts">
+
+Each call record in the evaluator's trace (`inspect/stepTrace.ts`) names the new frame and the frame it extends, the `closureEnv`, which is the environment stored in the function object. The test for this page asserts that `f(5)` makes E1 to E4 for `f`, `sum_of_squares` and the two calls of `square`, and that all four extend E0. The same test checks the frame counts that Exercise 3.9 asks for.
+
+</UnderTheHood>
+
+<Exercises range="3.9" total={1}>
+<Exercise id="3.9">
+
+Section 1.2.1 used the substitution model on two functions for factorials: a recursive one and an iterative one built on `fact_iter`. Draw, on paper or with the editor above, the environment structures that evaluating `factorial(6)` creates with each version. Then answer in code: how many frames each version creates for `factorial(n)`, which frame every one of those frames extends, and, in this Laboratory with its tail calls, the most frames that are waiting for a value at the same time during `factorial(6)`.
+
+<Solution>
+
+**Solution.** The recursive version applies `factorial` to 6, 5, 4, 3, 2 and 1: six frames, each binding `n`, and all six are pending at once, since every call still has a multiplication to do when the next call starts. The iterative version applies `factorial` once and then `fact_iter` with `counter` running from 1 to 7 (the last call finds `counter > max_count` and returns 720): eight frames, or *n* + 2 in general. Every frame of either version extends the program frame, because both functions were declared there; a recursive call does not nest frames inside each other, it only adds more frames hanging off the same environment. In the iterative version every call is a tail call, so each new frame replaces the one before and only one is ever pending. That is the constant space of §1.2.1, which the environment model alone cannot explain (Chapter 5 does).
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['3.2.3', { id: '5.4', label: 'Tail recursion in the explicit-control evaluator' }]} />

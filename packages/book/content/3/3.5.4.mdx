@@ -1,0 +1,176 @@
+import { paradigmSolveProgram, paradigmSolveUndelayedProgram } from '@sicp/lab';
+
+<Prose>
+
+The `integral` of §3.5.3 modelled a system with a feedback loop, and the loop was nothing more than a stream declared in terms of itself:
+
+```js
+const integ = pair(initial_value,
+                   () => add_streams(scale_stream(integrand, dt), integ));
+```
+
+That declaration only makes sense because of the lambda expression around `add_streams`. Evaluating `pair(...)` must not need `integ` yet, since `integ` is what is being declared; the lambda postpones the use of `integ` until somebody asks for the tail, by which time the name has its value. In general, a system with a loop can only be modelled if something in the loop is delayed. If every component insisted on having its inputs fully computed before producing any output, loops would be impossible.
+
+Some loops need more delay than the stream pattern so far provides. Consider a system that solves the differential equation *dy*/*dt* = *f*(*y*) for a given function *f*: an integrator whose output *y* goes through a component that applies *f*, whose output *dy* is in turn the integrator's input. Analog computers solve such equations with circuits of exactly this shape.
+
+</Prose>
+
+<SignalSolveDiagram caption={<p>The integrator starts from <em>y</em>₀ and turns <em>dy</em> into <em>y</em>; mapping <em>f</em> over <em>y</em> gives <em>dy</em>, which feeds the integrator. Each part needs the other's output.</p>} />
+
+<Prose>
+
+Given the initial value *y*₀, the obvious transcription of the diagram is
+
+```js
+function solve(f, y0, dt) {
+  const y = integral(dy, y0, dt);
+  const dy = stream_map(f, y);
+  return y;
+}
+```
+
+and it fails at once. The first declaration calls `integral` with `dy` as an argument, so `dy` has to be evaluated, and `dy` is not declared until the next line.
+
+</Prose>
+
+<Example index={0} file="solve_undelayed.sicp" source={paradigmSolveUndelayedProgram}>
+
+Run it: the Laboratory stops at the first line of `solve`, reporting that `dy` is used before its declaration was evaluated. JavaScript behaves the same way: a `const` cannot be read before its declaration has run.
+
+</Example>
+
+<Prose>
+
+Yet what we meant does make sense. `integral` can produce the first element of its output, *y*₀, without looking at its input at all, and that element is all `stream_map` needs to produce the first element of `dy`, which in turn is all `integral` needs for the second element of `y`, and so on. Like many stream operations, `integral` can produce some of its answer from partial information about its arguments.
+
+To use that, `integral` must accept its integrand *delayed*, as a function of no arguments, and call that function only when it needs more than the first element:
+
+```js
+function integral(delayed_integrand, initial_value, dt) {
+  const integ =
+    pair(initial_value,
+         memo(() => {
+           const integrand = delayed_integrand();
+           return add_streams(scale_stream(integrand, dt), integ);
+         }));
+  return integ;
+}
+```
+
+Now `solve` delays `dy` where it passes it to `integral`:
+
+```js
+function solve(f, y0, dt) {
+  const y = integral(() => dy, y0, dt);
+  const dy = stream_map(f, y);
+  return y;
+}
+```
+
+The lambda expression `() => dy` can be built while `dy` is still undeclared, because it only mentions the name; by the time `integral` calls it, the second declaration has run. Every caller of `integral` must now pass a delayed integrand. As a check, the solution of *dy*/*dt* = *y* with *y*(0) = 1 is *e*ᵗ, so its value at *t* = 1 should be *e* ≈ 2.718:
+
+</Prose>
+
+<Example index={1} file="solve.sicp" source={paradigmSolveProgram} anim="series" budget={600000}>
+
+The program takes 1000 steps of 0.001 and prints 2.716923932235896, as the book reports: Euler's method falls short of *e* by about 0.0014. The plot shows *y* every tenth of a unit of time beside *e*ᵗ itself; the two curves are nearly one, and the gap widens slowly as the small errors compound. This needs memoization in `integral` and in the `stream_map_2` under `add_streams`: without it, each new element of `y` would recompute all the earlier ones, and the step budget would run out long before *t* = 1. Try `solve(y => -y, 1, 0.001)` and compare with `math_exp(-t)`.
+
+</Example>
+
+<Prose>
+
+## Normal-order evaluation
+
+The examples of this section show what delayed evaluation buys and also what it costs. `integral` can now take part in loops, but whoever calls it has to remember that its first argument is delayed, and so does every function that calls `integral` on someone else's behalf. We now have two kinds of functions, ordinary ones and ones that take delayed arguments, and two kinds force two kinds of higher-order functions in turn: a `stream_map` for ordinary functions and another for the delaying kind.
+
+This is a small version of a problem that early statically typed languages such as Pascal had with higher-order functions. There every function had to declare the types of its arguments and result, so a single `stream_map` could not serve every combination of types; one needed a separate mapping function for each. ML (Gordon, Milner and Wadsworth 1979) answered with parametrically polymorphic types and type inference, so that most functions never state their types at all; today's typed languages generally offer both, in various strengths, and Haskell couples a rich type system with powerful inference.
+
+We could avoid two kinds of function by making every function take delayed arguments: delay every argument automatically, and force it only when its value is really needed, for instance by a primitive operation. That is *normal-order* evaluation, which we met with the substitution model in §1.1.5. It would be a uniform and elegant way to get delayed evaluation everywhere, and a natural choice for a language used only for stream processing. Section 4.2 builds exactly such a language, by changing the evaluator.
+
+The trouble is that delaying function calls plays havoc with programs whose meaning depends on the order of events: programs that assign, mutate data, or do input and output. A single delayed tail can be confusing enough, as exercises 3.51 and 3.52 showed. As far as anyone knows, mutability and delayed evaluation do not mix well in programming languages.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/evaluator/machine.ts">
+
+A declaration's name is bound in its frame as soon as the block is entered, but marked unassigned until the declaration runs; looking it up before then is the error the first example shows. A lambda expression only records the frame, so `() => dy` is fine, and by the time `integral` calls it, `dy` has a value. `chapter-3/streamParadigm.test.ts` checks the error, checks that `stream_ref(solve(y => y, 1, 0.001), 1000)` is 2.716923932235896, and checks that memoization keeps the cost linear: 1000 elements take less than 2.2 times the steps of 500.
+
+</UnderTheHood>
+
+<Exercises range="3.77 – 3.80" total={4}>
+<Exercise id="3.77">
+
+The `integral` above mirrors the implicit declaration of `integers` in §3.5.2. It could instead be written recursively, in the style of `integers_starting_from`:
+
+```js
+function integral(integrand, initial_value, dt) {
+  return pair(initial_value,
+              is_null(integrand)
+              ? null
+              : integral(stream_tail(integrand),
+                         dt * head(integrand) + initial_value,
+                         dt));
+}
+```
+
+In a system with loops this version has the same problem as the first one. Change it so that it takes the integrand as a delayed argument and can be used in `solve`.
+
+<Solution>
+
+**Solution.** Delay the whole tail and force the integrand inside it: `pair(initial_value, memo(() => { const integrand = delayed_integrand(); return is_null(integrand) ? null : integral(() => stream_tail(integrand), dt * head(integrand) + initial_value, dt); }))`. The recursive call must itself be given a delayed integrand, hence `() => stream_tail(integrand)`. (The starter's version also forgets to delay its own tail, so it would run forever even without a loop.)
+
+</Solution>
+</Exercise>
+<Exercise id="3.78">
+
+<SignalSecondOrderDiagram caption={<p>The output of the first integrator is <em>dy</em>, of the second <em>y</em>. Scaled by <em>a</em> and <em>b</em> and added, they give <em>d</em>²<em>y</em>/<em>dt</em>², which is the first integrator's input.</p>} />
+
+Design a signal-processing system for the homogeneous second-order linear differential equation
+
+*d*²*y*/*dt*² − *a* *dy*/*dt* − *b* *y* = 0
+
+Its output, the stream modelling *y*, comes from a network with a loop: *d*²*y*/*dt*² depends on *y* and *dy*/*dt*, and both of those are obtained by integrating *d*²*y*/*dt*². The diagram shows the network to encode. Write `solve_2nd(a, b, dt, y0, dy0)`, which returns the stream of values of *y* given the constants *a*, *b* and *dt* and the initial values *y*₀ of *y* and *dy*₀ of *dy*/*dt*.
+
+<Solution>
+
+**Solution.** Three declarations, one per wire: `y` integrates `() => dy` from `y0`, `dy` integrates `() => ddy` from `dy0`, and `ddy` is `add_streams(scale_stream(dy, a), scale_stream(y, b))`. Both integrators get delayed integrands because each is declared before the stream it integrates. With *a* = 0 and *b* = −1 the equation is *y*″ = −*y*, so `solve_2nd(0, -1, 0.01, 1, 0)` should approximate cos *t*: its 100th element is 0.5430, against cos 1 = 0.5403.
+
+</Solution>
+</Exercise>
+<Exercise id="3.79">
+
+Generalize `solve_2nd` so that it solves any second-order equation *d*²*y*/*dt*² = *f*(*dy*/*dt*, *y*): `solve_2nd(f, dt, y0, dy0)`.
+
+<Solution>
+
+**Solution.** Replace the adder and the two scalers by one component: `const ddy = stream_map_2(f, dy, y);`. The previous exercise is the case `f = (dy, y) => a * dy + b * y`.
+
+</Solution>
+</Exercise>
+<Exercise id="3.80">
+
+<SignalRlcDiagram caption={<p>The state of the circuit is the capacitor's voltage <em>v</em><sub>C</sub> and the inductor's current <em>i</em><sub>L</sub>; each is the integral of an expression in both.</p>} />
+
+A *series RLC circuit* has a resistor, a capacitor and an inductor in series. With resistance *R*, inductance *L* and capacitance *C*, the voltage and current of each component satisfy
+
+*v*<sub>R</sub> = *i*<sub>R</sub> *R*, *v*<sub>L</sub> = *L* *di*<sub>L</sub>/*dt*, *i*<sub>C</sub> = *C* *dv*<sub>C</sub>/*dt*
+
+and the way they are connected gives
+
+*i*<sub>R</sub> = *i*<sub>L</sub> = −*i*<sub>C</sub>, *v*<sub>C</sub> = *v*<sub>L</sub> + *v*<sub>R</sub>
+
+Together these describe the state of the circuit, *v*<sub>C</sub> and *i*<sub>L</sub>, by two differential equations:
+
+*dv*<sub>C</sub>/*dt* = −*i*<sub>L</sub>/*C*, *di*<sub>L</sub>/*dt* = *v*<sub>C</sub>/*L* − (*R*/*L*) *i*<sub>L</sub>
+
+The diagram above shows the corresponding signal-flow network. Write a function `RLC` that takes *R*, *L*, *C* and *dt* and, like `RC` in exercise 3.73, returns a function: one that takes the initial values *v*<sub>C0</sub> and *i*<sub>L0</sub> and returns a pair (made with `pair`) of the streams *v*<sub>C</sub> and *i*<sub>L</sub>. Use it to model a circuit with *R* = 1 ohm, *C* = 0.2 farad, *L* = 1 henry, *dt* = 0.1 second, *i*<sub>L0</sub> = 0 amps and *v*<sub>C0</sub> = 10 volts.
+
+<Solution>
+
+**Solution.** Inside the returned function, declare the four streams of the diagram: `v_C` integrates `() => dv_C` from `v_C0`, `i_L` integrates `() => di_L` from `i_L0`, `dv_C` is `scale_stream(i_L, -1 / C)` and `di_L` is `add_streams(scale_stream(v_C, 1 / L), scale_stream(i_L, -R / L))`; return `pair(v_C, i_L)`. The circuit rings down: the capacitor discharges through the inductor (*i*<sub>L</sub> is 1 amp after one step, 1.9 after two), the current overshoots and reverses, and the resistor drains energy each cycle, so after 5 seconds *v*<sub>C</sub> ≈ 0.16 V and *i*<sub>L</sub> ≈ −1.22 A.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '3.5.5', label: 'Modularity with streams' }, { id: '4.2.1', label: 'Normal order and applicative order' }, { id: '4.2.3', label: 'Streams as lazy lists' }]} />

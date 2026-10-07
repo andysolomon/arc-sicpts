@@ -1,0 +1,96 @@
+import { monteCarloProgram, monteCarloSeriesProgram, randomGcdTestProgram, randProgram } from '@sicp/lab';
+
+<Prose>
+
+Local state is not only a way to model bank accounts. It can make a program more modular, and a random-number generator shows how.
+
+Suppose we want a function `rand` that returns a new, apparently random integer each time it is called. Nothing a deterministic machine computes is truly random. What we want is a sequence whose numbers *look* random: they pass statistical tests of uniform distribution. The usual way to get one is a function `rand_update` with the property that starting from some number *x*₁ and computing *x*₂ = `rand_update`(*x*₁), *x*₃ = `rand_update`(*x*₂), and so on, gives such a sequence. Here `rand_update` is the "minimal standard" generator of Park and Miller, *x* ↦ 48271 *x* mod (2³¹ − 1); its products stay below 2⁵³, so JavaScript's numbers compute it exactly.
+
+`rand` is then an object with one state variable, `x`, which starts at `random_init`. Each call replaces `x` by `rand_update(x)` and returns the new value.
+
+</Prose>
+
+<Example index={0} file="rand.sicp" source={randProgram} anim="frames">
+
+The lambda applied at once in `rand`'s declaration makes a frame holding `x`, and returns a function that remembers it. Each call of `rand` assigns the next number to that `x`. Change `random_init` and the whole sequence changes; keep it and every run prints the same numbers, which is what makes the experiments below repeatable.
+
+</Example>
+
+<Prose>
+
+The Laboratory also has the primitive `math_random`, which returns a number between 0 and 1 from the platform's own generator. It is convenient, but it cannot be seeded or reset, so a program using it gives different answers on every run. That is why this section uses `rand_update`.
+
+We could, of course, get the same numbers by calling `rand_update` directly. But then every part of the program that wants random numbers would have to remember the current `x` and pass it along. To see what that costs, consider the *Monte Carlo method*: estimate a probability by running a random experiment many times and counting the fraction of runs that succeed. An example comes from a result attributed to Cesàro: the probability that two integers chosen at random have no common factor is 6/π². So the fraction of random pairs whose greatest common divisor is 1 estimates 6/π², and from it we get an estimate of π.
+
+The program is made of three parts. `cesaro_test` is the experiment: it draws two random numbers and tests their `gcd`. `monte_carlo` runs any experiment a given number of times and returns the fraction of successes. `estimate_pi` puts them together.
+
+</Prose>
+
+<Example index={1} file="monte_carlo.sicp" source={monteCarloProgram} budget={1000000}>
+
+A thousand trials take almost half a million steps, so this editor allows a million. The estimate is about 3.129. Try 100 trials, then 3000: with more trials the estimate tends to wander less, but no finite run is guaranteed to be close.
+
+</Example>
+
+<Prose>
+
+To watch the estimate settle, the version below reports it every 25 trials while the experiment runs, and then prints π itself so the two can be compared on one plot. The `if` with an empty `else` block is a conditional statement used only for its effect.
+
+</Prose>
+
+<Example index={2} file="monte_carlo_running.sicp" source={monteCarloSeriesProgram} anim="series" budget={1000000}>
+
+The first estimates jump around by more than 0.2; by a thousand trials the curve has come close to the flat line of π, but it keeps drifting. The noise shrinks roughly as one over the square root of the number of trials, so each extra digit of accuracy costs a hundred times as many trials. Change `random_init` to see a different, equally plausible, path.
+
+</Example>
+
+<Prose>
+
+Now try writing the same computation using `rand_update` directly, with no assignment. Whoever needs random numbers must now hold the current value of *x* and pass the next one on.
+
+</Prose>
+
+<Example index={3} file="random_gcd_test.sicp" source={randomGcdTestProgram} budget={1000000}>
+
+The same seed gives exactly the same estimate as the version with `rand`. The difference is in the structure: `iter` now carries `x` as a third parameter and calls `rand_update` twice itself.
+
+</Example>
+
+<Prose>
+
+The program is still short, but its modularity has suffered. In the first version, `monte_carlo` takes any experiment as an argument and knows nothing about random numbers; `cesaro_test` uses `rand` without knowing it has state. In the second, the state of the generator runs through the middle of the Monte Carlo loop. There is no general `monte_carlo` any more: `random_gcd_test` is a Monte Carlo procedure specialised to one experiment, and it must know that the experiment uses two random numbers. To estimate a different quantity we would have to write the loop again.
+
+The lesson generalises. Seen from one part of a complex process, the other parts appear to change over time, and they have hidden state that changes with them. If we want our programs to be divided along the same lines, we can build computational objects, such as accounts and random-number generators, whose behaviour changes with time; we model state with local variables and changes of state with assignment. It is tempting to conclude that assignment and hidden state always lead to more modular programs than passing every piece of state around as an extra argument. The next subsection shows that the story is more complicated.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-3/localState.test.ts">
+
+`math_random` is defined in `evaluator/primitives.ts` as JavaScript's `Math.random`, which has no seed; `rand_update` is ordinary Source code, which is why it repeats. `chapter-3/localState.test.ts` asserts that `rand` produces the `rand_update` sequence from `random_init`, that `estimate_pi(1000)` is 3.1285664803324393 with assignment and without it, and that the running version prints 40 estimates and then 40 copies of π. The plot is the `series` scene, which reads the numbers the program displays (`anim/model/series.ts`).
+
+</UnderTheHood>
+
+<Exercises range="3.5 – 3.6" total={2}>
+<Exercise id="3.5">
+
+*Monte Carlo integration* estimates an area in the same way. Take a region of the plane described by a predicate *P*(*x*, *y*) that is true for points inside it, and a rectangle from *x*₁ to *x*₂ and *y*₁ to *y*₂ that contains it. The fraction of random points of the rectangle that fall inside the region, times the area of the rectangle, estimates the area of the region. For example, the circle of radius 3 about (5, 7), inside the rectangle from (2, 4) to (8, 10), has area 9π. Write `estimate_integral(P, x1, x2, y1, y2, trials)`, using `monte_carlo` and the provided `random_in_range(low, high)`, which returns a number between `low` and `high`. The checker estimates π with the unit circle, among other regions; its `random_in_range` is built on `rand_update`, so every check draws the same points.
+
+<Solution>
+
+**Solution.** The experiment draws one point, `P(random_in_range(x1, x2), random_in_range(y1, y2))`, and `estimate_integral` multiplies `monte_carlo(trials, experiment)` by the area `(x2 - x1) * (y2 - y1)`. With the unit circle and the square from −1 to 1 the area of the square is 4, so the result estimates π. Like `cesaro_test`, the experiment takes no arguments: the random state is hidden in `random_in_range`.
+
+</Solution>
+</Exercise>
+<Exercise id="3.6">
+
+It is useful to be able to reset a random-number generator, so that a sequence of random numbers can be repeated. Write `make_rand`, which returns a new `rand` that responds to two messages: `rand("generate")` produces a new random number, and `rand("reset")(new_value)` sets its internal variable to `new_value`. Each `rand` starts from `random_init`. Use `rand_update`, which is provided.
+
+<Solution>
+
+**Solution.** `make_rand` declares `let x = random_init;` and returns a dispatching function. On `"generate"` it assigns `x = rand_update(x)` and returns `x`; on `"reset"` it returns a function of the new value that assigns it to `x`. After `rand("reset")(42)`, the same numbers come out again.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['3.1.3', { id: '3.5.5', label: 'A stream of random numbers' }]} />
