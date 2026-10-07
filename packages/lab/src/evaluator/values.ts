@@ -18,6 +18,12 @@ export interface Primitive {
   control?: 'concurrent_execute';
 }
 
+/**
+ * The primitive the machine applies itself: it spreads a list into arguments
+ * and applies a function, compound or primitive, to them.
+ */
+export const APPLY_PRIMITIVE = 'apply_in_underlying_javascript';
+
 /** Pairs are two-element arrays, as in Source. */
 export type Pair = [Value, Value];
 
@@ -50,30 +56,68 @@ const MAX_NESTING = 64;
  */
 const MAX_PAIRS = 2000;
 
+/**
+ * Longest text `stringify` produces by default. An evaluator written in Source
+ * keeps its environments in lists that contain the functions made in them, so
+ * a value can be very large; its text form stops here.
+ */
+export const MAX_TEXT = 10_000;
+
+/** Longest text of a value quoted in an error message. */
+export const ERROR_TEXT = 300;
+
 interface Budget {
   pairs: number;
 }
 
 /** Text form of a value: strings are quoted, functions show their defining frame. */
-export function stringify(value: Value, nesting = 0): string {
-  return write(value, nesting, new Set(), { pairs: MAX_PAIRS });
+export function stringify(value: Value, maxLength = MAX_TEXT): string {
+  // Every call of a compound function labels its frame with its arguments,
+  // so the common case, a value that is not a pair, must be cheap.
+  if (!isPair(value)) {
+    const text = atom(value);
+    return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+  }
+  const parts: string[] = [];
+  let length = 0;
+  // The pairs being written, outermost first: meeting one again is a cycle.
+  const path: Pair[] = [];
+  const budget: Budget = { pairs: MAX_PAIRS };
+  const walk = (v: Value, nesting: number): void => {
+    if (length > maxLength) return;
+    if (!isPair(v)) {
+      const text = atom(v);
+      parts.push(text);
+      length += text.length;
+      return;
+    }
+    // A pair inside itself is a cycle: name it instead of following it forever.
+    const stop = path.includes(v) ? '...' : nesting >= MAX_NESTING || budget.pairs <= 0 ? '[...]' : null;
+    if (stop !== null) {
+      parts.push(stop);
+      length += stop.length;
+      return;
+    }
+    budget.pairs--;
+    path.push(v);
+    parts.push('[');
+    walk(v[0], nesting + 1);
+    parts.push(', ');
+    walk(v[1], nesting + 1);
+    parts.push(']');
+    length += 4;
+    path.pop();
+  };
+  walk(value, 0);
+  const text = parts.join('');
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 }
 
-function write(value: Value, nesting: number, path: Set<Pair>, budget: Budget): string {
+function atom(value: Exclude<Value, Pair>): string {
   if (value === null) return 'null';
   if (value === undefined) return 'undefined';
   if (typeof value === 'string') return JSON.stringify(value);
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (isPair(value)) {
-    // A pair inside itself is a cycle: name it instead of following it forever.
-    if (path.has(value)) return '...';
-    if (nesting >= MAX_NESTING || budget.pairs <= 0) return '[...]';
-    budget.pairs--;
-    path.add(value);
-    const text = `[${write(value[0], nesting + 1, path, budget)}, ${write(value[1], nesting + 1, path, budget)}]`;
-    path.delete(value);
-    return text;
-  }
   if (value.tag === 'closure') return `fn[${value.env.frame.id}]`;
   return `primitive[${value.name}]`;
 }

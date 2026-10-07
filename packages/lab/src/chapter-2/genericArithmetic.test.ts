@@ -64,7 +64,7 @@ describe('section 2.5.1: generic arithmetic operations', () => {
   it('has no method for magnitude on "complex" until Alyssa’s four lines are added', () => {
     const z = 'const z = make_complex_from_real_imag(3, 4);\n';
     expect(errorOf(`${z} magnitude(z);`, genericArithmeticDefinitions)).toContain(
-      '["magnitude", [["complex", null], null]] no method for these types',
+      'no method for these types -- apply_generic ["magnitude", [["complex", null], null]]',
     );
     expect(text(`${z}${complexSelectorsInstall} magnitude(z);`, genericArithmeticDefinitions)).toBe('5');
     // magnitude(z) then invokes apply_generic twice: once on "complex", once on "rectangular".
