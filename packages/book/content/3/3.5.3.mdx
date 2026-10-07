@@ -1,0 +1,459 @@
+import {
+  paradigmAppendPairsProgram,
+  paradigmIntegralProgram,
+  paradigmPairsProgram,
+  paradigmPiStreamProgram,
+  paradigmPrimeSumPairsProgram,
+  paradigmSqrtStreamProgram,
+} from '@sicp/lab';
+
+<Prose>
+
+Delayed streams give us much of what local state and assignment gave us in §3.1, without dragging in the difficulties assignment brought along. They also let us draw the boundaries between modules in new places. A system built around state variables looks at one moment at a time: what is the value now? A system built from streams can take a whole time series, a signal, as one thing to hold, pass around and compare, so values from different moments are as easy to combine as values from one.
+
+## Formulating iterations as stream processes
+
+In §1.2.1 an iterative process was a handful of state variables updated over and over. We can now picture that state differently: not as variables that change, but as one stream that lists every value they ever take. Take the square-root method of §1.1.7 again. It improves a guess for √*x* by averaging it with *x* divided by it,
+
+```js
+function sqrt_improve(guess, x) {
+  return average(guess, x / guess);
+}
+```
+
+and where `sqrt_iter` kept the current guess in a parameter, we can instead produce the infinite stream of all the guesses, beginning with 1:
+
+</Prose>
+
+<Example index={0} file="sqrt_stream.sicp" source={paradigmSqrtStreamProgram} anim="series">
+
+Each element is `sqrt_improve` applied to the one before, so the plot jumps from 1 to 1.5 and then settles on √2 ≈ 1.41421 within four steps. The streams of this section are infinite, so our `display_stream` takes a second argument, how many elements to print. Ask for 10 instead of 6: the extra points sit on the same line, because the guesses have stopped changing in the digits we can see.
+
+</Example>
+
+<Prose>
+
+The stream holds every guess at once, so a function that keeps reading it until two neighbours agree closely enough would give a square root to any tolerance we like; exercise 3.64 writes it.
+
+Another iteration fits the same mould. In §1.3.1 we summed the alternating series
+
+π / 4 = 1 − 1/3 + 1/5 − 1/7 + ⋯
+
+As a stream, this is three steps: the stream of summands (the reciprocals of the odd numbers with alternating signs), the stream of its partial sums (`partial_sums` from exercise 3.55), and that stream scaled by 4:
+
+```js
+function pi_summands(n) {
+  return pair(1 / n, () => stream_map(x => -x, pi_summands(n + 2)));
+}
+const pi_stream = scale_stream(partial_sums(pi_summands(1)), 4);
+```
+
+The approximations it produces do approach π, but they crawl. After eight terms we only know that π lies somewhere between 3.284 and 3.017.
+
+So far a stream of states has been just another way to write a loop. But because the whole history is a value, we can also *transform* it. A *sequence accelerator* turns a sequence of approximations into a new sequence that converges to the same limit, faster. One, due to Leonhard Euler, suits the partial sums of alternating series particularly well: if *S*ₙ is the *n*th partial sum, the accelerated sequence has terms
+
+*S*ₙ₊₁ − (*S*ₙ₊₁ − *S*ₙ)² / (*S*ₙ₋₁ − 2*S*ₙ + *S*ₙ₊₁)
+
+Since each term needs three neighbouring elements of the original, `euler_transform` reads them with `stream_ref` and moves along by one:
+
+```js
+function euler_transform(s) {
+  const s0 = stream_ref(s, 0); // S(n-1)
+  const s1 = stream_ref(s, 1); // S(n)
+  const s2 = stream_ref(s, 2); // S(n+1)
+  return pair(s2 - square(s2 - s1) / (s0 + (-2) * s1 + s2),
+              memo(() => euler_transform(stream_tail(s))));
+}
+```
+
+The tail is memoized (§3.5.1), because what comes next reads the transformed streams many times over.
+
+Nothing stops us from accelerating the accelerated sequence, and then accelerating that. `make_tableau` builds a stream of streams, each the transform of the one before:
+
+```js
+function make_tableau(transform, s) {
+  return pair(s, () => make_tableau(transform, transform(s)));
+}
+```
+
+which we can picture as a triangle,
+
+```
+s00  s01  s02  s03  s04  ...
+     s10  s11  s12  s13  ...
+          s20  s21  s22  ...
+                    ...
+```
+
+and the first element of each row, taken in turn, is a new sequence:
+
+```js
+function accelerated_sequence(transform, s) {
+  return stream_map(head, make_tableau(transform, s));
+}
+```
+
+Here are all three, side by side.
+
+</Prose>
+
+<Example index={1} file="pi_stream.sicp" source={paradigmPiStreamProgram} anim="series">
+
+Three series, eight terms each. `pi_stream` zigzags around π and is still off by more than 0.1 at the end; `euler` starts within 0.03 of π and ends within 0.0004; `accelerated` agrees with π to 13 decimal places by its eighth term. Matching that with the plain partial sums would take on the order of 10¹³ terms, since the error of a partial sum is about the size of the next term. Each `display("...")` starts a new series in the plot; try plotting only `accelerated` and `euler` to see how differently they converge once the slow one is out of the scale. The helpers at the top (`memo`, a memoized `stream_map_2`, `add_streams`, `scale_stream`) come from §3.5.1 and §3.5.2; without memoization the tableau would recompute its rows again and again.
+
+</Example>
+
+<Prose>
+
+None of this needs streams; the same arithmetic could be written with loops and variables. What streams add is convenience: the entire sequence of states is a data structure, so one uniform set of operations (map, transform, take the heads) builds even a tableau of sequences in a few lines.
+
+## Infinite streams of pairs
+
+In §2.2.3 sequences turned nested loops into pipelines over sequences of pairs. With infinite streams the same idea can range over an infinite set, which no loop can do. Suppose we want the `prime_sum_pairs` of §2.2.3 without an upper bound: the stream of all pairs of positive integers (*i*, *j*) with *i* ≤ *j* whose sum is prime. If `int_pairs` were the stream of all pairs with *i* ≤ *j* (each pair a two-element list, as in §2.2.3), we could simply filter it:
+
+```js
+stream_filter(p => is_prime(head(p) + head(tail(p))), int_pairs);
+```
+
+The interesting part is `int_pairs`. More generally, take two streams *S* and *T* and the infinite array of their pairs (*S*ᵢ, *T*ⱼ). We want those on or above the diagonal, *i* ≤ *j*. Call that stream `pairs(S, T)` and split it into three parts: the pair (*S*₀, *T*₀); the rest of the first row; and everything below the first row, which is `pairs` again, of the two tails.
+
+</Prose>
+
+<PairsDecompositionDiagram caption={<p>The third part is the same problem one size down, so <code>pairs</code> can call itself for it. The second part is <code>stream_map(x =&gt; list(head(s), x), stream_tail(t))</code>.</p>} />
+
+<Prose>
+
+That gives a function with one decision left open, how to combine the second and third parts:
+
+```js
+function pairs(s, t) {
+  return pair(list(head(s), head(t)),
+              () => combine_in_some_way(
+                      stream_map(x => list(head(s), x), stream_tail(t)),
+                      pairs(stream_tail(s), stream_tail(t))));
+}
+```
+
+An obvious candidate is `stream_append`, the stream version of `append` (it is in the library):
+
+```js
+function stream_append(s1, s2) {
+  return is_null(s1)
+    ? s2
+    : pair(head(s1), () => stream_append(stream_tail(s1), s2));
+}
+```
+
+It will not do for infinite streams. `stream_append` hands over every element of its first stream before it even looks at the second, and here the first stream, the rest of row 1, never runs out.
+
+</Prose>
+
+<Example index={2} file="pairs_append.sicp" source={paradigmAppendPairsProgram} anim="pairs-order">
+
+Thirty-one pairs, and every one of them is (1, *j*): the grid on the left fills its first row and then the pairs run off the edge, while the rows below stay dark. The grid on the right shows the same number of pairs from the interleaving version below, for comparison. Ask for 1000 pairs and you still never see (2, 2).
+
+</Example>
+
+<Prose>
+
+We need a way of combining two streams that is guaranteed to reach every element of both, however long we wait for it. A neat one is to take elements from the two streams alternately:
+
+```js
+function interleave(s1, s2) {
+  return is_null(s1)
+    ? s2
+    : pair(head(s1), () => interleave(s2, stream_tail(s1)));
+}
+```
+
+Each call puts one element from its first argument out front and then swaps the roles of the two streams, so the second stream gets every other turn even if the first is infinite. (The precise property we need is that the pair of element *i* of one stream and element *j* of the other lands at some definite position *f*(*i*, *j*) of the result. David Turner used interleaving this way in his language KRC.) With it, `pairs` is complete:
+
+```js
+function pairs(s, t) {
+  return pair(list(head(s), head(t)),
+              () => interleave(stream_map(x => list(head(s), x),
+                                          stream_tail(t)),
+                               pairs(stream_tail(s), stream_tail(t))));
+}
+```
+
+</Prose>
+
+<Example index={3} file="pairs.sicp" source={paradigmPairsProgram} anim="pairs-order">
+
+Watch the order in which the cells light up. Row 1 gets every second turn, row 2 every second turn of what is left (every fourth overall), row 3 every eighth, and so on: the 31st pair is (5, 5), the last cell of the triangle up to 5. The caption gives each pair's position as a formula; exercise 3.66 asks you to find it. Change the 31 to 63 and the triangle up to (6, 6) is complete.
+
+</Example>
+
+<Prose>
+
+And now `prime_sum_pairs` over all the integers is a filter on `int_pairs`, exactly as planned:
+
+</Prose>
+
+<Example index={4} file="prime_sum_pairs.sicp" source={paradigmPrimeSumPairsProgram}>
+
+The first eight pairs whose sum is prime. They come out in the interleaved order, not sorted by size: (1, 10) appears after (2, 5) because row 1 is far ahead of row 2. Exercise 3.70 shows how to produce pairs in a chosen order instead.
+
+</Example>
+
+<Prose>
+
+## Streams as signals
+
+We first described streams as the programming counterpart of signals in signal-processing systems, and we can use them to model such systems quite literally, with the elements of a stream standing for the values of a signal at equally spaced moments. An *integrator* or *summer*, for instance, takes an input stream *x* = (*x*ᵢ), an initial value *C* and a small time step *dt*, and produces the running sum
+
+*S*ᵢ = *C* + Σⱼ₌₁ⁱ *x*ⱼ *dt*
+
+as the stream *S* = (*S*ᵢ). Written the way §3.5.2 wrote `integers`, implicitly, in terms of itself:
+
+```js
+function integral(integrand, initial_value, dt) {
+  const integ = pair(initial_value,
+                     () => add_streams(scale_stream(integrand, dt),
+                                       integ));
+  return integ;
+}
+```
+
+</Prose>
+
+<SignalIntegralDiagram caption={<p>The input is scaled by <em>dt</em> and goes through an adder, and the adder's output, with the initial value in front, is both the result and the adder's other input. The loop in the picture is the self-reference in the declaration of <code>integ</code>.</p>} />
+
+<Example index={5} file="integral.sicp" source={paradigmIntegralProgram} anim="series" budget={300000}>
+
+The integrand is the stream of times 0, 0.01, 0.02, …, so the integral should be *t*² / 2. The plot shows every 25th element of both: the computed sum runs just below the exact curve, because each step adds the value at the start of its interval. At *t* = 3 the program gives 4.485 instead of 4.5, an error of 3 *dt* / 2; make `dt` ten times smaller and the error shrinks tenfold (raise the budget, since there are ten times as many steps). Our `integral` memoizes the tail of `integ`, so that every element is computed once.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-3/streamParadigm.ts">
+
+The programs on this page are exported from `chapter-3/streamParadigm.ts`. Each declares the memoized helpers it uses, shadowing the library's unmemoized `stream_map` where it needs to, since a program's declarations hide the library frame's. The test `chapter-3/streamParadigm.test.ts` checks that the three π sequences print the book's numbers, that the 31st interleaved pair is (5, 5), that (1, 100) is preceded by 197 pairs, that the appended version never leaves row 1, and that the integral of *t* up to 3 is 4.485. The pairs animation only reads what the program printed; its model (`src/anim/chapter-3/pairsOrder.ts`) is checked against the formula for every one of the first 400 pairs in `tests/chapter3-paradigm.test.tsx`.
+
+</UnderTheHood>
+
+<Exercises range="3.63 – 3.76" total={14}>
+<Exercise id="3.63">
+
+Louis Reasoner finds `sqrt_stream` slow and memoizes it:
+
+```js
+function sqrt_stream_optimized(x) {
+  return pair(1,
+              memo(() => stream_map_optimized(guess => sqrt_improve(guess, x),
+                                              sqrt_stream_optimized(x))));
+}
+```
+
+Alyssa P. Hacker suggests naming the stream instead, so that it refers to itself:
+
+```js
+function sqrt_stream_optimized_2(x) {
+  const guesses = pair(1,
+                       memo(() => stream_map_optimized(guess => sqrt_improve(guess, x),
+                                                       guesses)));
+  return guesses;
+}
+```
+
+She says Louis's version does redundant work and hers does not. Write her version, then say exactly how many times Louis's applies `sqrt_improve` to compute element *n*, as a function `louis_applications(n)`. Finally: if Alyssa's version were written without `memo` and with the library's unmemoized `stream_map`, would it beat the original `sqrt_stream`? The checker counts the applications of `sqrt_improve`.
+
+<Solution>
+
+**Solution.** Louis's memo never pays off: each tail calls `sqrt_stream_optimized(x)` again, which builds a brand-new stream with brand-new memos, so guess *k* is rebuilt from 1 with *k* improvements, and element *n* costs 1 + 2 + ⋯ + *n* = *n*(*n* + 1)/2 applications, 55 for *n* = 10. Alyssa's stream maps over *itself*, so guess *k* + 1 is computed from the remembered guess *k*: *n* applications in all. Without memoization, though, every `stream_tail` of `guesses` recomputes the map from the start, and the count is *n*(*n* + 1)/2 again, no better than the original. Naming the stream and memoizing it only work together.
+
+</Solution>
+</Exercise>
+<Exercise id="3.64">
+
+Write a function `stream_limit` that takes a stream and a tolerance, looks along the stream for the first two neighbouring elements that differ by less than the tolerance in absolute value, and returns the second of them. With it, square roots to any tolerance are
+
+```js
+function sqrt(x, tolerance) {
+  return stream_limit(sqrt_stream(x), tolerance);
+}
+```
+
+<Solution>
+
+**Solution.** Compare the head with the element after it; if they are close enough, return the later one, otherwise do the same on the tail. It is an iterative process over a stream that is only ever computed as far as needed, which is why it works on infinite streams.
+
+</Solution>
+</Exercise>
+<Exercise id="3.65">
+
+The series
+
+ln 2 = 1 − 1/2 + 1/3 − 1/4 + ⋯
+
+converges to the natural logarithm of 2. Build three sequences of approximations to ln 2 the way we built them for π: the partial sums, their Euler transform, and the accelerated sequence. How quickly does each converge?
+
+<Solution>
+
+**Solution.** `ln2_summands(n)` is `pair(1 / n, () => stream_map(x => -x, ln2_summands(n + 1)))`, and the three streams are its `partial_sums`, `euler_transform` of those, and `accelerated_sequence(euler_transform, …)` of those. The partial sums are wretched: the error after *n* terms is about 1/(2*n*), so even six correct decimals would take hundreds of thousands of terms (element 9 is still 0.6456). Euler's transform reaches 0.69300 by its eighth term, an error near 10⁻⁴. The accelerated sequence is within 10⁻¹² of ln 2 ≈ 0.693147 at its eighth term.
+
+</Solution>
+</Exercise>
+<Exercise id="3.66">
+
+Look at the order of `pairs(integers, integers)`. What general pattern do you see? Roughly how many pairs come before (1, 100)? Before (99, 100)? Before (100, 100)? Give exact answers if you can, as a function `preceding(i, j)` for *i* ≤ *j*.
+
+<Solution>
+
+**Solution.** Row *i* gets one turn in every 2^*i* once it has started. On the diagonal, (*i*, *i*) is preceded by 2^*i* − 2 pairs. Off it, the first pair to the right of the diagonal comes 2^(*i*−1) places after (*i*, *i*), and each further step along the row costs 2^*i* more, so (*i*, *j*) with *j* > *i* is preceded by 2^*i*(*j* − *i*) + 2^(*i*−1) − 2 pairs. That gives 197 before (1, 100), about 3 × 2⁹⁸ ≈ 9.5 × 10²⁹ before (99, 100), and 2¹⁰⁰ − 2 ≈ 1.3 × 10³⁰ before (100, 100). The animation above checks the formula on every pair it shows.
+
+</Solution>
+</Exercise>
+<Exercise id="3.67">
+
+Change `pairs` so that `all_pairs(integers, integers)` produces every pair of positive integers (*i*, *j*), without the restriction *i* ≤ *j*. Hint: you will need to mix in one more stream.
+
+<Solution>
+
+**Solution.** The array now has a first column below the corner as well as a first row to its right. Interleave three streams: the rest of the first row (`list(head(s), x)` for `x` in `stream_tail(t)`), the rest of the first column (`list(x, head(t))` for `x` in `stream_tail(s)`), and `all_pairs` of the two tails. Nesting `interleave` gives the row half the turns and the other two a quarter each, and each pair still turns up exactly once.
+
+</Solution>
+</Exercise>
+<Exercise id="3.68">
+
+Louis Reasoner thinks three parts are one too many. He leaves (*S*₀, *T*₀) in the first row and writes
+
+```js
+function pairs(s, t) {
+  return interleave(stream_map(x => list(head(s), x), t),
+                    pairs(stream_tail(s), stream_tail(t)));
+}
+```
+
+Does it work? What happens when you evaluate `pairs(integers, integers)` with this declaration? Answer, and then mend Louis's idea by writing `interleave_delayed`, an `interleave` whose second argument is a function returning the stream, so that the recursive call can be put off.
+
+<Solution>
+
+**Solution.** It never returns. Our functions evaluate their arguments first, so `pairs` must evaluate `pairs(stream_tail(s), stream_tail(t))` before `interleave` can start, and that call needs the next one, and so on forever: nothing delays the recursion, as the `pair(..., () => ...)` of the three-part version did. The Laboratory runs until its step budget is spent. Passing `() => pairs(...)` to an `interleave_delayed` that forces it only when it needs the second stream fixes this, and the result contains every pair with *i* ≤ *j*, in a different order. Section 4.2 makes this kind of delay automatic.
+
+</Solution>
+</Exercise>
+<Exercise id="3.69">
+
+Write a function `triples` that takes three infinite streams *S*, *T* and *U* and produces the stream of triples (*S*ᵢ, *T*ⱼ, *U*ₖ) with *i* ≤ *j* ≤ *k*. Use it to produce the stream of Pythagorean triples of positive integers, the triples (*i*, *j*, *k*) with *i* ≤ *j* and *i*² + *j*² = *k*².
+
+<Solution>
+
+**Solution.** Generalize `pairs` one level up: the first triple, then the triples that start with `head(s)` (that head in front of each pair of `pairs(t, u)` after the first), interleaved with `triples` of the three tails. Filtering for *i*² + *j*² = *k*² gives (3, 4, 5) as the 35th triple and (6, 8, 10) as the 1183rd: row *i* gets one turn in 2^*i*, so triples with a larger first element are slow to come. The checker gives this one a budget of three million steps.
+
+</Solution>
+</Exercise>
+<Exercise id="3.70">
+
+It would be nicer to get the pairs in a useful order instead of the one interleaving happens to give. Suppose a *weighting function* *W*(*i*, *j*) decides: (*i*₁, *j*₁) comes before (*i*₂, *j*₂) when its weight is smaller. Write `merge_weighted`, which merges two streams that are already ordered by weight (it is like `merge` of exercise 3.56, except that it takes the weight function as a third argument and keeps both of two elements with equal weight). Then generalize `pairs` to `weighted_pairs(s, t, weight)`, which produces the pairs in order of weight. (Assume the weight grows as you move right along a row or down a column.) Use them to make
+
+- a. the pairs (*i*, *j*) of positive integers with *i* ≤ *j*, ordered by *i* + *j*;
+- b. the pairs (*i*, *j*) of positive integers with *i* ≤ *j*, neither divisible by 2, 3 or 5, ordered by 2*i* + 3*j* + 5*ij*.
+
+<Solution>
+
+**Solution.** `merge_weighted` compares the weights of the two heads and takes the lighter one, taking from the first stream on a tie and leaving the other head in place, so that no pair is lost. `weighted_pairs` is `pairs` with `merge_weighted` in place of `interleave`: because weights grow along the row and down the triangle, merging the ordered first row with the ordered rest keeps the whole stream ordered. For (b), filter `integers` for numbers coprime to 30 and pair that stream with itself: the first pairs are (1, 1), (1, 7), (1, 11), (1, 13), …, and (7, 7) is the tenth.
+
+</Solution>
+</Exercise>
+<Exercise id="3.71">
+
+Numbers that are a sum of two cubes in more than one way are sometimes called *Ramanujan numbers*, after the story G. H. Hardy told: visiting Ramanujan in hospital, he remarked that his taxi's number, 1729, seemed a dull one, and Ramanujan answered that it was the smallest number expressible as a sum of two cubes in two different ways. With weighted pairs they are easy to find (the trick is Charles Leiserson's): order the pairs by *i*³ + *j*³ and look for two neighbours with the same weight. Make the stream `ramanujan_numbers`. The first is 1729; what are the next five?
+
+<Solution>
+
+**Solution.** Walk the stream `weighted_pairs(integers, integers, p => cube(i) + cube(j))` comparing each element's weight with the next one's; when they agree, that weight is a Ramanujan number. The next five are 4104, 13832, 20683, 32832 and 39312. Skipping both elements of a match keeps a number from being reported twice when it has exactly two representations.
+
+</Solution>
+</Exercise>
+<Exercise id="3.72">
+
+In the same way, make a stream of the numbers that can be written as a sum of two squares in three different ways, each together with the three ways.
+
+<Solution>
+
+**Solution.** Order pairs by *i*² + *j*² and look for three neighbours with the same weight, producing `list(w, p1, p2, p3)`. The first is 325 = 1² + 18² = 6² + 17² = 10² + 15², then 425 = 5² + 20² = 8² + 19² = 13² + 16².
+
+</Solution>
+</Exercise>
+<Exercise id="3.73">
+
+<SignalRcCircuitDiagram caption={<p>A resistor <em>R</em> and a capacitor <em>C</em> in series. Driven by a current <em>i</em>, the voltage across both is <em>R i</em> plus the capacitor's voltage, which starts at <em>v</em>₀ and integrates <em>i / C</em>.</p>} />
+
+Streams can model the currents and voltages in an electrical circuit over time. In the RC circuit above, the voltage response *v* to an injected current *i* follows the formula in the figure, whose structure the signal-flow diagram shows. Write a function `RC` that takes *R*, *C* and *dt* and returns a function which, given a stream of currents *i* and an initial capacitor voltage *v*₀, returns the stream of voltages *v*. For instance, `const RC1 = RC(5, 1, 0.5);` models a 5-ohm, 1-farad circuit with half-second steps.
+
+<Solution>
+
+**Solution.** Read the diagram from left to right: `add_streams(scale_stream(i, R), integral(scale_stream(i, 1 / C), v0, dt))`, inside `(i, v0) => ...`. With a constant current of 1, `RC1` gives 5, 5.5, 6, …: the resistor's constant 5 volts plus a capacitor charging at half a volt per step.
+
+</Solution>
+</Exercise>
+<Exercise id="3.74">
+
+Alyssa P. Hacker is processing signals from a physical sensor and wants the *zero crossings* of the signal: a stream that is +1 where the input goes from negative to positive, −1 where it goes from positive to negative, and 0 elsewhere (a zero counts as positive). For instance
+
+```
+signal:          ... 1  2  1.5  1  0.5  -0.1  -2  -3  -2  -0.5  0.2  3  4 ...
+zero crossings:  ... 0  0  0    0  0    -1    0   0   0   0     1    0  0 ...
+```
+
+With a function `sign_change_detector(value, last_value)` that compares two signs, she writes
+
+```js
+function make_zero_crossings(input_stream, last_value) {
+  return pair(sign_change_detector(head(input_stream), last_value),
+              () => make_zero_crossings(stream_tail(input_stream),
+                                        head(input_stream)));
+}
+const zero_crossings = make_zero_crossings(sense_data, 0);
+```
+
+Her boss, Eva Lu Ator, observes that it is nearly the same as
+
+```js
+const zero_crossings = stream_map_2(sign_change_detector,
+                                    sense_data,
+                                    expression);
+```
+
+Supply the *expression*.
+
+<Solution>
+
+**Solution.** `sign_change_detector` needs each value with the one before it, and the stream of "the ones before" is `sense_data` delayed by one step, starting with Alyssa's initial 0: `pair(0, () => sense_data)`.
+
+</Solution>
+</Exercise>
+<Exercise id="3.75">
+
+The sensor turns out to be noisy, and the noise produces spurious zero crossings. Lem E. Tweakit, a hardware specialist, suggests smoothing the signal before looking for crossings, and Alyssa decides to average each value with the previous value. Louis Reasoner implements it like this:
+
+```js
+function make_zero_crossings(input_stream, last_value) {
+  const avpt = (head(input_stream) + last_value) / 2;
+  return pair(sign_change_detector(avpt, last_value),
+              () => make_zero_crossings(stream_tail(input_stream), avpt));
+}
+```
+
+That is not Alyssa's plan. Find the bug and fix it without changing the program's structure. (Hint: `make_zero_crossings` needs another argument.) The checker calls your version as `make_zero_crossings(sense_data, 0, 0)` on a noisy signal.
+
+<Solution>
+
+**Solution.** Louis passes the *average* on as `last_value`, so the next average mixes a raw value with an average (smoothing everything that came before, more and more), and he compares an average with that same mixed quantity. Keep both: `last_value`, the previous raw value, to average with, and `last_avpt`, the previous average, to compare with. The recursive call passes `head(input_stream)` and `avpt`.
+
+</Solution>
+</Exercise>
+<Exercise id="3.76">
+
+Eva Lu Ator objects to Louis's approach in exercise 3.75: it tangles smoothing up with extracting zero crossings, so a better way of conditioning the signal would mean rewriting the extractor. Write a function `smooth` that takes a stream and returns the stream of averages of each element with the one before it (taking the one before the first to be 0, as exercise 3.75 does), and use it as a separate component in a modular zero-crossing detector.
+
+<Solution>
+
+**Solution.** `smooth(s)` is `stream_map_2` of averaging over `s` and `pair(0, () => s)`, the same delayed copy as in exercise 3.74. Then `make_zero_crossings(smooth(s), 0)`, with Alyssa's original extractor untouched, gives exactly the corrected answer of exercise 3.75. Any other filter can be swapped in for `smooth`.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '3.5.4', label: 'Delayed integrands and solve' }, { id: '3.5.5', label: 'Monte Carlo as a stream' }, { id: '4.2.3', label: 'Streams as lazy lists' }]} />
