@@ -1,0 +1,195 @@
+import { analysisComparisonProgram, analyzingPrelude, metacircularPrelude } from '@sicp/lab';
+
+<Prose>
+
+The evaluator so far is simple but very inefficient, because the syntactic analysis of components is interleaved with their execution. Every time `factorial` is called, the evaluator must work out again that its body is a conditional and extract the predicate; every time it evaluates `factorial(n - 1) * n`, it must again go through the case analysis of `evaluate` to find out that this is an operator combination, rewrite it as an application, and extract its parts. Performing that analysis repeatedly is wasteful.
+
+We can arrange for analysis to happen only once. `evaluate` is split in two. `analyze` takes only the component; it performs the syntactic analysis and returns an *execution function*, which takes an environment and completes the evaluation. A function body is analyzed once, however many times the function is applied.
+
+```js
+function evaluate(component, env) {
+    return analyze(component)(env);
+}
+```
+
+`analyze` is the same case analysis as `evaluate`, but the functions it dispatches to only analyze:
+
+```js
+function analyze(component) {
+    return is_literal(component)
+           ? analyze_literal(component)
+           : is_name(component)
+           ? analyze_name(component)
+           : is_application(component)
+           ? analyze_application(component)
+           : is_operator_combination(component)
+           ? analyze(operator_combination_to_application(component))
+           : is_conditional(component)
+           ? analyze_conditional(component)
+           : is_lambda_expression(component)
+           ? analyze_lambda_expression(component)
+           : is_sequence(component)
+           ? analyze_sequence(sequence_statements(component))
+           : is_block(component)
+           ? analyze_block(component)
+           : is_return_statement(component)
+           ? analyze_return_statement(component)
+           : is_function_declaration(component)
+           ? analyze(function_decl_to_constant_decl(component))
+           : is_declaration(component)
+           ? analyze_declaration(component)
+           : is_assignment(component)
+           ? analyze_assignment(component)
+           : error(component, "unknown syntax -- analyze");
+}
+```
+
+The simplest analysis is of a literal: its execution function ignores the environment. A name must still be looked up at execution time, since the value depends on the environment.
+
+```js
+function analyze_literal(component) {
+    return env => literal_value(component);
+}
+function analyze_name(component) {
+    return env => lookup_symbol_value(symbol_of_name(component), env);
+}
+```
+
+To analyze an application we analyze its function expression and argument expressions, and build an execution function that runs them and passes the results to `execute_application`, the analogue of `apply`. Since the body of a compound function has already been analyzed, `execute_application` just calls the body’s execution function on the extended environment.
+
+```js
+function analyze_application(component) {
+    const ffun = analyze(function_expression(component));
+    const afuns = map(analyze, arg_expressions(component));
+    return env => execute_application(ffun(env),
+                                      map(afun => afun(env), afuns));
+}
+function execute_application(fun, args) {
+    if (is_primitive_function(fun)) {
+        return apply_primitive_function(fun, args);
+    } else if (is_compound_function(fun)) {
+        const result = function_body(fun)
+                       (extend_environment(function_parameters(fun),
+                                           args,
+                                           function_environment(fun)));
+        return is_return_value(result)
+               ? return_value_content(result)
+               : undefined;
+    } else {
+        error(fun, "unknown function type -- execute_application");
+    }
+}
+```
+
+Conditionals, lambda expressions, blocks, return statements, assignments and declarations are analyzed in the same spirit: analyze the parts now, and return a function that does only what depends on the environment. Analyzing a lambda expression is a major gain, since its body is analyzed once however many times the function is applied:
+
+```js
+function analyze_lambda_expression(component) {
+    const params = lambda_parameter_symbols(component);
+    const bfun = analyze(lambda_body(component));
+    return env => make_function(params, bfun, env);
+}
+```
+
+A sequence is more involved. Each statement is analyzed into an execution function, and these are chained into one function that calls them in order, stopping at a return value:
+
+```js
+function analyze_sequence(stmts) {
+    function sequentially(fun1, fun2) {
+        return env => {
+                   const fun1_val = fun1(env);
+                   return is_return_value(fun1_val)
+                          ? fun1_val
+                          : fun2(env);
+               };
+    }
+    function loop(first_fun, rest_funs) {
+        return is_null(rest_funs)
+               ? first_fun
+               : loop(sequentially(first_fun, head(rest_funs)),
+                      tail(rest_funs));
+    }
+    const funs = map(analyze, stmts);
+    return is_null(funs)
+           ? env => undefined
+           : loop(head(funs), tail(funs));
+}
+```
+
+The new evaluator uses the same syntax functions, data structures and setup as §4.1.2 to §4.1.4. Both evaluators are below, each running the same program: compare the step counts in their output headers.
+
+</Prose>
+
+<Example index={0} file="evaluate.sicp" source={analysisComparisonProgram} prelude={metacircularPrelude} budget={5000000}>
+
+The evaluator of §4.1.1, analyzing `factorial`’s body afresh on each of its ten calls.
+
+</Example>
+
+<Example index={1} file="analyze.sicp" source={analysisComparisonProgram} prelude={analyzingPrelude} budget={5000000}>
+
+The analyzing evaluator on the same program takes almost two fifths fewer steps of the Laboratory: the body of `factorial` is analyzed once, when its lambda expression is analyzed, and each call only executes. Try `factorial(20)` in both, or a program that calls a small function many times, and see how the saving grows with the share of time spent in execution (exercise 4.22).
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-4/analyze.ts">
+
+`analyzingEvaluator` in `chapter-4/analyze.ts` is `analyzingCore` together with the evaluator of §4.1 minus the nine declarations that analysis replaces, removed with `omit` from `chapter-4/source.ts`. A step is one move of the Laboratory’s machine, so the count measures all the work of the evaluator being evaluated. The test `chapter-4/metacircular.test.ts` asserts that both evaluators give 3628800 for `factorial(10)` and that the analyzing one takes between 55 and 70 per cent of the steps, 46 980 against 76 076, the numbers exercise 4.22 expects.
+
+</UnderTheHood>
+
+<Exercises range="4.20 – 4.22" total={3}>
+<Exercise id="4.20">
+
+Extend the evaluator of this section to support while loops (exercise 4.7).
+
+<Solution>
+
+**Solution.** `analyze_while_loop` analyzes the predicate and the body once, and returns an execution function that loops: while the predicate is true, run the body, and stop early if the body produces a return value, passing it on so that `return` inside a loop leaves the enclosing function. The loop calls itself in tail position, so a long loop does not use up space.
+
+</Solution>
+</Exercise>
+<Exercise id="4.21">
+
+Alyssa P. Hacker doesn’t understand why `analyze_sequence` needs to be so complicated. She expected it to look like this:
+
+```js
+function analyze_sequence(stmts) {
+    function execute_sequence(funs, env) {
+        if (is_null(funs)) {
+            return undefined;
+        } else if (is_null(tail(funs))) {
+            return head(funs)(env);
+        } else {
+            const head_val = head(funs)(env);
+            return is_return_value(head_val)
+                   ? head_val
+                   : execute_sequence(tail(funs), env);
+        }
+    }
+    const funs = map(analyze, stmts);
+    return env => execute_sequence(funs, env);
+}
+```
+
+Eva Lu Ator explains that the version in the text does more of the work at analysis time: Alyssa’s execution function loops through the list of execution functions, so although the statements have been analyzed, the sequence itself has not. Compare the two. (The book asks about a sequence of one statement, typical of function bodies; our `parse` gives a single statement as itself, never as a sequence, so consider sequences of *n* ≥ 2 statements.) How many times does each version call a function of its own each time the sequence is executed?
+
+<Solution>
+
+**Solution.** Alyssa’s execution function calls `execute_sequence` once per statement, *n* times, testing `is_null` and taking `head` and `tail` each time. The text’s version has already combined the execution functions: for *n* statements it built *n* − 1 functions with `sequentially`, each of which calls its two parts directly, and nothing is left to test or traverse at execution time. For one statement it would return the statement’s own execution function, with no extra call at all.
+
+</Solution>
+</Exercise>
+<Exercise id="4.22">
+
+Design and carry out some experiments to compare the speed of the original metacircular evaluator with the version in this section. Use your results to estimate the fraction of time that is spent in analysis versus execution for various functions. The two editors above are an experiment already: the output header of each reports the Laboratory steps the run took. Record them for `factorial(10)`, and run both again with `factorial(20)`.
+
+<Solution>
+
+**Solution.** The analyzing evaluator does the same execution work, but analyzes each component once; the original analyzes it every time it runs. So the difference between the two counts estimates the analysis the original repeats, and its share of the original’s count is the fraction of time the original spends on analysis. It is close to two fifths for `factorial(10)` and a little more for `factorial(20)`: almost all the evaluation is inside the function body, which the original analyzes again on every call, while the one-off work of declaring `factorial` and starting the program weighs less as *n* grows. A program whose time goes to primitives, or to a long chain of different statements evaluated once, would show a smaller difference.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '4.3.3', label: 'The amb evaluator, built on analysis' }, { id: '5.5', label: 'Compilation: analysis taken all the way' }]} />

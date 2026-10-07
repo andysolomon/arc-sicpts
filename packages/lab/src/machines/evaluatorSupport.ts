@@ -11,7 +11,6 @@ import {
   type Value,
 } from '../evaluator/values.ts';
 import { SourceError } from '../syntax/errors.ts';
-import { parseComponent } from './components.ts';
 
 /**
  * The functions of §4.1 that chapter 5 takes for granted: syntax predicates
@@ -106,7 +105,6 @@ export function evaluatorSupport({ primitives, constants, display, read }: Suppo
   const symbolOfName = (component: Value): Value => at(component, 1);
 
   define('is_tagged_list', 2, (component, tag) => isTaggedList(component, String(tag)));
-  define('parse', 1, (text) => (typeof text === 'string' ? parseComponent(text) : fail(`parse expects a string, got ${typeName(text)}`)));
 
   // Literals and names
   predicate('is_literal', 'literal');

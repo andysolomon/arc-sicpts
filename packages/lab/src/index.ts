@@ -3,6 +3,7 @@ export { isDeclaration } from './syntax/ast.ts';
 export { SourceError, type ErrorPhase } from './syntax/errors.ts';
 export { tokenize, KEYWORDS, type Token, type TokenType } from './syntax/tokenize.ts';
 export { parse } from './syntax/parse.ts';
+export { toTaggedList } from './syntax/taggedList.ts';
 
 export {
   assign,
@@ -22,6 +23,7 @@ export {
   isPair,
   isPrimitive,
   listToArray,
+  MAX_TEXT,
   stringify,
   typeName,
   type Closure,
@@ -62,6 +64,12 @@ export {
   type ProcessShapeSnapshot,
 } from './inspect/processShape.ts';
 export { createStepTracer, type StepEvent, type StepRecord } from './inspect/stepTrace.ts';
+export {
+  createCallLogTracer,
+  type CallLogOptions,
+  type CallLogTracer,
+  type WatchedCall,
+} from './inspect/callLog.ts';
 
 export type * from './worker/protocol.ts';
 export { isTerminal } from './worker/protocol.ts';
@@ -168,7 +176,7 @@ export {
   simulatorSource,
   simulatorWithout,
 } from './chapter-5/simulator.ts';
-export { declaredNames, onlyDeclarations, withoutDeclarations } from './chapter-5/pieces.ts';
+export { onlyDeclarations, withoutDeclarations } from './chapter-5/pieces.ts';
 export { BROKEN_HEART, collectGarbage, gcControllerSource, memoryImage, type GcRun, type GcStep, type MemoryImage } from './chapter-5/memory.ts';
 export {
   ECEVAL_REGISTERS,
@@ -226,3 +234,18 @@ export * from './chapter-5/section-5-3.ts';
 export * from './chapter-5/section-5-4.ts';
 export * from './chapter-5/section-5-5.ts';
 export * from './chapter-5/section-5-5-5.ts';
+
+export { declaredNames, omit, pick } from './chapter-4/source.ts';
+export {
+  evaluatorCore,
+  evaluatorData,
+  evaluatorSetup,
+  evaluatorSyntax,
+  metacircularEvaluator,
+  metacircularPrelude,
+} from './chapter-4/metacircular.ts';
+export * from './chapter-4/metacircularPrograms.ts';
+export * from './chapter-4/analyze.ts';
+export * from './chapter-4/lazy.ts';
+export * from './chapter-4/amb.ts';
+export * from './chapter-4/query.ts';

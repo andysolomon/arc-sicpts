@@ -2,7 +2,7 @@ import type { Application, Loc, Name, Program } from '../syntax/ast.ts';
 import { SourceError } from '../syntax/errors.ts';
 import { define, extend } from './environment.ts';
 import { Machine } from './machine.ts';
-import { isClosure, isPrimitive, stringify, type Value } from './values.ts';
+import { APPLY_PRIMITIVE, isClosure, isPrimitive, listToArray, stringify, type Value } from './values.ts';
 
 /**
  * Apply a function value from TypeScript and wait for its result. Primitives
@@ -40,9 +40,12 @@ export function invoke(fn: Value, args: readonly Value[], budget = INVOKE_BUDGET
     if (fn.arity !== null && fn.arity !== args.length) {
       throw new SourceError('runtime', `${fn.name} expects ${fn.arity} argument(s), got ${args.length}`, null);
     }
-    if (fn.tailApply !== undefined) {
-      const target = fn.tailApply(...args);
-      return invoke(target.fn, target.args, budget);
+    if (fn.name === APPLY_PRIMITIVE) {
+      // apply_in_underlying_javascript(f, list(a, b)) is f(a, b).
+      const [target, list] = args;
+      const spread = listToArray(list ?? null);
+      if (spread === null) throw new SourceError('runtime', `${APPLY_PRIMITIVE} expects a list of arguments`, null);
+      return invoke(target, spread, budget);
     }
     return fn.impl(...args);
   }

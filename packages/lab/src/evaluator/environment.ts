@@ -29,8 +29,32 @@ export type LookupResult =
   | { status: 'found'; binding: Binding; env: Environment }
   | { status: 'unbound' };
 
-export function extend(parent: Environment | null, id: string, label: string): Environment {
-  return { frame: { id, label, bindings: new Map() }, parent };
+/** A frame whose label is written only when something reads it. */
+class LazyFrame implements Frame {
+  readonly id: string;
+  readonly bindings = new Map<string, Binding>();
+  private readonly write: () => string;
+  private text: string | null = null;
+
+  constructor(id: string, write: () => string) {
+    this.id = id;
+    this.write = write;
+  }
+
+  get label(): string {
+    this.text ??= this.write();
+    return this.text;
+  }
+}
+
+/**
+ * A new environment: a frame on top of `parent`. A label can be given as a
+ * function, which a call's frame does, so that its arguments are written out
+ * only if the label is ever read.
+ */
+export function extend(parent: Environment | null, id: string, label: string | (() => string)): Environment {
+  const frame = typeof label === 'string' ? { id, label, bindings: new Map<string, Binding>() } : new LazyFrame(id, label);
+  return { frame, parent };
 }
 
 export function lookup(env: Environment, symbol: string): LookupResult {

@@ -1,9 +1,12 @@
 import { SourceError } from '../syntax/errors.ts';
+import { parse as parseProgram } from '../syntax/parse.ts';
+import { toTaggedList } from '../syntax/taggedList.ts';
 import { define, extend, type Environment } from './environment.ts';
 import type { RegisterMachine } from '../machines/registerMachine.ts';
 import { installMachines } from '../machines/install.ts';
-import { invoke } from './invoke.ts';
 import {
+  APPLY_PRIMITIVE,
+  ERROR_TEXT,
   isClosure,
   isPair,
   isPrimitive,
@@ -24,6 +27,18 @@ const number = (name: string, value: Value): number => {
   if (typeof value !== 'number') fail(`${name} expects a number, got ${typeName(value)}`);
   return value as number;
 };
+
+/** True for a list; false for any other value, including a circular list. */
+function isList(value: Value): boolean {
+  const seen = new Set<Pair>();
+  let rest = value;
+  while (isPair(rest)) {
+    if (seen.has(rest)) return false;
+    seen.add(rest);
+    rest = rest[1];
+  }
+  return rest === null;
+}
 
 const MATH_UNARY = [
   'abs',
@@ -95,16 +110,23 @@ export function createGlobalEnvironment(
   define(env, 'math_PI', Math.PI);
   define(env, 'math_E', Math.E);
 
-  primitive('display', 1, (value) => {
-    display(stringify(value));
+  // `display(value, "prefix")` shows the prefix as it is, then the value.
+  primitive('display', null, (...args) => {
+    const [value, prefix] = args;
+    if (args.length < 1 || args.length > 2) fail(`display expects 1 or 2 argument(s), got ${args.length}`);
+    if (args.length === 2 && typeof prefix !== 'string') fail(`display expects a string prefix, got ${typeName(prefix)}`);
+    display(args.length === 2 ? `${prefix as string} ${stringify(value)}` : stringify(value));
     return value;
   });
   // Milliseconds on a monotonic clock, for timing a computation as in Exercise 1.22.
   primitive('get_time', 0, () => performance.now());
   primitive('stringify', 1, (value) => stringify(value));
-  primitive('error', null, (...values) =>
-    fail(values.map((v) => (typeof v === 'string' ? v : stringify(v))).join(' ')),
-  );
+  primitive('error', null, (...values) => {
+    // Source's two-argument form, `error(value, "message")`, reads `message value`.
+    const [value, message] = values;
+    if (values.length === 2 && typeof message === 'string') return fail(`${message} ${stringify(value, ERROR_TEXT)}`);
+    return fail(values.map((v) => (typeof v === 'string' ? v : stringify(v, ERROR_TEXT))).join(' '));
+  });
   primitive('parse_int', 2, (text, radix) =>
     typeof text === 'string' ? Number.parseInt(text, number('parse_int', radix)) : fail(`parse_int expects a string, got ${typeName(text)}`),
   );
@@ -130,7 +152,6 @@ export function createGlobalEnvironment(
   primitive('list', null, (...items) => items.reduceRight<Value>((rest, item) => allocate(item, rest), null));
   primitive('is_null', 1, (v) => v === null);
   primitive('is_pair', 1, (v) => isPair(v));
-  primitive('is_list', 1, (v) => listToArray(v) !== null);
   primitive('is_number', 1, (v) => typeof v === 'number');
   primitive('is_string', 1, (v) => typeof v === 'string');
   primitive('is_boolean', 1, (v) => typeof v === 'boolean');
@@ -160,12 +181,21 @@ export function createGlobalEnvironment(
     }
     return undefined;
   });
-  define(env, 'apply_in_underlying_javascript', {
-    tag: 'primitive',
-    name: 'apply_in_underlying_javascript',
-    arity: 2,
-    impl: (fn, args) => invoke(fn, listOf('apply_in_underlying_javascript', args)),
-    tailApply: (fn, args) => ({ fn, args: listOf('apply_in_underlying_javascript', args) }),
+  // For the evaluators of Chapter 4. The list library's functions that take
+  // functions are Source, in `library.ts`: a primitive cannot call back into
+  // the evaluator.
+  primitive('is_list', 1, (v) => isList(v));
+  // The machine handles this one itself, so that it can apply compound functions.
+  primitive(APPLY_PRIMITIVE, 2, () => fail(`${APPLY_PRIMITIVE} was not applied by the machine`));
+  // Program text to the tagged lists of §4.1.2.
+  primitive('parse', 1, (text) => {
+    if (typeof text !== 'string') return fail(`parse expects a string, got ${typeName(text)}`);
+    try {
+      return toTaggedList(parseProgram(text));
+    } catch (error) {
+      if (error instanceof SourceError) return fail(`parse: ${error.message}`);
+      throw error;
+    }
   });
 
   installMachines(env, primitives, {

@@ -287,6 +287,18 @@ describe('worker protocol', () => {
     ]);
   });
 
+  it('logs the calls of named functions when a run asks for them', async () => {
+    const client = new LabClient(() => inProcessWorker());
+    const events: LabEvent[] = [];
+    await client.submit(
+      { type: 'run', source: factorialProgram, inspect: { calls: { names: ['factorial'], maxCalls: 3 } } },
+      (event) => events.push(event),
+    ).finished;
+    const log = events.find((e) => e.type === 'calls');
+    expect(log).toMatchObject({ type: 'calls', truncated: true });
+    expect(log?.type === 'calls' && log.calls.map((c) => c.args)).toEqual([['6'], ['5'], ['4']]);
+  });
+
   it('fails every test, without throwing, when the submission does not parse', async () => {
     const client = new LabClient(() => inProcessWorker());
     const end = await client.submit({

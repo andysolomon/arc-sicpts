@@ -229,13 +229,13 @@ export const chapters: Chapter[] = [
     title: 'Metalinguistic Abstraction',
     blurb:
       'The most powerful abstraction is a new language. We write an evaluator for our own language, then change its rules: lazy evaluation, nondeterministic search, and logic programming.',
-    readingTime: null,
+    readingTime: '~4 h reading',
     sections: [
       {
         id: '4.1',
         title: 'The Metacircular Evaluator',
         blurb: 'Evaluate and apply, written in the language they implement.',
-        exercises: null,
+        exercises: [1, 22],
         subsections: subs('4.1', [
           'The Core of the Evaluator',
           'Representing Components',
@@ -250,7 +250,7 @@ export const chapters: Chapter[] = [
         id: '4.2',
         title: 'Lazy Evaluation',
         blurb: 'An evaluator that delays arguments until they are needed, and the streams that fall out of it.',
-        exercises: null,
+        exercises: [23, 32],
         subsections: subs('4.2', [
           'Normal Order and Applicative Order',
           'An Interpreter with Lazy Evaluation',
@@ -261,7 +261,7 @@ export const chapters: Chapter[] = [
         id: '4.3',
         title: 'Nondeterministic Computing',
         blurb: 'Programs that state requirements and let the evaluator search for values that satisfy them.',
-        exercises: null,
+        exercises: [33, 52],
         subsections: subs('4.3', [
           'Search and amb',
           'Examples of Nondeterministic Programs',
@@ -272,7 +272,7 @@ export const chapters: Chapter[] = [
         id: '4.4',
         title: 'Logic Programming',
         blurb: 'A query language where rules describe what is true and the system works out how to find it.',
-        exercises: null,
+        exercises: [53, 76],
         subsections: subs('4.4', [
           'Deductive Information Retrieval',
           'How the Query System Works',

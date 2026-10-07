@@ -1,6 +1,7 @@
-import { isDeclaration, type Block, type Expression, type Program, type Statement } from '../syntax/ast.ts';
+import type { Program } from '../syntax/ast.ts';
+import { toTaggedList } from '../syntax/taggedList.ts';
 import { parse } from '../syntax/parse.ts';
-import { arrayToList, isPair, listToArray, type Value } from '../evaluator/values.ts';
+import { isPair, listToArray, type Value } from '../evaluator/values.ts';
 
 /**
  * Programs as data, in the tagged-list representation of §4.1.2: what `parse`
@@ -14,83 +15,8 @@ import { arrayToList, isPair, listToArray, type Value } from '../evaluator/value
  * statements alone, and a sequence of one statement by that statement.
  */
 
-const list = (...items: Value[]): Value => arrayToList(items);
-const name = (symbol: string): Value => list('name', symbol);
-
-function sequence(statements: readonly Statement[]): Value {
-  if (statements.length === 1) return statement(statements[0] as Statement);
-  return list('sequence', arrayToList(statements.map(statement)));
-}
-
-function block(node: Block): Value {
-  const body = sequence(node.body);
-  return node.body.some(isDeclaration) ? list('block', body) : body;
-}
-
-function expression(node: Expression): Value {
-  switch (node.kind) {
-    case 'literal':
-      return list('literal', node.value);
-    case 'name':
-      return name(node.symbol);
-    case 'application':
-      return list('application', expression(node.fun), arrayToList(node.args.map(expression)));
-    case 'unary':
-      return list('unary_operator_combination', node.operator === '-' ? '-unary' : '!', expression(node.operand));
-    case 'binary':
-      return list('binary_operator_combination', node.operator, expression(node.left), expression(node.right));
-    case 'logical':
-      return list('logical_composition', node.operator, expression(node.left), expression(node.right));
-    case 'conditional':
-      return list('conditional_expression', expression(node.test), expression(node.consequent), expression(node.alternative));
-    case 'lambda':
-      return list(
-        'lambda_expression',
-        arrayToList(node.params.map(name)),
-        node.body.kind === 'block' ? block(node.body) : list('return_statement', expression(node.body)),
-      );
-    case 'assignment':
-      return list('assignment', name(node.symbol), expression(node.value));
-  }
-}
-
-function statement(node: Statement): Value {
-  switch (node.kind) {
-    case 'const':
-      return list('constant_declaration', name(node.symbol), expression(node.init));
-    case 'let':
-      return list('variable_declaration', name(node.symbol), expression(node.init));
-    case 'function':
-      return list(
-        'function_declaration',
-        name(node.symbol),
-        arrayToList(node.lambda.params.map(name)),
-        node.lambda.body.kind === 'block' ? block(node.lambda.body) : list('return_statement', expression(node.lambda.body)),
-      );
-    case 'return':
-      return list('return_statement', node.argument === null ? list('literal', undefined) : expression(node.argument));
-    case 'if':
-      return list(
-        'conditional_statement',
-        expression(node.test),
-        block(node.consequent),
-        node.alternative === null
-          ? list('sequence', null)
-          : node.alternative.kind === 'if'
-            ? statement(node.alternative)
-            : block(node.alternative),
-      );
-    case 'block':
-      return block(node);
-    default:
-      return expression(node);
-  }
-}
-
-/** The tagged-list representation of a parsed program. */
-export function programComponent(program: Program): Value {
-  return sequence(program.body);
-}
+/** The tagged-list representation of a parsed program: `toTaggedList`, which the primitive `parse` uses. */
+export const programComponent = (program: Program): Value => toTaggedList(program);
 
 /** `parse` as in the book: program text to its tagged-list representation. */
 export function parseComponent(source: string): Value {

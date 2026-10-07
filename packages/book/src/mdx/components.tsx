@@ -79,14 +79,25 @@ function Example({ index, file, source, mode = 'run', viz, anim, budget, prelude
         </ProcessShapeViz>
       </div>
     );
-  if (anim === undefined) return main;
+  const note =
+    children === undefined ? null : (
+      <div className="text-sm leading-normal text-pretty text-ink-2 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[0.9em]">{children}</div>
+    );
+  if (anim === undefined) {
+    return viz === undefined && note !== null ? (
+      <div className="flex flex-col gap-4">
+        {main}
+        {note}
+      </div>
+    ) : (
+      main
+    );
+  }
   return (
     <div className="flex flex-col gap-4">
       {main}
-      <Animation kind={anim} source={text} prelude={prelude} special={special} start={start} stepIndex={mode === 'step' ? step : undefined} />
-      {viz === undefined && children !== undefined && (
-        <div className="text-sm leading-normal text-pretty text-ink-2 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[0.9em]">{children}</div>
-      )}
+      <Animation kind={anim} source={text} stepIndex={mode === 'step' ? step : undefined} prelude={prelude} special={special} start={start} />
+      {viz === undefined && note}
     </div>
   );
 }

@@ -329,13 +329,13 @@ function lookup_prim(symbol, operations) {
 
 <Example index={1} file="assembly_time.sicp" source={assemblyTimeErrorProgram} prelude={simulatorSource}>
 
-The machine jumps straight past its `assign`, so the instruction would never run, yet `make_machine` fails: the assembler looks up `*` while making the execution function, and the machine has no such operation (the message points at the line that calls `make_machine`, since the error itself is raised inside the hidden simulator, by the `error` in `lookup_prim`). Errors in the controller's syntax, unknown registers, labels and operations, are all caught this way, before the machine starts. Add `list("*", (x, y) => x * y)` to the operations and the program prints `"assembled"`.
+The machine jumps straight past its `assign`, so the instruction would never run, yet `make_machine` fails: the assembler looks up `*` while making the execution function, and the machine has no such operation (the message says `Hidden prelude, line …`: the error is raised inside the hidden simulator, by the `error` in `lookup_prim`). Errors in the controller's syntax, unknown registers, labels and operations, are all caught this way, before the machine starts. Add `list("*", (x, y) => x * y)` to the operations and the program prints `"assembled"`.
 
 </Example>
 
 <UnderTheHood file="packages/lab/src/chapter-5/simulator.ts">
 
-The code on this page is `executionSource` in `simulator.ts`. The test `chapter-5/section-5-2.test.ts` checks that the first editor prints 7 and 11 and leaves `pc` at `list("third")`, and that the second stops with `* unknown operation -- assemble`. The Laboratory's own simulator, `machines/registerMachine.ts`, compiles each instruction to a closure in the same way and reports the same assembly-time errors in its own words (`chapter-5/machines.test.ts`).
+The code on this page is `executionSource` in `simulator.ts`. The test `chapter-5/section-5-2.test.ts` checks that the first editor prints 7 and 11 and leaves `pc` at `list("third")`, and that the second stops with `unknown operation -- assemble "*"`. The Laboratory's own simulator, `machines/registerMachine.ts`, compiles each instruction to a closure in the same way and reports the same assembly-time errors in its own words (`chapter-5/machines.test.ts`).
 
 </UnderTheHood>
 

@@ -53,7 +53,7 @@ describe('section 5.2: the examples on the simulator written in Source', () => {
   });
 
   it('rejects an unknown operation at assembly time, before anything runs (§5.2.3)', () => {
-    expect(() => onSource(assemblyTimeErrorProgram)).toThrow(/\* unknown operation -- assemble/);
+    expect(() => onSource(assemblyTimeErrorProgram)).toThrow(/^Hidden prelude, line \d+: unknown operation -- assemble "\*"$/);
   });
 
   it('counts pushes and the maximum depth (§5.2.4)', () => {

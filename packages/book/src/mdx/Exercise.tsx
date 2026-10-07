@@ -1,7 +1,7 @@
 import type { JobHandle, TestResult } from '@sicp/lab';
 import { AnimatePresence, motion } from 'motion/react';
 import { Children, isValidElement, useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { exercises } from '../../content/exercises.ts';
+import { exercises, programOf } from '../../content/exercises.ts';
 import { CodeEditor } from '../editor/CodeEditor.tsx';
 import { usePersistentSource } from '../editor/persistence.ts';
 import { useDuration } from '../hooks.ts';
@@ -56,7 +56,7 @@ export function Exercise({ id, children }: ExerciseProps) {
     setCheck({ status: 'checking' });
     const handle = labClient().submit({
       type: 'check',
-      source,
+      source: programOf(spec, source),
       tests: spec.tests,
       ...(spec.prelude !== undefined && { prelude: spec.prelude }),
       ...(spec.context !== undefined && { context: spec.context }),

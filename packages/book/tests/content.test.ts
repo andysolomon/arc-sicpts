@@ -98,3 +98,22 @@ describe('chapter 5', () => {
     }
   });
 });
+
+describe('chapter 4', () => {
+  const chapter = chapters.find((c) => c.id === '4')!;
+
+  it('has a written page for every subsection', () => {
+    const written = new Set(files.map(idOf));
+    const missing = chapter.sections.flatMap((s) => s.subsections.map((sub) => sub.id)).filter((id) => !written.has(id));
+    expect(missing).toEqual([]);
+  });
+
+  it('shows every exercise from 4.1 to 4.76 exactly once', () => {
+    const shown = files
+      .filter((file) => idOf(file).startsWith('4.'))
+      .flatMap((file) => [...text(file).matchAll(/<Exercise id="([\d.]+)"/g)].map((m) => m[1]!));
+    expect(shown.toSorted((a, b) => Number(a.split('.')[1]) - Number(b.split('.')[1]))).toEqual(
+      Array.from({ length: 76 }, (_, i) => `4.${i + 1}`),
+    );
+  });
+});

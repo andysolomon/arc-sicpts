@@ -9,6 +9,7 @@ import { recordMachine, type MachineRecorder } from '../machines/inspect.ts';
 import { DEFAULT_BUDGET, type Machine } from '../evaluator/machine.ts';
 import type { Segment } from '../evaluator/primitives.ts';
 import { stringify } from '../evaluator/values.ts';
+import { createCallLogTracer } from '../inspect/callLog.ts';
 import { createProcessShapeTracer } from '../inspect/processShape.ts';
 import { createStepTracer } from '../inspect/stepTrace.ts';
 import { SourceError } from '../syntax/errors.ts';
@@ -111,6 +112,15 @@ export function createLabHost(deps: HostDeps): LabHost {
     const { id, source } = request;
     const started = now();
     const tracer = request.inspect?.processShape === true ? createProcessShapeTracer(source) : null;
+    const watch = request.inspect?.calls;
+    const callLog =
+      watch === undefined
+        ? null
+        : createCallLogTracer(watch.names, {
+            ...(watch.maxCalls !== undefined && { maxCalls: watch.maxCalls }),
+            ...(watch.maxText !== undefined && { maxText: watch.maxText }),
+          });
+    const hooks = [...(tracer === null ? [] : [tracer.hooks]), ...(callLog === null ? [] : [callLog.hooks])];
 
     // Lines are sent in batches, after each slice, rather than one message each.
     let drawn = 0;
@@ -132,7 +142,7 @@ export function createLabHost(deps: HostDeps): LabHost {
         draw: (segment) => {
           if (drawn++ < MAX_SEGMENTS) batch.push(segment);
         },
-        ...(tracer !== null && { hooks: [tracer.hooks] }),
+        ...(hooks.length > 0 && { hooks }),
         ...(request.prelude !== undefined && { prelude: request.prelude }),
       }).machine;
     } catch (error) {
@@ -151,6 +161,7 @@ export function createLabHost(deps: HostDeps): LabHost {
 
     const { steps } = machine;
     const ms = now() - started;
+    if (finished && callLog !== null) post({ type: 'calls', id, calls: callLog.calls, truncated: callLog.truncated() });
     if (!finished) post({ type: 'cancelled', id, steps, forced: false });
     else if (machine.status === 'done') post({ type: 'done', id, value: stringify(machine.value), steps, ms });
     else if (machine.status === 'budget-exhausted') {

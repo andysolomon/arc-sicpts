@@ -21,6 +21,11 @@ import { PictureScene } from './scenes/PictureScene.tsx';
 import { SubstitutionScene } from './scenes/SubstitutionScene.tsx';
 import { TreeScene } from './scenes/TreeScene.tsx';
 import { useTrace } from './useTrace.ts';
+import { TaggedListScene } from './chapter4/TaggedListScene.tsx';
+import { EvalApplyScene } from './chapter4/EvalApplyScene.tsx';
+import { ThunkScene } from './chapter4/ThunkScene.tsx';
+import { AmbSearchScene } from './chapter4/AmbSearchScene.tsx';
+import { QueryScene } from './chapter4/QueryScene.tsx';
 
 /**
  * The animations a section can place under an editor. Each one is drawn from
@@ -79,7 +84,17 @@ export type AnimKind =
   /** The code the compiler produces for the program (§5.5). */
   | 'compiled'
   /** Stack use, interpreted against compiled, at each size the program calls (§5.4.4, §5.5.7). */
-  | 'compare';
+  | 'compare'
+  /** The tagged lists `parse` returns for the program, as a tree, with the syntax predicate that recognizes each component (§4.1.2). */
+  | 'tagged-list'
+  /** The `evaluate`–`apply` cycle of the metacircular evaluator, from its calls (§4.1.1). */
+  | 'eval-apply'
+  /** Thunks created, forced and memoized by the lazy evaluator (§4.2.2). */
+  | 'thunks'
+  /** The choices `amb` makes and the backtracking a failed `require` causes, as a search tree (§4.3). */
+  | 'amb-search'
+  /** Frames flowing through a query: patterns matched against assertions, rules unified (§4.4). */
+  | 'query-frames';
 
 export interface AnimationProps {
   kind: AnimKind;
@@ -107,6 +122,16 @@ export function Animation({ kind, source, stepIndex, prelude, special, start }: 
       return <CompiledScene source={source} />;
     case 'compare':
       return <CompareScene source={source} special={special} />;
+    case 'tagged-list':
+      return <TaggedListScene source={source} prelude={prelude} />;
+    case 'eval-apply':
+      return <EvalApplyScene source={source} prelude={prelude} />;
+    case 'thunks':
+      return <ThunkScene source={source} prelude={prelude} />;
+    case 'amb-search':
+      return <AmbSearchScene source={source} prelude={prelude} />;
+    case 'query-frames':
+      return <QueryScene source={source} prelude={prelude} />;
     case 'reduce':
       return <SubstitutionScene source={source} title="Collapsing a combination" />;
     case 'order':
@@ -131,11 +156,11 @@ export function Animation({ kind, source, stepIndex, prelude, special, start }: 
   }
 }
 
+type Chapter4Kind = 'tagged-list' | 'eval-apply' | 'thunks' | 'amb-search' | 'query-frames';
+type Chapter5Kind = 'machine' | 'memory' | 'garbage-collection' | 'compiled' | 'compare';
+
 interface TracedProps {
-  kind: Exclude<
-    AnimKind,
-    'reduce' | 'order' | 'process' | 'substitution+frames' | 'growth' | 'complex-plane' | 'operation-table' | 'machine' | 'memory' | 'garbage-collection' | 'compiled' | 'compare'
-  >;
+  kind: Exclude<AnimKind, 'reduce' | 'order' | 'process' | 'substitution+frames' | 'growth' | 'complex-plane' | 'operation-table' | Chapter4Kind | Chapter5Kind>;
   source: string;
   stepIndex?: number | undefined;
   title?: string;

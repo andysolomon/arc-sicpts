@@ -1,0 +1,194 @@
+import { clauseOrderProgram, closedWorldProgram, marriedProgram, notOrderProgram, queryPrelude } from '@sicp/lab';
+
+<Prose>
+
+The means of combination of the query language look like the `and`, `or` and `not` of mathematical logic, and applying a rule is a legitimate method of inference, *modus ponens*. But the identification of the query language with logic does not quite hold, because the language provides a *control structure* that interprets logical statements procedurally. We can often use that control structure. To find all the supervisors of programmers, these two queries are logically equivalent:
+
+```js
+and(job($x, list("computer", "programmer")),
+    supervisor($x, $y))
+
+and(supervisor($x, $y),
+    job($x, list("computer", "programmer")))
+```
+
+If a company has many more supervisors than programmers, the first is better: the data base is scanned once for every frame the first clause of an `and` produces.
+
+</Prose>
+
+<Example index={0} file="clause_order.sicp" source={clauseOrderProgram} prelude={queryPrelude} budget={2_000_000} anim="query-frames">
+
+The tally under the animation counts the pattern matches: 25 for this order. Swap the two clauses and run it again. The answers are the same, but now each of the eight `supervisor` frames sends the `job` pattern through all nine `job` assertions, and the tally reaches 80.
+
+</Example>
+
+<Prose>
+
+The aim of logic programming is to separate *what* is to be computed from *how*. It selects a subset of mathematical logic powerful enough to describe anything one might want to compute, yet weak enough to have a controllable procedural interpretation. On one hand, a program in a logic programming language should be an effective program: control is effected by the order of evaluation, and we arrange clauses and the subgoals within them so that the computation is efficient. On the other hand, the result should be a simple consequence of the laws of logic.
+
+Our query language is such a procedurally interpretable subset. An assertion is a simple fact, an atomic proposition. A rule is the implication that the conclusion holds where the body does, and it has a natural procedural reading: to establish the conclusion, establish the body. Rules therefore specify computations, and because they are also statements of logic, any inference a logic program makes could be justified by working entirely within logic, provided the computation terminates. Even that is not quite true of our language, because of `not` and `javascript_predicate`.
+
+## Infinite loops
+
+A consequence of the procedural interpretation is that it is possible to write hopelessly inefficient programs, and in the extreme, programs that loop. Suppose a data base of famous marriages includes `married("Minnie", "Mickey")`. Asking `married("Mickey", $who)` gets no response, because the system does not know that marriage is symmetric. So we assert the rule
+
+```js
+rule(married($x, $y),
+     married($y, $x))
+```
+
+and ask again.
+
+</Prose>
+
+<Example index={1} file="married.sicp" source={marriedProgram} prelude={queryPrelude} budget={300_000}>
+
+The answer comes, and then comes again, until the step budget runs out. The rule unifies with `married("Mickey", $who)`, so its body, in effect `married($who, "Mickey")`, is evaluated. The assertion answers that. But the rule applies to the body too, and its body is `married("Mickey", $who)` again: the system is in a loop. Whether it finds the simple answer before looping depends on details such as the order in which it checks the data base.
+
+</Example>
+
+<Prose>
+
+This is a very simple loop. Collections of interrelated rules can produce loops that are much harder to anticipate, and whether one appears can depend on the order of the clauses in an `and` (exercise 4.62) or on low-level details of how the system processes queries. It is not a problem of the logic but of the procedural interpretation. An interpreter could enumerate proofs breadth first and avoid this loop, at the cost of making the order of deductions harder to exploit; special knowledge, such as detectors for particular kinds of loop (exercise 4.65), is another approach. But there is no general scheme for preventing a system from going down infinite paths: imagine a rule of the form “to show *P*(*x*) is true, show that *P*(*f*(*x*)) is true”.
+
+## Problems with not
+
+Another quirk concerns `not`. These two queries do not produce the same result:
+
+```js
+and(supervisor($x, $y),
+    not(job($x, list("computer", "programmer"))))
+
+and(not(job($x, list("computer", "programmer"))),
+    supervisor($x, $y))
+```
+
+</Prose>
+
+<Example index={2} file="not_order.sicp" source={notOrderProgram} prelude={queryPrelude} budget={2_000_000}>
+
+The first finds the six supervised people who are not programmers. The second finds nothing. Its `not` comes first, so it filters a stream holding only the empty frame, in which `$x` is unbound; `job($x, list("computer", "programmer"))` can be satisfied there, so the empty frame is removed and nothing is left for `supervisor` to extend.
+
+</Example>
+
+<Prose>
+
+Our `not` is meant to be a filter on values for variables. If it is processed with a frame in which some of its variables are unbound, the results are unexpected. `javascript_predicate` has the same problem: the JavaScript predicate cannot work if some of its variables are unbound (exercise 4.74).
+
+There is a much more serious way in which this `not` differs from the `not` of logic. In logic, “not *P*” means that *P* is not true. In the query system it means that *P* is not deducible from the knowledge in the data base. Given the personnel data base, the system will happily deduce all sorts of `not` statements: that Ben Bitdiddle is not a baseball fan, that it is not raining outside, that 2 + 2 is not 4.
+
+</Prose>
+
+<Example index={3} file="closed_world.sicp" source={closedWorldProgram} prelude={queryPrelude} budget={1_000_000}>
+
+`baseball_fan(list("Bitdiddle", "Ben"))` is not in the data base and no rule concludes it, so the empty frame is not filtered out and the query is “true”. The `not` of logic programming reflects the *closed world assumption*: that all relevant information is in the data base.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-4/query.test.ts">
+
+Nothing new is needed in the Laboratory for this section; the effects are those of the code in `chapter-4/query.ts`. The test `chapter-4/query.test.ts` counts the calls of `check_an_assertion` for both orders of the supervisors-of-programmers query (25 and 80) and checks that they give the same answers; asserts that the married query prints `married('Mickey', 'Minnie')` again and again until its budget is exhausted; that the two `not` queries give six answers and none; and that Ben is not a baseball fan.
+
+</UnderTheHood>
+
+<Exercises range="4.62 – 4.67" total={6}>
+<Exercise id="4.62">
+
+Louis Reasoner mistakenly deletes the `outranked_by` rule (§4.4.1) from the data base. When he realises this, he quickly reinstalls it. Unfortunately, he makes a slight change in the rule, and types it in as
+
+```js
+rule(outranked_by($staff_person, $boss),
+     or(supervisor($staff_person, $boss),
+        and(outranked_by($middle_manager, $boss),
+            supervisor($staff_person, $middle_manager))))
+```
+
+Just after Louis types this in, DeWitt Aull comes by to find out who outranks Ben Bitdiddle. He issues the query `outranked_by(list("Bitdiddle", "Ben"), $who)`. After answering, the system goes into an infinite loop. Say what it displays first, and explain why it loops by choosing among the explanations in the editor.
+
+<Solution>
+
+**Solution.** The `or` interleaves its disjuncts, so the first answer, from `supervisor` directly, is Oliver Warbucks. The second disjunct is an `and` whose first conjunct is now `outranked_by($middle_manager, $boss)` with neither variable bound. Applying the rule to it produces another `and` that starts with the same unbound query, and so on: there are infinitely many ways to deduce each of the finitely many answers, and the system goes on deducing them. The original rule bound `$middle_manager` through `supervisor` first.
+
+</Solution>
+</Exercise>
+<Exercise id="4.63">
+
+Cy D. Fect, looking forward to the day when he will rise in the organisation, gives a query to find all the wheels (using the `wheel` rule of §4.4.1), `wheel($who)`. To his surprise, the system responds
+
+```js
+wheel(list("Bitdiddle", "Ben"))
+wheel(list("Warbucks", "Oliver"))
+wheel(list("Warbucks", "Oliver"))
+wheel(list("Warbucks", "Oliver"))
+wheel(list("Warbucks", "Oliver"))
+```
+
+Why is Oliver Warbucks listed four times? Answer by giving the middle manager behind each of the four answers.
+
+<Solution>
+
+**Solution.** The rule’s body is satisfied once for every pair of a middle manager whom Oliver supervises and a person that middle manager supervises. Ben supervises three people and Eben Scrooge one, so there are four frames for Oliver; DeWitt supervises no one. Ben is a wheel once, through Alyssa and Louis.
+
+</Solution>
+</Exercise>
+<Exercise id="4.64">
+
+Ben has been generalising the query system to provide statistics about the company. For example, to find the total salaries of all the computer programmers one will be able to say
+
+```js
+sum($amount,
+    and(job($x, list("computer", "programmer")),
+        salary($x, $amount)))
+```
+
+Ben reasons that it should be a cinch: feed the query to `evaluate_query`, map a function that extracts the value of the designated variable over the resulting stream of frames, and feed the values to the accumulation function. Just as he finishes, Cy walks by, puzzling over the response to `wheel($who)`:
+
+```js
+wheel(list("Bitdiddle", "Ben"))
+wheel(list("Warbucks", "Oliver"))
+wheel(list("Warbucks", "Oliver"))
+wheel(list("Warbucks", "Oliver"))
+wheel(list("Warbucks", "Oliver"))
+```
+
+Ben groans, “Oh, no, my simple accumulation scheme won’t work!” What has Ben just realised? The editor holds his scheme as a function `sum_of(variable, query)`; salvage it. (Exercise 4.63 explains Cy’s puzzle.)
+
+<Solution>
+
+**Solution.** Oliver is listed four times because there are four ways to deduce that he is a wheel: through Ben, who supervises three people, and through Eben Scrooge, who supervises one. The stream holds one frame per deduction, not one per fact, so summing over frames counts Oliver’s salary four times. The salvage is to remove duplicates first: keep one frame for each distinct instantiation of the query, then accumulate.
+
+</Solution>
+</Exercise>
+<Exercise id="4.65">
+
+Devise a way to install a loop detector in the query system so as to avoid the simple loops illustrated in the text and in exercise 4.62, where Louis Reasoner’s version of `outranked_by` puts the recursive clause first. The general idea is that the system should maintain some sort of history of its current chain of deductions and should not begin processing a query that it is already working on. Describe what kind of information (patterns and frames) is included in this history, and how the check should be made. Then build it into `apply_a_rule`.
+
+<Solution>
+
+**Solution.** The history is the list of patterns, instantiated by their frames, whose rules are being applied in the current chain of deductions. Variable names differ from one renaming to the next, so patterns are compared after numbering their variables in order of appearance. Because the frame stream is lazy, the history cannot be a global stack; it travels in the frames, under a name no query can use, and is reset as frames leave a rule’s body. This detector stops the married loop after one answer, and finds that only Oliver outranks Ben even with Louis’s rule. It is a heuristic: it also cuts some deductions that would have terminated, such as the deeper answers of Louis’s rule for Louis Reasoner himself.
+
+</Solution>
+</Exercise>
+<Exercise id="4.66">
+
+Define rules to implement the `reverse` operation of exercise 2.18, which returns a list containing the same elements as a given list in reverse order. (Hint: Use `append_to_form`.) Can your rules answer both `reverse(list(1, 2, 3), $x)` and `reverse($x, list(1, 2, 3))`?
+
+<Solution>
+
+**Solution.** The reverse of `null` is `null`; the reverse of `pair($first, $rest)` is the reverse of `$rest` with `list($first)` appended. These answer `reverse(list(1, 2, 3), $x)`. Asked `reverse($x, list(1, 2, 3))`, they find the answer and then loop, trying ever longer lists for `$x`.
+
+</Solution>
+</Exercise>
+<Exercise id="4.67">
+
+Change the data base and the rules of exercise 4.61 so that there is only one kind of relationship information, `related`, whose first item names the relationship: `related("son", "Adam", "Cain")`, `related(list("great", "grandson"), "Adam", "Irad")`. Write rules that determine whether a list ends in the word `"grandson"`, and use them to derive the relationship `pair("great", $rel)` between `$x` and `$y` where `$rel` is a list ending in `"grandson"`. The system should deduce that Irad is the great-grandson of Adam, and that Jabal and Jubal are the great-great-great-great-great-grandsons of Adam. Check your rules on `related(list("great", "grandson"), $g, $ggs)` and `related($relationship, "Adam", "Irad")`.
+
+<Solution>
+
+**Solution.** A grandson is `list("grandson")`. `pair("great", $rel)` relates `$x` to `$y` when `$rel` ends in `"grandson"`, `$x` has a son `$z`, and `$rel` relates `$z` to `$y`. Order matters twice. The `ends_in_grandson` rule must be checked first, so that `$rel` is bound before the recursion. And a newly asserted rule goes in front of the older ones, so the base case of `ends_in_grandson` is asserted last, to be tried first. Even so, `related($relationship, "Adam", "Irad")` finds `list("great", "grandson")` and then searches for ever through longer relationships.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['4.4.4', { id: '4.3.1', label: 'The order of choices in amb' }]} />

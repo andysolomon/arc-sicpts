@@ -1,0 +1,204 @@
+import { metacircularPrelude, parseProgram, selectorsProgram } from '@sicp/lab';
+
+<Prose>
+
+Programs are written as text. To run our evaluator on a program we need the text as a JavaScript value, and a string is not enough: in `"const size = 2; 5 * size;"` the parts `size = 2` and `5 * size` look alike but mean different things, and selectors such as `declaration_value_expression` would be hard to write, and easy to get wrong, if they had to pick the string apart.
+
+So we use a function `parse` that translates program text into a *tagged-list representation*, much like the tagged data of §2.4.2. Each component becomes a list whose first element, its tag, says what kind of component it is.
+
+</Prose>
+
+<Example index={0} file="parse.sicp" source={parseProgram} anim="tagged-list">
+
+`parse` is a primitive here, so this runs without the evaluator. The result is a sequence of two statements: a constant declaration associating the name `size` with the literal 2, and a multiplication. The tree above draws the same lists; step through it to see which syntax predicate recognizes each component. Put any program in the string and the tree follows.
+
+</Example>
+
+<Prose>
+
+The evaluator resembles the symbolic differentiation program of §2.3.2: both operate on symbolic data, both find the result for an object by working recursively on its pieces, and both use data abstraction to keep the rules of the operation apart from the representation. For the evaluator this means that the syntax of the language is decided only by `parse` and by the functions that classify and take apart its tagged lists. Those functions form an abstraction barrier between the evaluator and the representation of programs, and `parse` forms another between that representation and the text.
+
+## Literals and names
+
+A literal expression is parsed into a list with the tag `"literal"` and the value it denotes: `parse("1;")` is `list("literal", 1)` and `parse("null;")` is `list("literal", null)`. The predicate and selector are
+
+```js
+function is_literal(component) {
+    return is_tagged_list(component, "literal");
+}
+function literal_value(component) {
+    return head(tail(component));
+}
+```
+
+in terms of `is_tagged_list`, which identifies lists that begin with a given string:
+
+```js
+function is_tagged_list(component, the_tag) {
+    return is_pair(component) && head(component) === the_tag;
+}
+```
+
+A name is `list("name", symbol)`, where the symbol is the string of the name’s characters; `is_name` and `symbol_of_name` test and select. Constructors `make_literal(value)` and `make_name(symbol)` will come in handy. From here on we list only the predicates and selectors, and omit their declarations when they simply take the obvious element.
+
+## Expression statements and applications
+
+`parse` makes no difference between an expression and an expression statement. An application `f(a, b)` is
+
+```js
+list("application", ⟨f⟩, list(⟨a⟩, ⟨b⟩))
+```
+
+with predicate `is_application`, selectors `function_expression` and `arg_expressions`, and constructor `make_application`.
+
+## Conditionals, lambda expressions, sequences and blocks
+
+`p ? c : a` is `list("conditional_expression", ⟨p⟩, ⟨c⟩, ⟨a⟩)` and `if (p) { … } else { … }` is `list("conditional_statement", ⟨p⟩, ⟨block⟩, ⟨block⟩)`. The evaluator need not tell them apart: `is_conditional` accepts both, and `conditional_predicate`, `conditional_consequent` and `conditional_alternative` apply to both.
+
+A lambda expression is `list("lambda_expression", list(⟨name⟩, …), ⟨body⟩)`. A body that is an expression is parsed as if it were a block holding a single return statement of that expression. `lambda_parameter_symbols` also takes the symbols out of the names:
+
+```js
+function lambda_parameter_symbols(component) {
+    return map(symbol_of_name, head(tail(component)));
+}
+```
+
+A sequence of statements is `list("sequence", list(⟨statement⟩, …))`, with `is_sequence` and `sequence_statements`, and `first_statement`, `rest_statements`, `is_empty_sequence` and `is_last_statement` for the list of statements. A block is `list("block", ⟨statements⟩)`, with `is_block` and `block_body`. (A parser may give a sequence of one statement as just that statement, and a block that declares no names as just its statements; ours does both, as Source's `parse` does, and nothing in this chapter depends on it.)
+
+## Return statements, assignments and declarations
+
+`return e;` is `list("return_statement", ⟨e⟩)`. `x = e` is `list("assignment", ⟨x⟩, ⟨e⟩)`, whose name is unwrapped by `assignment_symbol`. `const x = e;` and `let x = e;` are tagged `"constant_declaration"` and `"variable_declaration"`, and share the selectors `declaration_symbol` and `declaration_value_expression`. A function declaration is
+
+```js
+list("function_declaration", ⟨name⟩, list(⟨parameter⟩, …), ⟨block⟩)
+```
+
+and `is_declaration` is true for all three kinds of declaration.
+
+## Derived components
+
+Some syntactic forms can be expressed in terms of others instead of being implemented directly. A function declaration is turned by `evaluate` into a constant declaration whose value expression is a lambda expression:
+
+```js
+function function_decl_to_constant_decl(component) {
+    return make_constant_declaration(
+               function_declaration_name(component),
+               make_lambda_expression(
+                   function_declaration_parameters(component),
+                   function_declaration_body(component)));
+}
+```
+
+Operator combinations carry their operator as the second element: `list("binary_operator_combination", "*", ⟨left⟩, ⟨right⟩)`, and `list("unary_operator_combination", "-unary", ⟨operand⟩)` for numeric negation (`"!"` for logical negation). `evaluate` turns them into applications of a function whose name is the operator:
+
+```js
+function operator_combination_to_application(component) {
+    const operator = operator_symbol(component);
+    return is_unary_operator_combination(component)
+           ? make_application(make_name(operator),
+                              list(first_operand(component)))
+           : make_application(make_name(operator),
+                              list(first_operand(component),
+                                   second_operand(component)));
+}
+```
+
+Components implemented as syntactic transformations like these are called *derived components*. The logical compositions `&&` and `||` can be derived too (exercise 4.4).
+
+</Prose>
+
+<Example index={1} file="selectors.sicp" source={selectorsProgram} prelude={metacircularPrelude}>
+
+The syntax functions of the evaluator are hidden above the editor. The selectors find the declared name and its value without looking at any text, and `operator_combination_to_application` turns `5 * size` into an application of the name `"*"`: the same list `evaluate` would then evaluate. Try `parse("-size;")` and its operator `"-unary"`.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/syntax/taggedList.ts">
+
+The Laboratory parses Source into its own syntax tree (`syntax/parse.ts`), and `syntax/taggedList.ts` turns that tree into the lists above when a program calls `parse`. The syntax functions themselves are Source: `evaluatorSyntax` in `chapter-4/metacircular.ts`. The test `chapter-4/metacircular.test.ts` asserts that `parse("const size = 2; 5 * size;")` is exactly the list shown in the book, that `x => -x` gets a return statement and the operator `"-unary"`, and that a syntax error inside the string is reported as an error of `parse`.
+
+</UnderTheHood>
+
+<Exercises range="4.2 – 4.8" total={7}>
+<Exercise id="4.2">
+
+The inverse of `parse` is called `unparse`. It takes a tagged list as produced by `parse` and returns a string in JavaScript notation. Write `unparse` by following the structure of `evaluate` (without the environment parameter), producing a string that represents the given component rather than evaluating it. The operator `+` concatenates strings, and the primitive `stringify` turns values such as 1.5, `true`, `null` and `undefined` into strings. Respect operator precedence by putting parentheses around the strings for operator combinations, always or whenever necessary. The checker parses what your `unparse` returns and compares it with the original.
+
+<Solution>
+
+**Solution.** Each clause of `evaluate` becomes a clause that builds text. Parenthesizing every operator combination, conditional expression and assignment is the simple way to keep precedence intact. Statements need care: an expression used as a statement needs its semicolon, so a sequence unparses each statement with `unparse_statement`, which adds one after expressions. A further improvement, pretty-printing with spaces and line breaks in the style of this book, is left to you.
+
+</Solution>
+</Exercise>
+<Exercise id="4.3">
+
+Rewrite `evaluate` so that the dispatch is done in data-directed style. Compare this with the data-directed differentiation function of exercise 2.73. (You may use the tag of the tagged-list representation as the type of the components.) The checker installs a new syntactic form with `put` and expects your `evaluate` to handle it.
+
+<Solution>
+
+**Solution.** `evaluate` shrinks to a lookup of the handler under the component’s tag. Each syntactic form is installed with `put`; for most of them the handler is the evaluation function the conditional version called. As with differentiation, a new form needs a new entry in the table and no change to `evaluate`.
+
+</Solution>
+</Exercise>
+<Exercise id="4.4">
+
+Recall from §1.1.6 that `&&` and `||` are syntactic sugar: *a* `&&` *b* means *a* `?` *b* `: false`, and *a* `||` *b* means *a* `? true :` *b*. They are parsed as `list("logical_composition", "&&", ⟨a⟩, ⟨b⟩)` and likewise for `"||"`. Install `&&` and `||` as new syntactic forms by declaring the syntax functions and evaluation functions `eval_and` and `eval_or`. Alternatively, implement them as derived components.
+
+<Solution>
+
+**Solution.** A new clause in `evaluate` sends logical compositions to `eval_and` or `eval_or`, each of which evaluates its second operand only when the first does not decide the result. As a derived component, the clause would instead build the conditional expression the operator stands for and evaluate that.
+
+</Solution>
+</Exercise>
+<Exercise id="4.5">
+
+In JavaScript, lambda expressions must not have duplicate parameters, and the evaluator of §4.1.1 does not check for this. One way is to signal an error whenever a function with duplicate parameters is applied; another is a function `verify` that checks a whole program before it is passed to `evaluate`. Which would you prefer? Write `verify`, which returns `false` if any lambda expression or function declaration in the program has duplicate parameters, or a parameter that is declared again *directly* in its body block (as opposed to in an inner block), and `true` otherwise. (`parse` refuses duplicate parameters itself, so the checker builds those programs from lists.)
+
+<Solution>
+
+**Solution.** Checking first is better: the whole program is checked once, including functions that are never applied, and the evaluator stays simple. `verify` handles lambda expressions and function declarations, using `scan_out_declarations` on the body block for the second rule, and simply recurses through the parts of every other list, since any part may contain a lambda expression.
+
+</Solution>
+</Exercise>
+<Exercise id="4.6">
+
+Scheme has a variant of `let` called `let*`. We could approximate it in JavaScript by saying that a `let*` declaration introduces a new block whose body holds the declaration and all the statements after it in its sequence. Then
+
+```js
+let* x = 3;
+let* y = x + 2;
+let* z = x + y + 5;
+display(x * z);
+```
+
+displays 39 and is a shorthand for blocks nested three deep, each with one `let`. Write a program that behaves differently when some `let` are replaced by `let*`. Then, with `let* name = e;` represented as `list("let_star_declaration", ⟨name⟩, ⟨e⟩)`, write `let_star_to_nested_let`, which turns every `let*` in a program into the nested form, so that we could run `evaluate(let_star_to_nested_let(p))`. Why would a clause in `evaluate` that calls an `eval_let_star_declaration` not work?
+
+<Solution>
+
+**Solution.** In a sequence, a `let*` and the statements that follow it become a block whose body starts with the corresponding `let`; everywhere else the transformation simply recurses. A clause in `evaluate` cannot work because the meaning of a `let*` depends on the statements after it, which `evaluate` does not have when it is given the declaration alone, and because the block’s names must be scanned out before the sequence is evaluated. The checker’s third test is a program that behaves differently: with `let*`, `get` keeps seeing the first `x`, which is 1; with two `let` declarations of `x` in one block, JavaScript reports a duplicate declaration, and our evaluator quietly lets `get` see 2.
+
+</Solution>
+</Exercise>
+<Exercise id="4.7">
+
+A *while loop* `while (p) { body }` evaluates `p`, and if it is true evaluates the body and then the whole loop again. Declare a function `while_loop` that takes a predicate and a body, each a function of no arguments, and simulates the loop, so that the imperative factorial of §3.1.3 can be written with it. It should generate an iterative process. Then consider installing while loops as a derived component that applies `while_loop`: what goes wrong when the body returns from the function that contains the loop? How would an `eval_while` clause, `break` and `continue` fix it?
+
+<Solution>
+
+**Solution.** `while_loop` tests, applies the body, and calls itself in tail position, so the process is iterative. As a derived component, a `return` inside the body would only return from the lambda expression that is the body, not from the enclosing function. Evaluating the loop directly in an `eval_while` lets a return value stop the loop and travel out, as in `eval_sequence`; `break` and `continue` can be implemented the same way, as values that the loop recognizes.
+
+</Solution>
+</Exercise>
+<Exercise id="4.8">
+
+Outside of any function body, JavaScript distinguishes *value-producing* from *non-value-producing* statements. Declarations produce no value; expression statements and conditional statements do. The value of a conditional statement is that of the branch evaluated, or `undefined` if that branch produces none. A block produces a value if its body does, and a sequence if any of its statements does: the value of its last value-producing statement. A program that produces no value has the value `undefined`. What are the values of `1; 2; 3;`, of `1; { if (true) {} else { 2; } }`, of `1; const x = 2;` and of `1; { let x = 2; { x = x + 3; } }`? Then modify the evaluator to follow this specification.
+
+<Solution>
+
+**Solution.** The values are 3, `undefined`, 1 and 5. Whether a statement produces a value can be decided from the text alone, so `eval_sequence` keeps the value of the last statement that does, and ignores the others. Function bodies are unaffected, because their result comes from return statements.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['4.1.3', { id: '4.1.7', label: 'Analysis on the same syntax functions' }, { id: '5.4', label: 'The explicit-control evaluator' }]} />

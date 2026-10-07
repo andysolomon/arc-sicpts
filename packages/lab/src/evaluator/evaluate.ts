@@ -1,6 +1,6 @@
 import { SourceError } from '../syntax/errors.ts';
-import type { Program } from '../syntax/ast.ts';
 import { parse } from '../syntax/parse.ts';
+import type { Loc, Program } from '../syntax/ast.ts';
 import type { Environment } from './environment.ts';
 import { library, markLibrary } from './library.ts';
 import { createFrameIds, Machine, type FrameIds, type MachineHooks } from './machine.ts';
@@ -32,6 +32,23 @@ export interface Session {
 }
 
 const PRELUDE_BUDGET = 1_000_000;
+
+/** Mark every location in a tree as hidden from the reader. */
+function hide<T extends object>(tree: T): T {
+  const visit = (value: unknown): void => {
+    if (typeof value !== 'object' || value === null) return;
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (key === 'loc' && typeof child === 'object' && child !== null) (child as Loc).hidden = true;
+      else visit(child);
+    }
+  };
+  visit(tree);
+  return tree;
+}
 
 /** The library parses the same way every time, so it is parsed once. */
 let libraryProgram: Program | null = null;
@@ -71,8 +88,7 @@ export function prepare(source: string, options: PrepareOptions = {}): Session {
     ...(options.onPair !== undefined && { onPair: options.onPair }),
     ...(options.maxInstructions !== undefined && { maxInstructions: options.maxInstructions }),
   });
-  // An error inside the prelude is reported at the program's call into it, as for the library.
-  if (options.prelude !== undefined) parent = declarations(markLibrary(parse(options.prelude)), parent, 'prelude');
+  if (options.prelude !== undefined) parent = declarations(hide(parse(options.prelude)), parent, 'prelude');
 
   const machine = new Machine(program, {
     parent,

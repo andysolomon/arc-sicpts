@@ -1,0 +1,171 @@
+import { ambChoicesProgram, ambPrelude, ambSearchProgram, integersProgram, primeSumPairProgram } from '@sicp/lab';
+
+<Prose>
+
+In this section we extend the evaluator to support a programming paradigm called *nondeterministic computing*, by building into it a facility for automatic search. This is a much more profound change to the language than lazy evaluation was.
+
+Nondeterministic computing, like stream processing, is useful for generate-and-test applications. Take two lists of positive integers and find a pair, one integer from each list, whose sum is prime. Section 2.2.3 did this with finite sequence operations and section 3.5.3 with infinite streams: generate the sequence of all possible pairs and filter it. The nondeterministic approach evokes a different image. Imagine simply that we choose (in some way) a number from the first list and a number from the second, and require (using some mechanism) that their sum be prime:
+
+```js
+function prime_sum_pair(list1, list2) {
+    const a = an_element_of(list1);
+    const b = an_element_of(list2);
+    require(is_prime(a + b));
+    return list(a, b);
+}
+```
+
+This may seem to restate the problem rather than solve it, but it is a legitimate nondeterministic program. The key idea is that a component in a nondeterministic language can have more than one possible value. `an_element_of` might return any element of the given list. The evaluator chooses a possible value and keeps track of the choice; if a later requirement is not met, it tries a different choice, and goes on until the evaluation succeeds or the choices run out. Just as the lazy evaluator freed the programmer from the details of how values are delayed and forced, the nondeterministic evaluator frees the programmer from the details of how choices are made.
+
+Contrast the images of time. Stream processing supports the illusion that all the possible answers are laid out before us in a timeless sequence. With nondeterministic evaluation, a component represents the exploration of a set of possible worlds, each determined by a set of choices. Some worlds lead to dead ends; others have useful values. The evaluator supports the illusion that time branches, and that our programs have different possible execution histories. At a dead end, we revisit a previous choice point and go down a different branch.
+
+## The form `amb`
+
+The evaluator is called the `amb` evaluator, after a new syntactic form. The expression `amb(`*e*₁`, `*e*₂`, `…`, `*e*ₙ`)` returns the value of one of the *n* expressions *eᵢ*, ambiguously. So `list(amb(1, 2, 3), amb("a", "b"))` has six possible values.
+
+**How we run it.** The `amb` evaluator is a Source program, written in §4.3.3, and the Laboratory runs it for us. A program for it is therefore a string, or a list of strings that are its lines. The book's driver loop reads programs at a prompt; ours take their input as arguments. `amb_solutions(program, n)` returns a list of the first *n* values of the program, or fewer if it has fewer.
+
+</Prose>
+
+<Example index={0} file="choices.sicp" source={ambChoicesProgram} prelude={ambPrelude} budget={5000000}>
+
+All six values, in the order the evaluator finds them: the last choice made varies fastest, like the digits of an odometer. Ask for 4 instead of 10 and the search stops after the fourth.
+
+</Example>
+
+<Prose>
+
+An `amb` with a single choice produces an ordinary value. An `amb` with no choices, `amb()`, is an expression with no acceptable values: evaluating it makes the computation fail. Using this, we can express the requirement that a predicate `p` must hold:
+
+```js
+function require(p) {
+    if (! p) {
+        amb();
+    } else {}
+}
+```
+
+With `amb` and `require` we can implement `an_element_of`, which fails if the list is empty and otherwise ambiguously returns either its first element or an element of the rest:
+
+```js
+function an_element_of(items) {
+    require(! is_null(items));
+    return amb(head(items), an_element_of(tail(items)));
+}
+```
+
+We can also express infinite ranges of choices. This function potentially returns any integer greater than or equal to *n*:
+
+```js
+function an_integer_starting_from(n) {
+    return amb(n, an_integer_starting_from(n + 1));
+}
+```
+
+It is like `integers_starting_from` of section 3.5.2, with an important difference: the stream function returns an object that represents the sequence of all integers from *n*, whereas the `amb` function returns a single integer. These three declarations are written in the nondeterministic language itself, and our `amb` evaluator starts with them declared.
+
+</Prose>
+
+<Example index={1} file="integers.sicp" source={integersProgram} prelude={ambPrelude} budget={5000000}>
+
+`n` takes the values 1, 2, 3, … in turn, and every one up to 7 fails the requirement. The first three that pass are 8, 9 and 10. Change the requirement to `n * n < 0` and the search never ends: there is always another integer to try, so the program runs out of steps instead.
+
+</Example>
+
+<Prose>
+
+## Depth-first search
+
+Abstractly, evaluating an `amb` expression splits time into branches, and the computation continues on each branch with one of the possible values. We say that `amb` is a *nondeterministic choice point*. With enough processors we could explore every branch at once. A machine that runs one process must consider the alternatives in turn. Choosing a branch at random could easily lead to failing values; it is better to search all possible execution paths systematically.
+
+The `amb` evaluator does it this way. When it reaches an `amb`, it first selects the first alternative, which may lead to further choices; it always selects the first alternative at each choice point. If a choice results in a failure, the evaluator automagically *backtracks* to the most recent choice point and tries the next alternative there. If it runs out of alternatives at a choice point, it backs up to the previous choice point and resumes from there. This search strategy is known as *depth-first search* or *chronological backtracking*.
+
+</Prose>
+
+<Example index={2} file="search.sicp" source={ambSearchProgram} prelude={ambPrelude} budget={5000000} anim="amb-search">
+
+The tree is drawn from the run. `x` takes 1, then `y` takes 4 and then 5, and both fail `require`: a dead end each time. `amb(4, 5)` then has nothing left, so the failure goes back to `amb(1, 2, 3)`, which tries 2, and `y` starts again from 4. Each value found is followed by a request for the next, and the search ends when `amb(1, 2, 3)` itself runs out. Change the requirement, or add a third choice, and watch the tree change.
+
+</Example>
+
+<Prose>
+
+## The driver loop
+
+The driver loop of the `amb` evaluator has some unusual properties. It reads a program and prints the value of the first non-failing execution. To see the value of the next successful execution, we ask it to backtrack and find a second one, by typing `retry`. Any other input starts a new problem and discards the unexplored alternatives of the old one. Our `driver_loop(env, inputs)` takes the inputs as a list, `"retry"` among them, and displays the interaction. `prime_sum_pair`, and the `is_prime` it assumes, are declared in this evaluator.
+
+</Prose>
+
+<Example index={3} file="driver.sicp" source={primeSumPairProgram} prelude={ambPrelude} budget={10000000}>
+
+The book's sample interaction. Each `retry` resumes the search where the last value left it: (3, 20), then (3, 110), then (8, 35), and then there are no more. The fifth input is a new problem, and its first value is (30, 11).
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-4/amb.test.ts">
+
+The `amb` evaluator is `chapter-4/amb.ts`, a Source program of about seven hundred lines, and every value on this page comes from running it in the Laboratory, an evaluator interpreted by an evaluator. `amb_solutions` makes a new problem of its program and calls the failure continuation of each value it receives, which is all `retry` does. The test `chapter-4/amb.test.ts` checks the six values of `list(amb(1, 2, 3), amb("a", "b"))` in order, the integers 8, 9 and 10, the transcript of the driver loop above line by line, and that the search tree's events, read from the call log of a probed `analyze_amb`, are the ones described under the tree.
+
+</UnderTheHood>
+
+<Exercises range="4.33 – 4.35" total={3}>
+<Exercise id="4.33">
+
+Write a function `an_integer_between` that returns an integer between two given bounds. It can be used to find Pythagorean triples, triples of integers (*i*, *j*, *k*) between the bounds such that *i* ≤ *j* and *i*² + *j*² = *k*²:
+
+```js
+function a_pythagorean_triple_between(low, high) {
+    const i = an_integer_between(low, high);
+    const j = an_integer_between(i, high);
+    const k = an_integer_between(j, high);
+    require(i * i + j * j === k * k);
+    return list(i, j, k);
+}
+```
+
+Your declaration is a program for the `amb` evaluator. The checks run it with `amb_solutions`, together with the function above.
+
+<Solution>
+
+**Solution.** `an_integer_between` is `an_integer_starting_from` with a requirement that stops it at the upper bound: it fails once `low` passes `high`, and otherwise ambiguously returns `low` or an integer between `low + 1` and `high`.
+
+</Solution>
+</Exercise>
+<Exercise id="4.34">
+
+Exercise 3.69 generated the stream of *all* Pythagorean triples, with no upper bound on the integers searched. Explain why simply replacing `an_integer_between` by `an_integer_starting_from` in exercise 4.33 is not an adequate way to generate arbitrary Pythagorean triples. Write a function `a_pythagorean_triple()` that actually will: one for which repeated `retry` would in principle eventually generate every triple.
+
+<Solution>
+
+**Solution.** With `k` chosen from an infinite range last, the search never leaves the first `i` and `j`: when `k` fails it simply tries the next `k`, for ever, and backtracking never reaches the earlier choices. Depth-first search can afford only one infinite choice, and it must come first. Choose *k* from all integers, then *i* and *j* from the finite range below it; every triple has some *k*, and the search reaches that *k* after finitely many failures.
+
+</Solution>
+</Exercise>
+<Exercise id="4.35">
+
+Ben Bitdiddle claims that the following method for generating Pythagorean triples is more efficient than the one in exercise 4.33. Is he correct? (Hint: consider the number of possibilities that must be explored.)
+
+```js
+function a_pythagorean_triple_between(low, high) {
+    const i = an_integer_between(low, high);
+    const hsq = high * high;
+    const j = an_integer_between(i, high);
+    const ksq = i * i + j * j;
+    require(hsq >= ksq);
+    const k = math_sqrt(ksq);
+    require(is_integer(k));
+    return list(i, j, k);
+}
+```
+
+Count the possibilities each method explores for `low` = 1 and `high` = 10. The values of a program without its final `require` are exactly the candidates it would test, so `amb_solutions` can count them for you.
+
+<Solution>
+
+**Solution.** Ben is right. Exercise 4.33's program tests every *i* ≤ *j* ≤ *k* in the range, 220 of them for 1 to 10; Ben's tests every *i* ≤ *j*, 55 of them, and computes *k* instead of searching for it. The first grows as the cube of the range and the second as its square.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '4.3.2', label: 'Puzzles and parsing by search' }, { id: '4.3.3', label: 'How amb backtracks' }, { id: '4.4.1', label: 'Logic programming: search without saying how' }]} />

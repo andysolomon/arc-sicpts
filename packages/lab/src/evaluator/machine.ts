@@ -18,7 +18,7 @@ import {
 import { SourceError } from '../syntax/errors.ts';
 import { assign, declare, define, extend, lookup, type Environment } from './environment.ts';
 import { isLibraryLoc } from './library.ts';
-import { isClosure, isPrimitive, stringify, typeName, type Closure, type Value } from './values.ts';
+import { APPLY_PRIMITIVE, ERROR_TEXT, isClosure, isPair, isPrimitive, stringify, typeName, type Closure, type Value } from './values.ts';
 
 /**
  * An explicit-control evaluator. Instead of recursing on the JavaScript stack,
@@ -72,6 +72,9 @@ export interface MachineHooks {
 }
 
 export const DEFAULT_BUDGET = 100_000;
+
+/** Longest text of one argument in a frame's label, such as `square(3)`. */
+const LABEL_TEXT = 48;
 
 export interface FrameIds {
   next(): string;
@@ -514,22 +517,23 @@ export class Machine {
   }
 
   private apply(fn: Value, args: Value[], node: Application, callerEnv: Environment): void {
+    if (isPrimitive(fn) && fn.name === APPLY_PRIMITIVE) {
+      // `apply_in_underlying_javascript(f, list(a, b))` is `f(a, b)`, so it can
+      // apply compound functions too, which no ordinary primitive can.
+      if (args.length !== 2) this.fail(`${APPLY_PRIMITIVE} expects 2 argument(s), got ${args.length}`, node);
+      const spread: Value[] = [];
+      let rest = args[1];
+      while (isPair(rest)) {
+        spread.push(rest[0]);
+        rest = rest[1];
+      }
+      if (rest !== null) this.fail(`${APPLY_PRIMITIVE} expects a list of arguments, got ${typeName(args[1])}`, node);
+      this.apply(args[0], spread, node, callerEnv);
+      return;
+    }
     if (isPrimitive(fn)) {
       if (fn.arity !== null && fn.arity !== args.length) {
         this.fail(`${fn.name} expects ${fn.arity} argument(s), got ${args.length}`, node);
-      }
-      if (fn.tailApply !== undefined) {
-        let target: { fn: Value; args: Value[] };
-        try {
-          target = fn.tailApply(...args);
-        } catch (error) {
-          if (error instanceof SourceError && error.loc === null) {
-            throw new SourceError('runtime', error.message, node.loc);
-          }
-          throw error;
-        }
-        this.apply(target.fn, target.args, node, callerEnv);
-        return;
       }
       let result: Value;
       try {
@@ -546,7 +550,7 @@ export class Machine {
     }
 
     if (!isClosure(fn)) {
-      this.fail(`Cannot apply ${stringify(fn)}: it is not a function`, node.fun);
+      this.fail(`Cannot apply ${stringify(fn, ERROR_TEXT)}: it is not a function`, node.fun);
     }
 
     const { lambda } = fn;
@@ -558,7 +562,7 @@ export class Machine {
     const env = extend(
       fn.env,
       this.frameIds.next(),
-      `${name}(${args.map((arg) => stringify(arg)).join(', ')})`,
+      () => `${name}(${args.map((arg) => stringify(arg, LABEL_TEXT)).join(', ')})`,
     );
     lambda.params.forEach((param, i) => define(env, param, args[i], true));
 
