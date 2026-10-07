@@ -1,0 +1,120 @@
+import { derivProgram, derivSelectorDefinitions, simplifyingDerivProgram } from '@sicp/lab';
+
+<Prose>
+
+As an illustration of symbol manipulation, and a further illustration of data abstraction, consider a function that performs symbolic differentiation of algebraic expressions. Given an expression and a variable, it should return the derivative of the expression with respect to the variable: given *ax*² + *bx* + *c* and *x*, it should return 2*ax* + *b*. Symbolic differentiation has a special place in the history of Lisp, the family of languages in which this book was first written. It was one of the motivating examples for a computer language for symbol manipulation, and it began the line of research that led to the systems for symbolic mathematics that applied mathematicians and physicists use routinely today.
+
+We follow the strategy of the rational numbers in §2.1.1. First we write the differentiation algorithm in terms of abstract objects, "sums", "products" and "variables", without worrying about how they are represented. Only afterwards do we choose a representation.
+
+**The differentiation program with abstract data.** To keep things simple we consider expressions built from addition and multiplication with two arguments. Any such expression can be differentiated with four reduction rules:
+
+- *dc*/*dx* = 0, for *c* a constant or a variable other than *x*,
+- *dx*/*dx* = 1,
+- *d*(*u* + *v*)/*dx* = *du*/*dx* + *dv*/*dx*,
+- *d*(*uv*)/*dx* = *u* (*dv*/*dx*) + *v* (*du*/*dx*).
+
+The last two rules are recursive: the derivative of a sum is found from the derivatives of its terms, each of which may in turn need decomposing. Decomposing into smaller and smaller pieces eventually produces constants and variables, whose derivatives are 0 or 1.
+
+To embody the rules in a function we indulge in a little wishful thinking, as we did for rational numbers. Suppose we had functions to tell whether an expression is a sum, a product, a constant or a variable, to take expressions apart, and to build them:
+
+| Function | Meaning |
+| --- | --- |
+| `is_variable(e)` | Is `e` a variable? |
+| `is_same_variable(v1, v2)` | Are `v1` and `v2` the same variable? |
+| `is_sum(e)`, `addend(e)`, `augend(e)` | Is `e` a sum? Its first term; its second term. |
+| `make_sum(a1, a2)` | The sum of `a1` and `a2`. |
+| `is_product(e)`, `multiplier(e)`, `multiplicand(e)` | Is `e` a product? Its first factor; its second factor. |
+| `make_product(m1, m2)` | The product of `m1` and `m2`. |
+
+Using these and the primitive predicate `is_number`, the rules become one function, `deriv`, at the top of the program below. It is the complete differentiation algorithm. Since it is written in terms of abstract data, it will work however we represent algebraic expressions, as long as we provide a proper set of selectors and constructors.
+
+**Representing algebraic expressions.** We could represent *ax* + *b* as a list that mirrors the usual notation, `list("a", "*", "x", "+", "b")`. It is more convenient to let the structure of the value reflect the mathematical structure of the expression: `list("+", list("*", "a", "x"), "b")`. Putting an operator in front of its operands is called *prefix notation*, in contrast with the infix notation of §1.1.1. With it, variables are strings, recognised by the primitive `is_string`, and two variables are the same if their strings are `===`. Sums and products are lists whose first element is the string `"+"` or `"*"`; the addend and multiplier are the second item, the augend and multiplicand the third. Here are the representation, the simplest possible constructors, and three derivatives:
+
+</Prose>
+
+<Example index={0} file="deriv.sicp" source={derivProgram} anim="pairs">
+
+The derivative of *x* + 3 is printed as `list("+", 1, 0)`, and that of *xy* as `list("+", list("*", "x", 0), list("*", 1, "y"))`. Both are correct, and neither is simplified. The diagrams show the prefix structure directly: the third derivative, of *xy*(*x* + 3), is a tree of 27 pairs for what is really *xy* + *y*(*x* + 3).
+
+</Example>
+
+<Prose>
+
+It is true that *d*(*xy*)/*dx* = *x* · 0 + 1 · *y*, but we would like the program to know that *x* · 0 = 0, 1 · *y* = *y* and 0 + *y* = *y*, so that the second answer is simply `"y"`. The third example shows how serious the problem becomes for complex expressions.
+
+The difficulty is the one we met with rational numbers: we haven't reduced answers to simplest form. There we changed only the constructors and selectors, and we can do the same here, without changing `deriv` at all. `make_sum` will add two numbers itself, and return the other summand when one of them is 0. `make_product` will build in the rules that 0 times anything is 0 and 1 times anything is the thing itself. Both use `number_equal`, which checks whether an expression is a given number. The predicates and selectors are the ones above, so this editor has them predefined: `is_variable`, `is_same_variable`, `is_sum`, `addend`, `augend`, `is_product`, `multiplier` and `multiplicand`.
+
+</Prose>
+
+<Example index={1} file="deriv_simplified.sicp" source={simplifyingDerivProgram} prelude={derivSelectorDefinitions} anim="pairs">
+
+The same three derivatives: 1, `"y"`, and `list("+", list("*", "x", "y"), list("*", "y", list("+", "x", 3)))`, which is *xy* + *y*(*x* + 3). Quite an improvement, but the third shows there is still a long way to go before expressions come out in a form we might agree is "simplest". Algebraic simplification is hard, not least because a form that is simplest for one purpose may not be for another.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-2/symbolicData.ts">
+
+`deriv` is one string in `chapter-2/symbolicData.ts`, shared by both editors and by the exercises; only the constructors around it change. The second editor's predicates and selectors are a prelude, evaluated into a frame of its own between the list library and the program, so `deriv` finds them by ordinary lookup. The test `chapter-2/symbolicData.test.ts` asserts all six derivatives above, unsimplified and simplified.
+
+</UnderTheHood>
+
+<Exercises range="2.56 – 2.58" total={3}>
+<Exercise id="2.56">
+
+Show how to extend the basic differentiator to handle more kinds of expressions. For instance, implement the differentiation rule
+
+*d*(*u*ⁿ)/*dx* = *n* *u*ⁿ⁻¹ (*du*/*dx*)
+
+by adding a new clause to `deriv` and declaring appropriate functions `is_exp`, `base`, `exponent` and `make_exp`. Use the string `"**"` to denote exponentiation. Build in the rules that anything raised to the power 0 is 1 and anything raised to the power 1 is the thing itself. The tests check derivatives by their values, using `value_at(exp, x, y)`, so any correct form of the answer passes.
+
+<Solution>
+
+**Solution.** An exponentiation is `list("**", base, exponent)`, recognised by its first element like sums and products. The new clause is the rule transcribed: `make_product(make_product(exponent(exp), make_exp(base(exp), exponent(exp) - 1)), deriv(base(exp), variable))`. The last factor is the chain rule, which comes for free because `deriv` is recursive. `make_exp` checks the exponent with `number_equal` before building a list, the way `make_product` does, so the derivative of *x*¹ comes out as plain 1.
+
+</Solution>
+</Exercise>
+<Exercise id="2.57">
+
+Extend the differentiation program to handle sums and products of any number of terms, two or more. Then the last example above could be written
+
+```js
+deriv(list("*", "x", "y", list("+", "x", 3)), "x");
+```
+
+Try to do this by changing only the representation of sums and products, without changing `deriv` at all. For example, the `addend` of a sum would be the first term, and the `augend` the sum of the rest of the terms.
+
+<Solution>
+
+**Solution.** Only `augend` and `multiplicand` change. The augend of `list("+", a, b, c)` is the sum of `b` and `c`, which `accumulate(make_sum, 0, tail(tail(s)))` builds. With only two terms it is the second term itself, because `make_sum(b, 0)` simplifies to `b`. The multiplicand is `accumulate(make_product, 1, …)` in the same way. `deriv` never knows the difference: it asks for an addend and an augend, and the augend is itself a sum whenever more terms remain.
+
+</Solution>
+</Exercise>
+<Exercise id="2.58">
+
+Suppose we want the differentiation program to work with ordinary mathematical notation, in which `"+"` and `"*"` are infix rather than prefix operators. Since the program is defined in terms of abstract data, we can make it work with a different representation of expressions solely by changing the predicates, selectors and constructors.
+
+(a) Show how to do this for algebraic expressions in infix form, such as
+
+```js
+list("x", "+", list(3, "*", list("x", "+", list("y", "+", 2))))
+```
+
+To simplify the task, assume that `"+"` and `"*"` always take two arguments and that expressions are fully parenthesized.
+
+(b) The problem becomes substantially harder if we allow notation closer to ordinary infix, which omits unnecessary parentheses and gives multiplication higher precedence than addition, as in
+
+```js
+list("x", "+", 3, "*", list("x", "+", "y", "+", 2))
+```
+
+Can you design predicates, selectors and constructors for this notation such that `deriv` still works? The tests for (a) pass once (a) works, and a solution to (b) passes them too.
+
+<Solution>
+
+**Solution.** (a) The operator moves to the second position: `is_sum` tests `head(tail(x))`, `addend` is the head, `augend` the third item, and `make_sum` builds `list(a1, "+", a2)`. (b) The trick is to read precedence into the predicates. An expression is a sum if `"+"` appears anywhere at its top level: the addend is everything before the first `"+"`, the augend everything after. Only if there is no top-level `"+"` is it a product, split at the first `"*"`. A part that is a single item, like the `"x"` in `x + 3 * …`, is unwrapped to the item itself. Because `deriv` decomposes a sum before a product, `*` ends up binding more tightly, without a parser. The constructors can keep building fully parenthesized output, which is valid in this notation.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['2.3.3', { id: '2.5.3', label: 'Symbolic algebra' }, { id: '4.1.2', label: 'Representing components' }]} />

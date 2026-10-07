@@ -1,0 +1,140 @@
+import { dataDirectedPrelude, dataDirectedProgram, messagePassingProgram, operationTableProgram } from '@sicp/lab';
+
+<Prose>
+
+Checking the type of a datum and calling an appropriate function is called *dispatching on type*. It is a powerful strategy for obtaining modularity, but implemented as in §2.4.2 it has two significant weaknesses. First, the generic interface functions `real_part`, `imag_part`, `magnitude` and `angle` must know about every representation. To add a new representation we would have to give it a type and then add a clause to each generic function. Second, even though the representations are designed separately, no two functions in the whole system may have the same name, which is why Ben and Alyssa had to rename theirs.
+
+Underneath both weaknesses is the same fact: the technique is not *additive*. Whoever implements the generic selectors must modify them each time a representation is installed, and whoever interfaces a representation must modify their code to avoid name conflicts. The changes are straightforward, but they must be made, and they are a source of inconvenience and error. With two representations that hardly matters. With hundreds of representations and many generic selectors, and no one programmer who knows them all, as in a large database-management system, it matters a great deal.
+
+What we need is a way to modularise the design further, and *data-directed programming* provides it. Whenever we deal with a set of generic operations common to a set of types, we are in effect dealing with a two-dimensional table: the operations on one axis, the types on the other, and in each entry the function that implements that operation for that type. In §2.4.2 this table was spread out among the clauses of the generic functions. Data-directed programming works with the table directly. The interface becomes a single function that looks up the operation name and the argument type in the table and applies what it finds. To add a representation, we change no existing function; we only add entries to the table.
+
+Assume two functions for manipulating the table. `put(op, type, item)` installs `item` in the table, indexed by `op` and `type`, and `get(op, type)` returns the item found under `op` and `type`, or `undefined` if there is none. Source has no such table built in. Section 3.3.3 shows how to build tables properly, with mutable data; for now a list of entries in a `let` will do, searched with `equal` so that a type can itself be a list.
+
+</Prose>
+
+<Example index={0} file="table.sicp" source={operationTableProgram} anim="operation-table">
+
+The table is drawn from the trace: every `put` fills a cell under its operation and its type, and every `get` lights the cell it finds. `head` and `tail` are enough to make a pair serve as rectangular coordinates or as polar ones. The last `get` asks for an angle of a rectangular number, a cell nobody filled, and the answer is `undefined`.
+
+</Example>
+
+<Prose>
+
+Here is how Ben uses the table. He writes his functions just as he did in §2.4.1, before there were tags or other representations, and collects them into a *package*: a function that declares them internally and then interfaces them to the rest of the system by adding entries to the table. Calling `install_rectangular_package` installs his `real_part` under the operation `"real_part"` and the type `list("rectangular")`, and similarly for the other selectors. The type is a list, rather than the string `"rectangular"`, to allow for operations with several arguments, not all of the same type. The interface also defines the constructors that the outside world will use. They are Ben's internal constructors with a tag attached, and they are installed under a plain string, since a constructor always makes an object of one particular type.
+
+Because his function declarations are internal to the installation function, Ben need not worry about name conflicts. Alyssa's package is analogous, and even though both still use the same names, such as `real_part`, the declarations are internal to different functions (see §1.1.8), so there is no conflict.
+
+The complex-arithmetic selectors reach the table through one general function, `apply_generic`, which looks in the table under the name of the operation and the types of the arguments, and applies the function it finds to the contents of the arguments:
+
+```js
+function apply_generic(op, args) {
+  const type_tags = map(type_tag, args);
+  const fun = get(op, type_tags);
+  return ! is_undefined(fun)
+    ? apply(fun, map(contents, args))
+    : error(list(op, type_tags), "no method for these types -- apply_generic");
+}
+```
+
+The book's JavaScript calls a function on a list of arguments with `apply_in_underlying_javascript`. Source cannot spread a list into arguments, so `apply` here takes the list apart by hand for one, two or three arguments, which is all the generic operations of this chapter need. The generic selectors are now one line each, and they do not change at all when a representation is added: `real_part(z)` is `apply_generic("real_part", list(z))`. The constructors are extracted from the table too, rectangular from real and imaginary parts and polar from magnitude and angle, as before.
+
+</Prose>
+
+<Example index={1} file="data_directed.sicp" source={dataDirectedProgram} prelude={dataDirectedPrelude} anim="operation-table">
+
+`put` and `get`, `attach_tag`, `type_tag` and `contents`, and `apply` are predefined; the rest is shown. The two installations fill the table one column at a time, Ben's and then Alyssa's, figure 2.22 assembled by the program itself. Then every lookup lights its cell: the two constructors, `magnitude` for the rectangular `z1`, and `real_part` for the polar `z2`. Neither `apply_generic` nor the selectors mention a type; a third package would add a column and change nothing else.
+
+</Example>
+
+<Prose>
+
+**Message passing.** The key idea of data-directed programming is to deal explicitly with the operation-and-type table. The style of §2.4.2 organised the dispatch so that each operation takes care of its own dispatching. In effect it decomposes the table into rows, each generic function representing one row.
+
+An alternative is to decompose the table into columns: instead of intelligent operations that dispatch on data types, work with intelligent data objects that dispatch on operation names. A rectangular number can be represented as a function that takes the name of the required operation and performs it. `apply_generic` then simply feeds the operation's name to the data object and lets the object do the work.
+
+</Prose>
+
+<Example index={2} file="message_passing.sicp" source={messagePassingProgram} anim="complex-plane">
+
+`make_from_real_imag` returns its internal `dispatch` function, which remembers `x` and `y`. The plane reads `z` through the same `real_part` and `imag_part` as before and finds 3 + 4*i*, but the caption shows what is stored: not a pair, a function. `z("angle")` sends the message directly.
+
+</Example>
+
+<Prose>
+
+This style of programming is called *message passing*: a data object is an entity that receives the requested operation name as a message. We have already seen an example in §2.1.3, where `pair`, `head` and `tail` were defined with no data objects, only functions. Here message passing is not a mathematical trick but a useful way of organising systems with generic operations. One limitation is that it permits only generic functions of one argument. The rest of this chapter uses data-directed programming rather than message passing; chapter 3 returns to message passing as a tool for structuring simulations.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-2/multipleRepresentations.ts">
+
+The table, the tags and `apply` are Source declarations shared with §2.5, in `chapter-2/genericArithmetic.ts`. The table scene, `anim/scenes/OperationTableScene.tsx`, reads the calls of `put` and `get` out of the trace with their arguments, and the values `get` returned. The test `chapter-2/multipleRepresentations.test.ts` asserts that the two packages make 12 calls of `put`, that the data-directed program then calls `get` exactly four times, with the keys the animation lights, that `real_part` of a `"cartesian"` datum stops with "no method for these types", and that the message-passing `z` is a function whose real part is 3.
+
+</UnderTheHood>
+
+<Exercises range="2.73 – 2.76" total={4}>
+<Exercise id="2.73">
+
+Section 2.3.2 described a program that performs symbolic differentiation. We can regard it as dispatching on the type of the expression to be differentiated, where the "type tag" is the algebraic operator, such as `"+"`, and the operation is `deriv`. In data-directed style, the basic derivative function becomes
+
+```js
+function deriv(exp, variable) {
+  return is_number(exp)
+    ? 0
+    : is_variable(exp)
+    ? is_same_variable(exp, variable) ? 1 : 0
+    : get("deriv", operator(exp))(operands(exp), variable);
+}
+```
+
+with `operator(exp)` the head of the expression and `operands(exp)` its tail.
+
+1. Explain what was done above. Why can't we assimilate the predicates `is_number` and `is_variable` into the data-directed dispatch? Set `why` to the right reason of the three given.
+2. Write the functions for derivatives of sums and products, and the code that installs them in the table.
+3. Choose another differentiation rule, such as the one for exponents of Exercise 2.56, and install it in this data-directed system.
+4. In this simple algebraic manipulator the type of an expression is the operator that binds it together. Suppose we indexed the functions the opposite way, so that the dispatch line read `get(operator(exp), "deriv")(operands(exp), variable)`. What corresponding changes are required? Make `deriv_swapped`, which looks up its rules that way, work.
+
+<Solution>
+
+**Solution.** The `if` chain on `is_sum`, `is_product` and the rest has become one lookup, keyed by the expression's operator; adding a rule now means adding an entry, not editing `deriv`. Numbers and variables cannot join the table because they have no operator: `operator(exp)` is `head(exp)`, and a number or a string is not a pair. Their "type" would have to be computed by exactly the predicates the table was meant to replace. Each rule takes the operand list, so the sum rule is `make_sum(deriv(head(operands), v), deriv(head(tail(operands)), v))`, and the product rule is the product rule of §2.3.2 on the two operands. The exponent rule multiplies *n*, `make_exp(u, n - 1)` and the derivative of *u*, with `make_exp` simplifying powers 0 and 1. Swapping the indexing changes only the `put` calls: each installs the same rule with its first two arguments exchanged, `put("+", "deriv", deriv_sum)`. Neither the rules nor the table change, which the checker confirms by finding the very same function under both keys.
+
+</Solution>
+</Exercise>
+<Exercise id="2.74">
+
+Insatiable Enterprises, Inc., is a highly decentralised conglomerate of independent divisions all over the world. Its computers have just been interconnected so that the whole network appears to any user as a single computer. Insatiable's president, trying to extract administrative information from the division files, discovers that although every division keeps its personnel file as a JavaScript data structure, the structure varies from division to division. A strategy is needed that satisfies headquarters while preserving the divisions' autonomy. Show how to implement it with data-directed programming. Each division's file is a set of records keyed on employees' names, and each record is itself a set, structured differently in each division, containing information such as the address and the salary.
+
+1. Implement for headquarters a `get_record` function that retrieves a given employee's record from a given division's file. Explain how the divisions' files should be structured; in particular, what type information must be supplied?
+2. Implement `get_salary`, which returns the salary from an employee's record from any division. How should the record be structured for this to work?
+3. Implement `find_employee_record`, which searches all the divisions' files for an employee's record and returns it. It takes an employee's name and a list of all the divisions' files.
+4. When Insatiable takes over a new company, what changes must be made to incorporate the new personnel information into the central system? Make them for the newly acquired company in Lagos.
+
+<Solution>
+
+**Solution.** Each division's file must carry its division's name as a type tag, and each division installs, under that type, its own `"get_record"` and `"get_salary"`, written for its own structure. Headquarters' `get_record` looks up `"get_record"` for the file's tag and applies it to the name and the untagged file. The record that comes back is in the division's private format, so `get_record` tags it with the same division's name; that tag is what lets `get_salary` look up the right `"get_salary"`. `find_employee_record` tries `get_record` on each file in turn and returns the first record found, or null. Taking over a company changes nothing that exists: the new division writes a package for its own format, installs it, and tags its file. That is additivity, exactly as a new complex-number representation is a new column of the table.
+
+</Solution>
+</Exercise>
+<Exercise id="2.75">
+
+Implement the constructor `make_from_mag_ang` in message-passing style. It should be analogous to the `make_from_real_imag` function given above.
+
+<Solution>
+
+**Solution.** `make_from_mag_ang(r, a)` returns a `dispatch` function that answers `"magnitude"` with `r` and `"angle"` with `a`, computes `r * math_cos(a)` and `r * math_sin(a)` for the real and imaginary parts, and signals an error for any other message. Numbers made by the two constructors are indistinguishable to `real_part` and its friends, which only ever send messages.
+
+</Solution>
+</Exercise>
+<Exercise id="2.76">
+
+As a large system with generic operations evolves, new types of data objects or new operations may be needed. For each of the three strategies, generic operations with explicit dispatch, data-directed style, and message-passing style, describe the changes that must be made to the system in order to add new types or new operations. Which organisation would be most appropriate for a system in which new types must often be added? Which would be most appropriate for a system in which new operations must often be added?
+
+<Solution>
+
+**Solution.** With explicit dispatch, a new type means a new clause in every generic operation, while a new operation is one new function, with a clause for each type, and nothing old changes. Message passing is the transpose: a new type is one new constructor, but a new operation means a new case in every constructor's `dispatch`. Data-directed style adds a new type as one new package; a new operation means a new `put` in every package, because a package's internal functions are visible only inside its installation function. So for frequent new types, use message passing or data-directed style; for frequent new operations, explicit dispatch. Data-directed style is the most flexible of the three: the table can be extended in either direction, and unlike message passing it can dispatch on the types of several arguments, which §2.5 needs.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '2.5.1', label: 'Generic arithmetic over a table' }, { id: '3.3.3', label: 'Building put and get properly' }, { id: '3.1.1', label: 'Message passing with local state' }]} />

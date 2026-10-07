@@ -9,13 +9,15 @@ export interface TraceOptions {
   budget?: number;
   /** Wait this long after the text last changed before tracing it. */
   delayMs?: number;
+  /** Declarations evaluated before the program, as the editor's run has them. */
+  prelude?: string | undefined;
 }
 
 /**
  * The step log of a program, computed by the Laboratory worker and kept in
  * step with the text. The previous log stays on screen until the new one is in.
  */
-export function useTrace(source: string, { maxRecords, budget, delayMs = 350 }: TraceOptions = {}): {
+export function useTrace(source: string, { maxRecords, budget, delayMs = 350, prelude }: TraceOptions = {}): {
   trace: Trace | null;
   pending: boolean;
 } {
@@ -32,6 +34,7 @@ export function useTrace(source: string, { maxRecords, budget, delayMs = 350 }: 
         source,
         ...(maxRecords !== undefined && { maxRecords }),
         ...(budget !== undefined && { budget }),
+        ...(prelude !== undefined && { prelude }),
       });
       job.current = handle;
       void handle.finished.then((end) => {
@@ -42,7 +45,7 @@ export function useTrace(source: string, { maxRecords, budget, delayMs = 350 }: 
       });
     }, delayMs);
     return () => window.clearTimeout(timer);
-  }, [budget, delayMs, maxRecords, source]);
+  }, [budget, delayMs, maxRecords, prelude, source]);
 
   useEffect(() => () => job.current?.cancel(), []);
 

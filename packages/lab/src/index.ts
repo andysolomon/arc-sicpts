@@ -26,7 +26,7 @@ export {
   type Primitive,
   type Value,
 } from './evaluator/values.ts';
-export { createGlobalEnvironment } from './evaluator/primitives.ts';
+export { createGlobalEnvironment, type Segment } from './evaluator/primitives.ts';
 export {
   createFrameIds,
   DEFAULT_BUDGET,
@@ -37,7 +37,9 @@ export {
   type MachineStatus,
   type ReturnInfo,
 } from './evaluator/machine.ts';
+export { library, listLibrary, streamLibrary } from './evaluator/library.ts';
 export {
+  createLibraryEnvironment,
   evaluate,
   outcomeOf,
   prepare,
@@ -108,3 +110,11 @@ export {
   newtonProgram,
   transformProgram,
 } from './chapter-1/returnedValues.ts';
+
+export * from './chapter-2/dataAbstraction.ts';
+export * from './chapter-2/sequences.ts';
+export * from './chapter-2/pictures.ts';
+export * from './chapter-2/symbolicData.ts';
+export * from './chapter-2/multipleRepresentations.ts';
+export * from './chapter-2/genericArithmetic.ts';
+export * from './chapter-2/symbolicAlgebra.ts';
