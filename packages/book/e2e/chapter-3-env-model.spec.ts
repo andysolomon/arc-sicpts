@@ -32,6 +32,7 @@ test('§3.2.4 stops at a name used before its declaration', async ({ page }) => 
   const scene = page.getByRole('region', { name: 'Frames and lookups' }).nth(2);
   await scene.scrollIntoViewIfNeeded();
   const slider = scene.getByRole('slider');
+  await expect(slider).toBeEnabled();
   await slider.fill(await slider.getAttribute('max') ?? '0');
   await expect(scene.getByTestId('caption')).toContainText('Name z used before its declaration was evaluated');
 });

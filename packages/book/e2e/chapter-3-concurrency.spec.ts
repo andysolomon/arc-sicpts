@@ -12,10 +12,12 @@ test('§3.4.1 draws the lost withdrawal and lets the reader pick another seed', 
   await expect(scene.locator('[data-testid="lane-row"][data-lost="true"]')).toHaveCount(1);
 
   await scene.getByRole('button', { name: 'Another seed' }).click();
-  await expect(scene.getByLabel('seed')).toHaveValue('2');
-  await expect(scene.getByRole('slider')).toBeEnabled();
-  await scene.getByRole('slider').fill((await scene.getByRole('slider').getAttribute('max')) ?? '0');
-  await expect(scene.getByTestId('caption')).toContainText("The program's value is 65.");
+  await expect(scene.getByRole('spinbutton', { name: 'seed' })).toHaveValue('2');
+  // A new trace restarts the timeline, so seek to the end again until the new run is the one on screen.
+  await expect(async () => {
+    await scene.getByRole('slider').fill((await scene.getByRole('slider').getAttribute('max')) ?? '0');
+    await expect(scene.getByTestId('caption')).toContainText("The program's value is 65.", { timeout: 500 });
+  }).toPass();
 });
 
 test('§3.4.1 runs the deposit 60 times and finds only the five possible balances', async ({ page }) => {

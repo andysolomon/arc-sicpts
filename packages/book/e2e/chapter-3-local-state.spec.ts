@@ -9,7 +9,7 @@ test('every subsection of §3.1 is written', async ({ page }) => {
 
 test('§3.1.1 shows each assignment in the frame that holds the balance', async ({ page }) => {
   await page.goto('/3/3.1.1');
-  const scenes = page.getByRole('region', { name: 'Frames and assignments' });
+  const scenes = page.getByRole('region', { name: 'Frames and lookups' });
   await expect(scenes).toHaveCount(3);
 
   // The global withdraw: the program frame's balance ends at 35.
