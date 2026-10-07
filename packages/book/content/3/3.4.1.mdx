@@ -1,0 +1,76 @@
+import { jointAccountProgram, peterPaulDepositProgram } from '@sicp/lab';
+
+<Prose>
+
+Objects with local state are a powerful way to model the world, and §3.1 also showed what they cost: we lost referential transparency, and with it the substitution model, and we had to adopt the environment model to explain programs. Underneath that loss is something more basic. Once an assignment can change a variable, *time* enters the picture. Before the assignment the variable has one value, after it another, and the value of an expression can depend on when it is evaluated as well as on what it says.
+
+So far all of our programs ran one step after another, in a single sequence. Real systems are rarely like that. Many objects change at the same time, and a natural way to model them is with several *threads* of computation, each a sequence of steps, all running together. Programs organised this way can be more modular, since each part keeps to its own business, and on hardware with several processors they can also run faster. But concurrency makes the problem of time much sharper, as this section shows.
+
+**The problem.** At first, time looks simple: it orders events. For any two events, one happened before the other, or they happened together. Think of a bank account shared by Peter and Paul. If it holds $100 and Peter takes out $10 while Paul takes out $25, the balance passes through $90 or $75 on its way to $65, depending on who was first. If each withdrawal is the `withdraw` function of §3.1.1, run by its own thread, that is not what always happens.
+
+</Prose>
+
+<Example index={0} file="joint_account.sicp" source={jointAccountProgram} anim="interleaving">
+
+Each lane is one thread, and time runs down the picture. Seed 1 interleaves the two withdrawals so that both threads look up `balance` while it is still 100. Paul's thread stores 75, and then Peter's stores 90, computed from the 100 it read earlier: Paul's withdrawal disappears (the write in red). Press *Another seed* until the two lanes take turns instead and the account ends at 65. Running the program in the editor uses a fresh random schedule each time.
+
+</Example>
+
+<Prose>
+
+Look at what `withdraw` does to the balance. It looks the balance up to compare it with the amount, looks it up again to subtract the amount, and then assigns the result. These are separate steps, and another thread may take steps in between. Figure 3.29 shows one such ordering, the same one seed 1 found above but with Peter and Paul's parts swapped: both read $100, Peter writes $90, and Paul then writes $75. Peter's $10 left the bank, yet nothing records it.
+
+</Prose>
+
+<TimingDiagram caption={<p>Peter and Paul each read the balance, compute a new one and write it back. Because both read before either writes, the second write replaces the first, and the bank loses track of one of the withdrawals.</p>} />
+
+<Prose>
+
+The test `balance >= amount` is in danger too. Paul could check that $25 is available, and before he subtracts it, Peter could take money out, so that the check Paul acted on no longer holds. In general, a thread that computes a new value from shared state and then stores it is relying on that state not changing in the meantime, and with no further care nothing guarantees that.
+
+In SICP, `concurrent_execute` starts its threads and returns immediately, leaving them running in the background. In this Laboratory it starts a thread for each function and **waits until all of them have finished** before it returns `undefined`. That is why the last line of the program can look at the final balance. Between any two steps of the evaluator, the scheduler may switch to another thread, so a single `balance = balance - amount` can be split by other threads' steps, just as it could be on a real machine.
+
+**Correct behaviour of concurrent programs.** What should we require of a concurrent program that shares state? One strong answer is to forbid any two operations that change shared variables from happening at the same time. That is stricter than necessary, and it is expensive. In a bank with machines spread across the world, every transaction would have to wait for every other transaction anywhere in the system to finish, even ones on accounts that have nothing to do with it.
+
+A weaker requirement is enough: the threads together must produce the same result as they would if they had run one after another, in *some* order. Notice two things about this. It does not require them to actually run one at a time, only to give a result that a sequential run could also give. And there may be more than one correct result, because there is more than one order. Suppose Peter deposits $40 while Paul withdraws half the money in the account. Run in sequence, they leave $70 (Peter first: 140, then half of it) or $90 (Paul first: 50, then 40 more). Both are correct.
+
+</Prose>
+
+<Example index={1} file="deposit_and_half.sicp" source={peterPaulDepositProgram} anim="outcomes">
+
+Sixty runs, seed 1 to 60, each interleaving the two threads its own way. The bars for 70 and 90 are the two correct answers. The others are not: 140 comes from Peter writing last from a balance he read as 100, 50 from Paul doing the same, and 30 from Paul reading the balance once before Peter's deposit and once after (100 − 140 / 2). Change the deposit to 60 and see which bars move.
+
+</Example>
+
+<Prose>
+
+The requirement could be weakened further. A program that simulates a physical system, for example, may tolerate threads that occasionally see slightly stale values, as long as the results stay within some bound. Such cases need their own arguments. For bank accounts and most of what follows, "the same result as some serial order" is the standard we want, and the next subsection builds the tools to meet it.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/evaluator/machine.ts">
+
+`concurrent_execute` is carried out by the machine itself, in `spawn`: each function gets its own stack of continuations, and the caller is marked as waiting until all of them end. After every step, `schedule` keeps the running thread with probability 0.7 and otherwise picks one of the runnable threads at random. Its choices come from a small random number generator, so a run with a `seed` repeats exactly; the animations above pass seeds to the worker. `chapter-3/concurrency.test.ts` enumerates every interleaving of the reads and writes and checks that the machine's 300 seeded runs of the deposit program produce exactly the five possible balances, 30, 50, 70, 90 and 140, and that the joint account ends at 65, 75 or 90.
+
+</UnderTheHood>
+
+<Exercises range="3.38" total={1}>
+<Exercise id="3.38">
+
+The account starts with $100. Peter, Paul and Mary use it at the same moment: Peter runs `balance = balance + 10;`, Paul runs `balance = balance - 20;`, and Mary runs `balance = balance - balance / 2;`.
+
+a. List every balance that can result if the system makes the three run one after another, in some order.
+
+b. Give at least three other balances that can result if their steps are allowed to interleave. (Each thread reads `balance` and later writes it; Mary reads it twice.) It helps to sketch timing diagrams like figure 3.29, or to run the three threads yourself with `concurrent_execute` and many seeds.
+
+<Solution>
+
+**Solution.** a. There are six orders. Peter, Paul, Mary gives 110, 90, 45; Peter, Mary, Paul gives 110, 55, 35; Paul, Peter, Mary gives 80, 90, 45; Paul, Mary, Peter gives 80, 40, 50; Mary, Peter, Paul gives 50, 60, 40; Mary, Paul, Peter gives 50, 30, 40. So the balance ends at 35, 40, 45 or 50.
+
+b. A thread that reads early and writes last undoes everyone else: Peter can read 100, let the others finish, and store 110; Paul can do the same and store 80. Mary's two reads can straddle the others' work: she reads 100, Peter and Paul bring the balance to 90, she reads 90 and stores 100 − 45 = 55. In all, interleaving can leave 25, 30, 55, 60, 65, 70, 80, 90 or 110 besides the four serial results.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['3.4.2', { id: '3.5.5', label: 'Time and state, seen through streams' }]} />
