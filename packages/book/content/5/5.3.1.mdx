@@ -1,0 +1,220 @@
+import { memoryFigureProgram, memoryStackProgram } from '@sicp/lab';
+
+<Prose>
+
+A conventional computer memory can be thought of as an array of cubbyholes, each of which can contain a piece of information. Each cubbyhole has a unique name, called its *address* or *location*. Typical memory systems provide two primitive operations: one that fetches the data stored in a specified location and one that assigns new data to a specified location. Memory addresses can be incremented to support sequential access to some set of the cubbyholes. More generally, many important data operations require that memory addresses be treated as data, which can be stored in memory locations and manipulated in machine registers. The representation of list structure is one application of such *address arithmetic*.
+
+To model computer memory, we use a new kind of data structure called a *vector*. Abstractly, a vector is a compound data object whose individual elements can be accessed by means of an integer index in an amount of time that is independent of the index. (A list would not do: reaching its *n*th element takes *n* − 1 `tail` operations. JavaScript calls vectors arrays.) To describe memory operations we use two functions:
+
+- `vector_ref(vector, n)` returns the *n*th element of the vector.
+- `vector_set(vector, n, value)` sets the *n*th element of the vector to the designated value.
+
+For example, if `v` is a vector, then `vector_ref(v, 5)` gets the fifth entry in `v` and `vector_set(v, 5, 7)` changes the value of the fifth entry to 7. For computer memory, this access can be implemented through address arithmetic, combining a *base address* that specifies the beginning location of a vector in memory with an *index* that specifies the offset of a particular element.
+
+## Representing data
+
+We can use vectors to implement the basic pair structures required for a list-structured memory. Imagine that computer memory is divided into two vectors, `the_heads` and `the_tails`. A pointer to a pair is an index into the two vectors. The head of the pair is the entry in `the_heads` with the designated index, and the tail of the pair is the entry in `the_tails` with that index.
+
+We also need a representation for objects other than pairs, such as numbers and strings, and a way to distinguish one kind of data from another. There are many ways of doing this, but they all reduce to using *typed pointers*, that is, to extending the notion of pointer to include information on data type. This is the tagged-data idea of §2.4.2, except that the types are included at the primitive machine level rather than constructed with lists. The data type lets the system distinguish a pointer to a pair (the pair data type and an index into the memory vectors) from pointers to other kinds of data (some other data type and whatever represents data of that type). Two data objects are considered to be the same (`===`) if their pointers are identical.
+
+We use letter prefixes to denote the type. A pointer to the pair with index 5 is `p5`, the empty list is `e0`, and a pointer to the number 4 is `n4`. The program below builds `list(list(1, 2), 3, 4)` with the first free location at index 1, as the book's figure does.
+
+</Prose>
+
+<Example index={0} file="memory.sicp" source={memoryFigureProgram} start={1} anim="memory">
+
+Five pairs, from `p1` to `p5`, and `x` is `p5`: its head is `p2`, the pair holding 1, and its tail `p4`, the pair holding 3. The Laboratory places the pairs in the order `list` made them, innermost and last first, so its indices differ from the book's figure, in which the blank locations hold other structures. Follow the pointers from `p5` and you trace the same box-and-pointer diagram. Try `list(1, list(2, 3))`.
+
+</Example>
+
+<Prose>
+
+For comparison, here is the layout in the book's figure, where `x` is `p1`:
+
+| index | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `the_heads` | | `p5` | `n3` | | `n4` | `n1` | | `n2` | |
+| `the_tails` | | `p2` | `p4` | | `e0` | `p7` | | `e0` | |
+
+A pointer to a number, such as `n4`, might consist of a type indicating numeric data together with the actual representation of the number 4. (Whether `===` can then test numbers for equality depends on this choice: if the pointer contains the number itself, equal numbers have equal pointers.) To deal with numbers too large to fit in a single pointer, we could use a distinct *bignum* data type, for which the pointer designates a list in which the parts of the number are stored, like the digits of a number written out.
+
+A string might be represented as a typed pointer that designates a sequence of the characters that form its printed representation. The parser constructs such a sequence when it meets a string literal, and so do the string-concatenation operator `+` and string-producing primitives such as `stringify`. Since we want two instances of a string to be recognized as the same string by `===`, and we want `===` to be a simple test of pointers, the system must use the same pointer whenever it sees the same string. It keeps a table, the *string pool*, of all the strings it has ever encountered. Before constructing a string, it looks the string up in the pool; if it is there, it returns the pointer stored in the pool, and otherwise it constructs a new string and enters its pointer in the pool. This process of replacing strings by unique pointers is called *string interning*. (The Laboratory's animation simply writes a string pointer as `s"…"`, and `b1` or `b0` for `true` and `false`.)
+
+## Implementing the primitive list operations
+
+Given this representation, we can replace each primitive list operation of a register machine with one or more primitive vector operations. Two registers, `the_heads` and `the_tails`, identify the memory vectors, and `vector_ref` and `vector_set` are primitive operations. We also assume that numeric operations on pointers (incrementing a pointer, using a pair pointer to index a vector, adding two numbers) use only the index portion of the typed pointer.
+
+For example, a register machine can support the instructions
+
+```js
+assign(reg₁, list(op("head"), reg(reg₂)))
+
+assign(reg₁, list(op("tail"), reg(reg₂)))
+```
+
+if we implement these, respectively, as
+
+```js
+assign(reg₁, list(op("vector_ref"), reg("the_heads"), reg(reg₂)))
+
+assign(reg₁, list(op("vector_ref"), reg("the_tails"), reg(reg₂)))
+```
+
+The instructions
+
+```js
+perform(list(op("set_head"), reg(reg₁), reg(reg₂)))
+
+perform(list(op("set_tail"), reg(reg₁), reg(reg₂)))
+```
+
+are implemented as
+
+```js
+perform(list(op("vector_set"), reg("the_heads"), reg(reg₁), reg(reg₂)))
+
+perform(list(op("vector_set"), reg("the_tails"), reg(reg₁), reg(reg₂)))
+```
+
+The operation `pair` is performed by allocating an unused index and storing the arguments of `pair` in `the_heads` and `the_tails` at that index. We presume a special register, `free`, that always holds a pair pointer containing the next available index, and that we can increment the index part of that pointer to find the next free location. (Free locations are consecutive because the garbage collector of §5.3.2 compacts memory; another way is to link all unused pairs into a *free list*.) The instruction
+
+```js
+assign(reg₁, list(op("pair"), reg(reg₂), reg(reg₃)))
+```
+
+is implemented as the following sequence of vector operations:
+
+```js
+perform(list(op("vector_set"),
+             reg("the_heads"), reg("free"), reg(reg₂))),
+perform(list(op("vector_set"),
+             reg("the_tails"), reg("free"), reg(reg₃))),
+assign(reg₁, reg("free")),
+assign("free", list(op("+"), reg("free"), constant(1)))
+```
+
+The `===` operation
+
+```js
+list(op("==="), reg(reg₁), reg(reg₂))
+```
+
+simply tests the equality of all fields in the registers, and predicates such as `is_pair`, `is_null`, `is_string` and `is_number` need only check the type field.
+
+## Implementing stacks
+
+Although our register machines use stacks, we need do nothing special here, since stacks can be modeled in terms of lists. The stack can be a list of the saved values, pointed to by a special register `the_stack`. Thus `save(reg)` can be implemented as
+
+```js
+assign("the_stack", list(op("pair"), reg(reg), reg("the_stack")))
+```
+
+Similarly, `restore(reg)` can be implemented as
+
+```js
+assign(reg, list(op("head"), reg("the_stack")))
+assign("the_stack", list(op("tail"), reg("the_stack")))
+```
+
+and `perform(list(op("initialize_stack")))` as
+
+```js
+assign("the_stack", constant(null))
+```
+
+These operations can be further expanded in terms of the vector operations given above. The program below does the same thing with a name in place of the register.
+
+</Prose>
+
+<Example index={1} file="stack.sicp" source={memoryStackProgram} anim="memory">
+
+Three saves make three pairs; the restore only moves `the_stack` from `p1` back to `p0`. The third save then builds `p2` on top of `p0`, so the pair at `p1`, which held 2, is still in memory but nothing points at it. Collecting such pairs is the subject of §5.3.2.
+
+</Example>
+
+<Prose>
+
+In conventional computer architectures, however, it is usually advantageous to allocate the stack as a separate vector. Then pushing and popping the stack can be accomplished by incrementing or decrementing an index into that vector, and no pairs are made at all.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-5/memory.ts">
+
+The Laboratory's pairs are JavaScript arrays, not vector entries; `memoryImage` records each one as the evaluator makes it and numbers them from `start` in that order, writing the typed pointers of this section. `chapter-5/section-5-3.test.ts` asserts both layouts above, including that nothing points at `p1` after the restore, and `chapter-5/memory.test.ts` asserts the layout of exercise 5.19. The machines of exercises 5.20 and 5.21 run on the Laboratory's simulator with the list operations given to them as primitive operations, as the exercises assume.
+
+</UnderTheHood>
+
+<Exercises range="5.19 – 5.21" total={3}>
+<Exercise id="5.19">
+
+Draw the box-and-pointer representation and the memory-vector representation of the list structure produced by
+
+```js
+const x = pair(1, 2);
+const y = list(x, x);
+```
+
+with the `free` pointer initially `p1`. `list(a, b)` is `pair(a, pair(b, null))`, and the inner pair is made first. Record indices 1 to 3 of `the_heads` and `the_tails` as lists of pointer strings, such as `list("n7", "e0", "p2")`, the final value of `free` as a pair pointer string such as `"p7"`, and the pointers that represent the values of `x` and `y`. Work it out by hand; you can confirm it afterwards in the first editor on this page.
+
+<Solution>
+
+**Solution.** `x` is the pair at index 1, holding `n1` and `n2`. `list(x, x)` makes `pair(x, null)` at index 2 and then `pair(x, p2)` at index 3, so both heads are `p1`: the two elements of `y` are one and the same pair, not copies. `free` ends at `p4`, `x` is `p1` and `y` is `p3`.
+
+</Solution>
+</Exercise>
+<Exercise id="5.20">
+
+Implement register machines for the following functions, assuming that the list-structure memory operations are available as machine primitives. The starter gives each machine the operations `is_null`, `is_pair`, `head`, `tail` and `+`; use only those. Each machine finds the tree in register `tree` and leaves the count in `val`.
+
+Recursive `count_leaves`:
+
+```js
+function count_leaves(tree) {
+    return is_null(tree)
+           ? 0
+           : ! is_pair(tree)
+           ? 1
+           : count_leaves(head(tree)) +
+             count_leaves(tail(tree));
+}
+```
+
+Recursive `count_leaves` with explicit counter:
+
+```js
+function count_leaves(tree) {
+    function count_iter(tree, n) {
+        return is_null(tree)
+               ? n
+               : ! is_pair(tree)
+               ? n + 1
+               : count_iter(tail(tree),
+                            count_iter(head(tree), n));
+    }
+    return count_iter(tree, 0);
+}
+```
+
+The checker runs both machines on six trees, from `null` and a lone leaf to nested lists, checks that the recursive one uses the stack, and checks the operations each machine was given.
+
+<Solution>
+
+**Solution.** The recursive machine is the double recursion of the Fibonacci machine (§5.1.4) with a test for each base case: to count a pair it saves `continue` and `tree`, counts the head, then saves that count in `val` while it counts the tail, and adds the two. The counter version keeps the running count in `n` and never saves it. Counting the head is still a recursive call, so it saves `tree` and `continue`; but counting the tail with the new `n` is the last thing `count_iter` does, so the machine simply goes back to the loop with nothing saved, two pushes per pair instead of three.
+
+</Solution>
+</Exercise>
+<Exercise id="5.21">
+
+Exercise 3.12 of §3.3.1 presented an `append` function that appends two lists to form a new list, and an `append_mutator` function that splices two lists together. Design a register machine to implement each of these functions, assuming that the list-structure memory operations are available as primitive operations. The functions are in the starter as comments. Each machine finds its lists in registers `x` and `y` and leaves the result in `val`.
+
+The checker compares the results on several lists. For `append` it checks that the result is made of new pairs, that `x` is unchanged and that, as with the function, the result ends in `y` itself. For `append_mutator` it checks that the result is `x` itself, now with `y` spliced on after its last pair, and that the machine uses no stack. Both machines may use only the list-structure operations (`is_null`, `is_pair`, `pair`, `head`, `tail`, `set_head`, `set_tail`).
+
+<Solution>
+
+**Solution.** `append` is recursive, like `count_leaves`: the machine saves `x` and `continue`, appends the tail of `x` to `y`, and on the way back pairs the head of the saved `x` onto the result in `val`. When `x` is empty the result is `y` itself. `append_mutator` is iterative: it walks a register `last` down `x` until the tail of `last` is `null`, performs `set_tail` on that pair, and returns `x`. Nothing has to be remembered while it walks, so it never saves anything.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['5.3.2', '5.4']} />

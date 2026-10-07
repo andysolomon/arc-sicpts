@@ -1,0 +1,103 @@
+import { gcdSubroutineProgram } from '@sicp/lab';
+
+<Prose>
+
+When designing a machine to perform a computation, we would often prefer to arrange for components to be shared by different parts of the computation rather than duplicate the components. Consider a machine that includes two GCD computations, one that finds the GCD of the contents of registers `a` and `b` and one that finds the GCD of the contents of registers `c` and `d`. We might start by assuming we have a primitive `gcd` operation, then expand the two instances of `gcd` in terms of more primitive operations. The result has two remainder operations and two equality tests in its data paths, and two copies of the GCD loop in its controller.
+
+If the duplicated components are complicated, as is the remainder box, this will not be an economical way to build the machine. We can avoid duplicating the data-path components by using the same components for both GCD computations, provided that doing so will not affect the rest of the larger machine's computation. If the values in registers `a` and `b` are not needed by the time the controller gets to the second GCD (or if these values can be moved to other registers for safekeeping), we can change the machine so that it uses registers `a` and `b`, rather than `c` and `d`, in computing the second GCD as well as the first. We then obtain this controller sequence:
+
+```js
+"gcd_1",
+  test(list(op("="), reg("b"), constant(0))),
+  branch(label("after_gcd_1")),
+  assign("t", list(op("rem"), reg("a"), reg("b"))),
+  assign("a", reg("b")),
+  assign("b", reg("t")),
+  go_to(label("gcd_1")),
+"after_gcd_1",
+  ⋮
+"gcd_2",
+  test(list(op("="), reg("b"), constant(0))),
+  branch(label("after_gcd_2")),
+  assign("t", list(op("rem"), reg("a"), reg("b"))),
+  assign("a", reg("b")),
+  assign("b", reg("t")),
+  go_to(label("gcd_2")),
+"after_gcd_2"
+```
+
+The duplicate data-path components are gone (the data paths are again those of the GCD machine of §5.1), but the controller now has two GCD sequences that differ only in their entry-point labels. It would be better to replace these two sequences by branches to a single sequence, a `gcd` *subroutine*, at the end of which we branch back to the correct place in the main instruction sequence. We can accomplish this as follows: before branching to `gcd`, we place a distinguishing value (such as 0 or 1) into a special register, `continue`. At the end of the `gcd` subroutine we return either to `after_gcd_1` or to `after_gcd_2`, depending on the value of the `continue` register:
+
+```js
+"gcd",
+  test(list(op("="), reg("b"), constant(0))),
+  branch(label("gcd_done")),
+  assign("t", list(op("rem"), reg("a"), reg("b"))),
+  assign("a", reg("b")),
+  assign("b", reg("t")),
+  go_to(label("gcd")),
+"gcd_done",
+  test(list(op("="), reg("continue"), constant(0))),
+  branch(label("after_gcd_1")),
+  go_to(label("after_gcd_2")),
+  ⋮
+  // Before branching to gcd from the first place where
+  // it is needed, we place 0 in the continue register
+  assign("continue", constant(0)),
+  go_to(label("gcd")),
+"after_gcd_1",
+  ⋮
+  // Before the second use of gcd, we place 1 in the continue register
+  assign("continue", constant(1)),
+  go_to(label("gcd")),
+"after_gcd_2"
+```
+
+This is a reasonable approach for handling small problems, but it would be awkward if there were many instances of GCD computations in the controller sequence. To decide where to continue executing after the `gcd` subroutine, we would need tests in the data paths and branch instructions in the controller for all the places that use `gcd`. A more powerful method for implementing subroutines is to have the `continue` register hold the label of the entry point in the controller sequence at which execution should continue when the subroutine is finished. Implementing this strategy requires a new kind of connection between the data paths and the controller of a register machine: there must be a way to assign to a register a label in the controller sequence in such a way that this value can be fetched from the register and used to continue execution at the designated entry point.
+
+To reflect this ability, we extend the `assign` instruction of the register-machine language to allow a register to be assigned as value a label from the controller sequence (as a special kind of constant). We also extend the `go_to` instruction to allow execution to continue at the entry point described by the contents of a register rather than only at an entry point described by a constant label. Using these new constructs we can terminate the `gcd` subroutine with a branch to the location stored in the `continue` register:
+
+```js
+"gcd",
+  test(list(op("="), reg("b"), constant(0))),
+  branch(label("gcd_done")),
+  assign("t", list(op("rem"), reg("a"), reg("b"))),
+  assign("a", reg("b")),
+  assign("b", reg("t")),
+  go_to(label("gcd")),
+"gcd_done",
+  go_to(reg("continue")),
+  ⋮
+  // Before calling gcd, we assign to continue
+  // the label to which gcd should return.
+  assign("continue", label("after_gcd_1")),
+  go_to(label("gcd")),
+"after_gcd_1",
+  ⋮
+  // Here is the second call to gcd, with a different continuation.
+  assign("continue", label("after_gcd_2")),
+  go_to(label("gcd")),
+"after_gcd_2"
+```
+
+</Prose>
+
+<Example index={0} file="two_gcds.sicp" source={gcdSubroutineProgram} anim="machine">
+
+A complete machine built this way: it computes the GCD of 206 and 40, keeps it in `first`, computes the GCD of 48 and 18, keeps it in `second`, and returns both, `list(2, 6)`. Watch `continue` receive the label `after_gcd_1`, then `after_gcd_2`; in the data paths it is marked as a register that holds entry points, and `go_to(reg("continue"))` at `gcd_done` sends the controller back to whichever label it holds. Add a third call with its own label.
+
+</Example>
+
+<Prose>
+
+A machine with more than one subroutine could use multiple continuation registers (e.g., `gcd_continue`, `factorial_continue`) or we could have all subroutines share a single `continue` register. Sharing is more economical, but we must be careful if we have a subroutine (`sub1`) that calls another subroutine (`sub2`). Unless `sub1` saves the contents of `continue` in some other register before setting up `continue` for the call to `sub2`, `sub1` will not know where to go when it is finished. The mechanism developed in the next section to handle recursion also provides a better solution to this problem of nested subroutine calls.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/machines/registerMachine.ts">
+
+A label in a register is a label value, which prints as `<label after_gcd_1>`. `machines/registerMachine.ts` executes `go_to(reg("continue"))` by checking that the register holds a label and jumping to it; anything else stops the machine with an error naming the register and what it holds. The test `chapter-5/section-5-1.test.ts` checks that the two-call machine returns `list(2, 6)`, and `chapter-5/machines.test.ts` that a `go_to` through a register holding no label is reported.
+
+</UnderTheHood>
+
+<Enables items={['5.1.4', { id: '5.4.1', label: 'continue in the evaluator' }]} />

@@ -386,9 +386,14 @@ function force_it(obj) {
     },
   ],
   solution: `// The parameters(...) application that begins a function body, or null.
+// A body that declares no names is its statements alone, without a block.
+function body_statements(body) {
+    return is_block(body) ? block_body(body) : body;
+}
+
 function parameter_declaration(body) {
-    if (is_block(body) && is_sequence(block_body(body))) {
-        const statements = sequence_statements(block_body(body));
+    if (is_sequence(body_statements(body))) {
+        const statements = sequence_statements(body_statements(body));
         if (is_null(statements)) {
             return null;
         } else {
@@ -405,8 +410,8 @@ function parameter_declaration(body) {
 }
 
 function body_after_declaration(body) {
-    return list("block",
-                list("sequence", tail(sequence_statements(block_body(body)))));
+    const rest = list("sequence", tail(sequence_statements(body_statements(body))));
+    return is_block(body) ? list("block", rest) : rest;
 }
 
 function list_of_args(kinds, exps, env) {

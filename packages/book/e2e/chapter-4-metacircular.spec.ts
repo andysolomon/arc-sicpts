@@ -15,7 +15,7 @@ test('§4.1.1 runs a program through the metacircular evaluator and draws the cy
 
   const scene = page.getByRole('region', { name: 'The evaluate–apply cycle' });
   await scene.scrollIntoViewIfNeeded();
-  await expect(scene.getByTestId('keyframe-counter')).toHaveText(/ \/ 21$/);
+  await expect(scene.getByTestId('keyframe-counter')).toHaveText(/ \/ 20$/);
   await scene.getByRole('slider').fill('10');
   await expect(scene.getByTestId('caption')).toContainText('apply a compound function');
 });

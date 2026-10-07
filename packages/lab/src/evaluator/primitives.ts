@@ -2,7 +2,22 @@ import { SourceError } from '../syntax/errors.ts';
 import { parse as parseProgram } from '../syntax/parse.ts';
 import { toTaggedList } from '../syntax/taggedList.ts';
 import { define, extend, type Environment } from './environment.ts';
-import { APPLY_PRIMITIVE, ERROR_TEXT, isClosure, isPair, isPrimitive, listToString, stringify, typeName, type Pair, type Value } from './values.ts';
+import type { RegisterMachine } from '../machines/registerMachine.ts';
+import { installMachines } from '../machines/install.ts';
+import {
+  APPLY_PRIMITIVE,
+  ERROR_TEXT,
+  isClosure,
+  isPair,
+  isPrimitive,
+  listToArray,
+  listToString,
+  stringify,
+  typeName,
+  type Pair,
+  type Primitive,
+  type Value,
+} from './values.ts';
 
 const fail = (message: string): never => {
   throw new SourceError('runtime', message, null);
@@ -45,6 +60,26 @@ const MATH_UNARY = [
 /** A line from (x1, y1) to (x2, y2), drawn by `draw_line` (§2.2.4). */
 export type Segment = [x1: number, y1: number, x2: number, y2: number];
 
+export interface GlobalOptions {
+  /** Called with every machine that `make_machine` creates (§5.2). */
+  onMachine?: (machine: RegisterMachine) => void;
+  /** Called with every pair that `pair` or `list` allocates, in order (§5.3). */
+  onPair?: (pair: Pair) => void;
+  /** Instructions one start of a register machine may execute. */
+  maxInstructions?: number;
+}
+
+function listOf(name: string, value: Value): Value[] {
+  const items = listToArray(value);
+  return items ?? fail(`${name} expects a list, got ${stringify(value)}`);
+}
+
+/** Structural equality, as `equal` in §2.3.1; the library's `equal` is the same in Source. */
+function equal(a: Value, b: Value): boolean {
+  if (isPair(a) && isPair(b)) return equal(a[0], b[0]) && equal(a[1], b[1]);
+  return a === b;
+}
+
 /**
  * The outermost frame: the primitive functions and constants every program can see.
  * `display` output and `draw_line` lines are handed to the caller instead of being shown.
@@ -52,11 +87,15 @@ export type Segment = [x1: number, y1: number, x2: number, y2: number];
 export function createGlobalEnvironment(
   display: (text: string) => void,
   draw: (segment: Segment) => void = () => {},
+  options: GlobalOptions = {},
 ): Environment {
   const env = extend(null, 'global', 'global');
+  const primitives: Primitive[] = [];
 
   const primitive = (name: string, arity: number | null, impl: (...args: Value[]) => Value): void => {
-    define(env, name, { tag: 'primitive', name, arity, impl });
+    const value: Primitive = { tag: 'primitive', name, arity, impl };
+    primitives.push(value);
+    define(env, name, value);
   };
 
   for (const fn of MATH_UNARY) {
@@ -88,21 +127,29 @@ export function createGlobalEnvironment(
     if (values.length === 2 && typeof message === 'string') return fail(`${message} ${stringify(value, ERROR_TEXT)}`);
     return fail(values.map((v) => (typeof v === 'string' ? v : stringify(v, ERROR_TEXT))).join(' '));
   });
+  primitive('parse_int', 2, (text, radix) =>
+    typeof text === 'string' ? Number.parseInt(text, number('parse_int', radix)) : fail(`parse_int expects a string, got ${typeName(text)}`),
+  );
 
-  primitive('pair', 2, (head, tail) => [head, tail]);
+  const allocate = (head: Value, tail: Value): Pair => {
+    const cell: Pair = [head, tail];
+    options.onPair?.(cell);
+    return cell;
+  };
+  primitive('pair', 2, allocate);
   primitive('head', 1, (p) => (isPair(p) ? p[0] : fail(`head expects a pair, got ${typeName(p)}`)));
   primitive('tail', 1, (p) => (isPair(p) ? p[1] : fail(`tail expects a pair, got ${typeName(p)}`)));
-  primitive('set_head', 2, (p, v) => {
+  primitive('set_head', 2, (p, value) => {
     if (!isPair(p)) fail(`set_head expects a pair, got ${typeName(p)}`);
-    (p as Pair)[0] = v;
+    (p as Pair)[0] = value;
     return undefined;
   });
-  primitive('set_tail', 2, (p, v) => {
+  primitive('set_tail', 2, (p, value) => {
     if (!isPair(p)) fail(`set_tail expects a pair, got ${typeName(p)}`);
-    (p as Pair)[1] = v;
+    (p as Pair)[1] = value;
     return undefined;
   });
-  primitive('list', null, (...items) => items.reduceRight<Value>((rest, item) => [item, rest], null));
+  primitive('list', null, (...items) => items.reduceRight<Value>((rest, item) => allocate(item, rest), null));
   primitive('is_null', 1, (v) => v === null);
   primitive('is_pair', 1, (v) => isPair(v));
   primitive('is_number', 1, (v) => typeof v === 'number');
@@ -142,6 +189,13 @@ export function createGlobalEnvironment(
     return undefined;
   });
 
+  // `assoc` as in §3.3.3: the record whose key is `equal` to `key`, or undefined.
+  primitive('assoc', 2, (key, records) => {
+    for (const record of listOf('assoc', records)) {
+      if (isPair(record) && equal(key, record[0])) return record;
+    }
+    return undefined;
+  });
   // For the evaluators of Chapter 4. The list library's functions that take
   // functions are Source, in `library.ts`: a primitive cannot call back into
   // the evaluator.
@@ -159,5 +213,10 @@ export function createGlobalEnvironment(
     }
   });
 
+  installMachines(env, primitives, {
+    display,
+    ...(options.onMachine !== undefined && { onMachine: options.onMachine }),
+    ...(options.maxInstructions !== undefined && { maxInstructions: options.maxInstructions }),
+  });
   return env;
 }

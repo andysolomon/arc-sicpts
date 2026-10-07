@@ -48,11 +48,11 @@ describe('parse (§4.1.2)', () => {
 });
 
 describe('the metacircular evaluator (§4.1.1–§4.1.4)', () => {
-  it('runs the cycle of §4.1.1: 18 calls of evaluate and 3 of apply for square(3) + 1', () => {
+  it('runs the cycle of §4.1.1: 17 calls of evaluate and 3 of apply for square(3) + 1', () => {
     const log = createCallLogTracer(['evaluate', 'apply']);
     const outcome = evaluate(programs.evalApplyProgram, { budget: BUDGET, prelude: metacircularPrelude, hooks: [log.hooks] });
     expect(outcome.status === 'done' && outcome.text).toBe('10');
-    expect(log.calls.filter((c) => c.name === 'evaluate')).toHaveLength(18);
+    expect(log.calls.filter((c) => c.name === 'evaluate')).toHaveLength(17);
     expect(log.calls.filter((c) => c.name === 'apply')).toHaveLength(3);
   });
 
@@ -113,7 +113,7 @@ describe('the analyzing evaluator (§4.1.7)', () => {
     expect(analyzed.text).toBe('3628800');
     expect(plain.text).toBe('3628800');
     // The numbers of the page and of exercise 4.22.
-    expect([plain.steps, analyzed.steps]).toEqual([88_071, 54_040]);
+    expect([plain.steps, analyzed.steps]).toEqual([76_076, 46_980]);
     expect(analyzed.steps / plain.steps).toBeGreaterThan(0.55);
     expect(analyzed.steps / plain.steps).toBeLessThan(0.7);
   });

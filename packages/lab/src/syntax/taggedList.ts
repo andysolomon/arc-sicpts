@@ -1,5 +1,5 @@
 import type { Value } from '../evaluator/values.ts';
-import type { Block, Expression, Lambda, Program, Statement } from './ast.ts';
+import { isDeclaration, type Block, type Expression, type Lambda, type Program, type Statement } from './ast.ts';
 
 /**
  * The tagged-list representation of a program that SICP JS's `parse` returns
@@ -19,7 +19,12 @@ function sequence(statements: readonly Statement[]): Value {
   return list('sequence', list(...statements.map(statement)));
 }
 
-const block = (node: Block): Value => list('block', sequence(node.body));
+/**
+ * As Source's `parse` does, a block that declares no names is represented by
+ * its statements alone; the book's footnote in §4.1.2 allows this, and the
+ * compiled code of §5.5.5 and the stack figures of §5.4.4 assume it.
+ */
+const block = (node: Block): Value => (node.body.some(isDeclaration) ? list('block', sequence(node.body)) : sequence(node.body));
 
 function lambda(node: Lambda): Value {
   const body = node.body.kind === 'block' ? block(node.body) : list('return_statement', expression(node.body));
@@ -75,7 +80,7 @@ function statement(node: Statement): Value {
         expression(node.test),
         block(node.consequent),
         node.alternative === null
-          ? list('block', list('sequence', null))
+          ? list('sequence', null)
           : node.alternative.kind === 'if'
             ? statement(node.alternative)
             : block(node.alternative),

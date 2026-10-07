@@ -59,6 +59,7 @@ export function Exercise({ id, children }: ExerciseProps) {
       source: programOf(spec, source),
       tests: spec.tests,
       ...(spec.prelude !== undefined && { prelude: spec.prelude }),
+      ...(spec.context !== undefined && { context: spec.context }),
       ...(spec.budget !== undefined && { budget: spec.budget }),
       ...(spec.seed !== undefined && { seed: spec.seed }),
     });

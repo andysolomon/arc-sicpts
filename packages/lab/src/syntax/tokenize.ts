@@ -169,6 +169,34 @@ export function tokenize(source: string): Token[] {
       continue;
     }
 
+    // A template literal without substitutions: a string that may span lines,
+    // as the programs handed to `parse` in chapters 4 and 5 are written.
+    if (ch === '`') {
+      let j = i + 1;
+      let value = '';
+      for (;;) {
+        const c = source[j];
+        if (c === undefined) fail('Unterminated template string', i, j);
+        if (c === '`') break;
+        if (c === '$' && source[j + 1] === '{') {
+          fail('Template substitutions are not part of this Source subset', j, j + 2);
+        }
+        if (c === '\\') {
+          const escaped = source[j + 1] ?? '';
+          const decoded = escaped === '`' || escaped === '$' ? escaped : ESCAPES[escaped];
+          if (decoded === undefined) fail(`Unknown escape \\${escaped}`, j, j + 2);
+          value += decoded;
+          j += 2;
+          continue;
+        }
+        value += c;
+        j++;
+      }
+      tokens.push({ type: 'string', text: source.slice(i, j + 1), value, loc: locOf(i, j + 1) });
+      i = j + 1;
+      continue;
+    }
+
     const identifier = IDENTIFIER.exec(rest);
     if (identifier !== null) {
       const text = identifier[0];

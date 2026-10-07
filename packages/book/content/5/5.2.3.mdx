@@ -1,0 +1,410 @@
+import { assemblyTimeErrorProgram, executionFunctionProgram, simulatorSource } from '@sicp/lab';
+
+<Prose>
+
+The assembler calls `make_execution_function` to generate the execution function for a controller instruction. Like the `analyze` function in the evaluator of §4.1.7, this dispatches on the type of instruction to generate the appropriate execution function. The details of these execution functions determine the meaning of the individual instructions in the register-machine language.
+
+```js
+function make_execution_function(inst, labels, machine,
+                                 pc, flag, stack, ops) {
+    return type(inst) === "assign"
+           ? make_assign_ef(inst, machine, labels, ops, pc)
+           : type(inst) === "test"
+           ? make_test_ef(inst, machine, labels, ops, flag, pc)
+           : type(inst) === "branch"
+           ? make_branch_ef(inst, machine, labels, flag, pc)
+           : type(inst) === "go_to"
+           ? make_go_to_ef(inst, machine, labels, pc)
+           : type(inst) === "save"
+           ? make_save_ef(inst, machine, stack, pc)
+           : type(inst) === "restore"
+           ? make_restore_ef(inst, machine, stack, pc)
+           : type(inst) === "push_marker_to_stack"
+           ? make_push_marker_to_stack_ef(machine, stack, pc)
+           : type(inst) === "revert_stack_to_marker"
+           ? make_revert_stack_to_marker_ef(machine, stack, pc)
+           : type(inst) === "perform"
+           ? make_perform_ef(inst, machine, labels, ops, pc)
+           : error(inst, "unknown instruction type -- assemble");
+}
+```
+
+The elements of the controller sequence received by `make_machine` and passed to `assemble` are strings (for labels) and tagged lists (for instructions). The tag in an instruction is a string that identifies the instruction type, such as `"go_to"`, and the remaining elements of the list contain the arguments, such as the destination of the `go_to`. The dispatch in `make_execution_function` uses
+
+```js
+function type(instruction) { return head(instruction); }
+```
+
+The tagged lists are constructed when the `list` expression that is the third argument to `make_machine` is evaluated. Each argument to that `list` is either a string (which evaluates to itself) or a call to a constructor for an instruction tagged list. For example, `assign("b", reg("t"))` calls the constructor `assign` with arguments `"b"` and the result of calling the constructor `reg` with the argument `"t"`. The constructors and their arguments determine the syntax of the individual instructions in the register-machine language. The instruction constructors and selectors are shown below, along with the execution-function generators that use the selectors.
+
+## The instruction `assign`
+
+`make_assign_ef` makes execution functions for `assign` instructions:
+
+```js
+function make_assign_ef(inst, machine, labels, operations, pc) {
+    const target = get_register(machine, assign_reg_name(inst));
+    const value_exp = assign_value_exp(inst);
+    const value_fun =
+        is_operation_exp(value_exp)
+        ? make_operation_exp_ef(value_exp, machine, labels, operations)
+        : make_primitive_exp_ef(value_exp, machine, labels);
+    return () => {
+               set_contents(target, value_fun());
+               advance_pc(pc);
+           };
+}
+```
+
+The function `assign` constructs `assign` instructions. The selectors `assign_reg_name` and `assign_value_exp` extract the register name and value expression from an `assign` instruction.
+
+```js
+function assign(register_name, source) {
+    return list("assign", register_name, source);
+}
+function assign_reg_name(assign_instruction) {
+    return head(tail(assign_instruction));
+}
+function assign_value_exp(assign_instruction) {
+    return head(tail(tail(assign_instruction)));
+}
+```
+
+`make_assign_ef` looks up the register name with `get_register` to produce the target register object. The value expression is passed to `make_operation_exp_ef` if the value is the result of an operation, and to `make_primitive_exp_ef` otherwise. These functions (shown below) analyze the value expression and produce an execution function for the value: a function of no arguments, called `value_fun`, which will be evaluated during the simulation to produce the actual value to be assigned to the register. Notice that the work of looking up the register name and analyzing the value expression is performed just once, at assembly time, not every time the instruction is simulated. This saving of work is the reason we use execution functions, and corresponds directly to the saving we obtained by separating program analysis from execution in the evaluator of §4.1.7.
+
+The result returned by `make_assign_ef` is the execution function for the `assign` instruction. When this function is called (by the machine model's `execute` function), it sets the contents of the target register to the result obtained by executing `value_fun`. Then it advances the `pc` to the next instruction by running the function
+
+```js
+function advance_pc(pc) {
+    set_contents(pc, tail(get_contents(pc)));
+}
+```
+
+`advance_pc` is the normal termination for all instructions except `branch` and `go_to`.
+
+</Prose>
+
+<Example index={0} file="execution_function.sicp" source={executionFunctionProgram} prelude={simulatorSource}>
+
+An execution function made and called by hand. The machine has no controller (`null`); `make_execution_function` turns one `assign` into a function of no arguments, with the registers `a` and `b` and the `+` operation already looked up. Each call adds `b` to `a` (7, then 11) and advances `pc` one place along whatever list it holds. Change `reg("b")` to `reg("c")`: the error comes when the execution function is made, not when it is called.
+
+</Example>
+
+<Prose>
+
+## The instructions `test`, `branch` and `go_to`
+
+`make_test_ef` handles `test` instructions in a similar way. It extracts the expression that specifies the condition to be tested and generates an execution function for it. At simulation time, the function for the condition is called, the result is assigned to the `flag` register, and the `pc` is advanced:
+
+```js
+function make_test_ef(inst, machine, labels, operations, flag, pc) {
+    const condition = test_condition(inst);
+    if (is_operation_exp(condition)) {
+        const condition_fun = make_operation_exp_ef(
+                                  condition, machine,
+                                  labels, operations);
+        return () => {
+                   set_contents(flag, condition_fun());
+                   advance_pc(pc);
+               };
+    } else {
+        error(inst, "bad test instruction -- assemble");
+    }
+}
+
+function test(condition) { return list("test", condition); }
+
+function test_condition(test_instruction) {
+    return head(tail(test_instruction));
+}
+```
+
+The execution function for a `branch` instruction checks the contents of the `flag` register and either sets the contents of the `pc` to the branch destination (if the branch is taken) or else just advances the `pc` (if the branch is not taken). Notice that the indicated destination in a `branch` instruction must be a label, and `make_branch_ef` enforces this. Notice also that the label is looked up at assembly time, not each time the `branch` instruction is simulated.
+
+```js
+function make_branch_ef(inst, machine, labels, flag, pc) {
+    const dest = branch_dest(inst);
+    if (is_label_exp(dest)) {
+        const insts = lookup_label(labels, label_exp_label(dest));
+        return () => {
+                   if (get_contents(flag)) {
+                       set_contents(pc, insts);
+                   } else {
+                       advance_pc(pc);
+                   }
+               };
+    } else {
+        error(inst, "bad branch instruction -- assemble");
+    }
+}
+
+function branch(label) { return list("branch", label); }
+
+function branch_dest(branch_instruction) {
+    return head(tail(branch_instruction));
+}
+```
+
+A `go_to` instruction is similar to a branch, except that the destination may be specified either as a label or as a register, and there is no condition to check: the `pc` is always set to the new destination.
+
+```js
+function make_go_to_ef(inst, machine, labels, pc) {
+    const dest = go_to_dest(inst);
+    if (is_label_exp(dest)) {
+        const insts = lookup_label(labels, label_exp_label(dest));
+        return () => set_contents(pc, insts);
+    } else if (is_register_exp(dest)) {
+        const reg = get_register(machine, register_exp_reg(dest));
+        return () => set_contents(pc, get_contents(reg));
+    } else {
+        error(inst, "bad go_to instruction -- assemble");
+    }
+}
+
+function go_to(label) { return list("go_to", label); }
+
+function go_to_dest(go_to_instruction) {
+    return head(tail(go_to_instruction));
+}
+```
+
+## Other instructions
+
+The stack instructions `save` and `restore` simply use the stack with the designated register and advance the `pc`:
+
+```js
+function make_save_ef(inst, machine, stack, pc) {
+    const reg = get_register(machine, stack_inst_reg_name(inst));
+    return () => {
+               push(stack, get_contents(reg));
+               advance_pc(pc);
+           };
+}
+function make_restore_ef(inst, machine, stack, pc) {
+    const reg = get_register(machine, stack_inst_reg_name(inst));
+    return () => {
+               set_contents(reg, pop(stack));
+               advance_pc(pc);
+           };
+}
+
+function save(reg) { return list("save", reg); }
+
+function restore(reg) { return list("restore", reg); }
+
+function stack_inst_reg_name(stack_instruction) {
+    return head(tail(stack_instruction));
+}
+```
+
+The two marker instructions that §5.4 needs send the stack its `push_marker` and `pop_marker` requests (§5.2.1). `revert_stack_to_marker` throws away everything pushed since the most recent `push_marker_to_stack`.
+
+```js
+function make_push_marker_to_stack_ef(machine, stack, pc) {
+    return () => {
+               push_marker(stack);
+               advance_pc(pc);
+           };
+}
+function make_revert_stack_to_marker_ef(machine, stack, pc) {
+    return () => {
+               pop_marker(stack);
+               advance_pc(pc);
+           };
+}
+
+function push_marker_to_stack() { return list("push_marker_to_stack"); }
+function revert_stack_to_marker() { return list("revert_stack_to_marker"); }
+```
+
+The final instruction type, handled by `make_perform_ef`, generates an execution function for the action to be performed. At simulation time, the action function is executed and the `pc` advanced.
+
+```js
+function make_perform_ef(inst, machine, labels, operations, pc) {
+    const action = perform_action(inst);
+    if (is_operation_exp(action)) {
+        const action_fun = make_operation_exp_ef(action, machine,
+                                                 labels, operations);
+        return () => {
+                   action_fun();
+                   advance_pc(pc);
+               };
+    } else {
+        error(inst, "bad perform instruction -- assemble");
+    }
+}
+
+function perform(action) { return list("perform", action); }
+
+function perform_action(perform_instruction) {
+    return head(tail(perform_instruction));
+}
+```
+
+## Execution functions for subexpressions
+
+The value of a `reg`, `label` or `constant` expression may be needed for assignment to a register (`make_assign_ef`, above) or for input to an operation (`make_operation_exp_ef`, below). The following function generates execution functions to produce values for these expressions during the simulation:
+
+```js
+function make_primitive_exp_ef(exp, machine, labels) {
+    if (is_constant_exp(exp)) {
+        const c = constant_exp_value(exp);
+        return () => c;
+    } else if (is_label_exp(exp)) {
+        const insts = lookup_label(labels, label_exp_label(exp));
+        return () => insts;
+    } else if (is_register_exp(exp)) {
+        const r = get_register(machine, register_exp_reg(exp));
+        return () => get_contents(r);
+    } else {
+        error(exp, "unknown expression type -- assemble");
+    }
+}
+```
+
+The syntax of `reg`, `label` and `constant` expressions is determined by the following constructors, along with corresponding predicates and selectors. `is_tagged_list` is the function of §4.1.2.
+
+```js
+function reg(name) { return list("reg", name); }
+
+function is_register_exp(exp) { return is_tagged_list(exp, "reg"); }
+
+function register_exp_reg(exp) { return head(tail(exp)); }
+
+function constant(value) { return list("constant", value); }
+
+function is_constant_exp(exp) {
+    return is_tagged_list(exp, "constant");
+}
+
+function constant_exp_value(exp) { return head(tail(exp)); }
+
+function label(name) { return list("label", name); }
+
+function is_label_exp(exp) { return is_tagged_list(exp, "label"); }
+
+function label_exp_label(exp) { return head(tail(exp)); }
+```
+
+The instructions `assign`, `perform` and `test` may include the application of a machine operation (specified by an `op` expression) to some operands (specified by `reg` and `constant` expressions). The following function produces an execution function for an operation expression, a list containing the operation and operand expressions from the instruction:
+
+```js
+function make_operation_exp_ef(exp, machine, labels, operations) {
+    const op = lookup_prim(operation_exp_op(exp), operations);
+    const afuns = map(e => make_primitive_exp_ef(e, machine, labels),
+                      operation_exp_operands(exp));
+    return () => apply_in_underlying_javascript(
+                     op, map(f => f(), afuns));
+}
+```
+
+The syntax of operation expressions is determined by
+
+```js
+function op(name) { return list("op", name); }
+
+function is_operation_exp(exp) {
+    return is_pair(exp) && is_tagged_list(head(exp), "op");
+}
+
+function operation_exp_op(op_exp) { return head(tail(head(op_exp))); }
+
+function operation_exp_operands(op_exp) { return tail(op_exp); }
+```
+
+Observe that the treatment of operation expressions is very much like the treatment of function applications by `analyze_application` in the evaluator of §4.1.7, in that we generate an execution function for each operand. At simulation time, we call the operand functions and apply the JavaScript function that simulates the operation to the resulting values. We use `apply_in_underlying_javascript`, as `apply_primitive_function` did in §4.1.4, to apply `op` to all the elements of the argument list as if they were separate arguments. Without it, `op` would be restricted to be a function of one argument.
+
+The simulation function is found by looking up the operation name in the operation table for the machine:
+
+```js
+function lookup_prim(symbol, operations) {
+    const val = assoc(symbol, operations);
+    return is_undefined(val)
+           ? error(symbol, "unknown operation -- assemble")
+           : head(tail(val));
+}
+```
+
+</Prose>
+
+<Example index={1} file="assembly_time.sicp" source={assemblyTimeErrorProgram} prelude={simulatorSource}>
+
+The machine jumps straight past its `assign`, so the instruction would never run, yet `make_machine` fails: the assembler looks up `*` while making the execution function, and the machine has no such operation (the message says `Hidden prelude, line …`: the error is raised inside the hidden simulator, by the `error` in `lookup_prim`). Errors in the controller's syntax, unknown registers, labels and operations, are all caught this way, before the machine starts. Add `list("*", (x, y) => x * y)` to the operations and the program prints `"assembled"`.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-5/simulator.ts">
+
+The code on this page is `executionSource` in `simulator.ts`. The test `chapter-5/section-5-2.test.ts` checks that the first editor prints 7 and 11 and leaves `pc` at `list("third")`, and that the second stops with `unknown operation -- assemble "*"`. The Laboratory's own simulator, `machines/registerMachine.ts`, compiles each instruction to a closure in the same way and reports the same assembly-time errors in its own words (`chapter-5/machines.test.ts`).
+
+</UnderTheHood>
+
+<Exercises range="5.9 – 5.12" total={4}>
+<Exercise id="5.9">
+
+The treatment of machine operations above permits them to operate on labels as well as on constants and the contents of registers. Modify the expression-processing functions to enforce the condition that operations can be used only with registers and constants. The editor holds `make_operation_exp_ef`; the rest of the simulator is in place around it and calls your version. The checker expects an error when a machine applies an operation to a label, in an `assign` or a `test`, and checks that the GCD machine still works and that the factorial machine can still assign a label to `continue`.
+
+<Solution>
+
+**Solution.** The place to check is where operands are analyzed: map each operand expression to an error if `is_label_exp` holds, and to `make_primitive_exp_ef` otherwise. `make_primitive_exp_ef` itself must still accept labels, because `assign("continue", label("after_fact"))` uses it directly, without an operation.
+
+</Solution>
+</Exercise>
+<Exercise id="5.10">
+
+When we introduced `save` and `restore` in §5.1.4, we didn't specify what would happen if you tried to restore a register that was not the last one saved, as in the sequence
+
+```js
+save(y);
+save(x);
+restore(y);
+```
+
+There are several reasonable possibilities for the meaning of `restore`:
+
+- **a.** `restore(y)` puts into `y` the last value saved on the stack, regardless of what register that value came from. This is the way our simulator behaves. Show how to take advantage of this behavior to eliminate one instruction from the Fibonacci machine of §5.1.4. The starter's `fib_controller_short` is that machine's controller; remove one instruction.
+- **b.** `restore(y)` puts into `y` the last value saved on the stack, but only if that value was saved from `y`; otherwise, it signals an error. Modify the simulator to behave this way. You will have to change `save` to put the register name on the stack along with the value. The editor holds `make_save_ef` and `make_restore_ef`.
+- **c.** `restore(y)` puts into `y` the last value saved from `y`, regardless of what other registers were saved after `y` and not restored. Modify the simulator to behave this way. You will have to associate a separate stack with each register, and make the `initialize_stack` operation initialize all the register stacks.
+
+The checker runs your controller from part (a) on the Laboratory's simulator, which behaves as in part (a), for Fib(6) and Fib(10) and counts its instructions. It checks part (b) by restoring in the right and in the wrong order, by running the original Fibonacci machine on your simulator, and by running your controller from part (a) on it, which must now fail. Part (c) changes `restore` again, in a way incompatible with part (b), so it is not checked; the solution describes it.
+
+<Solution>
+
+**Solution.** (a) At `afterfib_n_2`, `val` holds Fib(*n* − 2) and the top of the stack is Fib(*n* − 1), saved from `val`. The original moves `val` into `n` and then restores `val`; instead, `restore("n")` puts Fib(*n* − 1) straight into `n`, and `val` keeps Fib(*n* − 2). The sum is the same, and two instructions become one, 21 instead of 22.
+
+(b) `make_save_ef` pushes `pair(name, value)`, and the execution function made by `make_restore_ef` pops a pair, compares its head with the register's name, and either sets the register to the tail or signals an error. The shortened controller from part (a) now fails at its first `restore("n")`, since the value was saved from `val`.
+
+(c) Give each register its own stack, for example by making the register table hold a stack beside each register; `save` and `restore` find the stack with the register, and `initialize_stack` walks the register table initializing every stack. This part is not checked: parts (b) and (c) give `restore` incompatible meanings, and the editor holds one simulator.
+
+</Solution>
+</Exercise>
+<Exercise id="5.11">
+
+The simulator can be used to help determine the data paths required for implementing a machine with a given controller. Extend the assembler to store the following information in the machine model:
+
+- a list of all instructions, with duplicates removed, sorted by instruction type (`assign`, `go_to`, and so on);
+- a list (without duplicates) of the registers used to hold entry points (these are the registers referenced by `go_to` instructions);
+- a list (without duplicates) of the registers that are `save`d or `restore`d;
+- for each register, a list (without duplicates) of the sources from which it is assigned (for example, the sources for register `val` in the factorial machine of §5.1.4 are `constant(1)` and `list(op("*"), reg("n"), reg("val"))`).
+
+Extend the message-passing interface to the machine to provide access to this new information: `machine("instructions")`, `machine("entry_registers")`, `machine("stack_registers")`, and `machine("sources")`, a function that takes a register name and returns its list of sources. The editor holds `assemble` and `make_new_machine`. The checker defines the Fibonacci machine of §5.1.4 and examines the lists you construct, in any order within each list, except that instructions of one type must be together; it also checks that the GCD machine has no entry-point registers.
+
+<Solution>
+
+**Solution.** `assemble` has the controller instructions in hand once `extract_labels` has run, so it computes the four lists from `map(inst_controller_instruction, insts)` and sends them to the machine with a new message, `"install_data_paths"`; `make_new_machine` keeps them in a local name and answers the four questions from it. Duplicates are removed with `equal`, because instructions are lists. Grouping by type keeps the types in the order they first appear and appends, for each, the instructions of that type. For the Fibonacci machine the entry-point register is `continue`, the stack registers are `continue`, `n` and `val`, and `n` is assigned from `n − 1`, `n − 2` and `val`.
+
+</Solution>
+</Exercise>
+<Exercise id="5.12">
+
+Modify the simulator so that it uses the controller sequence to determine what registers the machine has, rather than requiring a list of registers as an argument to `make_machine`. Instead of preallocating the registers in `make_machine`, you can allocate them one at a time when they are first seen during assembly of the instructions. Your `make_machine` takes two arguments, the operations and the controller. The editor holds `make_machine` and `make_new_machine`; the checker runs the GCD and factorial machines made with two arguments.
+
+<Solution>
+
+**Solution.** `make_machine` drops its first parameter and the loop that allocates registers. The assembler finds every register through `get_register`, which sends the machine `"get_register"`, so the simplest change is in `lookup_register`: when the name is not in the register table, allocate it and look it up again. Every register the controller mentions is then allocated during assembly, before `set_register_contents` needs it.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['5.2.4', { id: '5.4.1', label: 'The evaluator as a machine' }]} />

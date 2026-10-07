@@ -1,0 +1,270 @@
+import { ecevalArgumentsProgram, ecevalControllerSource, ecevalCountProgram, ecevalMachineSource } from '@sicp/lab';
+
+<Prose>
+
+A function application is specified by a combination containing a function expression and argument expressions. The function expression is a subexpression whose value is a function, and the argument expressions are subexpressions whose values are the arguments to which the function should be applied. The metacircular `evaluate` handles applications by calling itself recursively to evaluate each element of the combination, and then passing the results to `apply`, which performs the actual function application. The explicit-control evaluator does the same thing; these recursive calls are implemented by `go_to` instructions, together with use of the stack to save registers that will be restored after the recursive call returns. Before each call we will be careful to identify which registers must be saved, because their values will be needed later. (We could instead save all the registers except `val` before each recursive call, a *framed-stack* discipline. That would work, but might save more than necessary, which matters where stack operations are expensive; and saving registers whose contents will not be needed may hold on to useless data that could otherwise be garbage-collected.)
+
+As in the metacircular evaluator, operator combinations are transformed into applications of primitive functions corresponding to the operators. This takes place at `ev_operator_combination`, which performs this transformation in place in `comp` and falls through to `ev_application`. (We assume that the syntax transformer `operator_combination_to_application` is available as a machine operation. An implementation built from scratch would perform source-level transformations like this one in a syntax phase that runs before execution.)
+
+We begin the evaluation of an application by evaluating the function expression to produce a function, which will later be applied to the evaluated argument expressions. To evaluate the function expression, we move it to the `comp` register and go to `eval_dispatch`. The environment in the `env` register is already the correct one in which to evaluate the function expression. However, we save `env` because we will need it later to evaluate the argument expressions. We also extract the argument expressions into `unev` and save this on the stack. We set up `continue` so that `eval_dispatch` will resume at `ev_appl_did_function_expression` after the function expression has been evaluated. First, however, we save the old value of `continue`, which tells the controller where to continue after the application.
+
+```js
+"ev_operator_combination",
+  assign("comp", list(op("operator_combination_to_application"),
+                      reg("comp"))),
+"ev_application",
+  save("continue"),
+  save("env"),
+  assign("unev", list(op("arg_expressions"), reg("comp"))),
+  save("unev"),
+  assign("comp", list(op("function_expression"), reg("comp"))),
+  assign("continue", label("ev_appl_did_function_expression")),
+  go_to(label("eval_dispatch")),
+```
+
+Upon returning from evaluating the function expression, we proceed to evaluate the argument expressions of the application and to accumulate the resulting arguments in a list, held in `argl`. (This is like the evaluation of a sequence of statements, except that we collect the values.) First we restore the unevaluated argument expressions and the environment. We initialise `argl` to an empty list. Then we assign to the `fun` register the function that was produced by evaluating the function expression. If there are no argument expressions, we go directly to `apply_dispatch`. Otherwise we save `fun` on the stack and start the argument-evaluation loop:
+
+```js
+"ev_appl_did_function_expression",
+  restore("unev"), // the argument expressions
+  restore("env"),
+  assign("argl", list(op("empty_arglist"))),
+  assign("fun", reg("val")), // the function
+  test(list(op("is_null"), reg("unev"))),
+  branch(label("apply_dispatch")),
+  save("fun"),
+```
+
+The operations on argument lists are two small additions to the evaluator's data structures, and the loop needs one more syntax function, to test for the last argument expression:
+
+```js
+function empty_arglist() { return null; }
+
+function adjoin_arg(arg, arglist) {
+    return append(arglist, list(arg));
+}
+
+function is_last_argument_expression(arg_expression) {
+    return is_null(tail(arg_expression));
+}
+```
+
+Each cycle of the argument-evaluation loop evaluates an argument expression from the list in `unev` and accumulates the result into `argl`. To evaluate an argument expression, we place it in the `comp` register and go to `eval_dispatch`, after setting `continue` so that execution will resume with the argument-accumulation phase. But first we save the arguments accumulated so far (held in `argl`), the environment (held in `env`), and the remaining argument expressions to be evaluated (held in `unev`). A special case is made for the evaluation of the last argument expression, which is handled at `ev_appl_last_arg`.
+
+```js
+"ev_appl_argument_expression_loop",
+  save("argl"),
+  assign("comp", list(op("head"), reg("unev"))),
+  test(list(op("is_last_argument_expression"), reg("unev"))),
+  branch(label("ev_appl_last_arg")),
+  save("env"),
+  save("unev"),
+  assign("continue", label("ev_appl_accumulate_arg")),
+  go_to(label("eval_dispatch")),
+```
+
+When an argument expression has been evaluated, the value is accumulated into the list held in `argl`. The argument expression is then removed from the list of unevaluated argument expressions in `unev`, and the argument-evaluation loop continues.
+
+```js
+"ev_appl_accumulate_arg",
+  restore("unev"),
+  restore("env"),
+  restore("argl"),
+  assign("argl", list(op("adjoin_arg"), reg("val"), reg("argl"))),
+  assign("unev", list(op("tail"), reg("unev"))),
+  go_to(label("ev_appl_argument_expression_loop")),
+```
+
+Evaluation of the last argument expression is handled differently, as is the last statement in a sequence. There is no need to save the environment or the list of unevaluated argument expressions before going to `eval_dispatch`, since they will not be required after the last argument expression is evaluated. Thus, we return from the evaluation to a special entry point `ev_appl_accum_last_arg`, which restores the argument list, accumulates the new argument, restores the saved function, and goes off to perform the application. (This optimisation is known as *evlis tail recursion*; see Wand 1980. Making the first argument expression a special case too would let us postpone initialising `argl` until after evaluating it, and so avoid saving `argl` then. The compiler of §5.5 performs this optimisation.)
+
+```js
+"ev_appl_last_arg",
+  assign("continue", label("ev_appl_accum_last_arg")),
+  go_to(label("eval_dispatch")),
+"ev_appl_accum_last_arg",
+  restore("argl"),
+  assign("argl", list(op("adjoin_arg"), reg("val"), reg("argl"))),
+  restore("fun"),
+  go_to(label("apply_dispatch")),
+```
+
+The details of the argument-evaluation loop determine the order in which the interpreter evaluates the argument expressions of a combination. This order is not determined by the metacircular evaluator, which inherits its control structure from the underlying JavaScript in which it is implemented. Because we use `head` in `ev_appl_argument_expression_loop` to extract successive argument expressions from `unev` and `tail` at `ev_appl_accumulate_arg` to extract the rest of them, the explicit-control evaluator will evaluate the argument expressions of a combination in left-to-right order, as required by the ECMAScript specification.
+
+</Prose>
+
+<Example index={0} file="arguments.sicp" source={ecevalArgumentsProgram} prelude={ecevalControllerSource + ecevalMachineSource} anim="machine">
+
+`math_max(3, 4 + 1)` has two argument expressions. For the first, `ev_appl_argument_expression_loop` saves `argl`, `env` and `unev`; the second is the last, so only `argl` is saved, and the second argument is itself an operator combination, rewritten and evaluated as an application of `+` with its own argument loop. Watch `argl` grow from the empty list to a list of 3 and 5 before `primitive_apply` applies `math_max`. The whole evaluation takes 17 pushes and a maximum depth of 8.
+
+</Example>
+
+<Prose>
+
+**Function application.** The entry point `apply_dispatch` corresponds to the `apply` function of the metacircular evaluator. By the time we get to `apply_dispatch`, the `fun` register contains the function to apply and `argl` contains the list of evaluated arguments to which it must be applied. The saved value of `continue` (originally passed to `eval_dispatch` and saved at `ev_application`), which tells where to return with the result of the function application, is on the stack. When the application is complete, the controller transfers to the entry point specified by the saved `continue`, with the result of the application in `val`. As with the metacircular `apply`, there are two cases to consider. Either the function to be applied is a primitive or it is a compound function.
+
+```js
+"apply_dispatch",
+  test(list(op("is_primitive_function"), reg("fun"))),
+  branch(label("primitive_apply")),
+  test(list(op("is_compound_function"), reg("fun"))),
+  branch(label("compound_apply")),
+  go_to(label("unknown_function_type")),
+```
+
+We assume that each primitive is implemented so as to obtain its arguments from `argl` and place its result in `val`. To specify how the machine handles primitives, we would have to provide a sequence of controller instructions to implement each primitive and arrange for `primitive_apply` to dispatch to the instructions for the primitive identified by the contents of `fun`. Since we are interested in the structure of the evaluation process rather than the details of the primitives, we will instead just use an `apply_primitive_function` operation that applies the function in `fun` to the arguments in `argl`, by calling on the underlying JavaScript system, just as the metacircular evaluator does. After computing the value of the primitive application, we restore `continue` and go to the designated entry point.
+
+```js
+"primitive_apply",
+  assign("val", list(op("apply_primitive_function"),
+                     reg("fun"), reg("argl"))),
+  restore("continue"),
+  go_to(reg("continue")),
+```
+
+The sequence of instructions labelled `compound_apply` specifies the application of compound functions. To apply a compound function, we proceed in a way similar to what we did in the metacircular evaluator. We construct a frame that binds the function's parameters to the arguments, use this frame to extend the environment carried by the function, and evaluate in this extended environment the body of the function.
+
+At this point the compound function is in register `fun` and its arguments are in `argl`. We extract the function's parameters into `unev` and its environment into `env`. We then replace the environment in `env` with the environment constructed by extending it with bindings of the parameters to the given arguments. We then extract the body of the function into `comp`. The natural next step would be to restore the saved `continue` and proceed to `eval_dispatch` to evaluate the body and go to the restored continuation with the result in `val`, as is done for the last statement of a sequence. But there is a complication!
+
+The complication has two aspects. One is that at any point in the evaluation of the body, a return statement may require the function to return the value of the return expression as the value of the body. But a return statement may be nested arbitrarily deeply in the body; so the stack at the moment the return statement is encountered is not necessarily the stack that is needed for a return from the function. One way to make it possible to adjust the stack for the return is to put a *marker* on the stack that can be found by the return code. This is implemented by the `push_marker_to_stack` instruction. The return code can then use the `revert_stack_to_marker` instruction to restore the stack to the place indicated by the marker before evaluating the return expression. (These two instructions are not strictly necessary: they could be implemented by explicitly pushing and popping a marker value. See exercise 5.23.)
+
+The other aspect of the complication is that if the evaluation of the body terminates without executing a return statement, the value of the body must be `undefined`. To handle this, we set up the `continue` register to point to the entry point `return_undefined` before going off to `eval_dispatch` to evaluate the body. If a return statement is not encountered during evaluation of the body, evaluation of the body will continue at `return_undefined`.
+
+```js
+"compound_apply",
+  assign("unev", list(op("function_parameters"), reg("fun"))),
+  assign("env", list(op("function_environment"), reg("fun"))),
+  assign("env", list(op("extend_environment"),
+                     reg("unev"), reg("argl"), reg("env"))),
+  assign("comp", list(op("function_body"), reg("fun"))),
+  push_marker_to_stack(),
+  assign("continue", label("return_undefined")),
+  go_to(label("eval_dispatch")),
+```
+
+The only places in the interpreter where the `env` register is assigned a new value are `compound_apply` and `ev_block` (§5.4.3). Just as in the metacircular evaluator, the new environment for evaluation of a function body is constructed from the environment carried by the function, together with the argument list and the corresponding list of names to be bound.
+
+When a return statement is evaluated at `ev_return`, we use the `revert_stack_to_marker` instruction to restore the stack to its state at the beginning of the function call by removing all values from the stack down to and including the marker. As a consequence, `restore("continue")` will restore the continuation of the function call, which was saved at `ev_application`. We then proceed to evaluate the return expression, whose result will be placed in `val` and thus be the value returned from the function when we continue after the evaluation of the return expression.
+
+```js
+"ev_return",
+  revert_stack_to_marker(),
+  restore("continue"),
+  assign("comp", list(op("return_expression"), reg("comp"))),
+  go_to(label("eval_dispatch")),
+```
+
+If no return statement is encountered during evaluation of the function body, evaluation continues at `return_undefined`, the continuation that was set up at `compound_apply`. To return `undefined` from the function, we put `undefined` into `val` and go to the entry point that was put onto the stack at `ev_application`. Before we can restore that continuation from the stack, however, we must remove the marker that was saved at `compound_apply`.
+
+```js
+"return_undefined",
+  revert_stack_to_marker(),
+  restore("continue"),
+  assign("val", constant(undefined)),
+  go_to(reg("continue")),
+```
+
+**Return statements and tail recursion.** In chapter 1 we said that the process described by a function such as
+
+```js
+function sqrt_iter(guess, x) {
+    return is_good_enough(guess, x)
+           ? guess
+           : sqrt_iter(improve(guess, x), x);
+}
+```
+
+is an iterative process. Even though the function is syntactically recursive (defined in terms of itself), it is not logically necessary for an evaluator to save information in passing from one call to `sqrt_iter` to the next. (In §5.1 we implemented such a process with a register machine that had no stack at all.) An evaluator that can execute a function such as `sqrt_iter` without requiring increasing storage as the function continues to call itself is called a *tail-recursive* evaluator.
+
+The metacircular evaluator of chapter 4 isn't tail-recursive. It implements a return statement as a constructor of a return value object containing the value to be returned, and inspects the result of a function call to see whether it is such an object. Both the construction of the return value object and the eventual inspection of the result of the function call are deferred operations, which lead to an accumulation of information on the stack.
+
+Our explicit-control evaluator *is* tail-recursive, because it does not need to wrap up return values for inspection and thus avoids the buildup of stack from deferred operations. At `ev_return`, in order to evaluate the expression that computes the return value of a function, we transfer directly to `eval_dispatch` with nothing more on the stack than right before the function call. We accomplish this by undoing any saves to the stack by the function (which are useless because we are returning) using `revert_stack_to_marker`. Then, rather than arranging for `eval_dispatch` to come back here and *then* restoring `continue` from the stack and continuing at that entry point, we restore `continue` from the stack *before* going to `eval_dispatch` so that `eval_dispatch` will continue at that entry point after evaluating the expression. Thus, when we proceed to evaluate a return expression, the stack is the same as just before the call to the function whose return value we are about to compute. Hence, evaluating a return expression, even if it is a function call (as in `sqrt_iter`, where the conditional expression reduces to a call to `sqrt_iter`), will not cause any information to accumulate on the stack. (This is one variety of a well-known optimisation used by many compilers: a function that ends with a call can replace the call by a jump to the called function's entry point. Building the strategy into the interpreter provides the optimisation uniformly throughout the language.)
+
+If we did not think to take advantage of the fact that it is unnecessary to hold on to the useless information on the stack while evaluating a return expression, we might have taken the straightforward approach of evaluating the return expression, coming back to restore the stack, and finally continuing at the entry point that is waiting for the result of the function call:
+
+```js
+"ev_return",  // alternative implementation: not tail-recursive
+  assign("comp", list(op("return_expression"), reg("comp"))),
+  assign("continue", label("ev_restore_stack")),
+  go_to(label("eval_dispatch")),
+"ev_restore_stack",
+  revert_stack_to_marker(),    // undo saves in current function
+  restore("continue"),         // undo save at ev_application
+  go_to(reg("continue")),
+```
+
+This may seem like a minor change: the only difference is that we delay undoing any register saves to the stack until after the evaluation of the return expression. The interpreter will still give the same value for any expression. But this change is fatal to the tail-recursive implementation, because we must now come back after evaluating the return expression in order to undo the (useless) register saves. These extra saves will accumulate during a nest of function calls. Consequently, processes such as `sqrt_iter` will require space proportional to the number of iterations rather than requiring constant space (exercise 5.29 measures it).
+
+This difference can be significant. For example, with tail recursion, an infinite loop can be expressed using only the function-call and return mechanisms:
+
+```js
+function count(n) {
+    display(n);
+    return count(n + 1);
+}
+```
+
+Without tail recursion, such a function would eventually run out of stack space, and expressing a true iteration would require some control mechanism other than function call.
+
+Note that our JavaScript implementation requires the use of `return` in order to be tail-recursive. Because the undoing of the register saves takes place at `ev_return`, removing `return` from the `count` function above will cause it to eventually run out of stack space. This explains the use of `return` in the infinite driver loops of chapter 4.
+
+</Prose>
+
+<Example index={1} file="count.sicp" source={ecevalCountProgram} prelude={ecevalControllerSource + ecevalMachineSource} anim="machine">
+
+A `count` that stops at `k`, so that it ends. Each call's `return` reverts the stack to the call's marker before evaluating `count(n + 1, k)`, so the depth plot has the same shape for every call and never climbs: the maximum is 10 whether `k` is 3 or 300. Delete `return` (exercise 5.22 asks what happens then).
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/machines/registerMachine.ts">
+
+The simulator keeps, beside the stack, a list of the stack heights at which `push_marker_to_stack` was executed; `revert_stack_to_marker` cuts the stack back to the most recent one and forgets it. The markers take no place on the stack, so they are not counted as pushes. The test `chapter-5/section-5-4.test.ts` asserts the statistics quoted on this page: 17 pushes and depth 8 for `math_max(3, 4 + 1)`, and a maximum depth of 10 for `count(1, k)` at every `k` from 2 to 25. `chapter-5/evaluator.test.ts` checks that iterative factorial runs in constant depth.
+
+</UnderTheHood>
+
+<Exercises range="5.22 – 5.24" total={3}>
+<Exercise id="5.22">
+
+Explain how the stack builds up if `return` is removed from `count`:
+
+```js
+function count(n) {
+    display(n);
+    count(n + 1);
+}
+```
+
+To make your explanation checkable, take versions that stop at `k`. With `return`, the body is `display(n); return n === k ? n : count(n + 1, k);`; without it, the conditional is an expression statement, `display(n); n === k ? n : count(n + 1, k);`. Measure the maximum stack depth of `count(1, k)` for a few values of `k` with the second Example above, then write it as a function of `k`, for `k` ≥ 2, for each version: `depth_with_return(k)` and `depth_without_return(k)`. The checker compares your formulas with the Laboratory's measurements.
+
+<Solution>
+
+**Solution.** With `return`, the depth is 10 for every `k`. Without it, it is `k` + 9: one more entry per call. The call `count(n + 1, k)` is still the last statement of the body, and `ev_sequence_last_statement` restores `continue` before evaluating it, so the sequence leaves nothing behind. But `continue` now holds `return_undefined`, set at `compound_apply`, and `ev_application` saves it: the call has to come back to the body to return `undefined`. That saved `continue` stays on the stack, under the new call's marker, until the innermost call finishes; then each `return_undefined` reverts to its marker and restores one. The total number of pushes, 35`k` − 7, is the same for both versions: the same registers are saved, but with `return` they are discarded at once. The infinite `count` without `return` therefore needs one more stack entry for every number it displays.
+
+</Solution>
+</Exercise>
+<Exercise id="5.23">
+
+Implement the equivalent of `push_marker_to_stack` by using `save` at `compound_apply` to store a special marker value on the stack. Implement the equivalent of `revert_stack_to_marker` at `ev_return` and `return_undefined` as a loop that repeatedly performs a `restore` until it hits the marker. Note that this will require restoring a value to a register other than the one it was saved from. This is necessary because the only way to pop from the stack is by restoring to a register. You will need a unique constant to serve as the marker, for example `const marker = list("marker");`: because `list` creates a new pair, it cannot be `===` to anything else on the stack.
+
+The editor holds the three blocks as `fragment`; the rest of the evaluator is in place. The evaluator's operations have no `===`, so add what you need to `extra_operations`, a list of `list(name, function)`. The checker builds the evaluator with your blocks and runs recursive factorial, a function that returns from the middle of a sequence, one whose body ends without `return`, and nested calls; it checks that iterative factorial still runs in the same depth for 3 and 8, and that your blocks use neither marker instruction.
+
+<Solution>
+
+**Solution.** `compound_apply` puts the marker in a free register and saves it. Both loops restore into `val`, which is about to be overwritten anyway, and compare it with the marker with `constant(marker)`: the machine compares the very pair, so nothing a program computes can be mistaken for it. When the marker comes off, the top of the stack is the `continue` saved at `ev_application`, as before. Unlike the instructions, the marker occupies the stack, so every pending call costs one more entry and one more push.
+
+</Solution>
+</Exercise>
+<Exercise id="5.24">
+
+Implement `push_marker_to_stack` and `revert_stack_to_marker` as instructions of the simulator of §5.2, following the implementation of `save` and `restore`. Add functions `push_marker` and `pop_marker` to access stacks, mirroring `push` and `pop`. You need not actually insert a marker into the stack: you can add a local state variable to the stack model to keep track of where the stack stood at each `push_marker_to_stack`. If you choose to put a marker on the stack, see the hint in exercise 5.23.
+
+The rest of the simulator is in place; the editor holds `make_stack` and `make_execution_function` without marker support, and the four functions to write. The checker runs small controllers that use the markers on your simulator, nested markers among them, checks the stack statistics after a revert, and finally runs this section's evaluator on it.
+
+<Solution>
+
+**Solution.** This is how the simulator of §5.2 already does it. The stack keeps `frame`, a list of pairs: at `push_marker` the current stack and its depth are pushed onto `frame`, and `pop_marker` sets the stack and the depth back to the pair on top and pops it. Because the stack is a list, the saved pointer is the whole stack as it was; anything saved since is simply dropped. `initialize` empties `frame` too. The execution functions advance the `pc` like those of `save` and `restore`, and `make_execution_function` dispatches to them on the instruction's type.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['5.4.3', '5.4.4', { id: '5.5.3', label: 'Compiling applications and return statements' }]} />

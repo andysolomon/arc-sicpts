@@ -1,0 +1,25 @@
+<Prose>
+
+> My aim is to show that the heavenly machine is not a kind of divine, live being, but a kind of clockwork (and he who believes that a clock has soul attributes the maker's glory to the work), insofar as nearly all the manifold motions are caused by a most simple and material force, just as all motions of the clock are caused by a single weight.
+>
+> — Johannes Kepler, letter to Herwart von Hohenburg, 1605
+
+We began this book by studying processes and by describing processes in terms of functions written in JavaScript. To explain the meanings of these functions, we used a succession of models of evaluation: the substitution model of chapter 1, the environment model of chapter 3, and the metacircular evaluator of chapter 4. The metacircular evaluator, in particular, dispels much of the mystery of how JavaScript-like languages are interpreted.
+
+But even the metacircular evaluator leaves important questions unanswered, because it fails to elucidate the mechanisms of control in a JavaScript system. It does not explain how the evaluation of a subexpression manages to return a value to the expression that uses this value. Nor does it explain how some recursive functions can generate iterative processes, evaluated in constant space, whereas other recursive functions generate recursive processes. This chapter addresses both of these issues.
+
+We will describe processes in terms of the step-by-step operation of a traditional computer. Such a computer, or *register machine*, sequentially executes *instructions* that manipulate the contents of a fixed set of storage elements called *registers*. A typical register-machine instruction applies a primitive operation to the contents of some registers and assigns the result to another register. Our descriptions will look very much like machine-language programs for traditional computers. Instead of focusing on the machine language of any particular computer, however, we will examine several JavaScript functions and design a specific register machine to execute each one. We approach the task as a hardware architect rather than as a machine-language programmer. Designing register machines, we will develop mechanisms for implementing important programming constructs such as recursion, and a language for describing the designs. In §5.2 we implement a program that uses these descriptions to simulate the machines we design.
+
+Most of the primitive operations of our register machines are very simple: an operation might add the numbers fetched from two registers and store the result in a third. Such an operation can be performed by easily described hardware. To deal with list structure, however, we also use the memory operations `head`, `tail` and `pair`, which require an elaborate storage-allocation mechanism. In §5.3 we implement them in terms of more elementary operations.
+
+In §5.4, after we have accumulated experience formulating simple functions as register machines, we design a machine that carries out the algorithm of the metacircular evaluator. This fills in the gap in our understanding of how JavaScript programs are interpreted, by providing an explicit model for the mechanisms of control in the evaluator. In §5.5 we study a simple compiler that translates JavaScript programs into sequences of instructions that can be executed directly with the registers and operations of the evaluator machine.
+
+Every machine in this chapter runs. The editors build machines with `make_machine` and start them; the animations under them draw each machine's data paths from its controller and replay what it did, instruction by instruction, with its registers and its stack.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/machines/registerMachine.ts">
+
+The Laboratory has run every program in this book on an explicit-control evaluator from the start: `evaluator/machine.ts` keeps its own stack of continuations instead of recursing, which is how it measured process shapes in chapter 1 and how it evaluates tail calls in constant space. This chapter explains that design. Its register machines run on `machines/registerMachine.ts`, a simulator organised like the one in §5.2, and the book's own simulator, explicit-control evaluator and compiler run on top of it as Source programs (`chapter-5/simulator.ts`, `eceval.ts`, `compiler.ts`). The tests in `chapter-5/` check that the two simulators agree and that the evaluator and compiler reproduce the book's measurements.
+
+</UnderTheHood>

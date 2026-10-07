@@ -1,0 +1,29 @@
+import { memoryGarbageProgram } from '@sicp/lab';
+
+<Prose>
+
+In §5.4 we will show how to implement a JavaScript evaluator as a register machine. To simplify the discussion, we will assume that our register machines can be equipped with a *list-structured memory*, in which the basic operations for manipulating list-structured data are primitive. Postulating such a memory is a useful abstraction when we focus on the mechanisms of control in an interpreter, but it does not reflect a realistic view of the primitive data operations of contemporary computers. To obtain a more complete picture of how a system can support list-structured memory efficiently, we must investigate how list structure can be represented in a way that is compatible with conventional computer memories.
+
+There are two considerations in implementing list structure. The first is purely an issue of representation: how to represent the box-and-pointer structure of pairs using only the storage and addressing capabilities of typical computer memories. The second concerns the management of memory as a computation proceeds. The operation of a JavaScript system depends crucially on the ability to create new data objects continually. These include objects created explicitly by the functions being interpreted, as well as structures created by the interpreter itself, such as environments and argument lists.
+
+</Prose>
+
+<Example index={0} file="sum_odds.sicp" source={memoryGarbageProgram} anim="memory">
+
+The program builds two lists only to add up their elements: `enum_list(0, 6)` makes seven pairs, from the last element backwards, and `filter` three more for the odd numbers. When it ends, `sum` holds the number 9 and `is_odd` a function; none of the ten pairs can be reached from any name. Change 6 to 20 and count again.
+
+</Example>
+
+<Prose>
+
+The constant creation of new data objects would pose no problem on a computer with an infinite amount of rapidly addressable memory. But computer memories are available only in finite sizes (more's the pity). JavaScript systems therefore provide an *automatic storage allocation* facility to support the illusion of an infinite memory: when a data object is no longer needed, the memory allocated to it is automatically recycled and used to construct new data objects. There are various techniques for providing automatic storage allocation. The method we discuss in this section is called *garbage collection*. §5.3.1 represents pairs as entries in two vectors; §5.3.2 writes a garbage collector for that representation as a register machine.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-5/memory.ts">
+
+`memoryImage` runs a program in the Laboratory evaluator and records every pair it allocates, whether the program calls `pair` or `list` itself or a library function such as `filter` does it for it, then lays those pairs out in the two vectors of §5.3.1 in the order they were made. The test `chapter-5/section-5-3.test.ts` asserts the ten pairs of this program, seven from `enum_list` and three from `filter`, and that the names hold only a function and the number 9.
+
+</UnderTheHood>
+
+<Enables items={['5.3.1', '5.3.2', '5.4']} />

@@ -10,13 +10,16 @@ import type { Player } from './player.ts';
  * stage, a one-sentence caption for the current keyframe, and transport controls.
  */
 
-export type Provenance = 'trace' | 'model' | 'stepper' | 'parse';
+export type Provenance = 'trace' | 'model' | 'stepper' | 'parse' | 'machine' | 'memory' | 'compiler';
 
 const PROVENANCE: Record<Provenance, string> = {
   trace: 'drawn from the evaluator’s trace',
   model: 'the substitution model, step by step',
   stepper: 'follows the stepper above',
   parse: 'drawn from the parsed program',
+  machine: 'drawn from the machine’s run',
+  memory: 'drawn from the pairs the program made',
+  compiler: 'what the compiler of §5.5 produced',
 };
 
 export interface SceneFrameProps {

@@ -1,0 +1,223 @@
+import { ecevalAppendProgram, ecevalControllerSource, ecevalMachineSource, ecevalStatisticsProgram, ecevalTailProgram } from '@sicp/lab';
+
+<Prose>
+
+With the implementation of the explicit-control evaluator we come to the end of a development, begun in chapter 1, in which we have explored successively more precise models of the evaluation process. We started with the relatively informal substitution model, then extended this in chapter 3 to the environment model, which enabled us to deal with state and change. In the metacircular evaluator of chapter 4, we used JavaScript itself as a language for making more explicit the environment structure constructed during evaluation of a component. Now, with register machines, we have taken a close look at the evaluator's mechanisms for storage management, argument passing and control. At each new level of description, we have had to raise issues and resolve ambiguities that were not apparent at the previous, less precise treatment of evaluation. To understand the behaviour of the explicit-control evaluator, we can simulate it and monitor its performance.
+
+We will install a *driver loop* in our evaluator machine. This plays the role of the `driver_loop` function of the metacircular evaluator. The evaluator will repeatedly read a program, evaluate it by going to `eval_dispatch`, and print the result. The book's loop prints a prompt and reads what the user types; here `user_read` takes the next string queued with `set_inputs`. If there is nothing more to read, `user_read` returns `null` and we jump to the label `evaluator_done`, which is the last entry point in the controller. The following instructions form the beginning of the explicit-control evaluator's controller sequence. (We assume here that `user_read`, `parse` and the printing operations are available as primitive machine operations, which is useful for our simulation but completely unrealistic in practice: these are extremely complex operations, which a real machine would implement with low-level input-output operations, such as transferring single characters to and from a device.)
+
+```js
+"read_evaluate_print_loop",
+  perform(list(op("initialize_stack"))),
+  assign("comp", list(op("user_read"), constant("EC-evaluate input:"))),
+  test(list(op("is_null"), reg("comp"))),
+  branch(label("evaluator_done")),
+  assign("comp", list(op("parse"), reg("comp"))),
+  assign("env", list(op("get_current_environment"))),
+  assign("val", list(op("scan_out_declarations"), reg("comp"))),
+  save("comp"),     // so we can use it to temporarily hold *unassigned* values
+  assign("comp", list(op("list_of_unassigned"), reg("val"))),
+  assign("env", list(op("extend_environment"),
+                     reg("val"), reg("comp"), reg("env"))),
+  perform(list(op("set_current_environment"), reg("env"))),
+  restore("comp"),  // the program
+  assign("continue", label("print_result")),
+  go_to(label("eval_dispatch")),
+"print_result",
+  perform(list(op("user_print"),
+               constant("EC-evaluate value:"), reg("val"))),
+  go_to(label("read_evaluate_print_loop")),
+```
+
+We store the current environment, initially the global environment, in the variable `current_environment` and update it each time around the loop to remember past declarations. The operations `get_current_environment` and `set_current_environment` simply get and set this variable:
+
+```js
+let current_environment = the_global_environment;
+
+function get_current_environment() {
+    return current_environment;
+}
+
+function set_current_environment(env) {
+    current_environment = env;
+}
+```
+
+When we encounter an error in a function (such as the unknown function type error indicated at `apply_dispatch`), we print an error message and return to the driver loop. A component the dispatcher does not recognise is reported the same way; among them are logical compositions such as `a && b`, derived components that this evaluator does not handle. (Other errors are not so simple to handle; see exercise 5.31.)
+
+```js
+"unknown_component_type",
+  assign("val", constant("unknown syntax")),
+  go_to(label("signal_error")),
+"unknown_function_type",
+  restore("continue"), // clean up stack (from apply_dispatch)
+  assign("val", constant("unknown function type")),
+  go_to(label("signal_error")),
+"signal_error",
+  perform(list(op("user_print"),
+               constant("EC-evaluator error:"), reg("val"))),
+  go_to(label("read_evaluate_print_loop")),
+```
+
+For the purposes of the simulation, we initialise the stack each time through the driver loop, since it might not be empty after an error interrupts an evaluation. (We could initialise it only after errors, but doing it in the driver loop will be convenient for monitoring the evaluator's performance, as described below.)
+
+If we combine all the code fragments presented in §5.4.1 to §5.4.4, we obtain the controller `eceval_controller`, a list beginning with `"read_evaluate_print_loop"` and ending with `"evaluator_done"`, and we can create an evaluator machine model that we can run using the register-machine simulator of §5.2:
+
+```js
+const eceval =
+    make_machine(list("comp", "env", "val", "fun",
+                      "argl", "continue", "unev"),
+                 eceval_operations,
+                 eceval_controller);
+```
+
+We must define JavaScript functions to simulate the operations used as primitives by the evaluator. These are the same functions we used for the metacircular evaluator, together with the few additional ones introduced in §5.4.1 to §5.4.4, such as `is_falsy`, `empty_arglist` and `adjoin_arg`, and a few primitives of the language itself, such as `is_null`, `head` and `tail`. In the Laboratory, `eceval_operations` is already a list of `list(name, function)` pairs for all of them, so we can run the evaluator. Here is the book's interaction with it, in which the evaluator is given two programs:
+
+</Prose>
+
+<Example index={0} file="append.sicp" source={ecevalAppendProgram} prelude={ecevalControllerSource + ecevalMachineSource}>
+
+The declaration's value is `undefined`; the application's is the list, printed as nested pairs. Ignore the stack statistics for a moment: they are explained below. Evaluating programs in this way takes much longer than running them directly, because of the multiple levels of simulation involved: the programs are evaluated by the explicit-control-evaluator machine, which is being simulated by a program, which is itself being run by the Laboratory's evaluator.
+
+</Example>
+
+<Prose>
+
+**Monitoring the performance of the evaluator.** Simulation can be a powerful tool to guide the implementation of evaluators. Simulations make it easy not only to explore variations of the register-machine design but also to monitor the performance of the simulated evaluator. For example, one important factor in performance is how efficiently the evaluator uses the stack. We can observe the number of stack operations required to evaluate various programs by defining the evaluator register machine with the version of the simulator that collects statistics on stack use (§5.2.4), and adding an instruction at the evaluator's `print_result` entry point to print the statistics. The first instruction below is the new one; the controller that runs on these pages has had it all along.
+
+```js
+"print_result",
+  perform(list(op("print_stack_statistics"))),
+  perform(list(op("user_print"),
+               constant("EC-evaluate value:"), reg("val"))),
+  go_to(label("read_evaluate_print_loop")),
+```
+
+Interactions with the evaluator now look like this:
+
+</Prose>
+
+<Example index={1} file="statistics.sicp" source={ecevalStatisticsProgram} prelude={ecevalControllerSource + ecevalMachineSource}>
+
+The declaration takes 4 pushes and a maximum depth of 3. Computing 5! takes 145 pushes and a maximum depth of 28. (The book prints 151 pushes for 5!; the Laboratory's `parse` produces exactly the tagged lists of js-slang, and with them the evaluator makes 145.) Because the driver loop reinitialises the stack at the start of each interaction, the statistics printed refer only to the stack operations used to evaluate the previous program. Edit the inputs to measure other functions: the exercises below need this.
+
+</Example>
+
+<Prose>
+
+The statistics show how much stack a process needs over its whole life, but not how its needs change along the way. The animation below draws the depth of the stack instruction by instruction while the evaluator computes 4! twice: first with the iterative factorial of §1.2.1, whose recursive call `iter(counter * product, counter + 1)` is the expression of a return statement, then with the recursive one, whose recursive call is an argument of a pending multiplication.
+
+</Prose>
+
+<Example index={2} file="tail.sicp" source={ecevalTailProgram} prelude={ecevalControllerSource + ecevalMachineSource} anim="machine">
+
+During the iterative computation the depth plot is a row of identical teeth: each call to `iter` reverts the stack to its marker at `ev_return` and leaves nothing behind for the next. During the recursive one the teeth stand on a staircase: each call to `fact_rec` leaves the multiplication's saved registers on the stack until the call below it returns. Try `factorial(8)` and `fact_rec(8)`.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-5/eceval.ts">
+
+`ecevalControllerSource` joins the blocks of `chapter-5/eceval.ts` into the declaration of `eceval_controller`, with the monitored `print_result`, and `ecevalMachineSource` declares `eceval`. `print_stack_statistics` is an operation every machine of `machines/registerMachine.ts` has; it prints the pushes and the maximum depth since the last `initialize_stack`. The test `chapter-5/section-5-4.test.ts` asserts every number this page prints, including 145 pushes and depth 28 for 5!, and `chapter-5/evaluator.test.ts` checks the formulas the exercises ask for, for *n* from 1 to 6 and 10.
+
+</UnderTheHood>
+
+<Exercises range="5.27 – 5.31" total={5}>
+<Exercise id="5.27">
+
+Use the monitored stack to explore the tail-recursive property of the evaluator (§5.4.2). Define the iterative `factorial` function of §1.2.1:
+
+```js
+function factorial(n) {
+    function iter(product, counter) {
+        return counter > n
+               ? product
+               : iter(counter * product,
+                      counter + 1);
+    }
+    return iter(1, 1);
+}
+```
+
+Run it with some small values of *n*, by editing the inputs of the second Example above. Record the maximum stack depth and the number of pushes required to compute *n*! for each of these values.
+
+- You will find that the maximum depth required to evaluate *n*! is independent of *n*. What is that depth? Write `iterative_depth(n)`.
+- Determine from your data a formula in terms of *n* for the total number of push operations used in evaluating *n*! for any *n* ≥ 1. Note that the number of operations used is a linear function of *n* and is thus determined by two constants. Write `iterative_pushes(n)`.
+
+<Solution>
+
+**Solution.** The maximum depth is 10 for every *n*, and the number of pushes is 35*n* + 32: 67 for 1!, 102 for 2!, 137 for 3!. Each further iteration costs 35 pushes, all of which are popped or discarded at `ev_return` before the next call to `iter` is evaluated.
+
+</Solution>
+</Exercise>
+<Exercise id="5.28">
+
+For comparison with exercise 5.27, explore the behaviour of the following function for computing factorials recursively:
+
+```js
+function factorial(n) {
+    return n === 1
+           ? 1
+           : factorial(n - 1) * n;
+}
+```
+
+By running this function with the monitored stack, determine, as a function of *n*, the maximum depth of the stack and the total number of pushes used in evaluating *n*! for *n* ≥ 1. (Again, these functions will be linear.) Write `recursive_depth(n)` and `recursive_pushes(n)`. Then summarise your experiments by filling in this table with the appropriate expressions in terms of *n*:
+
+| | Maximum depth | Number of pushes |
+|---|---|---|
+| Recursive factorial | | |
+| Iterative factorial | | |
+
+The maximum depth is a measure of the amount of space used by the evaluator in carrying out the computation, and the number of pushes correlates well with the time required.
+
+<Solution>
+
+**Solution.** The Laboratory measures:
+
+| | Maximum depth | Number of pushes |
+|---|---|---|
+| Recursive factorial | 5*n* + 3 | 32*n* − 15 |
+| Iterative factorial | 10 | 35*n* + 32 |
+
+Each level of the recursion leaves five entries on the stack while `factorial(n - 1)` is evaluated, all for the pending multiplication: the `continue` saved at `ev_application`, the function `*` saved from `fun`, and `argl`, `env` and `unev`, saved because `factorial(n - 1)` is not its last argument expression. Both processes take time linear in *n*, at a similar cost per step, but only the recursive one needs linear space. (The book prints 151 pushes for 5!, where the Laboratory makes 145.)
+
+</Solution>
+</Exercise>
+<Exercise id="5.29">
+
+Modify the definition of the evaluator by changing `ev_return` as described in §5.4.2 so that the evaluator is no longer tail-recursive. The editor holds `ev_return` as `fragment`; the rest of the evaluator is in place. Rerun your experiments from exercises 5.27 and 5.28 to demonstrate that both versions of the `factorial` function now require space that grows linearly with their input. The checker runs both factorials and a function that returns from the middle of a sequence of statements on your evaluator, and checks that the iterative factorial of 8 now needs a deeper stack than that of 3.
+
+<Solution>
+
+**Solution.** This is the alternative `ev_return` of §5.4.2: it evaluates the return expression with `continue` set to `ev_restore_stack`, and only then reverts the stack and restores the caller's `continue`. Every call to `iter` is now evaluated with the registers saved by the call before it still on the stack. The Laboratory measures a maximum depth of *n* + 11 for the iterative factorial and 6*n* + 3 for the recursive one. The numbers of pushes do not change, 35*n* + 32 and 32*n* − 15: the same registers are saved, they are just discarded later.
+
+</Solution>
+</Exercise>
+<Exercise id="5.30">
+
+Monitor the stack operations in the tree-recursive Fibonacci computation:
+
+```js
+function fib(n) {
+    return n < 2 ? n : fib(n - 1) + fib(n - 2);
+}
+```
+
+- Give a formula in terms of *n* for the maximum depth of the stack required to compute Fib(*n*) for *n* ≥ 2: write `fib_depth(n)`. Hint: in §1.2.2 we argued that the space used by this process grows linearly with *n*.
+- Give a formula for the total number of pushes used to compute Fib(*n*). You should find that the number of pushes (which correlates well with the time used) grows exponentially with *n*. Hint: let *S*(*n*) be the number of pushes used in computing Fib(*n*). You should be able to argue that there is a formula that expresses *S*(*n*) in terms of *S*(*n* − 1), *S*(*n* − 2), and some fixed overhead constant *k* that is independent of *n*. Give the formula, and say what *k* is. Then show that *S*(*n*) can be expressed as *a* Fib(*n* + 1) + *b* and give the values of *a* and *b*. Write `k`, `a`, `b`, and `fib_pushes(n)` for every *n* ≥ 0.
+
+<Solution>
+
+**Solution.** The maximum depth is 5*n* + 3, as for the recursive factorial: the deepest point is reached along the chain of first calls `fib(n - 1)`, each of which leaves five entries on the stack. Computing Fib(*n*) for *n* ≥ 2 makes the pushes of `fib(n - 1)` and of `fib(n - 2)` and a fixed number of its own, for the comparison, the conditional, the addition and the two calls with their subtractions, so *S*(*n*) = *S*(*n* − 1) + *S*(*n* − 2) + 39, with *S*(0) = *S*(1) = 17. Then *S*(*n*) + 39 satisfies the Fibonacci recurrence and starts at 56 for *n* = 0 and *n* = 1, which are 56 Fib(1) and 56 Fib(2). So *S*(*n*) = 56 Fib(*n* + 1) − 39: *a* = 56 and *b* = −39.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Prose>
+
+Exercise 5.31, a major project, is not included: it asks for an error system that catches the errors raised by operations, such as an unbound name or `head` of a string, and reports them through `signal_error`. In the Laboratory, as in the book, such an error stops the simulation instead.
+
+</Prose>
+
+<Enables items={[{ id: '5.5', label: 'Compiling, and comparing with the evaluator' }, { id: '5.5.7', label: 'Interfacing compiled code to the evaluator' }]} />

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { factorialProgram } from '../chapter-1/factorial.ts';
+import { gcdMachineProgram } from '../chapter-5/machines.ts';
 import { LabClient, type WorkerLike } from './client.ts';
 import { createLabHost } from './host.ts';
 import type { LabEvent, LabRequest } from './protocol.ts';
@@ -306,5 +307,46 @@ describe('worker protocol', () => {
       tests: [{ name: 't', kind: 'value', expr: '1', expected: 1 }],
     }).finished;
     expect(end).toMatchObject({ type: 'check-done', passed: 0, total: 1, results: [{ pass: false }] });
+  });
+});
+
+describe('chapter 5 jobs', () => {
+  const client = new LabClient(() => inProcessWorker());
+
+  it('records every instruction a machine executes, with its data paths', async () => {
+    const end = await client.submit({ type: 'machines', source: gcdMachineProgram }).finished;
+    if (end.type !== 'machines-done') throw new Error(end.type);
+    expect(end.outcome).toEqual({ status: 'done', value: '2' });
+    const [machine] = end.machines;
+    expect(machine?.registers).toEqual(['a', 'b', 't']);
+    expect(machine?.dataPaths.buttons.map((b) => b.name)).toEqual(['t<-rem', 'a<-b', 'b<-t']);
+    expect(machine?.dataPaths.operations.map((o) => [o.id, o.test])).toEqual([
+      ['=(b, 0)', true],
+      ['rem(a, b)', false],
+    ]);
+    const run = machine?.runs[0];
+    expect(run?.initial).toContainEqual(['a', { text: '206', kind: 'number' }]);
+    expect(run?.steps).toHaveLength(run?.instructions ?? -1);
+    expect(run?.steps.at(-2)?.writes).toContainEqual(['flag', { text: 'true', kind: 'boolean' }]);
+  });
+
+  it('lays out memory and collects garbage', async () => {
+    const end = await client.submit({ type: 'memory', source: 'let x = list(1, 2);\nx = pair(3, x);\nx = 4;' }).finished;
+    if (end.type !== 'memory-done') throw new Error(end.type);
+    expect(end.run?.before.free).toBe(4);
+    expect(end.run?.after.free).toBe(1);
+    expect(end.run?.after.names).toEqual([{ name: 'x', pointer: 'n4' }]);
+  });
+
+  it('measures a function interpreted and compiled', async () => {
+    const end = await client.submit({
+      type: 'compare',
+      definition: 'function factorial(n) { return n === 1 ? 1 : factorial(n - 1) * n; }',
+      call: 'factorial',
+      ns: [5],
+    }).finished;
+    if (end.type !== 'compare-done') throw new Error(end.type);
+    expect(end.interpreted).toEqual([{ n: 5, value: '120', totalPushes: 145, maximumDepth: 28 }]);
+    expect(end.compiled).toEqual([{ n: 5, value: '120', totalPushes: 36, maximumDepth: 14 }]);
   });
 });

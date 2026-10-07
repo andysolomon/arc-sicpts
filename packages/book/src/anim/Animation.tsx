@@ -11,11 +11,15 @@ import { BranchesScene } from './scenes/BranchesScene.tsx';
 import { CallsScene } from './scenes/CallsScene.tsx';
 import { CobwebScene } from './scenes/CobwebScene.tsx';
 import { ComplexPlaneScene } from './scenes/ComplexPlaneScene.tsx';
+import { CompareScene } from './scenes/CompareScene.tsx';
+import { CompiledScene } from './scenes/CompiledScene.tsx';
 import { EnvironmentScene } from './scenes/EnvironmentScene.tsx';
 import { GrowthScene } from './scenes/GrowthScene.tsx';
 import { HalfIntervalScene } from './scenes/HalfIntervalScene.tsx';
 import { HuffmanScene } from './scenes/HuffmanScene.tsx';
 import { IntegralScene } from './scenes/IntegralScene.tsx';
+import { MachineScene } from './scenes/MachineScene.tsx';
+import { MemoryScene } from './scenes/MemoryScene.tsx';
 import { NewtonScene } from './scenes/NewtonScene.tsx';
 import { NewtonsMethodScene } from './scenes/NewtonsMethodScene.tsx';
 import { OperationTableScene } from './scenes/OperationTableScene.tsx';
@@ -80,7 +84,16 @@ export type AnimKind =
   | 'operation-table'
   /** Huffman code trees with 0 and 1 on their branches, and the path of each decoded symbol (§2.3.4). */
   | 'huffman'
-
+  /** A register machine's data paths, controller and stack as it runs; the evaluator's registers for §5.4 (§5.1 – §5.4). */
+  | 'machine'
+  /** The pairs the program made, as two vectors of typed pointers (§5.3.1). */
+  | 'memory'
+  /** The same, then the stop-and-copy collector at work (§5.3.2). */
+  | 'garbage-collection'
+  /** The code the compiler produces for the program (§5.5). */
+  | 'compiled'
+  /** Stack use, interpreted against compiled, at each size the program calls (§5.4.4, §5.5.7). */
+  | 'compare'
   /** The tagged lists `parse` returns for the program, as a tree, with the syntax predicate that recognizes each component (§4.1.2). */
   | 'tagged-list'
   /** The `evaluate`–`apply` cycle of the metacircular evaluator, from its calls (§4.1.1). */
@@ -116,12 +129,26 @@ export interface AnimationProps {
   source: string;
   /** For step-mode editors: the stepper's record index, which some scenes follow. */
   stepIndex?: number | undefined;
-  /** Declarations the editor evaluates before the program, unseen. */
+  /** Declarations the program relies on without showing them. */
   prelude?: string | undefined;
+  /** For `compare`: a program declaring `special_statistics(n)` for a hand-designed machine. */
+  special?: string | undefined;
+  /** For `memory`: the index of the first pair. */
+  start?: number | undefined;
 }
 
-export function Animation({ kind, source, stepIndex, prelude }: AnimationProps): ReactNode {
+export function Animation({ kind, source, stepIndex, prelude, special, start }: AnimationProps): ReactNode {
   switch (kind) {
+    case 'machine':
+      return <MachineScene source={source} prelude={prelude} />;
+    case 'memory':
+      return <MemoryScene source={source} layoutOnly {...(start !== undefined && { start })} />;
+    case 'garbage-collection':
+      return <MemoryScene source={source} title="Stop and copy" {...(start !== undefined && { start })} />;
+    case 'compiled':
+      return <CompiledScene source={source} />;
+    case 'compare':
+      return <CompareScene source={source} special={special} />;
     case 'tagged-list':
       return <TaggedListScene source={source} prelude={prelude} />;
     case 'eval-apply':
@@ -168,11 +195,12 @@ function Series({ source, prelude }: { source: string; prelude: string | undefin
 }
 
 type Chapter4Kind = 'tagged-list' | 'eval-apply' | 'thunks' | 'amb-search' | 'query-frames';
+type Chapter5Kind = 'machine' | 'memory' | 'garbage-collection' | 'compiled' | 'compare';
 
 interface TracedProps {
   kind: Exclude<
     AnimKind,
-    'reduce' | 'order' | 'process' | 'substitution+frames' | 'growth' | 'complex-plane' | 'operation-table' | 'series' | Chapter3Kind | Chapter4Kind
+    'reduce' | 'order' | 'process' | 'substitution+frames' | 'growth' | 'complex-plane' | 'operation-table' | 'series' | Chapter3Kind | Chapter4Kind | Chapter5Kind
   >;
   source: string;
   stepIndex?: number | undefined;

@@ -1,0 +1,177 @@
+import { extractLabelsProgram, gcdSubroutineProgram, simulatorSource } from '@sicp/lab';
+
+<Prose>
+
+The assembler transforms the sequence of controller instructions for a machine into a corresponding list of machine instructions, each with its execution function. Overall, the assembler is much like the evaluators of chapter 4: there is an input language (in this case, the register-machine language) and we must perform an appropriate action for each type of component in the language.
+
+The technique of producing an execution function for each instruction is just what §4.1.7 used to speed up the evaluator by separating analysis from runtime execution. Much useful analysis of JavaScript programs can be performed without knowing the actual values of names. Here, analogously, much useful analysis of register-machine-language expressions can be performed without knowing the actual contents of machine registers. For example, we can replace references to registers by pointers to the register objects, and references to labels by pointers to the place in the instruction sequence that the label designates.
+
+Before it can generate the instruction execution functions, the assembler must know what all the labels refer to, so it begins by scanning the controller to separate the labels from the instructions. As it scans, it constructs both a list of instructions and a table that associates each label with a pointer into that list. Then the assembler augments the instruction list by inserting the execution function for each instruction.
+
+The `assemble` function is the main entry to the assembler. It takes the controller and the machine model as arguments and returns the instruction sequence to be stored in the model. `assemble` calls `extract_labels` to build the initial instruction list and label table from the supplied controller. The second argument to `extract_labels` is a function to be called to process these results: it uses `update_insts` to generate the instruction execution functions and insert them into the instruction list, and returns the modified list.
+
+```js
+function assemble(controller, machine) {
+    return extract_labels(controller,
+                          (insts, labels) => {
+                              update_insts(insts, labels, machine);
+                              return insts;
+                          });
+}
+```
+
+`extract_labels` takes a list `controller` and a function `receive` as arguments. `receive` will be called with two values: (1) a list `insts` of instruction data structures, each containing an instruction from `controller`; and (2) a table called `labels`, which associates each label from `controller` with the position in the list `insts` that the label designates.
+
+```js
+function extract_labels(controller, receive) {
+    return is_null(controller)
+           ? receive(null, null)
+           : extract_labels(
+                 tail(controller),
+                 (insts, labels) => {
+                   const next_element = head(controller);
+                   return is_string(next_element)
+                          ? receive(insts,
+                                    pair(make_label_entry(next_element,
+                                                          insts),
+                                         labels))
+                          : receive(pair(make_inst(next_element),
+                                         insts),
+                                    labels);
+                 });
+}
+```
+
+`extract_labels` works by sequentially scanning the elements of the controller and accumulating the `insts` and the `labels`. If an element is a string (and thus a label), an appropriate entry is added to the `labels` table. Otherwise the element is accumulated onto the `insts` list.
+
+Using `receive` here is a way to get `extract_labels` to return two values, `labels` and `insts`, without explicitly making a compound data structure to hold them. An argument like `receive` that is the next function to be invoked is called a *continuation*; the `amb` evaluator of §4.3.3 used continuations for backtracking. The alternative is to return an explicit pair:
+
+```js
+function extract_labels(controller) {
+    if (is_null(controller)) {
+        return pair(null, null);
+    } else {
+        const result = extract_labels(tail(controller));
+        const insts = head(result);
+        const labels = tail(result);
+        const next_element = head(controller);
+        return is_string(next_element)
+               ? pair(insts,
+                      pair(make_label_entry(next_element, insts), labels))
+               : pair(pair(make_inst(next_element), insts), labels);
+    }
+}
+```
+
+with `assemble` taking the pair apart. You can consider our use of `receive` as demonstrating an elegant way to return multiple values, or simply an excuse to show off a programming trick.
+
+`update_insts` modifies the instruction list, which initially contains only the controller instructions, to include the corresponding execution functions:
+
+```js
+function update_insts(insts, labels, machine) {
+    const pc = get_register(machine, "pc");
+    const flag = get_register(machine, "flag");
+    const stack = machine("stack");
+    const ops = machine("operations");
+    return for_each(inst => set_inst_execution_fun(
+                                inst,
+                                make_execution_function(
+                                    inst_controller_instruction(inst),
+                                    labels, machine, pc,
+                                    flag, stack, ops)),
+                    insts);
+}
+```
+
+The machine instruction data structure simply pairs the controller instruction with the corresponding execution function. The execution function is not yet available when `extract_labels` constructs the instruction, and is inserted later by `update_insts`.
+
+```js
+function make_inst(inst_controller_instruction) {
+    return pair(inst_controller_instruction, null);
+}
+function inst_controller_instruction(inst) {
+    return head(inst);
+}
+function inst_execution_fun(inst) {
+    return tail(inst);
+}
+function set_inst_execution_fun(inst, fun) {
+    set_tail(inst, fun);
+}
+```
+
+The controller instruction is not used by our simulator, but is handy to keep around for debugging (see exercise 5.15).
+
+Elements of the label table are pairs:
+
+```js
+function make_label_entry(label_name, insts) {
+    return pair(label_name, insts);
+}
+```
+
+Entries are looked up in the table with
+
+```js
+function lookup_label(labels, label_name) {
+    const val = assoc(label_name, labels);
+    return is_undefined(val)
+           ? error(label_name, "undefined label -- assemble")
+           : tail(val);
+}
+```
+
+</Prose>
+
+<Example index={0} file="extract_labels.sicp" source={extractLabelsProgram} prelude={simulatorSource}>
+
+`extract_labels` run on the GCD controller, with a continuation that reports what it receives: six instructions and two labels. The entry for `test_b` is not a copy: its tail *is* the instruction list, because `test_b` comes first, and `gcd_done` points at the empty end of the list. The instructions have no execution functions yet (`null`). Move `"test_b"` down one line and see which instruction it then points at.
+
+</Example>
+
+<Prose>
+
+Because a label is resolved to a place in the instruction list, a register can hold a place too. In the subroutine machine of §5.1.3, `continue` is assigned a label and `go_to(reg("continue"))` jumps to whatever place it holds. Here it is on the Laboratory's simulator, which draws the run.
+
+</Prose>
+
+<Example index={1} file="two_gcds.sicp" source={gcdSubroutineProgram} anim="machine">
+
+The value in `continue` is shown as an arrow to the label it designates. It is set to `after_gcd_1` before the first call of the `gcd` subroutine and to `after_gcd_2` before the second, and the single `go_to(reg("continue"))` at `gcd_done` returns to each caller in turn.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-5/simulator.ts">
+
+The assembler on this page is `assemblerSource` in `simulator.ts`. The test `chapter-5/section-5-2.test.ts` checks every line the first editor displays and its value, the first controller instruction. The Laboratory's TypeScript simulator (`machines/registerMachine.ts`) assembles in the same two passes, labels first, and keeps a label as the index of the instruction it designates; `chapter-5/machines.test.ts` checks that both simulators send a duplicated label to its first occurrence.
+
+</UnderTheHood>
+
+<Exercises range="5.8" total={1}>
+<Exercise id="5.8">
+
+The following register-machine code is ambiguous, because the label `here` is defined more than once:
+
+```js
+"start",
+  go_to(label("here")),
+"here",
+  assign("a", constant(3)),
+  go_to(label("there")),
+"here",
+  assign("a", constant(4)),
+  go_to(label("there")),
+"there",
+```
+
+With the simulator as written, what will the contents of register `a` be when control reaches `there`? Give your answer as `a_at_there`. Then modify `extract_labels` so that the assembler signals an error if the same label name is used to indicate two different locations. The checker makes a machine with the code above and expects an error, and checks that the GCD machine, and a controller in which two different labels name the same place, still assemble and run.
+
+<Solution>
+
+**Solution.** `a` is 3. `extract_labels` scans the controller from its end, so the label table is built back to front, with the first `here` added last, at the front of the table. `assoc` finds the first matching entry, which is the first `here`. To signal the error, check the table before adding an entry: if `assoc(next_element, labels)` finds the name, the label is already defined further down the controller. Two different labels in a row are fine, since each is a different name pointing at the same place.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['5.2.3', { id: '5.5.2', label: 'Compiling labels and branches' }]} />

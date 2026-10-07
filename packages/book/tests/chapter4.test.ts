@@ -44,7 +44,7 @@ describe('the tagged-list scene', () => {
 
   it('shows the parameters and body of a function declaration as its parts', () => {
     const tree = componentTree(toTaggedList(parse('function f(x) { return null; }')) as Read);
-    expect(tree === null ? [] : tags(tree)).toEqual(['function_declaration', 'name "f"', 'name "x"', 'block', 'return_statement', 'literal null']);
+    expect(tree === null ? [] : tags(tree)).toEqual(['function_declaration', 'name "f"', 'name "x"', 'return_statement', 'literal null']);
   });
 });
 
@@ -67,7 +67,7 @@ describe('the evaluate–apply scene', () => {
   });
 
   it('keeps the calls still pending below each call', () => {
-    const body = steps.find((s) => s.summary === 'block');
+    const body = steps.find((s) => s.summary === 'return statement');
     expect(body?.ancestors.map((n) => steps[n]?.summary)).toContain('compound (x) to 3');
   });
 });

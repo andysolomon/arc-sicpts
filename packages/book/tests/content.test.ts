@@ -39,9 +39,11 @@ describe.each(files.map((file) => ({ file, id: idOf(file) })))('$id', ({ file, i
   it('shows exercises that have specs', () => {
     const shown = [...source.matchAll(/<Exercise id="([\d.]+)"/g)].map((m) => m[1]!);
     for (const exercise of shown) expect(exercises, `exercise ${exercise}`).toHaveProperty([exercise]);
-    // From Chapter 2 on, every exercise of the range is shown.
+    // Chapter 2 shows every exercise of the range. Chapters 1 and 5 leave out
+    // the ones no check can judge (proofs, essays, major projects) and count them.
     const total = /<Exercises range="[^"]*" total=\{(\d+)\}/.exec(source);
-    if (total !== null && !id.startsWith('1.')) expect(shown).toHaveLength(Number(total[1]));
+    if (total !== null && id.startsWith('2.')) expect(shown).toHaveLength(Number(total[1]));
+    if (total !== null) expect(shown.length).toBeLessThanOrEqual(Number(total[1]));
   });
 
   it('enables only sections that are in the contents', () => {
@@ -67,6 +69,33 @@ describe('chapter 2', () => {
     expect(shown.toSorted((a, b) => Number(a.split('.')[1]) - Number(b.split('.')[1]))).toEqual(
       Array.from({ length: 97 }, (_, i) => `2.${i + 1}`),
     );
+  });
+});
+
+describe('chapter 5', () => {
+  const chapter = chapters.find((c) => c.id === '5')!;
+  const ids = (prefix: string) =>
+    files
+      .filter((file) => idOf(file) === prefix || idOf(file).startsWith(`${prefix}.`))
+      .flatMap((file) => [...text(file).matchAll(/<Exercise id="([\d.]+)"/g)].map((m) => m[1]!));
+
+  it('has a written page for the chapter, every section and every subsection', () => {
+    const written = new Set(files.map(idOf));
+    const expected = ['5', ...chapter.sections.flatMap((s) => [s.id, ...s.subsections.map((sub) => sub.id)])];
+    expect(expected.filter((id) => !written.has(id))).toEqual([]);
+  });
+
+  it('shows each exercise at most once, within its section’s range', () => {
+    const shown = ids('5');
+    expect(new Set(shown).size).toBe(shown.length);
+    for (const section of chapter.sections) {
+      const [first, last] = section.exercises ?? [0, -1];
+      for (const exercise of ids(section.id)) {
+        const n = Number(exercise.split('.')[1]);
+        expect(n, `exercise ${exercise} in ${section.id}`).toBeGreaterThanOrEqual(first);
+        expect(n, `exercise ${exercise} in ${section.id}`).toBeLessThanOrEqual(last);
+      }
+    }
   });
 });
 

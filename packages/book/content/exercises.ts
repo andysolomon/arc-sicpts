@@ -8,6 +8,12 @@ import * as section_2_3 from './exercises/2.3.ts';
 import * as section_2_4 from './exercises/2.4.ts';
 import * as section_2_5 from './exercises/2.5.ts';
 import * as section_2_5_3 from './exercises/2.5.3.ts';
+import * as section_5_1 from './exercises/5.1.ts';
+import * as section_5_2 from './exercises/5.2.ts';
+import * as section_5_3 from './exercises/5.3.ts';
+import * as section_5_4 from './exercises/5.4.ts';
+import * as section_5_5 from './exercises/5.5.ts';
+import * as section_5_5_5 from './exercises/5.5.5.ts';
 import * as section_4_1 from './exercises/4.1.ts';
 import * as section_4_2 from './exercises/4.2.ts';
 import * as section_4_3 from './exercises/4.3.ts';
@@ -41,6 +47,12 @@ const sections: readonly Readonly<Record<string, ExerciseSpec>>[] = [
   section_3_4,
   section_3_5,
   section_3_5_paradigm,
+  section_5_1,
+  section_5_2,
+  section_5_3,
+  section_5_4,
+  section_5_5,
+  section_5_5_5,
   section_4_1,
   section_4_2,
   section_4_3,

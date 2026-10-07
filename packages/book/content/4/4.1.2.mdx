@@ -63,7 +63,7 @@ function lambda_parameter_symbols(component) {
 }
 ```
 
-A sequence of statements is `list("sequence", list(⟨statement⟩, …))`, with `is_sequence` and `sequence_statements`, and `first_statement`, `rest_statements`, `is_empty_sequence` and `is_last_statement` for the list of statements. A block is `list("block", ⟨statements⟩)`, with `is_block` and `block_body`. (A parser may give a sequence of one statement as just that statement; ours does, and nothing in this chapter depends on it.)
+A sequence of statements is `list("sequence", list(⟨statement⟩, …))`, with `is_sequence` and `sequence_statements`, and `first_statement`, `rest_statements`, `is_empty_sequence` and `is_last_statement` for the list of statements. A block is `list("block", ⟨statements⟩)`, with `is_block` and `block_body`. (A parser may give a sequence of one statement as just that statement, and a block that declares no names as just its statements; ours does both, as Source's `parse` does, and nothing in this chapter depends on it.)
 
 ## Return statements, assignments and declarations
 

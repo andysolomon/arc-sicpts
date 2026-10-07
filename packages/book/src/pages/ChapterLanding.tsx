@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { sectionStatus, type SectionStatus } from '../progress.ts';
 import { exerciseCount, pathOf, type Chapter } from '../toc.ts';
 import { PageHeader } from './parts.tsx';
+import { Introduction } from './SectionPage.tsx';
 
 const DOT: Record<SectionStatus, string> = {
   complete: 'bg-ok',
@@ -26,6 +27,7 @@ export function ChapterLanding({ chapter }: { chapter: Chapter }) {
           {chapter.readingTime !== null && <span>{chapter.readingTime}</span>}
         </div>
       </div>
+      <Introduction id={chapter.id} />
       <ol className="m-0 flex list-none flex-col border-t border-line p-0">
         {chapter.sections.map((section) => {
           const status = sectionStatus(chapter, section);

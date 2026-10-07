@@ -2,12 +2,12 @@ import { SourceError } from '../syntax/errors.ts';
 import { parse } from '../syntax/parse.ts';
 import type { Loc, Program } from '../syntax/ast.ts';
 import type { Environment } from './environment.ts';
-import { library } from './library.ts';
+import { library, markLibrary } from './library.ts';
 import { createFrameIds, Machine, type FrameIds, type MachineHooks } from './machine.ts';
-import { createGlobalEnvironment, type Segment } from './primitives.ts';
+import { createGlobalEnvironment, type GlobalOptions, type Segment } from './primitives.ts';
 import { stringify, type Value } from './values.ts';
 
-export interface PrepareOptions {
+export interface PrepareOptions extends GlobalOptions {
   budget?: number;
   hooks?: readonly MachineHooks[];
   /** Receives each line written by `display`. */
@@ -16,6 +16,12 @@ export interface PrepareOptions {
   draw?: (segment: Segment) => void;
   /** Source evaluated first, in a frame the program can see but not disturb. */
   prelude?: string;
+  /**
+   * Declarations evaluated in the program's own frame, before the program.
+   * Unlike a prelude, the context's functions see the program's declarations,
+   * so a program can supply a function the context calls.
+   */
+  context?: string;
   /** Seeds the scheduler of `concurrent_execute`, so that the interleaving can be repeated. */
   seed?: number;
 }
@@ -62,9 +68,10 @@ function declarations(program: Program, parent: Environment, id: 'library' | 'pr
 export function createLibraryEnvironment(
   display: (text: string) => void = () => {},
   draw?: (segment: Segment) => void,
+  options: GlobalOptions = {},
 ): Environment {
-  libraryProgram ??= parse(library);
-  return declarations(libraryProgram, createGlobalEnvironment(display, draw), 'library');
+  libraryProgram ??= markLibrary(parse(library));
+  return declarations(libraryProgram, createGlobalEnvironment(display, draw, options), 'library');
 }
 
 /**
@@ -74,9 +81,15 @@ export function createLibraryEnvironment(
  * stream libraries), `prelude` (when given), then the program's own.
  */
 export function prepare(source: string, options: PrepareOptions = {}): Session {
-  const program = parse(source);
+  const own = parse(source);
+  const program: Program =
+    options.context === undefined ? own : { ...own, body: [...parse(options.context).body, ...own.body] };
   const frameIds = createFrameIds();
-  let parent = createLibraryEnvironment(options.display, options.draw);
+  let parent = createLibraryEnvironment(options.display, options.draw, {
+    ...(options.onMachine !== undefined && { onMachine: options.onMachine }),
+    ...(options.onPair !== undefined && { onPair: options.onPair }),
+    ...(options.maxInstructions !== undefined && { maxInstructions: options.maxInstructions }),
+  });
   if (options.prelude !== undefined) parent = declarations(hide(parse(options.prelude)), parent, 'prelude');
 
   const machine = new Machine(program, {

@@ -1,0 +1,79 @@
+import { gcdMachineProgram, simulatorGcdProgram, simulatorSource } from '@sicp/lab';
+
+<Prose>
+
+To understand the design of register machines well, we must test the machines we design to see if they perform as expected. One way to test a design is to hand-simulate the controller, as in exercise 5.5, but this is extremely tedious for all but the simplest machines. In this section we construct a simulator for machines described in the register-machine language. The simulator is a JavaScript program with four interface functions. The first uses a description of a register machine to construct a model of the machine (a data structure whose parts correspond to the parts of the machine to be simulated), and the other three let us simulate the machine by manipulating the model:
+
+- `make_machine(register_names, operations, controller)` constructs and returns a model of the machine with the given registers, operations and controller.
+- `set_register_contents(machine_model, register_name, value)` stores a value in a simulated register in the given machine.
+- `get_register_contents(machine_model, register_name)` returns the contents of a simulated register in the given machine.
+- `start(machine_model)` simulates the execution of the given machine, starting from the beginning of the controller sequence and stopping when it reaches the end of the sequence.
+
+As an example of how these functions are used, we can declare `gcd_machine` to be a model of the GCD machine of §5.1.1:
+
+```js
+const gcd_machine =
+    make_machine(
+        list("a", "b", "t"),
+        list(list("rem", (a, b) => a % b),
+             list("=", (a, b) => a === b)),
+        list(
+          "test_b",
+            test(list(op("="), reg("b"), constant(0))),
+            branch(label("gcd_done")),
+            assign("t", list(op("rem"), reg("a"), reg("b"))),
+            assign("a", reg("b")),
+            assign("b", reg("t")),
+            go_to(label("test_b")),
+          "gcd_done"));
+```
+
+The first argument to `make_machine` is a list of register names. The next is a table (a list of two-element lists) that pairs each operation name with a JavaScript function that implements the operation, that is, produces the same output value given the same input values. The last argument specifies the controller as a list of labels and machine instructions, as in §5.1.
+
+To compute GCDs with this machine, we set the input registers, start the machine, and examine the result when the simulation terminates:
+
+```js
+set_register_contents(gcd_machine, "a", 206);   // "done"
+set_register_contents(gcd_machine, "b", 40);    // "done"
+start(gcd_machine);                             // "done"
+get_register_contents(gcd_machine, "a");        // 2
+```
+
+This computation will run much more slowly than a `gcd` function written in JavaScript, because we simulate low-level machine instructions, such as `assign`, by much more complex operations.
+
+The machines of §5.1 already ran: the Laboratory has a simulator of its own, written in TypeScript with exactly this interface, and that is the one that draws machines at work. The rest of this section writes the book's simulator in Source, in four parts: the machine model (§5.2.1), the assembler (§5.2.2), the execution functions of the instructions (§5.2.3) and the monitoring of performance (§5.2.4). The editors below that use it are given its declarations as a prelude. A program sees the prelude's declarations before the Laboratory's built-in ones, so the prelude's `make_machine`, `start` and the instruction constructors *shadow* the TypeScript simulator, and the machine is simulated by Source code you can read.
+
+</Prose>
+
+<Example index={0} file="gcd_machine.sicp" source={simulatorGcdProgram} prelude={simulatorSource}>
+
+The GCD machine on the simulator of this section. The answer is 2, as before, but look at the step count under the editor: about 11 000 evaluator steps for 26 machine instructions, because every instruction is carried out by Source functions that look up registers, follow the program counter and apply operations through `apply_in_underlying_javascript`. The same machine on the Laboratory's simulator, below, takes fewer than 500.
+
+</Example>
+
+<Example index={1} file="gcd_machine_lab.sicp" source={gcdMachineProgram} anim="machine">
+
+The same declaration with no prelude, so `make_machine` is the Laboratory's TypeScript simulator, which records the run and can draw it. Step through the 26 instructions: the button pressed at each one, the registers it changes, and the `flag` that `test` sets and `branch` reads.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-5/simulator.ts">
+
+`simulator.ts` holds the simulator of this section as Source text, one string per subsection (`machineModelSource`, `assemblerSource`, `executionSource`), and `simulatorSource` joins them; that is the prelude above. The test `chapter-5/machines.test.ts` runs every machine of §5.1 on both simulators and checks they compute the same values and the same stack statistics. `chapter-5/section-5-2.test.ts` checks the step counts quoted here: between 10 000 and 12 000 evaluator steps on the Source simulator, fewer than 500 on the Laboratory's.
+
+</UnderTheHood>
+
+<Exercises range="5.7" total={1}>
+<Exercise id="5.7">
+
+Use the simulator to test the machines you designed in exercise 5.4: one that computes *b*ⁿ by a recursive process and one that computes it by an iterative process. The editor's `make_machine` is the Source simulator of this section. Each machine takes *b* and *n* in registers `b` and `n` and leaves *b*ⁿ in `val`. The checker computes 2¹⁰, 3⁰, 5³ and 7⁴ on your machines, and checks that the iterative one never pushes anything on the stack.
+
+<Solution>
+
+**Solution.** The recursive machine follows the factorial machine of §5.1.4: before each recursive call it saves `continue` and sets it to `after_expt`, and on return it restores `continue` and multiplies `val` by `b`. Neither `b` nor `n` is needed after the call, so `continue` is the only register saved, and computing *b*ⁿ pushes *n* values. The iterative machine keeps a running product in `val`, starting at 1, and multiplies it by `b` while counting `n` down to 0; it has no subroutine and so no stack.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['5.2.1', '5.2.4', { id: '5.4', label: 'Running the evaluator machine' }]} />

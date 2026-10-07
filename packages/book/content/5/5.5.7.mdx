@@ -1,0 +1,223 @@
+import {
+  compileAndGoPrelude,
+  interfacingCompareProgram,
+  interfacingCompileAndGoProgram,
+  interfacingFibCompareProgram,
+  interfacingSpecialFactorial,
+  interfacingSpecialFib,
+} from '@sicp/lab';
+
+<Prose>
+
+We have not yet explained how to load compiled code into the evaluator machine or how to run it. We will assume that the explicit-control-evaluator machine has been defined as in §5.4.4, with the additional operations for compiled functions listed in §5.5.2. We will implement a function `compile_and_go` that compiles a JavaScript program, loads the resulting object code into the evaluator machine, and causes the machine to run the code in the evaluator global environment, print the result, and enter the evaluator's driver loop. We will also modify the evaluator so that interpreted components can call compiled functions as well as interpreted ones. We can then put a compiled function into the machine and use the evaluator to call it:
+
+```js
+compile_and_go(parse(`
+function factorial(n) {
+    return n === 1
+           ? 1
+           : factorial(n - 1) * n;
+}
+                     `));
+// EC-evaluate value: undefined
+
+factorial(5);
+// EC-evaluate value: 120
+```
+
+To allow the evaluator to handle compiled functions (for example, to evaluate the call to `factorial` above), we need to change the code at `apply_dispatch` (§5.4.2) so that it recognizes compiled functions (as distinct from compound or primitive functions) and transfers control directly to the entry point of the compiled code. (Of course, compiled functions as well as interpreted functions are compound, that is, nonprimitive. For compatibility with the terminology used in the explicit-control evaluator, in this section we will use "compound" to mean interpreted, as opposed to compiled.)
+
+```js
+"apply_dispatch",
+  test(list(op("is_primitive_function"), reg("fun"))),
+  branch(label("primitive_apply")),
+  test(list(op("is_compound_function"), reg("fun"))),
+  branch(label("compound_apply")),
+  test(list(op("is_compiled_function"), reg("fun"))),
+  branch(label("compiled_apply")),
+  go_to(label("unknown_function_type")),
+
+"compiled_apply",
+  push_marker_to_stack(),
+  assign("val", list(op("compiled_function_entry"), reg("fun"))),
+  go_to(reg("val")),
+```
+
+At `compiled_apply`, as at `compound_apply`, we push a marker to the stack so that a return statement in the compiled function can revert the stack to this state. Note that there is no save of `continue` at `compiled_apply` before the marking of the stack, because the evaluator was arranged so that at `apply_dispatch`, the continuation would be at the top of the stack.
+
+To enable us to run some compiled code when we start the evaluator machine, we add a `branch` instruction at the beginning of the evaluator machine, which causes the machine to go to a new entry point if the `flag` register is set. (Now that the evaluator machine starts with a `branch`, we must always initialize the `flag` register before starting it: to start the machine at its ordinary read-evaluate-print loop, set `flag` to `false` first.)
+
+```js
+  branch(label("external_entry")), // branches if flag is set
+"read_evaluate_print_loop",
+  perform(list(op("initialize_stack"))),
+  …
+```
+
+The code at `external_entry` assumes that the machine is started with `val` containing the location of an instruction sequence that puts a result into `val` and ends with `go_to(reg("continue"))`. Starting at this entry point jumps to the location designated by `val`, but first assigns `continue` so that execution will return to `print_result`, which prints the value in `val` and then goes to the beginning of the evaluator's read-evaluate-print loop. (Since a compiled function is an object that the system may try to print, the system print operation `user_print` does not attempt to print the components of a compiled function; it prints `< compiled-function >`.)
+
+```js
+"external_entry",
+  perform(list(op("initialize_stack"))),
+  assign("env", list(op("get_current_environment"))),
+  assign("continue", label("print_result")),
+  go_to(reg("val")),
+```
+
+Now we can use the following function to compile a function declaration, execute the compiled code, and run the read-evaluate-print loop so we can try the function. Because we want the compiled code to proceed to the location in `continue` with its result in `val`, we compile the program with a target of `val` and a linkage of `"return"`. In order to transform the object code produced by the compiler into executable instructions for the evaluator register machine, we use the function `assemble` from the register-machine simulator (§5.2.2). For the interpreted program to refer to the names that are declared at top level in the compiled program, we scan out the top-level names and extend the global environment by binding these names to `"*unassigned*"`, knowing that the compiled code will assign them the correct values. We then initialize the `val` register to point to the list of instructions, set the `flag` so that the evaluator will go to `external_entry`, and start the evaluator.
+
+```js
+function compile_and_go(program) {
+    const instrs = assemble(instructions(compile(program,
+                                                 "val", "return")),
+                            eceval);
+    const toplevel_names = scan_out_declarations(program);
+    const unassigneds = list_of_unassigned(toplevel_names);
+    set_current_environment(extend_environment(
+                               toplevel_names,
+                               unassigneds,
+                               the_global_environment));
+    set_register_contents(eceval, "val", instrs);
+    set_register_contents(eceval, "flag", true);
+    return start(eceval);
+}
+```
+
+To look at compiled code in the notation used in this book, as earlier sections did, the compiler comes with `display_instructions`, which displays each instruction of a list as the text that constructs it:
+
+```js
+function stringify_list(xs) {
+    return is_null(member(head(xs),
+                   list("assign", "perform", "op", "label", "branch",
+                        "go_to", "save", "restore", "reg", "constant",
+                        "test", "push_marker_to_stack",
+                        "revert_stack_to_marker")))
+           ? "list(" + comma_separated(xs) + ")"
+           : head(xs) + "(" + comma_separated(tail(xs)) + ")";
+}
+function comma_separated(elements) {
+    return accumulate((s, acc) => stringify_instruction(s) +
+                                  (acc === "" ? "" : ", " + acc),
+                      "", elements);
+}
+function stringify_instruction(x) {
+    return is_string(x) || is_number(x) || is_undefined(x) || is_null(x)
+           ? stringify(x)
+           : stringify_list(x);
+}
+function display_instructions(instructions) {
+    return for_each(i => { display(stringify_instruction(i) + ","); },
+                    instructions);
+}
+```
+
+If we have set up stack monitoring, as at the end of §5.4.4, we can examine the stack usage of compiled code. The editor below has the compiler, the evaluator of this section and `compile_and_go` loaded. There is no keyboard input to the evaluator here: `set_inputs` queues what we would type at it, `factorial(5);`, and the evaluator stops when the queue is empty.
+
+</Prose>
+
+<Example index={0} file="compile_and_go.sicp" source={interfacingCompileAndGoProgram} prelude={compileAndGoPrelude} anim="machine">
+
+The evaluator runs the compiled declaration first (total pushes = 0, maximum depth = 0, value `undefined`), then reads `factorial(5);` and interprets the call: `apply_dispatch` sees a compiled function and goes to `compiled_apply`, and from there the machine runs the compiled code of §5.5.5 until the value 120 comes back to `print_result`, after 36 pushes and a maximum depth of 14. Add `"factorial(10);"` to the inputs to see 71 pushes and depth 29.
+
+</Example>
+
+<Prose>
+
+Compare this example with the evaluation of `factorial(5)` using the interpreted version of the same function, shown at the end of §5.4.4. The interpreted version required 145 pushes and a maximum stack depth of 28, as the Laboratory measures it. (The book prints 151 pushes; the Laboratory's `parse`, which follows js-slang exactly, gives 145.) This illustrates the optimization that results from our compilation strategy.
+
+</Prose>
+
+<Example index={1} file="compare.sicp" source={interfacingCompareProgram} anim="compare" special={interfacingSpecialFactorial}>
+
+The declaration is interpreted by the evaluator of §5.4 and compiled by `compile_and_go`, and each call is measured both ways, together with the special-purpose factorial machine of §5.1.4, which uses 2(*n* − 1) pushes and the same depth. Interpreted, factorial takes 32*n* − 15 pushes and depth 5*n* + 3; compiled, 7*n* + 1 pushes and depth 3*n* − 1. Add calls, or change the function, and the plots follow.
+
+</Example>
+
+<Prose>
+
+## Interpretation and compilation
+
+With the programs in this section, we can now experiment with the alternative execution strategies of interpretation and compilation. (We can do even better by extending the compiler to allow compiled code to call interpreted functions; see exercise 5.50.) An interpreter raises the machine to the level of the user program; a compiler lowers the user program to the level of the machine language. We can regard the JavaScript language (or any programming language) as a coherent family of abstractions erected on the machine language. Interpreters are good for interactive program development and debugging because the steps of program execution are organized in terms of these abstractions, and are therefore more intelligible to the programmer. Compiled code can execute faster, because the steps of program execution are organized in terms of the machine language, and the compiler is free to make optimizations that cut across the higher-level abstractions.
+
+Independent of the strategy of execution, we incur significant overhead if we insist that errors encountered in execution of a user program be detected and signaled, rather than being allowed to kill the system or produce wrong answers. For example, an out-of-bounds array reference can be detected by checking the validity of the reference before performing it. The overhead of checking, however, can be many times the cost of the array reference itself, and a programmer should weigh speed against safety in determining whether such a check is desirable. A good compiler should be able to produce code with such checks, should avoid redundant checks, and should allow programmers to control the extent and type of error checking in the compiled code. Compilers for popular languages, such as C and C++, put hardly any error-checking operations into running code, so as to make things run as fast as possible. As a result, it falls to programmers to explicitly provide error checking. Unfortunately, people often neglect to do this, even in critical applications where speed is not a constraint. Their programs lead fast and dangerous lives. For example, the notorious Worm that paralyzed the Internet in 1988 exploited the UNIX operating system's failure to check whether the input buffer has overflowed in the finger daemon (Spafford 1989).
+
+The alternatives of interpretation and compilation also lead to different strategies for porting languages to new computers. Suppose that we wish to implement JavaScript for a new machine. One strategy is to begin with the explicit-control evaluator of §5.4 and translate its instructions to instructions for the new machine. A different strategy is to begin with the compiler and change the code generators so that they generate code for the new machine. The second strategy allows us to run any JavaScript program on the new machine by first compiling it with the compiler running on our original JavaScript system, and linking it with a compiled version of the runtime library. (With either strategy we must also implement for the new machine storage allocation, input and output, and all the various operations that we took as primitive in our discussion of the evaluator and compiler. One way to minimize this work is to write as many of these operations as possible in JavaScript and then compile them for the new machine. Ultimately, everything reduces to a small kernel, such as garbage collection and the mechanism for applying actual machine primitives, that is hand-coded for the new machine.) Better yet, we can compile the compiler itself, and run this on the new machine to compile other JavaScript programs. (This leads to amusing tests of correctness, such as checking whether the compilation of a program on the new machine, using the compiled compiler, is identical with the compilation of the program on the original JavaScript system. Tracking down the source of differences is fun but often frustrating, because the results are extremely sensitive to minuscule details.) Or we can compile one of the interpreters of §4.1 to produce an interpreter that runs on the new machine.
+
+</Prose>
+
+<Example index={2} file="compare_fib.sicp" source={interfacingFibCompareProgram} anim="compare" special={interfacingSpecialFib}>
+
+For exercise 5.49: the tree-recursive Fibonacci function measured the same three ways, the special-purpose machine being the Fibonacci machine of §5.1.4. The pushes no longer grow in a straight line, and the table gives the ratios at each size.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-5/section-5-5-5.test.ts">
+
+`ecevalCompiledApplyDispatch` and `ecevalExternalEntry` in `chapter-5/eceval.ts` are the changed blocks, and `ecevalCompiledControllerSource` is the whole controller with them; `compileAndGoSource` in `chapter-5/compiler.ts` is `compile_and_go`, and `assemble` adds the compiled code to the running evaluator machine (`machines/registerMachine.ts`). The comparison scene runs `runEceval` and `runCompiled` in the worker and calls the editor's `special_statistics`. The test `chapter-5/section-5-5-5.test.ts` asserts the output of the first editor line by line, and for the sizes the other two editors use: interpreted factorial 32*n* − 15 pushes and depth 5*n* + 3, compiled 7*n* + 1 and 3*n* − 1, the special-purpose machine 2(*n* − 1) and 2(*n* − 1); compiled Fibonacci 12 Fib(*n* + 1) − 4 pushes and depth 3*n* − 1, the Fibonacci machine 4(Fib(*n* + 1) − 1) and 2(*n* − 1).
+
+</UnderTheHood>
+
+<Exercises range="5.48 – 5.55" total={8}>
+<Exercise id="5.48">
+
+By comparing the stack operations used by compiled code to the stack operations used by the evaluator for the same computation, we can determine the extent to which the compiler optimizes use of the stack, both in speed (reducing the total number of stack operations) and in space (reducing the maximum stack depth). Comparing this optimized stack use to the performance of a special-purpose machine for the same computation gives some indication of the quality of the compiler.
+
+1. Exercise 5.28 asked you to determine, as a function of *n*, the number of pushes and the maximum stack depth needed by the evaluator to compute *n*! using the recursive factorial function given above. Exercise 5.13 asked you to do the same measurements for the special-purpose factorial machine of §5.1.4. Now perform the same analysis using the compiled `factorial` function. Take the ratio of the number of pushes in the compiled version to the number of pushes in the interpreted version, and do the same for the maximum stack depth. Since the number of operations and the stack depth used to compute *n*! are linear in *n*, these ratios should approach constants as *n* becomes large. What are these constants? Similarly, find the ratios of the stack usage in the special-purpose machine to the usage in the interpreted version. Compare the ratios for special-purpose versus interpreted code to the ratios for compiled versus interpreted code. You should find that the special-purpose machine is much more efficient than the compiled code, since the hand-tailored controller code should be much better than what is produced by our rudimentary general-purpose compiler.
+2. Can you suggest improvements to the compiler that would help it generate code that would come closer in performance to the hand-tailored version?
+
+Write `compiled_pushes(n)` and `compiled_depth(n)` (for *n* ≥ 2), and the four limiting ratios. The exercise's editor has `compile_and_go` loaded for measuring; the second editor above measures all three versions at once.
+
+<Solution>
+
+**Solution.** Compiled factorial takes 7*n* + 1 pushes and depth 3*n* − 1, against 32*n* − 15 and 5*n* + 3 interpreted, so the ratios approach 7/32 ≈ 0.22 for pushes and 3/5 for depth. The special-purpose machine takes 2(*n* − 1) for both, giving 2/32 = 1/16 and 2/5. The compiled code saves 3.5 times as many values as the hand-made machine, and needs half as much depth again.
+
+Most of the difference is the general function-call protocol: every `*`, `-` and `===` is looked up, gets an argument list, and is tested for being primitive, and every recursive call saves `fun` and `argl` and a marker. Open coding the primitives (exercise 5.41) removes most of this: with it, compiled factorial takes 3*n* + 3 pushes and depth 2*n* − 1, close to the special-purpose machine. Further steps in the same direction are knowing at compile time that `factorial` is compiled (exercise 5.47) and keeping `n` in a register instead of an environment frame.
+
+</Solution>
+</Exercise>
+<Exercise id="5.49">
+
+Carry out an analysis like the one in exercise 5.48 to determine the effectiveness of compiling the tree-recursive Fibonacci function
+
+```js
+function fib(n) {
+    return n < 2 ? n : fib(n - 1) + fib(n - 2);
+}
+```
+
+compared to the effectiveness of using the special-purpose Fibonacci machine of §5.1.4. (For measurement of the interpreted performance, see exercise 5.30.) For Fibonacci, the time resource used is not linear in *n*, so the ratios of stack operations cannot be read off two straight lines. Write `compiled_fib_pushes(n)` and `compiled_fib_depth(n)` (for *n* ≥ 2) for the compiled function, using `fib` (which the exercise provides), and `fib_pushes_ratio`, the limit of the ratio of compiled to interpreted pushes as *n* grows, if there is one.
+
+<Solution>
+
+**Solution.** Like the interpreted version, the compiled one satisfies S(*n*) = S(*n* − 1) + S(*n* − 2) + *k*, here with *k* = 4 and S(0) = S(1) = 8, so S(*n*) = 12 Fib(*n* + 1) − 4; its depth is 3*n* − 1. Interpreted, the pushes are 56 Fib(*n* + 1) − 39 and the depth 5*n* + 3; the Fibonacci machine takes 4(Fib(*n* + 1) − 1) pushes and depth 2(*n* − 1). The pushes grow exponentially, but all three with Fib(*n* + 1), so their ratios do settle: compiled to interpreted tends to 12/56 = 3/14, special-purpose to interpreted to 4/56 = 1/14. The depths are linear, with the same limits as for factorial, 3/5 and 2/5.
+
+</Solution>
+</Exercise>
+<Exercise id="5.50">
+
+This section described how to modify the explicit-control evaluator so that interpreted code can call compiled functions. Show how to modify the compiler so that compiled functions can call not only primitive functions and compiled functions, but interpreted functions as well. This requires modifying `compile_function_call` to handle the case of compound (interpreted) functions. Be sure to handle all the same `target` and `linkage` combinations as in `compile_fun_appl`. To do the actual function application, the code needs to jump to the evaluator's `compound_apply` entry point. This label cannot be directly referenced in object code (since the assembler requires that all labels referenced by the code it is assembling be defined there), so we will add a register called `compapp` to the evaluator machine to hold this entry point, and add an instruction to initialize it:
+
+```js
+  assign("compapp", label("compound_apply")),
+  branch(label("external_entry")),     // branches if flag is set
+"read_evaluate_print_loop",
+  …
+```
+
+The rest of the compiler and an evaluator with this change are loaded around your function. To test your code, the checker compiles functions that call a function they are given and lets the evaluator declare that function: `function f(g, x) { return g(x) + 1; }` is compiled, `function g(x) { return x * 2; }` is typed at the evaluator, and `f(g, 5)` should be 11. (A function declared at the evaluator's prompt lives in a frame of its own, which the environment of a compiled function cannot see; hence passing `g` as an argument, or assigning it to a name the compiled program declared.) The checker covers calls with each target and linkage, and checks that compiled `factorial(5)` is still 120.
+
+<Solution>
+
+**Solution.** After the test for a primitive function, test for a compound one and branch to a third branch, whose code `compound_fun_appl` mirrors `compile_fun_appl`. It saves `continue`, holding the place to return to, and jumps to `compapp`. It pushes no marker, because `compound_apply` pushes one itself; the evaluator's `ev_return` (or `return_undefined`) reverts the stack to it and restores the saved `continue`, just as a compiled function's return does. For linkage `"return"`, the `continue` saved is the caller's own, so the call is still a tail call; for a target other than `val`, the evaluator returns to a `fun_return` label that moves `val` to the target. The new code needs `compapp` as well as `fun` and `argl`, and modifies all registers.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Prose>
+
+Exercises 5.51 to 5.55 are not shown. Exercise 5.51 asks for a `compile_and_run` primitive callable from the running evaluator, and exercise 5.52 for a machine that runs a read-compile-execute-print loop, both of which would make the compiler and assembler operations of the evaluator machine itself. Exercise 5.53 compiles the metacircular evaluator of §4.1 and runs it on the simulator, and exercises 5.54 and 5.55 translate the evaluator, or the output of the compiler, into C. These are projects without a checker.
+
+</Prose>
+
+<Enables items={[{ id: '5.5', label: 'Compilation' }, { id: '5.4.4', label: 'Running the evaluator' }]} />

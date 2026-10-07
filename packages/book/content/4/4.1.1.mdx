@@ -193,7 +193,7 @@ An assignment’s value is the value assigned. To keep the evaluator short, `eva
 
 <UnderTheHood file="packages/lab/src/chapter-4/metacircular.ts">
 
-The evaluator is a Source program, `evaluatorCore` and its neighbours in `chapter-4/metacircular.ts`, run by the Laboratory’s own evaluator: an evaluator inside an evaluator. `parse` is a Laboratory primitive (`syntax/taggedList.ts`), and the cycle above is drawn by asking the worker to log the calls of the Source functions `evaluate` and `apply` (`inspect/callLog.ts`). The test `chapter-4/metacircular.test.ts` asserts that `square(3) + 1` makes 18 calls of `evaluate` and 3 of `apply` (one for `square`, two for the primitives `*` and `+`), and that the return-statement example displays its message once and returns 12.
+The evaluator is a Source program, `evaluatorCore` and its neighbours in `chapter-4/metacircular.ts`, run by the Laboratory’s own evaluator: an evaluator inside an evaluator. `parse` is a Laboratory primitive (`syntax/taggedList.ts`), and the cycle above is drawn by asking the worker to log the calls of the Source functions `evaluate` and `apply` (`inspect/callLog.ts`). The test `chapter-4/metacircular.test.ts` asserts that `square(3) + 1` makes 17 calls of `evaluate` and 3 of `apply` (one for `square`, two for the primitives `*` and `+`), and that the return-statement example displays its message once and returns 12.
 
 </UnderTheHood>
 

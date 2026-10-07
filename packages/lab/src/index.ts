@@ -17,18 +17,23 @@ export {
   type Frame,
 } from './evaluator/environment.ts';
 export {
+  arrayToList,
   isClosure,
+  isLabel,
   isPair,
   isPrimitive,
+  listToArray,
   MAX_TEXT,
   stringify,
   typeName,
   type Closure,
+  type Label,
   type Pair,
   type Primitive,
   type Value,
 } from './evaluator/values.ts';
-export { createGlobalEnvironment, type Segment } from './evaluator/primitives.ts';
+export { createGlobalEnvironment, type GlobalOptions, type Segment } from './evaluator/primitives.ts';
+export { invoke } from './evaluator/invoke.ts';
 export {
   createFrameIds,
   DEFAULT_BUDGET,
@@ -39,7 +44,7 @@ export {
   type MachineStatus,
   type ReturnInfo,
 } from './evaluator/machine.ts';
-export { library, listLibrary, streamLibrary } from './evaluator/library.ts';
+export { library, listLibrary, machineLibrary, streamLibrary } from './evaluator/library.ts';
 export {
   createLibraryEnvironment,
   evaluate,
@@ -146,6 +151,109 @@ export * from './chapter-2/symbolicData.ts';
 export * from './chapter-2/multipleRepresentations.ts';
 export * from './chapter-2/genericArithmetic.ts';
 export * from './chapter-2/symbolicAlgebra.ts';
+export {
+  instructionText,
+  readController,
+  type Controller,
+  type ControllerLine,
+  type Instruction,
+} from './machines/controller.ts';
+export { RegisterMachine, UNASSIGNED, type MachineObserver, type StackEntry } from './machines/registerMachine.ts';
+export { dataPaths, type Button, type DataPaths, type OperationNode, type Source } from './machines/dataPaths.ts';
+export { parseComponent, programComponent, unparse } from './machines/components.ts';
+export { ECEVAL_OPERATION_NAMES } from './machines/evaluatorSupport.ts';
+export { machineOf } from './machines/install.ts';
+export {
+  recordMachine,
+  type MachineRecorder,
+  show,
+  type CodeLineView,
+  type MachineView,
+  type RunView,
+  type Shown,
+  type ShownKind,
+  type StepView,
+} from './machines/inspect.ts';
+
+export {
+  factorialController,
+  factorialMachineProgram,
+  fibController,
+  fibMachineProgram,
+  gcdController,
+  gcdElaboratedProgram,
+  gcdMachineProgram,
+  gcdControllerProgram,
+  gcdSubroutineProgram,
+  gcdWithPromptProgram,
+  monitoredFactorialProgram,
+} from './chapter-5/machines.ts';
+export {
+  assemblerSource,
+  executionSource,
+  machineModelSource,
+  simulatorFunctions,
+  simulatorSource,
+  simulatorWithout,
+} from './chapter-5/simulator.ts';
+export { onlyDeclarations, withoutDeclarations } from './chapter-5/pieces.ts';
+export { BROKEN_HEART, collectGarbage, gcControllerSource, memoryImage, type GcRun, type GcStep, type MemoryImage } from './chapter-5/memory.ts';
+export {
+  ECEVAL_REGISTERS,
+  ecevalApplication,
+  ecevalApplyDispatch,
+  ecevalAssignment,
+  ecevalBlock,
+  ecevalCompiledControllerSource,
+  ecevalConditional,
+  ecevalControllerSource,
+  ecevalDeclaration,
+  ecevalDispatch,
+  ecevalDriverLoop,
+  ecevalErrors,
+  ecevalExternalEntry,
+  ecevalMachineSource,
+  ecevalProgram,
+  ecevalReturn,
+  ecevalSequence,
+  ecevalLiteral,
+  ecevalName,
+  ecevalLambda,
+  ecevalCompoundApply,
+  ecevalReturnUndefined,
+  ecevalCompiledApplyDispatch,
+  ecevalBlocks,
+  ecevalControllerWithout,
+  quote,
+  readResults,
+  runEceval,
+  type EcevalResult,
+  type EcevalRun,
+} from './chapter-5/eceval.ts';
+export {
+  compileAndGoPrelude,
+  compileAndGoSource,
+  compileApplication,
+  compileCombining,
+  compileConditional,
+  compileDispatch,
+  compileLabels,
+  compileLambda,
+  compileLinkage,
+  compileProgram,
+  compilerSource,
+  compileSequence,
+  compileSimple,
+  displayInstructionsSource,
+  runCompiled,
+} from './chapter-5/compiler.ts';
+
+export * from './chapter-5/section-5-1.ts';
+export * from './chapter-5/section-5-2.ts';
+export * from './chapter-5/section-5-3.ts';
+export * from './chapter-5/section-5-4.ts';
+export * from './chapter-5/section-5-5.ts';
+export * from './chapter-5/section-5-5-5.ts';
 
 export { declaredNames, omit, pick } from './chapter-4/source.ts';
 export {

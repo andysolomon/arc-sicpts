@@ -134,7 +134,7 @@ The analyzing evaluator on the same program takes almost two fifths fewer steps 
 
 <UnderTheHood file="packages/lab/src/chapter-4/analyze.ts">
 
-`analyzingEvaluator` in `chapter-4/analyze.ts` is `analyzingCore` together with the evaluator of §4.1 minus the nine declarations that analysis replaces, removed with `omit` from `chapter-4/source.ts`. A step is one move of the Laboratory’s machine, so the count measures all the work of the evaluator being evaluated. The test `chapter-4/metacircular.test.ts` asserts that both evaluators give 3628800 for `factorial(10)` and that the analyzing one takes between 55 and 70 per cent of the steps, 54 040 against 88 071, the numbers exercise 4.22 expects.
+`analyzingEvaluator` in `chapter-4/analyze.ts` is `analyzingCore` together with the evaluator of §4.1 minus the nine declarations that analysis replaces, removed with `omit` from `chapter-4/source.ts`. A step is one move of the Laboratory’s machine, so the count measures all the work of the evaluator being evaluated. The test `chapter-4/metacircular.test.ts` asserts that both evaluators give 3628800 for `factorial(10)` and that the analyzing one takes between 55 and 70 per cent of the steps, 46 980 against 76 076, the numbers exercise 4.22 expects.
 
 </UnderTheHood>
 

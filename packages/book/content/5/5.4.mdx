@@ -1,0 +1,43 @@
+import { ecevalControllerSource, ecevalFactorialProgram, ecevalMachineSource, ecevalParseProgram } from '@sicp/lab';
+
+<Prose>
+
+In §5.1 we saw how to transform simple JavaScript programs into descriptions of register machines. We now perform this transformation on a more complex program, the metacircular evaluator of chapter 4, which shows how the behaviour of a JavaScript interpreter can be described in terms of the functions `evaluate` and `apply`. The *explicit-control evaluator* that we develop in this section shows how the underlying function-calling and argument-passing mechanisms used in the evaluation process can be described in terms of operations on registers and stacks. In addition, the explicit-control evaluator can serve as an implementation of a JavaScript interpreter, written in a language that is very similar to the native machine language of conventional computers. The evaluator can be executed by the register-machine simulator of §5.2. Alternatively, it can be used as a starting point for building a machine-language implementation of a JavaScript evaluator, or even a special-purpose machine for evaluating JavaScript programs. Such machines have been built: the original edition of this book shows a silicon chip that acts as an evaluator for Scheme, the language used there in place of JavaScript. Its designers started with the data-path and controller specifications for a register machine similar to the evaluator of this section and used design-automation programs to construct the integrated-circuit layout (Batali et al. 1982).
+
+**Programs as data.** Chapter 4, not yet written in this book, builds the metacircular evaluator, and this section relies on the representation of programs it introduces in §4.1.2. Program text such as `"const size = 2; 5 * size;"` does not provide enough structure to an evaluator: `size = 2` and `5 * size` look alike but mean very different things. So a function `parse` translates program text into a *tagged-list representation*, reminiscent of the tagged data of §2.4.2. Every component becomes a list whose head is a string naming its kind: `list("literal", 2)`, `list("name", "size")`, `list("application", function_expression, arguments)`, and so on. The evaluator never looks inside these lists directly. It uses *syntax functions*: a predicate for each kind, such as `is_literal`, `is_name` and `is_application`, and selectors for the parts, such as `literal_value`, `symbol_of_name` and `arg_expressions`.
+
+</Prose>
+
+<Example index={0} file="parse.sicp" source={ecevalParseProgram}>
+
+The program is a sequence of two statements, a constant declaration and an operator combination. The syntax functions take it apart without the evaluator knowing how the lists are laid out. Try `parse("x => x * x;")`, or a function declaration.
+
+</Example>
+
+<Prose>
+
+The metacircular evaluator also needs a representation of the values it computes and of environments. A compound function is made by `make_function` from its parameters, body and environment, and taken apart by `function_parameters`, `function_body` and `function_environment`. An environment is a list of frames: `extend_environment` adds a frame binding names to values, `lookup_symbol_value` finds the value of a name and `assign_symbol_value` changes it. The global environment binds the primitive functions, which `apply_primitive_function` applies. The Laboratory provides all of these, with the names and behaviour chapter 4 gives them, as primitive functions of the language, and collects the ones the explicit-control evaluator uses in the list `eceval_operations`.
+
+**Registers and operations.** In designing the explicit-control evaluator, we must specify the operations to be used in our register machine. We could expand the syntax functions into sequences of elementary list-structure memory operations, and implement those on our register machine. However, that would make our evaluator very long, obscuring the basic structure with details. To clarify the presentation, we include as primitive operations of the register machine the syntax functions and the functions for representing environments and other runtime data. To completely specify an evaluator that could be programmed in a low-level machine language or implemented in hardware, we would replace these operations by more elementary operations, using the list-structure implementation of §5.3.
+
+Our JavaScript evaluator register machine includes a stack and seven registers: `comp`, `env`, `val`, `continue`, `fun`, `argl` and `unev`. The `comp` register holds the component to be evaluated, and `env` contains the environment in which the evaluation is to be performed. At the end of an evaluation, `val` contains the value obtained by evaluating the component in the designated environment. The `continue` register is used to implement recursion, as explained in §5.1.4. (The evaluator needs to call itself recursively, since evaluating a component requires evaluating its subcomponents.) The registers `fun`, `argl` and `unev` are used in evaluating function applications.
+
+We will not provide a data-path diagram to show how the registers and operations of the evaluator are connected, nor will we give the complete list of machine operations. These are implicit in the evaluator's controller, which the next four subsections present block by block.
+
+**Running the evaluator.** The controller begins with a *driver loop* (§5.4.4) that reads a program, evaluates it and prints the result, over and over. Where the book's loop prompts the user to type a program, the Laboratory has no interactive input: `set_inputs` queues the program texts the loop will read, each read takes the next one, and when the queue is empty the read returns `null` and the machine stops. Below, the complete controller `eceval_controller` and the machine `eceval` built from it are declared out of sight, and the program only queues two inputs and starts the machine.
+
+</Prose>
+
+<Example index={1} file="eceval.sicp" source={ecevalFactorialProgram} prelude={ecevalControllerSource + ecevalMachineSource} anim="machine">
+
+The evaluator reads the declaration of `factorial`, then `factorial(3)`, and evaluates each. Step through the blocks: the caption says what each block does as control enters it, `comp` shows the component being evaluated, and the stack lists the registers saved on it. The plot of stack depth rises with each pending multiplication and falls as they complete. Before each value the evaluator prints its stack statistics (§5.4.4): 81 pushes and a maximum depth of 18 for 3!.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/machines/evaluatorSupport.ts">
+
+The syntax functions, the function and environment representations and the global environment of the evaluated language are written in TypeScript in `machines/evaluatorSupport.ts`, with the book's names, and `parse` produces the tagged lists of js-slang. The controller is in `chapter-5/eceval.ts`, one string per block of the book; it runs on the simulator of `machines/registerMachine.ts`. The test `chapter-5/evaluator.test.ts` checks `parse` against the book's output, and `chapter-5/section-5-4.test.ts` asserts the output of both programs on this page, including 81 pushes and depth 18 for `factorial(3)`.
+
+</UnderTheHood>
+
+<Enables items={['5.4.1', '5.4.4', { id: '5.5', label: 'Compiling with the same operations' }]} />

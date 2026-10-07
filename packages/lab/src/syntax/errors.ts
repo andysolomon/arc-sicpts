@@ -6,6 +6,8 @@ export type ErrorPhase = 'parse' | 'runtime';
 export class SourceError extends Error {
   readonly phase: ErrorPhase;
   readonly loc: Loc | null;
+  /** The message without its location. */
+  readonly reason: string;
 
   constructor(phase: ErrorPhase, message: string, loc: Loc | null) {
     super(
@@ -14,5 +16,6 @@ export class SourceError extends Error {
     this.name = 'SourceError';
     this.phase = phase;
     this.loc = loc;
+    this.reason = message;
   }
 }

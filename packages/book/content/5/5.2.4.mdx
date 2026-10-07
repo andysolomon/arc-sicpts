@@ -1,0 +1,198 @@
+import { monitoredFactorialProgram, monitoredStackProgram, simulatorSource } from '@sicp/lab';
+
+<Prose>
+
+Simulation is useful not only for verifying the correctness of a proposed machine design but also for measuring the machine's performance. For example, we can install in our simulation program a meter that measures the number of stack operations used in a computation. To do this, we modify our simulated stack to keep track of the number of times registers are saved on the stack and the maximum depth reached by the stack, and add a message to the stack's interface that prints the statistics, as shown below. We also add an operation to the basic machine model to print the stack statistics, by initializing `the_ops` in `make_new_machine` to
+
+```js
+list(list("initialize_stack",
+          () => stack("initialize")),
+     list("print_stack_statistics",
+          () => stack("print_statistics")));
+```
+
+Here is the new version of `make_stack`:
+
+```js
+function make_stack() {
+    let stack = null;
+    let number_pushes = 0;
+    let max_depth = 0;
+    let current_depth = 0;
+    function push(x) {
+        stack = pair(x, stack);
+        number_pushes = number_pushes + 1;
+        current_depth = current_depth + 1;
+        max_depth = math_max(current_depth, max_depth);
+        return "done";
+    }
+    function pop() {
+        if (is_null(stack)) {
+            error("empty stack -- pop");
+        } else {
+            const top = head(stack);
+            stack = tail(stack);
+            current_depth = current_depth - 1;
+            return top;
+        }
+    }
+    function initialize() {
+        stack = null;
+        number_pushes = 0;
+        max_depth = 0;
+        current_depth = 0;
+        return "done";
+    }
+    function print_statistics() {
+        display("total pushes = " + stringify(number_pushes));
+        display("maximum depth = " + stringify(max_depth));
+    }
+    function dispatch(message) {
+        return message === "push"
+               ? push
+               : message === "pop"
+               ? pop()
+               : message === "initialize"
+               ? initialize()
+               : message === "print_statistics"
+               ? print_statistics()
+               : error(message, "unknown request -- stack");
+    }
+    return dispatch;
+}
+```
+
+The prelude of the editors in this section has this stack combined with the markers of §5.2.1. A marker then remembers `current_depth` along with the stack, so that `pop_marker` can put the depth back too.
+
+</Prose>
+
+<Example index={0} file="monitored_stack.sicp" source={monitoredStackProgram} prelude={simulatorSource}>
+
+Four pushes, but never more than three items at once: the `pop` between them lowers the current depth, not the count. `initialize` empties the stack and resets both statistics. The lines are printed by `display` from Source, so the strings appear in quotation marks.
+
+</Example>
+
+<Prose>
+
+Here is the factorial machine of §5.1.4 with the stack monitored. Before each run the program sends the stack `"initialize"`, and after it, `"print_statistics"`.
+
+</Prose>
+
+<Example index={1} file="monitored_factorial.sicp" source={monitoredFactorialProgram} prelude={simulatorSource}>
+
+On the Source simulator: computing 3! takes 4 pushes and a maximum depth of 4, and 6! takes 10 and 10. Try other values of *n* in the two calls of `factorial_statistics`; exercise 5.13 asks for the formulas.
+
+</Example>
+
+<Example index={2} file="monitored_factorial_lab.sicp" source={monitoredFactorialProgram} anim="machine">
+
+The same program with no prelude, on the Laboratory's simulator. It prints the same statistics, and the animation shows the last run, 6!: the stack climbs to depth 10 as `continue` and `n` are saved for each recursive call, then unwinds as each `after_fact` multiplies.
+
+</Example>
+
+<Prose>
+
+Exercises 5.14 through 5.18 describe other useful monitoring and debugging features that can be added to the register-machine simulator.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-5/simulator.ts">
+
+`machineModelSource` in `simulator.ts` has the monitored `make_stack`, with markers, and `make_new_machine` with both operations. The test `chapter-5/section-5-2.test.ts` checks the output of the first two editors line by line, and `chapter-5/machines.test.ts` that the Laboratory's simulator (`machines/registerMachine.ts`) prints the same statistics for the factorial machine. The Laboratory's stack also answers `"statistics"` with `list(total_pushes, maximum_depth)`, which is not in the book; the tests use it to check that computing *n*! pushes 2(*n* − 1) values to a depth of 2(*n* − 1) for *n* from 2 to 10.
+
+</UnderTheHood>
+
+<Exercises range="5.13 – 5.18" total={6}>
+<Exercise id="5.13">
+
+Measure the number of pushes and the maximum stack depth required to compute *n*! for various small values of *n* using the factorial machine of §5.1.4. From your data determine formulas in terms of *n* for the total number of push operations and the maximum stack depth used in computing *n*! for any *n* > 1. Note that each of these is a linear function of *n* and is thus determined by two constants. The starter's machine, on the Laboratory's simulator, already initializes the stack and prints the statistics, and it reads values of *n* one after another, computes the factorial and prints the result, as the GCD machine of §5.1.1 did, so you need not call `set_register_contents` and `start` again for each one. Change the inputs, run it, and write the formulas as `factorial_pushes(n)` and `factorial_depth(n)`; the checker tries them for several *n*.
+
+<Solution>
+
+**Solution.** The statistics for *n* = 2, 3, 4, 5, 6 are 2, 4, 6, 8, 10 pushes, and the maximum depth is the same every time. Each recursive call saves `continue` and `n`, and there are *n* − 1 calls before the base case, with nothing popped until the base case is reached. So both the total number of pushes and the maximum depth are 2(*n* − 1) = 2*n* − 2.
+
+</Solution>
+</Exercise>
+<Exercise id="5.14">
+
+Add *instruction counting* to the register-machine simulation. That is, have the machine model keep track of the number of instructions executed. Extend the machine model's interface to accept a new message, `"instruction_count"`, that returns the value of the instruction count and resets the count to zero. (The book's version prints the count; returning it lets the checker read it.) The editor holds `make_new_machine`. The checker counts the instructions of the GCD machine for 206 and 40, reads the count twice to see it reset, and counts the factorial machine for 4.
+
+<Solution>
+
+**Solution.** A new local name in `make_new_machine`, `instruction_count`, is incremented by `execute` each time it runs an instruction, and the message reads it and sets it back to 0. The GCD machine executes 26 instructions for 206 and 40, the same number the Laboratory's simulator counts, and the factorial machine 38 for 4.
+
+</Solution>
+</Exercise>
+<Exercise id="5.15">
+
+Augment the simulator to provide for *instruction tracing*. That is, before each instruction is executed, the simulator should print the instruction. Make the machine model accept `"trace_on"` and `"trace_off"` messages to turn tracing on and off. The editor holds `make_new_machine`. Print each instruction with one `display`; the checker runs the GCD machine for 206 and 40 and expects 26 lines with tracing on, and none with tracing off.
+
+<Solution>
+
+**Solution.** `make_new_machine` keeps a flag, `tracing`, which the two messages set. `execute` displays `inst_controller_instruction(head(insts))` before running the instruction when the flag is true. This is why the assembler keeps the controller instruction in each machine instruction: the simulator itself never uses it.
+
+</Solution>
+</Exercise>
+<Exercise id="5.16">
+
+Extend the instruction tracing of exercise 5.15 so that before printing an instruction, the simulator prints any labels that immediately precede that instruction in the controller sequence. Be careful to do this in a way that does not interfere with instruction counting (exercise 5.14). You will have to make the simulator retain the necessary label information. The editor starts with a `make_new_machine` that already counts and traces, and the functions that build instructions: `extract_labels`, `make_inst` and its selectors. Print each label with its own `display`. The checker traces the GCD machine for 206 and 40, which executes 26 instructions and passes the label `test_b` five times, and checks that the count is still 26.
+
+<Solution>
+
+**Solution.** Give each instruction a third part, the list of labels just before it: `make_inst` builds `pair(instruction, pair(null, null))`, and the selectors and `set_inst_execution_fun` move to the inner pair. `extract_labels` sees the controller from its end, so when it meets a label, the instructions after it are already in `insts`, and the label is added to the label list of `head(insts)` (a label at the very end precedes no instruction and is never printed). Two labels in a row are added in the right order, the second first. When tracing, `execute` displays the instruction's labels and then the instruction, and counts only the instruction.
+
+</Solution>
+</Exercise>
+<Exercise id="5.17">
+
+Modify the `make_register` function of §5.2.1 so that registers can be traced. Registers should accept messages that turn tracing on and off. When a register is traced, assigning a value to the register should print the name of the register, the old contents of the register, and the new contents being assigned. Extend the interface to the machine model to permit you to turn tracing on and off for designated machine registers. Use the register messages `"trace_on"` and `"trace_off"`, and the machine messages `"trace_register_on"` and `"trace_register_off"`, each returning a function of a register name, so that `machine("trace_register_on")("a")` traces `a`. Print each assignment on one line. The editor holds `make_register` and `make_new_machine`; the checker traces registers of the GCD machine for 206 and 40, each of which is assigned four times.
+
+<Solution>
+
+**Solution.** `make_register` already knows its name. It gets a `tracing` flag and a `set` function that, when tracing, displays `name + ": " + stringify(contents) + " -> " + stringify(value)` before assigning. The machine's two new messages look the register up with `lookup_register` and send it the message. Since `pc` and `flag` are registers too, they can be traced the same way.
+
+</Solution>
+</Exercise>
+<Exercise id="5.18">
+
+Alyssa P. Hacker wants a *breakpoint* feature in the simulator to help her debug her machine designs. You have been hired to install this feature for her. She wants to be able to specify a place in the controller sequence where the simulator will stop and allow her to examine the state of the machine. You are to implement a function
+
+```js
+set_breakpoint(machine, label, n)
+```
+
+that sets a breakpoint just before the *n*th instruction after the given label. For example,
+
+```js
+set_breakpoint(gcd_machine, "test_b", 4)
+```
+
+installs a breakpoint in `gcd_machine` just before the assignment to register `a`. When the simulator reaches the breakpoint it should print the label and the offset of the breakpoint and stop executing instructions. Alyssa can then use `get_register_contents` and `set_register_contents` to manipulate the state of the simulated machine. She should then be able to continue execution by saying
+
+```js
+proceed_machine(machine)
+```
+
+She should also be able to remove a specific breakpoint by means of
+
+```js
+cancel_breakpoint(machine, label, n)
+```
+
+or to remove all breakpoints by means of
+
+```js
+cancel_all_breakpoints(machine)
+```
+
+The editor holds `assemble` and `make_new_machine`, and the four functions to write. Print the label and offset on one line. The checker sets breakpoints in the GCD machine for 206 and 40 and reads the registers where it stops, after `proceed_machine`, after cancelling, and after changing `a` and `b` at a breakpoint.
+
+<Solution>
+
+**Solution.** The machine needs the label table, which only the assembler has, so `assemble` sends it to the machine with a new message. A breakpoint is recorded as the instruction itself, found with `lookup_label` and `list_ref`, together with its label and offset. `execute` takes a flag, `resuming`: before running an instruction it looks for a breakpoint on it, and unless it is resuming, prints the label and offset and returns without running it. `pc` still points at that instruction, so `proceed_machine` calls `execute` with the flag set, which runs the instruction it stopped at and goes on. In the GCD machine with a breakpoint at `test_b` 4, the first stop has `a`, `b` and `t` at 206, 40 and 6, and the next one at 40, 6 and 4.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '5.4.4', label: 'Measuring the evaluator' }, { id: '5.5.7', label: 'Interpreted and compiled code compared' }]} />

@@ -39,14 +39,18 @@ interface ExampleProps {
   /** Show an animation under the editor, drawn from the text as it currently reads. */
   anim?: AnimKind;
   budget?: number;
-  /** Declarations evaluated before the program and not shown in the editor; say in the prose what they are. */
+  /** Declarations the program uses without showing them, such as the simulator of §5.2. */
   prelude?: string;
+  /** For `anim="compare"`: a program declaring `special_statistics(n)` for a hand-designed machine. */
+  special?: string;
+  /** For `anim="memory"`: the index of the first pair. */
+  start?: number;
   /** The note under the visualizer, or under the animation when there is no visualizer. */
   children?: ReactNode;
 }
 
 /** An editor, optionally with a visualizer beside it and an animation below. */
-function Example({ index, file, source, mode = 'run', viz, anim, budget, prelude, children }: ExampleProps) {
+function Example({ index, file, source, mode = 'run', viz, anim, budget, prelude, special, start, children }: ExampleProps) {
   const [shape, setShape] = useState<{ snapshot: ProcessShapeSnapshot | null; runId: number }>({
     snapshot: null,
     runId: 0,
@@ -99,7 +103,7 @@ function Example({ index, file, source, mode = 'run', viz, anim, budget, prelude
   return (
     <div className="flex flex-col gap-4">
       {main}
-      <Animation kind={anim} source={text} stepIndex={mode === 'step' ? step : undefined} prelude={prelude} />
+      <Animation kind={anim} source={text} stepIndex={mode === 'step' ? step : undefined} prelude={prelude} special={special} start={start} />
       {viz === undefined && note}
     </div>
   );
@@ -210,6 +214,9 @@ export const mdxComponents: MDXComponents = {
       className="m-0 overflow-auto rounded-lg border border-line bg-paper-2 p-3.5 text-[13.5px] leading-[1.6] [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[1em]"
       {...props}
     />
+  ),
+  blockquote: (props) => (
+    <blockquote className="m-0 flex flex-col gap-2 border-l-2 border-line pl-4 text-[16px] leading-[1.55] text-ink-2 italic [&_p]:m-0" {...props} />
   ),
   h2: (props) => <h2 className="m-0 mt-2 text-2xl font-medium" {...props} />,
   h3: (props) => <h3 className="m-0 mt-1 text-xl font-semibold" {...props} />,

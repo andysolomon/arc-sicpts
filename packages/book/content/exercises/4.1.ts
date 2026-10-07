@@ -144,6 +144,13 @@ function unparse_statement(component) {
     return is_statement ? unparse(component) : unparse(component) + ";";
 }
 
+// A body or branch in braces: parse leaves out the block when it declares nothing.
+function unparse_body(component) {
+    return is_block(component)
+           ? unparse(component)
+           : "{ " + unparse_statement(component) + " }";
+}
+
 function unparse(component) {
     return is_literal(component)
            ? stringify(literal_value(component))
@@ -166,13 +173,15 @@ function unparse(component) {
              unparse(conditional_alternative(component)) + ")"
            : is_tagged_list(component, "conditional_statement")
            ? "if (" + unparse(conditional_predicate(component)) + ") " +
-             unparse(conditional_consequent(component)) + " else " +
-             unparse(conditional_alternative(component))
+             unparse_body(conditional_consequent(component)) + " else " +
+             (is_tagged_list(conditional_alternative(component), "conditional_statement")
+              ? unparse(conditional_alternative(component))
+              : unparse_body(conditional_alternative(component)))
            : is_lambda_expression(component)
            ? "((" + comma_separated(lambda_parameter_symbols(component)) + ") => " +
              (is_return_statement(lambda_body(component))
               ? unparse(return_expression(lambda_body(component)))
-              : unparse(lambda_body(component))) + ")"
+              : unparse_body(lambda_body(component))) + ")"
            : is_sequence(component)
            ? accumulate((s, rest) => s + " " + rest, "",
                         map(unparse_statement, sequence_statements(component)))
@@ -184,7 +193,7 @@ function unparse(component) {
            ? "function " + symbol_of_name(function_declaration_name(component)) +
              "(" + comma_separated(map(symbol_of_name,
                                        function_declaration_parameters(component))) +
-             ") " + unparse(function_declaration_body(component))
+             ") " + unparse_body(function_declaration_body(component))
            : is_declaration(component)
            ? (is_tagged_list(component, "constant_declaration") ? "const " : "let ") +
              declaration_symbol(component) + " = " +
@@ -1376,15 +1385,15 @@ const grows = undefined;
 `,
   tests: [
     { name: 'the formula', kind: 'value', expr: 'analysis_fraction(100, 60)', expected: 0.4 },
-    { name: 'factorial(10)', kind: 'value', expr: 'math_abs(fraction_for_10 - 0.386) < 0.02', expected: true },
-    { name: 'factorial(20)', kind: 'value', expr: 'math_abs(fraction_for_20 - 0.422) < 0.02', expected: true },
+    { name: 'factorial(10)', kind: 'value', expr: 'math_abs(fraction_for_10 - 0.382) < 0.02', expected: true },
+    { name: 'factorial(20)', kind: 'value', expr: 'math_abs(fraction_for_20 - 0.421) < 0.02', expected: true },
     { name: 'growth', kind: 'value', expr: 'grows', expected: true },
   ],
   solution: `function analysis_fraction(original_steps, analyzing_steps) {
     return (original_steps - analyzing_steps) / original_steps;
 }
-const fraction_for_10 = analysis_fraction(88071, 54040);
-const fraction_for_20 = analysis_fraction(177251, 102530);
+const fraction_for_10 = analysis_fraction(76076, 46980);
+const fraction_for_20 = analysis_fraction(152836, 88540);
 
 const grows = true;
 `,

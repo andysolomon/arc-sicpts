@@ -1,0 +1,43 @@
+import { gcdFunctionAndMachineProgram } from '@sicp/lab';
+
+<Prose>
+
+To design a register machine, we must design its *data paths* (registers and operations) and the *controller* that sequences these operations. To illustrate the design of a simple register machine, let us examine Euclid's Algorithm, which computes the greatest common divisor (GCD) of two integers. As we saw in §1.2.5, Euclid's Algorithm can be carried out by an iterative process, as specified by the following function:
+
+```js
+function gcd(a, b) {
+    return b === 0 ? a : gcd(b, a % b);
+}
+```
+
+A machine to carry out this algorithm must keep track of two numbers, *a* and *b*, so let us assume that these numbers are stored in two registers with those names. The basic operations required are testing whether the contents of register `b` is zero and computing the remainder of the contents of register `a` divided by the contents of register `b`. The remainder operation is a complex process, but assume for the moment that we have a primitive device that computes remainders.
+
+On each cycle of the GCD algorithm, the contents of register `a` must be replaced by the contents of register `b`, and the contents of `b` must be replaced by the remainder of the old contents of `a` divided by the old contents of `b`. It would be convenient if these replacements could be done simultaneously, but in our model of register machines we will assume that only one register can be assigned a new value at each step. To accomplish the replacements, our machine will use a third, temporary register, which we call `t`. First the remainder will be placed in `t`, then the contents of `b` will be placed in `a`, and finally the remainder stored in `t` will be placed in `b`.
+
+## Data paths
+
+The registers and operations this machine requires, and how they are connected, form its *data paths*. The book draws them as a diagram, and so does the animation below, reading them off the machine's description. Registers (`a`, `b` and `t`) are rectangles. Each way to assign a value to a register is an arrow with a *button*, drawn as ⊗, behind its head, pointing from the source of data to the register. When pushed, the button allows the value at the source to flow into the register. The name beside each button is the name we use to refer to it; names are arbitrary, but can be chosen to be mnemonic: `a<-b` denotes the button that assigns the contents of register `b` to register `a`. The source of data for a register can be another register (as in `a<-b`), the result of an operation (as in `t<-rem`), or a *constant*, a built-in value that cannot be changed, drawn as a triangle containing the constant.
+
+An operation that computes a value from constants and the contents of registers is drawn as a trapezoid containing its name. The trapezoid `rem` computes the remainder of the contents of the registers `a` and `b`: arrows without buttons lead from the input registers to it, and an arrow leads from its output, through `t<-rem`, to register `t`. A *test* is drawn as a circle containing a name. Our machine's test `=` checks whether the contents of `b` is zero. A test also has arrows from its input registers and constants, but no output arrow: its value is used by the controller rather than by the data paths. If we view the arrows as wires and the ⊗ buttons as switches, the data-path diagram is very like the wiring diagram for a machine that could be built from electrical components.
+
+## The controller
+
+For the data paths to compute GCDs, the buttons must be pushed in the right order. The *controller* describes that order. The book draws it as a flow chart: rectangles name data-path buttons to push, arrows lead from each step to the next, and a diamond is a decision, which follows one of two arrows depending on the value of a data-path test. Think of the chart as a maze in which a marble is rolling. When the marble rolls into a rectangle, it pushes the button named there. When it rolls into a decision (the test *b* = 0), it leaves by the path that the test selects. We start the controller at the beginning, after placing numbers in registers `a` and `b`; when it reaches the end, we will find the GCD in register `a`.
+
+Taken together, the data paths and the controller completely describe a machine for computing GCDs. The animation shows the controller as the instruction sequence of §5.1.1 rather than as a chart, with the marble as the highlighted instruction. A test does not choose the path by itself: its answer is kept in a special register, the *flag*, and the decision that follows reads it.
+
+</Prose>
+
+<Example index={0} file="gcd.sicp" source={gcdFunctionAndMachineProgram} anim="machine">
+
+The editor holds the `gcd` function and the GCD machine, written in the language of §5.1.1; the program prints both answers, `list(2, 2)`. The animation draws the machine's data paths and runs its controller on 206 and 40: watch the current instruction push `t<-rem`, `a<-b` and `b<-t` in turn, and the test of `b` against 0 decide, through the flag, whether to go round again. The machine stops after 26 instructions. Change 206 and 40 and run again.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/machines/dataPaths.ts">
+
+`machines/dataPaths.ts` reads the data paths off the controller: every register, every operation with the registers and constants wired to its inputs, and every button, named in the book's style from its target and source. `machines/inspect.ts` records each instruction the machine executes for the animation. The test `chapter-5/section-5-1.test.ts` checks that the machine and the function agree on 206 and 40 and that the machine takes 26 instructions.
+
+</UnderTheHood>
+
+<Enables items={['5.1.1', '5.1.2', { id: '5.2', label: 'A simulator for these machines' }]} />

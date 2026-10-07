@@ -1,3 +1,5 @@
+import type { Loc, Program } from '../syntax/ast.ts';
+
 /**
  * The list and stream libraries of Source §2 and §3, written in Source itself.
  * `prepare` evaluates them into a frame named `library` between the global
@@ -193,5 +195,72 @@ function stream_ref(s, n) {
 }
 `;
 
-/** Both libraries, in the order `prepare` evaluates them. */
-export const library = `${listLibrary}${streamLibrary}`;
+/**
+ * The register-machine language of §5.1 and the machine interface of §5.2.1,
+ * as the book declares them. A program that declares its own versions, as the
+ * simulator of §5.2 does, shadows these.
+ */
+export const machineLibrary = `
+function assign(register_name, source) { return list("assign", register_name, source); }
+function reg(name) { return list("reg", name); }
+function constant(value) { return list("constant", value); }
+function label(name) { return list("label", name); }
+function op(name) { return list("op", name); }
+function test(condition) { return list("test", condition); }
+function branch(label) { return list("branch", label); }
+function go_to(label) { return list("go_to", label); }
+function save(reg) { return list("save", reg); }
+function restore(reg) { return list("restore", reg); }
+function perform(action) { return list("perform", action); }
+function push_marker_to_stack() { return list("push_marker_to_stack"); }
+function revert_stack_to_marker() { return list("revert_stack_to_marker"); }
+function controller(sequence) { return list("controller", sequence); }
+function controller_sequence(controller) { return head(tail(controller)); }
+
+function start(machine) {
+  return machine("start");
+}
+function get_register(machine, reg_name) {
+  return machine("get_register")(reg_name);
+}
+function get_contents(register) {
+  return register("get");
+}
+function set_contents(register, value) {
+  return register("set")(value);
+}
+function get_register_contents(machine, register_name) {
+  return get_contents(get_register(machine, register_name));
+}
+function set_register_contents(machine, register_name, value) {
+  set_contents(get_register(machine, register_name), value);
+  return "done";
+}
+`;
+
+/** The libraries, in the order `prepare` evaluates them. */
+export const library = `${listLibrary}${streamLibrary}${machineLibrary}`;
+
+const libraryLocs = new WeakSet<Loc>();
+
+/** Remember every location in the library's syntax tree, so errors can be reported at the program's call. */
+export function markLibrary(program: Program): Program {
+  const visit = (node: unknown): void => {
+    if (typeof node !== 'object' || node === null) return;
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item);
+      return;
+    }
+    for (const [key, value] of Object.entries(node)) {
+      if (key === 'loc') libraryLocs.add(value as Loc);
+      else visit(value);
+    }
+  };
+  visit(program);
+  return program;
+}
+
+/** True for locations inside the library's text rather than the reader's. */
+export function isLibraryLoc(loc: Loc): boolean {
+  return libraryLocs.has(loc);
+}

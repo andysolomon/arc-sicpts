@@ -14,6 +14,13 @@ export interface ExerciseSpec {
   /** Definitions the submission can use without seeing them. */
   prelude?: string;
   /**
+   * Definitions evaluated in the submission's own frame, before it. Unlike a
+   * prelude, they call the submission's functions: this is how a reader
+   * replaces one function of the simulator of §5.2 and the rest of the
+   * simulator uses the replacement.
+   */
+  context?: string;
+  /**
    * Declarations evaluated after the submission, in the same frame. An
    * evaluator whose parts the reader rewrites goes here: its other parts must
    * see the reader's versions, which a prelude, in an outer frame, cannot.
