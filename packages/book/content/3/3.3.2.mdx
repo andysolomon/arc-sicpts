@@ -1,0 +1,101 @@
+import { queueBenProgram, queueProgram } from '@sicp/lab';
+
+<Prose>
+
+With `set_head` and `set_tail` we can build data structures that `pair`, `head` and `tail` alone could not. The first is the *queue*: a sequence in which items are added at one end, the *rear*, and removed from the other, the *front*. Insert `a` and then `b` into an empty queue and remove one item: what comes out is `a`, and `b` is left. A queue is *first in, first out*.
+
+As a data abstraction, a queue has a constructor, `make_queue()`, which returns an empty queue; two selectors, `is_empty_queue(queue)` and `front_queue(queue)`, the second returning the front item without removing it (and complaining if there is none); and two mutators, `insert_queue(queue, item)`, which adds an item at the rear, and `delete_queue(queue)`, which removes the front item. Both mutators return the modified queue.
+
+An ordinary list could hold the items, front first, but inserting would then mean walking the whole list to find its end: Θ(*n*) steps for a queue of *n* items. We want both operations to take Θ(1) steps. The cure is to keep a second pointer, to the last pair of the list. So a queue is a pair of two pointers, `front_ptr` and `rear_ptr`, into an ordinary list. To insert, make a new last pair, hang it off the old last pair with `set_tail`, and move `rear_ptr` to it. To delete, move `front_ptr` one pair along. Neither operation needs to look at more than a pair or two.
+
+</Prose>
+
+```js
+function front_ptr(queue) {
+  return head(queue);
+}
+function rear_ptr(queue) {
+  return tail(queue);
+}
+function set_front_ptr(queue, item) {
+  set_head(queue, item);
+}
+function set_rear_ptr(queue, item) {
+  set_tail(queue, item);
+}
+```
+
+<Prose>
+
+A queue is empty when its front pointer is `null`, and a new queue is a pair of two `null`s. The front item is the head of the pair the front pointer points at. Inserting has two cases: into an empty queue, the new pair becomes both the front and the rear; otherwise it is attached after the rear and becomes the new rear. Deleting just moves the front pointer to the next pair; the old front pair is left for the garbage collector.
+
+</Prose>
+
+<Example index={0} file="queue.sicp" source={queueProgram} anim="box-pointer-queue">
+
+The box on top is the queue itself: its head is the front pointer and its tail the rear pointer. Each `insert_queue` adds one box at the end of the list and swings the rear arrow to it; `delete_queue` swings only the front arrow, and the pair holding `"a"` drops out of the picture. No step walks along the list, which is why each operation takes the same few steps however long the queue is. The value at the end is `front_queue(q)`.
+
+</Example>
+
+<Prose>
+
+Notice that `delete_queue` never touches the rear pointer, even when it removes the last item. It does not need to: once `front_ptr` is `null`, the queue is empty, and the next `insert_queue` resets both pointers. The stale rear pointer is harmless, but it does make a queue look strange when printed, as the first exercise shows.
+
+</Prose>
+
+<Example index={1} file="ben_queue.sicp" source={queueBenProgram} anim="box-pointer-queue">
+
+`display_list` prints the queue pair as it is, a list whose head is the list of items and whose tail is the rear pair, so the last item appears twice. After the second deletion the front is `null` but the rear still points at `"b"`.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-3/mutableData.test.ts">
+
+The queue on this page is the program `queueProgram` in `chapter-3/mutableData.ts`. Its test checks that the front is `"b"` after the deletion, that the queue then reaches exactly four pairs (the queue pair and three items), and that Ben's experiment prints the four lines shown above. The drawing puts the queue pair above its list because the layout in `anim/model/boxPointer.ts` recognises a pair whose two pointers lead into the same list, the tail one further along.
+
+</UnderTheHood>
+
+<Exercises range="3.21 – 3.23" total={3}>
+<Exercise id="3.21">
+
+Ben Bitdiddle tries the queue operations:
+
+```js
+const q1 = make_queue();
+insert_queue(q1, "a");   // [["a", null], ["a", null]]
+insert_queue(q1, "b");   // [["a", ["b", null]], ["b", null]]
+delete_queue(q1);        // [["b", null], ["b", null]]
+delete_queue(q1);        // [null, ["b", null]]
+```
+
+"It's all wrong!" he says. "The last item shows up twice, and after I delete both items the `b` is still there." Eva Lu Ator explains that the printer does not know it is looking at a queue: it shows the queue pair, front pointer and rear pointer both. Explain what Ben sees, and write `print_queue`, which displays the items of a queue as a list and returns that list.
+
+<Solution>
+
+**Solution.** The printer shows the pair `[front_ptr, rear_ptr]`. The front pointer leads to the whole list of items; the rear pointer leads to the last pair of that same list, so the last item is printed a second time. After the second deletion the queue is empty because its front is `null`, while the rear pointer still points at the old pair, which Ben mistakes for an item. `print_queue` should display only what the front pointer reaches: `display_list(front_ptr(queue))`.
+
+</Solution>
+</Exercise>
+<Exercise id="3.22">
+
+Instead of a pair of pointers, a queue can be a function with local state: the two pointers become variables in the frame of `make_queue`, and the queue is a dispatch function in the message-passing style of §3.1.1. Complete `make_queue` so that it answers the messages `"insert_queue"`, `"delete_queue"`, `"front_queue"` and `"is_empty_queue"`, each with a function implementing that operation. The usual operations are provided in terms of the messages, so `insert_queue(q, item)` is `q("insert_queue")(item)`.
+
+<Solution>
+
+**Solution.** Keep `front_ptr` and `rear_ptr` as `let` variables and write the operations as local functions that assign to them, exactly as the text's versions call `set_front_ptr` and `set_rear_ptr`. The pairs that hold the items are still mutated with `set_tail` when an item is attached at the rear. `dispatch` returns the function a message names. Each call of `make_queue` makes a new frame, so two queues never share pointers.
+
+</Solution>
+</Exercise>
+<Exercise id="3.23">
+
+A *deque* ("double-ended queue") is a sequence in which items can be inserted and deleted at either end. Its operations are `make_deque`, `is_empty_deque`, `front_deque`, `rear_deque`, `front_insert_deque`, `rear_insert_deque`, `front_delete_deque` and `rear_delete_deque`. Show how to represent deques with pairs, and give implementations of the operations. All of them should take Θ(1) steps; the hidden tests insert two thousand items and delete them again from the rear.
+
+<Solution>
+
+**Solution.** Deleting at the rear is the hard part: with a singly linked list, finding the pair *before* the last one means walking from the front. So link the items both ways. Each item lives in a node, `pair(item, pair(previous, next))`, and the deque is a pair of pointers to the first and last nodes. Inserting or deleting at either end changes at most two links and one end pointer. (Such a structure is circular in the sense of exercise 3.18 when followed through `previous` and `next`, so `display_list` prints a deque with `...`.)
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['3.3.3', { id: '3.3.4', label: 'The agenda: a queue for each time segment' }]} />

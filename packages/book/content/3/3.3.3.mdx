@@ -1,0 +1,110 @@
+import { table2DProgram, tableLocalProgram, tableProgram } from '@sicp/lab';
+
+<Prose>
+
+When §2.4.3 organised a system of generic operations as a table indexed by two keys, it simply assumed that `put` and `get` existed. Now we can build them. A *table* stores values under keys, and like a queue it is made of mutable list structure.
+
+The simplest table has one key per value. Represent it as a list of *records*, each record a pair whose head is a key and whose tail is the value stored under it. To look a key up, run along the list until a record's key matches; the list library's `equal` decides whether it does, so keys may be numbers, strings or whole lists. `assoc` does the search and returns the matching record, or `undefined` when there is none. `lookup` uses it and returns the record's value.
+
+Inserting has to change the table, and that raises a question: change it *how*, when an empty table is just `null` and a new record must go in front? A function cannot make its caller's `null` into something else. The answer is a *headed list*. The table is a list whose first pair is a dummy, holding the string `"*table*"`, and the records hang off its tail. The dummy pair never changes position, so there is always a pair to mutate: `insert` either updates an existing record's value with `set_tail`, or splices a new record in at the front with `set_tail` on the dummy.
+
+</Prose>
+
+<Example index={0} file="table.sicp" source={tableProgram} anim="box-pointer-table">
+
+Every insertion of a new key adds two pairs: the record, hanging below, and a pair on the spine that points at it, spliced in right after `"*table*"`. That is why the newest record comes first. Inserting `"a"` a second time adds nothing: it finds the record and changes its tail from 1 to 10, the one lit cell.
+
+</Example>
+
+## Two-dimensional tables
+
+<Prose>
+
+In a two-dimensional table each value is indexed by *two* keys. Build it as a one-dimensional table of subtables: the first key finds a subtable, and the second finds a record in it. Each subtable is a headed list too, but it does not need a special string for its head, because its first key can serve: the subtable for `"math"` is the list whose head is `"math"` and whose tail is the records for `"+"`, `"-"` and `"*"`.
+
+`lookup` finds the subtable with `assoc`, then the record within it. `insert` has three cases: no subtable for the first key yet (make one with its single record, and splice it into the table), a subtable but no record (splice a record into the subtable), or both (change the record's value).
+
+</Prose>
+
+<Example index={1} file="table2d.sicp" source={table2DProgram} anim="box-pointer-table">
+
+The spine of the main table runs across the top; each subtable hangs below the spine pair that points at it, with its own records hanging below that. The program looks up the `"-"` entry of `"math"`, and gets 45. Add `insert("letters", "c", 99, table);` and watch where the new record is spliced in.
+
+</Example>
+
+## Creating local tables
+
+<Prose>
+
+The `lookup` and `insert` above take the table as an argument, so a program can have as many tables as it likes. Another way to get several tables is the one used for bank accounts in §3.1.1: make the table an object with local state. `make_table` keeps the headed list in its own frame, as `local_table`, and returns a dispatch function that answers `"lookup"` and `"insert"` with functions working on that one list. The table itself is now invisible from outside: only the functions can reach it.
+
+With this, the `get` and `put` that §2.4.3 needed for data-directed programming are two lines: make one table, the *operation table*, and name its lookup and insert functions.
+
+</Prose>
+
+<Example index={2} file="local_table.sicp" source={tableLocalProgram}>
+
+`get` and `put` are two functions made by one call of `make_table`, so they share one `local_table`. A second `make_table()` would make a separate table with its own frame. The last `get` asks for a key that was never put, and the value is `undefined`.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-3/mutableData.test.ts">
+
+The tables of this page are `tableProgram`, `table2DProgram` and `tableLocalProgram` in `chapter-3/mutableData.ts`. The tests check every lookup shown, including the missing ones that return `undefined`, and that the one-dimensional table reaches exactly seven pairs after its four insertions: the dummy, three spine pairs and three records, the repeated `"a"` having added nothing.
+
+</UnderTheHood>
+
+<Exercises range="3.24 – 3.27" total={4}>
+<Exercise id="3.24">
+
+The tables above test keys with `equal`, which is not always what is wanted. A table with numeric keys might want two keys to match when they are close enough. Change the local `make_table` so that it takes a function `same_key` that decides whether two keys are equal, and uses it in `assoc`.
+
+<Solution>
+
+**Solution.** Only `assoc` compares keys, so only `assoc` changes: it calls `same_key(key, head(head(records)))` in place of `equal`. Because `assoc` is declared inside `make_table`, it can see the `same_key` the table was made with, and every table can have its own.
+
+</Solution>
+</Exercise>
+<Exercise id="3.25">
+
+Generalise the tables to any number of keys: `lookup(keys, table)` and `insert(keys, value, table)` take the keys as a list, and different values may be stored under different numbers of keys.
+
+<Solution>
+
+**Solution.** Treat each table as a one-dimensional table whose values may themselves be tables. `lookup` finds the record for the first key; if that was the last key, its tail is the answer, and otherwise the record *is* a headed subtable, so look up the remaining keys in it. `insert` follows the keys the same way and makes empty subtables, `list(key)`, where none exist yet. A one-key value and a longer key sharing its first key cannot coexist in this simple scheme; the hidden tests do not mix them.
+
+</Solution>
+</Exercise>
+<Exercise id="3.26">
+
+Looking a key up in a list takes time proportional to the number of records. If keys can be ordered, numerically or alphabetically, a table can instead be organised as a binary tree of records, as in §2.3.3 (exercise 2.66). Implement `make_table`, `lookup` and `insert` with numeric keys stored in a binary tree. The hidden tests store a thousand records and find each of them again.
+
+<Solution>
+
+**Solution.** A tree is `null` or `list(record, left, right)`. `lookup` compares the key with the record at the root and goes left or right, so it looks at about log₂ *n* records instead of *n*. `insert` does the same descent and, on reaching an empty branch, replaces it with a new tree of one record: since the branch is the head of a pair in the parent, `set_head` on that pair does it. The table itself is a headed pair whose tail holds the tree, so the first insertion has a pair to mutate too. The tree is not kept balanced, so keys inserted in sorted order would make it a list again; the tests spread their keys out.
+
+</Solution>
+</Exercise>
+<Exercise id="3.27">
+
+*Memoization* (also called *tabulation*) lets a function record values it has already computed in a local table. Here is the memoized Fibonacci function, built with `memoize` from a lambda expression that calls `memo_fib` for its subproblems:
+
+```js
+const memo_fib = memoize(n => n === 0
+                              ? 0
+                              : n === 1
+                              ? 1
+                              : memo_fib(n - 1) + memo_fib(n - 2));
+```
+
+Write `memoize(f)`, which returns a function of one argument that looks its argument up in a table made for it, returning the stored value if there is one and otherwise computing `f(x)`, storing it and returning it. Draw an environment diagram for `memo_fib(3)` and explain why `memo_fib(n)` takes a number of steps proportional to `n`. Would defining `memo_fib` as `memoize(fib)`, with `fib` of §1.2.2, work just as well?
+
+<Solution>
+
+**Solution.** `memoize` makes a table with `make_table()` and returns a lambda expression that tries `lookup(x, table)` first and otherwise computes `f(x)` and `insert`s it. Each `memo_fib(k)` is computed once; every later request for it is a lookup, so `memo_fib(n)` evaluates the body *n* + 1 times and makes about 2*n* calls in all, where `fib(n)` makes exponentially many. (The lookups in a list table take time too; with a tree table as in exercise 3.26 the whole cost stays small.) `memoize(fib)` would not help: `fib` calls `fib`, not the memoized function, so only the outermost call would ever be remembered.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '2.4.3', label: 'get and put for data-directed programming' }, { id: '3.3.4', label: 'The agenda of the circuit simulator' }, { id: '3.5.1', label: 'Memoized streams' }]} />

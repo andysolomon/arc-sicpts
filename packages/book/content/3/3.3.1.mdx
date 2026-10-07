@@ -1,0 +1,272 @@
+import {
+  mutableAppendProgram,
+  mutableFunctionalPairProgram,
+  mutableGetNewPairProgram,
+  mutableIdentityProgram,
+  mutableSetHeadProgram,
+  mutableSetTailProgram,
+  mutableSharingProgram,
+} from '@sicp/lab';
+
+<Prose>
+
+Chapter 2 built compound data from pairs, and it only ever used three operations on them: `pair` makes one, `head` and `tail` take one apart. None of the three changes a pair once it exists, and neither do the list operations built on top of them, such as `append` and `list`. That was enough while our data stood for unchanging values. Now that objects have state (§3.1), the data that represents them must be able to change too. A bank account is a value that varies; a list of accounts waiting to be served grows and shrinks.
+
+So pairs get two *mutators*. `set_head(x, y)` changes the pair `x` so that its head is `y`, and `set_tail(x, y)` does the same for the tail. Both work in place: no new pair is made, and every part of the program that can reach `x` sees the change. What they return is not meant to be used, so we evaluate them for their effect alone.
+
+The way to understand a mutation is to draw it. In a *box-and-pointer diagram* each pair is a box with two cells, an arrow leaves a cell that holds a pair, and a slash marks `null`. The animation below draws one from the program as it runs, a keyframe per statement. `x` is a list whose first element is itself the list `list("a", "b")`, and `y` is `list("e", "f")`.
+
+</Prose>
+
+<Example index={0} file="set_head.sicp" source={mutableSetHeadProgram} anim="box-pointer">
+
+`set_head(x, y)` changes one cell: the head of `x`'s first pair now points at `y`, and the arrow swings over to it. The two pairs of `list("a", "b")` are still in memory, but nothing points at them any more, so they vanish from the picture. Change `set_head` to `set_tail` and watch `"c"` and `"d"` drop off instead.
+
+</Example>
+
+<Prose>
+
+Compare that with making a new pair. `const z = pair(y, tail(x));` builds a structure that prints just as `x` does after the `set_head`, yet `x` itself is untouched: `z` is a fresh box whose head points at `y` and whose tail points into the middle of `x`. The program below does both, and then uses `set_tail` on `x`, which makes the tail of `x`'s first pair point at `y`.
+
+</Prose>
+
+<Example index={1} file="set_tail.sicp" source={mutableSetTailProgram} anim="box-pointer">
+
+After `set_tail(x, y)` nothing in `x` reaches `"c"` or `"d"`, but the pairs holding them stay in the picture because `z` still points at them. A pair is garbage only when *nothing* reaches it. The two `display_list` lines show the result: `z` kept the old tail, `x` got `y`'s.
+
+</Example>
+
+<Prose>
+
+The unlisted pairs in the first example are where garbage comes from. A real implementation reuses that memory: §5.3.2 describes a *garbage collector* that finds the pairs no one can reach and hands them out again.
+
+In fact `pair` itself can be written with the two mutators, given some way to get hold of a pair no one else is using. Call that operation `get_new_pair`: it is the memory manager's job (§5.3.1) to supply it. Then `pair` takes a fresh pair, fills in its two cells, and returns it. The Laboratory has no such operation, so the version below fakes it with `list(undefined)`, which is a new pair every time.
+
+</Prose>
+
+<Example index={2} file="get_new_pair.sicp" source={mutableGetNewPairProgram} anim="box-pointer">
+
+This `pair` shadows the primitive one for the whole program. `p` is built from two calls of it, and `display_list` cannot tell the difference. Only `get_new_pair` really allocates; everything else is mutation.
+
+</Example>
+
+## Sharing and identity
+
+<Prose>
+
+Once pairs can change, it matters whether two structures merely look the same or are in fact the same. `append` shows the issue on a small scale. It copies the pairs of its first list, because it has to give the last one a new tail, but it does not copy its second list: the result simply points at it.
+
+</Prose>
+
+<Example index={3} file="append.sicp" source={mutableAppendProgram} anim="box-pointer">
+
+`z` has four pairs, but only the first two are new: its third pair *is* `y`'s first, and `x` keeps its own `null` at the end. That is why the last statement, `tail(x)`, still shows a one-element list. The program also declares `append_mutator`, which splices `y` onto the end of `x` with `set_tail` instead of copying; exercise 3.12 asks what that changes. Add `const w = append_mutator(x, y);` to see.
+
+</Example>
+
+<Prose>
+
+Sharing of this kind is invisible as long as nothing mutates. Take `const x = list("a", "b");` and form `const z1 = pair(x, x);`. The head and the tail of `z1` are the very same list. Now form `z2` from two separate calls of `list("a", "b")`. Printed, `z1` and `z2` are identical: both are `list(list("a", "b"), "a", "b")`. With only `pair`, `head` and `tail` there is no way to tell them apart.
+
+Add mutation and the difference shows. `set_to_wow` changes the head of the head of its argument to `"wow"`. Applied to `z1`, it changes the one list that both halves of `z1` share, so the word appears twice. Applied to `z2`, it changes only the first of two independent lists.
+
+</Prose>
+
+<Example index={4} file="sharing.sicp" source={mutableSharingProgram} anim="box-pointer">
+
+In the first keyframes `z1` is one box with both arrows into `x`, and `z2` is a box over two separate copies. Step to `set_to_wow(z1)`: one lit cell, and it is reached through both of `z1`'s arrows. `set_to_wow(z2)` lights a cell that only `z2`'s head can reach. The strings themselves are not boxes: `"a"` is a value like `1`, and two equal strings are indistinguishable.
+
+</Example>
+
+<Prose>
+
+To detect sharing we need a test of *identity*, and `===` is it. On pairs, `x === y` is true exactly when `x` and `y` are the same pair: the same box, not two boxes with equal contents. `equal`, from the list library, answers the other question, whether two structures have the same shape and the same atoms.
+
+</Prose>
+
+<Example index={5} file="identity.sicp" source={mutableIdentityProgram}>
+
+`head(z1) === tail(z1)` is `true` and `head(z2) === tail(z2)` is `false`, while `equal` says the two halves of `z2` are alike. Strings compare by value, so `"a" === "a"` is true however the two strings were made.
+
+</Example>
+
+<Prose>
+
+Sharing can be put to good use. It saves memory, and the queues and tables of the next two sections depend on it: a pointer kept to the *end* of a list is what lets us add to it in one step. It is also a hazard. A mutation through one name changes what every other name for the same structure sees, and a program that forgets this is wrong in ways that are hard to find. The same issue of "sameness" came up in §3.1.3; here it has a concrete form, the identity of a pair.
+
+</Prose>
+
+## Mutation is just assignment
+
+<Prose>
+
+In §2.1.3 we saw that pairs can be represented by functions: `pair(x, y)` returns a function that, given a request, answers with `x` or `y`. With assignment the same trick gives *mutable* pairs. The function `pair` returns keeps its arguments in the frame of the call that made it; `set_head` asks it for a local function that assigns to `x` in that frame, and `set_tail` for one that assigns to `y`.
+
+</Prose>
+
+<Example index={6} file="functional_pair.sicp" source={mutableFunctionalPairProgram} anim="frames">
+
+There are no pairs in this program at all, only functions. The call `pair(1, 2)` makes a frame binding `x` and `y`; `set_tail(p, 3)` asks `p` for `set_y`, and applying it assigns 3 to the `y` in that frame. `tail(p)` then finds 3. Mutating a pair and assigning to a variable are the same act.
+
+</Example>
+
+<Prose>
+
+So assignment is all we need to explain mutable data. As soon as `=` enters the language, every problem that comes with assignment comes with mutable data too, including the loss of the substitution model and, in §3.4, trouble with concurrency.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/inspect/heap.ts">
+
+The box-and-pointer pictures come from the Laboratory's heap inspector. After each top-level statement it walks the program frame's bindings and records every pair it reaches as a numbered node, with the head and tail of each one as references to other numbers. A pair reached twice is recorded once, so sharing and cycles come through intact, and a pair keeps its number from one snapshot to the next, which is how the drawing knows that `set_head` changed an old box rather than made a new one. `inspect/heap.test.ts` checks that `pair(x, x)` has three pairs and that a circular list is walked without looping; `chapter-3/mutableData.test.ts` asserts what every program on this page prints and how many pairs each structure has.
+
+</UnderTheHood>
+
+<Exercises range="3.12 – 3.20" total={9}>
+<Exercise id="3.12">
+
+Here is `append` again, next to `append_mutator`, which joins its two lists by changing the last pair of the first, using the helper `last_pair`:
+
+```js
+function append_mutator(x, y) {
+  set_tail(last_pair(x), y);
+  return x;
+}
+function last_pair(x) {
+  return is_null(tail(x)) ? x : last_pair(tail(x));
+}
+```
+
+After `const z = append(x, y);` with `x = list("a", "b")` and `y = list("c", "d")`, what is `tail(x)`? After `const w = append_mutator(x, y);`, what is it then? Draw the box-and-pointer diagrams that explain your answers, and write the two answers as lists.
+
+<Solution>
+
+**Solution.** After `append`, `tail(x)` is `list("b")`: `append` copied `x`'s pairs, so `x` itself is unchanged. After `append_mutator`, `tail(x)` is `list("b", "c", "d")`: the mutator set the tail of `x`'s last pair to `y`, so `x` now runs on into `y`, and `w` is the same pair as `x`. Note that `z` changed as well, without being mentioned: its last two pairs are `y`'s, and they were not copied.
+
+</Solution>
+</Exercise>
+<Exercise id="3.13">
+
+Write `make_cycle`, which takes a list and makes the tail of its last pair point back to the list's first pair, then returns the list. Draw the diagram of `const z = make_cycle(list("a", "b", "c"));`. What happens if we try to compute `last_pair(z)`?
+
+<Solution>
+
+**Solution.** `make_cycle` is `set_tail(last_pair(x), x)` followed by `return x`. The result is a ring of three pairs; the fourth element of `z` is `"a"` again, and so is the seventh. `last_pair` walks along tails looking for one that is `null`, and in a ring there is none, so `last_pair(z)` never returns. Since `last_pair` is tail-recursive it does not even run out of stack: it simply goes round forever, until the step budget stops it.
+
+<BoxPointerDiagram source={'const z = list("a", "b", "c");\nset_tail(tail(tail(z)), z);'} title="z after make_cycle" caption="The tail of the last pair points back to the first, and the arrow loops underneath." />
+
+</Solution>
+</Exercise>
+<Exercise id="3.14">
+
+This function is useful, if obscure:
+
+```js
+function mystery(x) {
+  function loop(x, y) {
+    if (is_null(x)) {
+      return y;
+    } else {
+      const temp = tail(x);
+      set_tail(x, y);
+      return loop(temp, x);
+    }
+  }
+  return loop(x, null);
+}
+```
+
+`loop` keeps the tail of `x` in `temp` before `set_tail` overwrites it. Explain what `mystery` does in general. With `const v = list("a", "b", "c", "d");` and `const w = mystery(v);`, draw `v` before the call and `v` and `w` after it, and say what `v` and `w` print as.
+
+<Solution>
+
+**Solution.** `mystery` reverses a list in place: at each step it turns one pair's tail around to point at the pairs already reversed, so no new pair is made. `w` is `list("d", "c", "b", "a")`. `v` still names the pair holding `"a"`, but that pair is now the *last* of the reversed list, its tail `null`, so `v` prints as `list("a")`.
+
+<BoxPointerDiagram source={'function mystery(x) {\n  function loop(x, y) {\n    if (is_null(x)) {\n      return y;\n    } else {\n      const temp = tail(x);\n      set_tail(x, y);\n      return loop(temp, x);\n    }\n  }\n  return loop(x, null);\n}\nconst v = list("a", "b", "c", "d");\nconst w = mystery(v);'} title="v and w after mystery" caption="Four pairs, all of them v's original pairs; v now names the last." />
+
+</Solution>
+</Exercise>
+<Exercise id="3.15">
+
+Draw box-and-pointer diagrams that explain what `set_to_wow` does to `z1` and to `z2` above. Then build, from scratch, structures `z1_after` and `z2_after` that look exactly like `z1` and `z2` do afterwards, *including* which parts are shared.
+
+<Solution>
+
+**Solution.** In `z1` both arrows go to the single list `x`, so changing its head to `"wow"` shows up in both halves. Rebuild it as `const x = list("wow", "b"); const z1_after = pair(x, x);`. In `z2` the two arrows go to separate lists, and only the first changes: `pair(list("wow", "b"), list("a", "b"))`. The hidden tests check the sharing with `===`, not just the printed form.
+
+</Solution>
+</Exercise>
+<Exercise id="3.16">
+
+Ben Bitdiddle counts the pairs in a structure like this:
+
+```js
+function count_pairs(x) {
+  return ! is_pair(x)
+         ? 0
+         : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
+}
+```
+
+Show that he is wrong: build four structures, each made of exactly three pairs, for which `count_pairs` returns 3, returns 4, returns 7, and never returns at all.
+
+<Solution>
+
+**Solution.** `count_pairs` counts a pair once for every *path* that reaches it. A plain `list("a", "b", "c")` has one path to each pair: 3. Make one pair reachable twice, as in `pair(pair("a", c), c)` with `c = list("c")`: 4. Stack two levels of double sharing, `bottom = pair("a", "b")`, `middle = pair(bottom, bottom)`, `pair(middle, middle)`: 1 + 2 + 4 = 7. And a cycle, as in exercise 3.13, has infinitely many paths.
+
+<BoxPointerDiagram source={'const c = list("c");\nconst returns_4 = pair(pair("a", c), c);\nconst bottom = pair("a", "b");\nconst middle = pair(bottom, bottom);\nconst returns_7 = pair(middle, middle);'} names={['returns_4', 'returns_7']} title="Three pairs, counted four and seven times" />
+
+</Solution>
+</Exercise>
+<Exercise id="3.17">
+
+Write a correct `count_pairs`, which returns the number of distinct pairs in any structure, shared or circular. Hint: keep a list of the pairs already counted, and use `===` (through `member`) to check it.
+
+<Solution>
+
+**Solution.** Keep the pairs counted so far in a local variable, `counted`. A value that is not a pair, or is a pair already in `counted`, adds nothing; any other pair is added to `counted` and then counts 1 plus its head's count plus its tail's. Because a pair is recorded before its parts are explored, a cycle stops the moment it comes back round. `member` compares with `===`, which is exactly the identity test we need.
+
+</Solution>
+</Exercise>
+<Exercise id="3.18">
+
+Write a function that examines a list and determines whether it contains a cycle, that is, whether a program trying to find the end of the list by taking successive tails would go on forever. Shared structure that is not circular should not count.
+
+<Solution>
+
+**Solution.** Walk along the tails, keeping the pairs passed so far. Reaching a non-pair means the list ends: no cycle. Reaching a pair already passed means the walk has come round: a cycle. Only tails are followed, so a list that merely contains the same sublist twice is not reported.
+
+</Solution>
+</Exercise>
+<Exercise id="3.19">
+
+Redo exercise 3.18 using an algorithm that takes only a constant amount of space. (This requires a very clever idea.) The hidden tests count the pairs your function makes, which must be none.
+
+<Solution>
+
+**Solution.** Robert Floyd's "tortoise and hare": move two pointers along the list, one a pair at a time and the other two at a time. If the list ends, the fast pointer finds the end. If it has a cycle, both pointers end up going round it, and the fast one gains one pair per step, so it must land on the slow one. Two pointers and a tail-recursive loop: constant space.
+
+</Solution>
+</Exercise>
+<Exercise id="3.20">
+
+Draw environment diagrams to illustrate how the following statements are evaluated, using the functional implementation of pairs given above:
+
+```js
+const x = pair(1, 2);
+const z = pair(x, x);
+set_head(tail(z), 17);
+head(x);
+```
+
+Then answer from your diagram: how many frames do the calls of `pair` create, which call's frame holds the `x` that `set_head` changes, and what is `head(x)`?
+
+<Solution>
+
+**Solution.** Each call of `pair` makes one frame, so there are two: one binding `x` to 1 and `y` to 2, and one whose `x` and `y` are both bound to the function returned by the first. `tail(z)` returns that first function, so `set_head` applies its `set_x`, which assigns 17 to `x` in the frame of `pair(1, 2)`. `head(x)` is therefore 17.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['3.3.2', '3.3.3', { id: '3.3.4', label: 'Wires as mutable objects' }, { id: '5.3.1', label: 'Memory as vectors' }, { id: '5.3.2', label: 'Garbage collection' }]} />

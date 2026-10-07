@@ -1,3 +1,4 @@
+import type { HeapSnapshot } from '../inspect/heap.ts';
 import type { ProcessShapeSnapshot } from '../inspect/processShape.ts';
 import type { StepRecord } from '../inspect/stepTrace.ts';
 import type { Loc } from '../syntax/ast.ts';
@@ -29,6 +30,8 @@ export interface TraceRequest {
   prelude?: string;
   maxRecords?: number;
   seed?: number;
+  /** `heap`: also snapshot the program frame's bindings as a graph of pairs after each top-level statement (§3.3). */
+  inspect?: { heap?: boolean };
 }
 
 export type TestSpec =
@@ -92,6 +95,8 @@ export type LabEvent =
       truncated: boolean;
       outcome: TraceOutcome;
       output: string[];
+      /** Present when the request asked for `inspect.heap`. */
+      heap?: HeapSnapshot[];
     }
   | { type: 'check-done'; id: number; results: TestResult[]; passed: number; total: number };
 

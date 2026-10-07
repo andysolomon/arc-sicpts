@@ -1,6 +1,7 @@
-import { prepare } from '../evaluator/evaluate.ts';
+import { prepare, type Session } from '../evaluator/evaluate.ts';
 import { DEFAULT_BUDGET, type Machine } from '../evaluator/machine.ts';
 import { stringify } from '../evaluator/values.ts';
+import { createHeapInspector } from '../inspect/heap.ts';
 import { createProcessShapeTracer } from '../inspect/processShape.ts';
 import { createStepTracer } from '../inspect/stepTrace.ts';
 import { SourceError } from '../syntax/errors.ts';
@@ -127,17 +128,24 @@ export function createLabHost(deps: HostDeps): LabHost {
     const { id, source } = request;
     const tracer = createStepTracer(source, request.maxRecords);
     const output: string[] = [];
+    let session: Session | null = null;
+    const heap =
+      request.inspect?.heap === true
+        ? createHeapInspector(source, () => session?.machine.programEnv ?? null, { records: () => tracer.records.length })
+        : null;
     let outcome: TraceOutcome;
     try {
-      const { machine } = prepare(source, {
+      session = prepare(source, {
         budget: request.budget ?? TRACE_BUDGET,
-        hooks: [tracer.hooks],
+        hooks: heap === null ? [tracer.hooks] : [tracer.hooks, heap.hooks],
         display: (text) => output.push(text),
         ...(request.prelude !== undefined && { prelude: request.prelude }),
         ...(request.seed !== undefined && { seed: request.seed }),
       });
+      const { machine } = session;
       // A trace is bounded by its small budget, so it runs in one go.
       machine.run();
+      heap?.finish();
       if (machine.status === 'done') outcome = { status: 'done', value: stringify(machine.value) };
       else if (machine.status === 'error') outcome = { status: 'error', error: payload(machine.error) };
       else outcome = { status: 'budget-exhausted' };
@@ -151,6 +159,7 @@ export function createLabHost(deps: HostDeps): LabHost {
       truncated: tracer.truncated(),
       outcome,
       output,
+      ...(heap !== null && { heap: heap.snapshots }),
     });
   }
 

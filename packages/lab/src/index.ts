@@ -118,3 +118,16 @@ export * from './chapter-3/simulation.ts';
 export * from './chapter-3/concurrency.ts';
 export * from './chapter-3/streams.ts';
 export * from './chapter-3/streamParadigm.ts';
+
+export {
+  createHeapInspector,
+  createPairIds,
+  heapGraph,
+  type HeapBinding,
+  type HeapInspector,
+  type HeapInspectorOptions,
+  type HeapPair,
+  type HeapSnapshot,
+  type HeapValue,
+  type PairIds,
+} from './inspect/heap.ts';
