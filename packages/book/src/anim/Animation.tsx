@@ -85,9 +85,11 @@ export interface AnimationProps {
   source: string;
   /** For step-mode editors: the stepper's record index, which some scenes follow. */
   stepIndex?: number | undefined;
+  /** Declarations the editor evaluates before the program, unseen. */
+  prelude?: string | undefined;
 }
 
-export function Animation({ kind, source, stepIndex }: AnimationProps): ReactNode {
+export function Animation({ kind, source, stepIndex, prelude }: AnimationProps): ReactNode {
   switch (kind) {
     case 'reduce':
       return <SubstitutionScene source={source} title="Collapsing a combination" />;
@@ -98,7 +100,7 @@ export function Animation({ kind, source, stepIndex }: AnimationProps): ReactNod
     case 'growth':
       return <GrowthScene source={source} />;
     case 'series':
-      return <Series source={source} />;
+      return <Series source={source} prelude={prelude} />;
     case 'substitution+frames':
       return (
         <div className="flex flex-col gap-4">
@@ -108,15 +110,15 @@ export function Animation({ kind, source, stepIndex }: AnimationProps): ReactNod
       );
     default: {
       const scene = (chapter3 as SceneRegistry)[kind];
-      if (scene !== undefined) return scene({ source, stepIndex });
-      return <Traced kind={kind as TracedProps['kind']} source={source} stepIndex={stepIndex} />;
+      if (scene !== undefined) return scene({ source, stepIndex, prelude });
+      return <Traced kind={kind as TracedProps['kind']} source={source} stepIndex={stepIndex} prelude={prelude} />;
     }
   }
 }
 
-function Series({ source }: { source: string }) {
+function Series({ source, prelude }: { source: string; prelude: string | undefined }) {
   // Only the output is drawn, so one record is enough.
-  const { trace } = useTrace(source, { budget: SERIES_BUDGET, maxRecords: 1 });
+  const { trace } = useTrace(source, { budget: SERIES_BUDGET, maxRecords: 1, prelude });
   return <SeriesScene trace={trace} />;
 }
 
@@ -125,14 +127,15 @@ interface TracedProps {
   source: string;
   stepIndex?: number | undefined;
   title?: string;
+  prelude?: string | undefined;
 }
 
 /** Scenes that follow a method through many calls need a longer log than the default. */
 const LONG_TRACE: ReadonlySet<TracedProps['kind']> = new Set(['tree-recursion', 'integral', 'half-interval', 'fixed-point', 'newtons-method']);
 
 /** Scenes that need the evaluator's trace of the current text. */
-function Traced({ kind, source, stepIndex, title }: TracedProps) {
-  const { trace } = useTrace(source, LONG_TRACE.has(kind) ? { maxRecords: 4000 } : {});
+function Traced({ kind, source, stepIndex, title, prelude }: TracedProps) {
+  const { trace } = useTrace(source, { ...(LONG_TRACE.has(kind) && { maxRecords: 4000 }), prelude });
   const synced = stepIndex !== undefined ? { stepIndex } : {};
   switch (kind) {
     case 'tree':

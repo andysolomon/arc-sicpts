@@ -39,12 +39,14 @@ interface ExampleProps {
   /** Show an animation under the editor, drawn from the text as it currently reads. */
   anim?: AnimKind;
   budget?: number;
+  /** Declarations evaluated before the program and not shown in the editor; say in the prose what they are. */
+  prelude?: string;
   /** The note under the visualizer, or under the animation when there is no visualizer. */
   children?: ReactNode;
 }
 
 /** An editor, optionally with a visualizer beside it and an animation below. */
-function Example({ index, file, source, mode = 'run', viz, anim, budget, children }: ExampleProps) {
+function Example({ index, file, source, mode = 'run', viz, anim, budget, prelude, children }: ExampleProps) {
   const [shape, setShape] = useState<{ snapshot: ProcessShapeSnapshot | null; runId: number }>({
     snapshot: null,
     runId: 0,
@@ -63,6 +65,7 @@ function Example({ index, file, source, mode = 'run', viz, anim, budget, childre
       editorId={String(index)}
       mode={mode}
       {...(budget !== undefined && { budget })}
+      {...(prelude !== undefined && { prelude })}
       {...(viz === 'processShape' && { onShape })}
       {...(anim !== undefined && { onSource: setText })}
       {...(anim !== undefined && mode === 'step' && { onStep: setStep })}
@@ -83,7 +86,7 @@ function Example({ index, file, source, mode = 'run', viz, anim, budget, childre
   return (
     <div className="flex flex-col gap-4">
       {main}
-      <Animation kind={anim} source={text} stepIndex={mode === 'step' ? step : undefined} />
+      <Animation kind={anim} source={text} stepIndex={mode === 'step' ? step : undefined} prelude={prelude} />
       {viz === undefined && children !== undefined && (
         <div className="text-sm leading-normal text-pretty text-ink-2 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[0.9em]">{children}</div>
       )}

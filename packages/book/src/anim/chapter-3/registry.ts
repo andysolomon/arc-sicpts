@@ -11,6 +11,8 @@ export interface SceneProps {
   source: string;
   /** For step-mode editors: the stepper's record index. */
   stepIndex?: number | undefined;
+  /** Declarations the Example evaluates, unseen, before the program. */
+  prelude?: string | undefined;
 }
 
 export type SceneRegistry = Record<string, (props: SceneProps) => ReactNode>;
