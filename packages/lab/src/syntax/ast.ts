@@ -11,6 +11,8 @@ export interface Loc {
   col: number;
   endLine: number;
   endCol: number;
+  /** Set on code the reader does not see, such as a prelude, so errors there say so. */
+  hidden?: boolean;
 }
 
 export type LiteralValue = number | string | boolean | null | undefined;

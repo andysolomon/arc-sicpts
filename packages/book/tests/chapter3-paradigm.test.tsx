@@ -17,6 +17,7 @@ const fakeTrace = (output: string[]): Trace => ({
   truncated: false,
   outcome: { status: 'done', value: 'true' },
   output,
+  drawing: [],
 });
 
 describe('the order of a stream of pairs (model)', () => {

@@ -1,0 +1,136 @@
+import {
+  metacircularPrelude,
+  mutualRecursionProgram,
+  scopeQuestionDirectProgram,
+  scopeQuestionProgram,
+  selfApplicationProgram,
+} from '@sicp/lab';
+
+<Prose>
+
+In JavaScript the scope of a declaration is the whole block that immediately surrounds it, not just the part of the block after the declaration. This section looks more closely at that choice.
+
+Recall the mutually recursive `is_even` and `is_odd` of §3.2.4, declared inside a function `f`. The name `is_odd` in the body of `is_even` must refer to the `is_odd` declared after it; and since `is_odd` in turn refers to `is_even`, the only satisfactory reading is that both names are added to the environment at once. In block structure, a local name’s scope is the entire block in which it is declared.
+
+The evaluator of §4.1.1 achieves this simultaneous scope by scanning out the declarations of a block and extending the environment with a frame for all of them before evaluating any. By the time `is_even` is applied, its environment already binds `is_odd`.
+
+</Prose>
+
+<Example index={0} file="mutual_recursion.sicp" source={mutualRecursionProgram} prelude={metacircularPrelude} budget={5000000}>
+
+Both function declarations are evaluated before `is_even(7)` is: the frame scanned out for `f`’s body binds both names from the start, so each finds the other. Seven is odd, and the value is `false`.
+
+</Example>
+
+<Prose>
+
+## Sequential declaration processing
+
+Scanning out costs time on every evaluation of a block. Alternatively, a block could start with an empty frame, and each declaration could add its binding as it is evaluated:
+
+```js
+function eval_block(component, env) {
+    const body = block_body(component);
+    return evaluate(body, extend_environment(null, null, env));
+}
+function eval_declaration(component, env) {
+    add_binding_to_frame(
+        declaration_symbol(component),
+        evaluate(declaration_value_expression(component), env),
+        first_frame(env));
+    return undefined;
+}
+function add_binding_to_frame(symbol, value, frame) {
+    set_head(frame, pair(symbol, head(frame)));
+    set_tail(frame, pair(value, tail(frame)));
+}
+```
+
+Now a declaration’s scope is only the part of the block that follows it. `f` above still works, but for an accidental reason: its internal declarations come first, so neither function is applied before both exist. Sequential processing gives the same results as scanning out whenever the declarations come first in a body and their value expressions do not use the declared names. It is cheaper and simpler, but which declaration a name refers to may then depend on the order in which statements are evaluated. Not everyone agrees whether that is acceptable. Consider this program, from exercise 4.19:
+
+</Prose>
+
+<Example index={1} file="scope.sicp" source={scopeQuestionProgram} prelude={metacircularPrelude} budget={5000000}>
+
+Ben says the answer should be 16, as with sequential processing: `b` is 11, then `a` is 5. Alyssa says that simultaneous scope is needed for mutual recursion and should not be different for other names, so `a` is unassigned when `b` is computed, and the program is in error. Eva says that if the declarations are truly simultaneous, `a` should be 5 when `b` is computed, giving 20. Our evaluator takes Alyssa’s side, but clumsily: it finds the string `"*unassigned*"` for `a` and fails only when `+` is given a string and a number. Exercise 4.12 makes it say what is wrong.
+
+</Example>
+
+<Example index={2} file="scope_direct.sicp" source={scopeQuestionDirectProgram}>
+
+The same program run directly by the Laboratory, without the metacircular evaluator. JavaScript’s designers side with Alyssa: Eva is right in principle, but a general and efficient mechanism that does what she requires is hard to implement, and an error in the difficult cases is better than a wrong answer. Which view do you support? Can you devise a way to implement internal declarations that behaves as Eva prefers?
+
+</Example>
+
+<Prose>
+
+## Recursion without declarations
+
+Recursive functions are obtained in our interpreter in a roundabout way: declare the name, bound to `"*unassigned*"`; make the function in the scope of the name; then assign the function to the name. Amazingly, recursion is possible with neither declarations nor assignment. This expression computes 10 factorial by applying a recursive function to itself:
+
+</Prose>
+
+<Example index={3} file="self_application.sicp" source={selfApplicationProgram}>
+
+`fact` receives itself as its first argument, `ft`, so it can call itself without having a name in any environment. The most general trick of this kind is the *Y operator*, which gives recursion in the pure λ-calculus. Exercise 4.18 asks for Fibonacci numbers in the same style.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/evaluator/machine.ts">
+
+The Laboratory’s own evaluator also scans out: `scan` in `evaluator/machine.ts` declares every name of a block before the block runs, and a binding stays unassigned until its declaration is evaluated, which is how it can name `a` in its message. The test `chapter-4/metacircular.test.ts` asserts that `f(7)` is `false`, that the metacircular evaluator fails on exercise 4.19’s program with `+ expects two numbers or two strings, got string and number`, that the Laboratory reports `Name a used before its declaration was evaluated`, and that the self-applied factorial gives 3628800.
+
+</UnderTheHood>
+
+<Exercises range="4.16 – 4.19" total={4}>
+<Exercise id="4.16">
+
+Draw a diagram of the environment in effect during the evaluation of the return expression of `f_3` from §1.3.2, which declares `a` and `b` in its body. When a function is applied, the evaluator makes two frames: one for the parameters and one for the names declared directly in the body block. Since all these names have the same scope, the two frames could be one. Change the evaluator so that evaluating a function’s body block does not create a new frame. (You may assume that this does not produce duplicate names in the frame; exercise 4.5 justifies the assumption.)
+
+<Solution>
+
+**Solution.** `apply` scans out the declarations of the body block itself, binds them to `"*unassigned*"` in the same frame as the parameters, and evaluates the block’s body there instead of the block. A body that is not a block, from a lambda expression with an expression body, needs no scanning.
+
+</Solution>
+</Exercise>
+<Exercise id="4.17">
+
+Eva writes programs in which function declarations and other statements are interleaved, and must make sure that the declarations are evaluated before the functions are applied. Why can’t the evaluator hoist all function declarations to the beginning of the block in which they appear, and those outside blocks to the beginning of the program? Modify the evaluator to do so. JavaScript’s designers took Eva’s approach, and also allowed the name declared by a function declaration to be reassigned. Discuss these decisions.
+
+<Solution>
+
+**Solution.** Every block body and every program reaches `evaluate` as a sequence, so one change suffices: reorder the statements of a sequence so that its function declarations come first. A function declaration has no effects besides binding its name to a function, so evaluating it early changes nothing else; that makes hoisting safe, and convenient. Making the name reassignable, on the other hand, means a call may not reach the function its reader sees declared.
+
+</Solution>
+</Exercise>
+<Exercise id="4.18">
+
+Check that the expression above computes factorials. Devise an analogous expression for computing Fibonacci numbers. Then complete this alternative declaration of `f`, which has no internal function declarations, by filling in the arguments marked `??`:
+
+```js
+function f(x) {
+    return ((is_even, is_odd) => is_even(is_even, is_odd, x))
+           ((is_ev, is_od, n) => n === 0 ? true : is_od(??, ??, ??),
+            (is_ev, is_od, n) => n === 0 ? false : is_ev(??, ??, ??));
+}
+```
+
+<Solution>
+
+**Solution.** The Fibonacci function receives itself, and calls itself twice. In `f`, each function receives both functions, and passes both on, with `n - 1`.
+
+</Solution>
+</Exercise>
+<Exercise id="4.19">
+
+Ben Bitdiddle, Alyssa P. Hacker and Eva Lu Ator are arguing about the program shown above, in which `f` declares `b` using `a` and then declares `a`. Give the result of `f(10)` in each of their views, and say whose view JavaScript takes. Which viewpoint do you support? Can you devise a way to implement internal declarations so that they behave as Eva prefers? Do it for the simple case of declarations whose value expressions only use names: order them so that each comes after those it uses.
+
+<Solution>
+
+**Solution.** Ben’s sequential view gives 16, Alyssa’s an error, Eva’s 20, and JavaScript sides with Alyssa: Eva is right in principle, but a general and efficient way to do what she wants is hard to find, and an error is better than a wrong answer. When value expressions only use names, though, the dependencies can be read off the text, and a *topological sort* finds an order that works: repeatedly take a declaration none of whose names is still waiting. Declarations that depend on each other in a cycle, and function bodies, which may use names in any order, are what make the general case hard.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['4.1.7', { id: '3.2.4', label: 'Internal declarations in the environment model' }, { id: '5.5.6', label: 'Scanning out for lexical addresses' }]} />

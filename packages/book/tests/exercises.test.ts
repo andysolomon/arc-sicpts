@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { createLabHost, LabClient, type WorkerLike } from '@sicp/lab';
 import { describe, expect, it } from 'vitest';
-import { exercises, type ExerciseSpec } from '../content/exercises.ts';
+import { exercises, programOf, type ExerciseSpec } from '../content/exercises.ts';
 
 /** The Laboratory host on this thread, connected the way the page's worker is. */
 function inProcessWorker(): WorkerLike {
@@ -21,7 +21,7 @@ const client = new LabClient(inProcessWorker);
 async function passed(spec: ExerciseSpec, source: string): Promise<string> {
   const end = await client.submit({
     type: 'check',
-    source,
+    source: programOf(spec, source),
     tests: spec.tests,
     ...(spec.prelude !== undefined && { prelude: spec.prelude }),
     ...(spec.budget !== undefined && { budget: spec.budget }),

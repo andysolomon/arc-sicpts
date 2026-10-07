@@ -13,6 +13,12 @@ export interface ExerciseSpec {
   starter: string;
   /** Definitions the submission can use without seeing them. */
   prelude?: string;
+  /**
+   * Declarations evaluated after the submission, in the same frame. An
+   * evaluator whose parts the reader rewrites goes here: its other parts must
+   * see the reader's versions, which a prelude, in an outer frame, cannot.
+   */
+  postlude?: string;
   /** The hidden tests; the reader sees only how many pass. */
   tests: TestSpec[];
   /** Evaluator steps allowed for each test, when the default of 100 000 is not right. */
@@ -26,3 +32,7 @@ export interface ExerciseSpec {
 /** A test expression that is true when `expr` is within `tolerance` of `expected`. */
 export const close = (expr: string, expected: number, tolerance: number): string =>
   `math_abs(${expr} - ${expected}) < ${tolerance}`;
+
+/** The program a check runs: the submission, then the spec's postlude. */
+export const programOf = (spec: ExerciseSpec, source: string): string =>
+  spec.postlude === undefined ? source : `${source}\n${spec.postlude}`;

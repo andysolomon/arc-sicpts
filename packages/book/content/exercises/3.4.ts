@@ -843,3 +843,33 @@ function serialized_exchange(account1, account2) {
 }
 `,
 };
+
+export const exercise_3_49: ExerciseSpec = {
+  id: '3.49',
+  starter: `// Each account here also holds a "partner" account, which can change, so it
+// may be read only while holding the account's own serializer. A transfer to
+// the partner must therefore lock the account first and only then learn which
+// second account to lock. Account 2's partner is account 1, and account 1's is 2.
+// Thread A transfers from account 2 to its partner; thread B from account 1 to its partner.
+// Replace each null.
+
+// Does thread A have to hold account 2 before it knows it needs account 1? (true or false)
+const must_lock_before_knowing = null;
+
+// Can thread A still take the lower-numbered account first, as Exercise 3.48 requires,
+// without letting go of account 2? (true or false)
+const numbering_can_be_followed = null;
+
+// After A holds 2 and B holds 1, can both wait for ever? (true or false)
+const can_deadlock = null;
+`,
+  tests: [
+    { name: 'the second resource is known only after the first is held', kind: 'value', expr: 'must_lock_before_knowing', expected: true },
+    { name: 'so the order cannot be fixed in advance', kind: 'value', expr: 'numbering_can_be_followed', expected: false },
+    { name: 'and the cycle can form', kind: 'value', expr: 'can_deadlock', expected: true },
+  ],
+  solution: `const must_lock_before_knowing = true;
+const numbering_can_be_followed = false;
+const can_deadlock = true;
+`,
+};

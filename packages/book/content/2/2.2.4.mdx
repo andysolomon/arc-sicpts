@@ -1,0 +1,307 @@
+import {
+  besideProgram,
+  frameCoordMapProgram,
+  pictureBasis,
+  pictureLanguage,
+  rightSplitProgram,
+  segmentsToPainterProgram,
+  splitsPrelude,
+  squareLimitPrelude,
+  squareLimitProgram,
+  squareOfFourProgram,
+  transformPainterProgram,
+  wave4Program,
+  waveFramesProgram,
+} from '@sicp/lab';
+
+<Prose>
+
+This section presents a simple language for drawing pictures. It illustrates the power of data abstraction and closure, and it exploits higher-order functions in an essential way. The language makes it easy to experiment with patterns composed of repeated elements that are shifted and scaled, like M. C. Escher's woodcut *Square Limit*, on which Peter Henderson based the original. In this language the data objects being combined are represented as functions rather than as list structure. Just as `pair`, which satisfies the closure property, let us build arbitrarily complicated list structure, the operations of this language, which also satisfy the closure property, let us build arbitrarily complicated patterns.
+
+**The picture language.** When we began our study of programming in §1.1, we emphasised describing a language by its primitives, its means of combination and its means of abstraction. We follow that framework here.
+
+Part of the elegance of the picture language is that there is only one kind of element, called a *painter*. A painter draws an image that is shifted and scaled to fit within a designated parallelogram-shaped *frame*. For example, a painter we call `wave` makes a crude line drawing of a stick figure. The shape of the drawing depends on the frame: the four figures below are drawn by the same `wave` painter, in four different frames.
+
+The editors on this page draw with the primitive `draw_line(start, end)`, on a canvas that is the unit square with its origin at the bottom left, and show the lines under the program. There are no built-in painters: everything is written in JavaScript, and the rest of the section shows how. So that each example can show only what it teaches, every editor here has a hidden prelude that declares the vectors `make_vect`, `xcor_vect`, `ycor_vect`, `add_vect`, `sub_vect` and `scale_vect`; the frames `make_frame`, `origin_frame`, `edge1_frame`, `edge2_frame` and `frame_coord_map`; the segments `make_segment`, `start_segment` and `end_segment`; `segments_to_painter`; and three things for drawing: `wave`, built from a list `wave_segments` of seventeen segments, `letter_f`, an F that looks different under every flip and rotation, and `paint(painter)`, which paints on `unit_frame`, the whole canvas.
+
+</Prose>
+
+<Example index={0} file="wave_frames.sicp" source={waveFramesProgram} prelude={pictureBasis} anim="picture">
+
+A frame is an origin and two edge vectors. The first frame is a square, the second leans, the third has its first edge pointing up and its second pointing left, so the figure lies on its side, and the fourth squashes the figure toward a diagonal. `wave` knows nothing about any of them: it draws its seventeen segments relative to whatever frame it is handed.
+
+</Example>
+
+<Prose>
+
+To combine images, we use operations that construct new painters from given painters. `beside` takes two painters and produces a compound painter that draws the first painter's image in the left half of the frame and the second's in the right half. Similarly, `below` draws the first painter's image below the second's. Some operations transform a single painter: `flip_vert` draws its painter's image upside down, and `flip_horiz` draws it left-to-right reversed.
+
+The next examples use these operations before we implement them, so their prelude also declares `transform_painter`, `identity`, `flip_vert`, `flip_horiz`, `rotate90`, `rotate180`, `rotate270`, `beside` and `below`, all written later in the section. Here is `wave4`, built in two stages from `wave`:
+
+</Prose>
+
+<Example index={1} file="wave4.sicp" source={wave4Program} prelude={pictureLanguage} anim="picture">
+
+`wave2` is `wave` beside an upside-down `wave`, and `wave4` is `wave2` below another `wave2`. The animation draws the lines in the order the painters draw them: the bottom left figure first, the top right one last.
+
+</Example>
+
+<Prose>
+
+In building up a complex image this way we exploit the fact that painters are closed under the language's means of combination. The `beside` or `below` of two painters is itself a painter, so it can be an element in a more complex painter. As with building up list structure with `pair`, the closure of our data under the means of combination is what lets us create complex structures with only a few operations.
+
+Once we can combine painters, we want to abstract typical patterns of combining them. We implement the painter operations as JavaScript functions, so we need no special abstraction mechanism: since the means of combination are ordinary functions, we can do anything with painter operations that we can do with functions. For example, we can abstract the pattern in `wave4` as
+
+```js
+function flipped_pairs(painter) {
+    const painter2 = beside(painter, flip_vert(painter));
+    return below(painter2, painter2);
+}
+```
+
+and declare `wave4` as an instance of this pattern, `const wave4 = flipped_pairs(wave);`. We can also define recursive operations. Here is one that makes painters split and branch towards the right:
+
+</Prose>
+
+<Example index={2} file="right_split.sicp" source={rightSplitProgram} prelude={pictureLanguage} budget={1_000_000} anim="picture">
+
+`right_split(wave, 3)` is `wave` beside two copies of `right_split(wave, 2)`, stacked: 1 + 2 + 4 + 8 = 15 figures, each level half the height of the one before. Try `letter_f` in place of `wave`, or `n` = 4, which draws 31 figures.
+
+</Example>
+
+<Prose>
+
+We can produce balanced patterns by branching upwards as well as towards the right. `corner_split` places the painter at the bottom left, two copies of an `up_split` above it, two copies of a `right_split` to its right, and a smaller `corner_split` in the top right corner. Placing four copies of a `corner_split` appropriately gives the pattern called `square_limit`. Writing `up_split` is Exercise 2.44; so that this example runs, its prelude declares `up_split` as well.
+
+</Prose>
+
+<Example index={3} file="square_limit.sicp" source={squareLimitProgram} prelude={squareLimitPrelude} budget={1_000_000} anim="picture">
+
+Each quarter of `square_limit(wave, 1)` is `corner_split(wave, 1)`, flipped so that the four meet with their largest figures in the middle: 24 figures in all. With `n` = 2 the pattern has 76 figures, 1292 lines. Run draws all of them; the animation traces a limited number of steps and shows the first part.
+
+</Example>
+
+<Prose>
+
+**Higher-order operations.** Besides abstracting patterns of combining painters, we can work at a higher level and abstract patterns of combining painter operations: functions that take painter operations as arguments and create new painter operations.
+
+For example, `flipped_pairs` and `square_limit` each arrange four copies of a painter's image in a square pattern; they differ only in how they orient the copies. `square_of_four` captures this pattern. It takes four one-argument painter operations, `tl`, `tr`, `bl` and `br`, for the top left, top right, bottom left and bottom right copies, and returns a painter operation that transforms a given painter with those four and arranges the results in a square. The body of the lambda expression it returns is a block, with declarations and a `return`, rather than a single expression. Then `flipped_pairs` and `square_limit` are each one application of it. Instead of `rotate180` we could say `compose(flip_vert, flip_horiz)`, with `compose` from Exercise 1.42. The prelude of this example also declares `right_split`, `up_split` and `corner_split`.
+
+</Prose>
+
+<Example index={4} file="square_of_four.sicp" source={squareOfFourProgram} prelude={splitsPrelude} budget={1_000_000} anim="picture">
+
+`letter_f` shows what each quarter does to the corner. The top right quarter is `corner_split(letter_f, 1)` itself, with its big F next to the centre; the other three are its mirror images. Replace the last line with `paint(flipped_pairs(wave));` and the picture is `wave4` again.
+
+</Example>
+
+<Prose>
+
+**Frames.** Before we can show how to implement painters and their means of combination, we must consider frames. A frame can be described by three vectors: an origin vector and two edge vectors. The origin vector gives the offset of the frame's origin from some absolute origin in the plane, and the edge vectors give the offsets of the frame's corners from its origin. If the edges are perpendicular, the frame is rectangular; otherwise it is a more general parallelogram. In accordance with data abstraction, we need not yet say how frames are represented, other than that there is a constructor `make_frame`, which takes three vectors and produces a frame, and three selectors `origin_frame`, `edge1_frame` and `edge2_frame` (see Exercise 2.47).
+
+We use coordinates in the unit square, 0 ≤ *x*, *y* ≤ 1, to specify images. With each frame we associate a *frame coordinate map*, which shifts and scales images to fit the frame. The map transforms the unit square into the frame by sending the vector **v** = (*x*, *y*) to the vector sum
+
+Origin(Frame) + *x* · Edge₁(Frame) + *y* · Edge₂(Frame).
+
+So (0, 0) goes to the frame's origin, (1, 1) to the vertex diagonally opposite the origin, and (0.5, 0.5) to the centre of the frame. `frame_coord_map` creates a frame's coordinate map; it uses the vector operations of Exercise 2.46, and because of data abstraction it does not matter how vectors are represented, as long as those operations behave correctly.
+
+</Prose>
+
+<Example index={5} file="frame_coord_map.sicp" source={frameCoordMapProgram} prelude={pictureBasis} anim="picture">
+
+Applying `frame_coord_map` to a frame returns a function that, given a vector, returns a vector: if the argument is in the unit square, the result is in the frame. The program maps the corners of the unit square to draw the frame's outline, paints `wave` in the frame, and checks that `m(make_vect(0, 0))` is the frame's origin. The centre (0.5, 0.5) goes to `[0.55, 0.5]`, the middle of the parallelogram.
+
+</Example>
+
+<Prose>
+
+**Painters.** A painter is represented as a function that, given a frame as argument, draws a particular image shifted and scaled to fit the frame. If `p` is a painter and `f` is a frame, we produce `p`'s image in `f` by calling `p` with `f` as argument.
+
+How primitive painters are implemented depends on the graphics system and on the type of image to be drawn. Given `draw_line`, we can create painters for line drawings, such as `wave`, from lists of line segments. The segments are given in coordinates of the unit square, using the representation of Exercise 2.48. For each segment in the list, the painter transforms the endpoints with the frame coordinate map and draws a line between the transformed points; `for_each` is the function of Exercise 2.23.
+
+</Prose>
+
+<Example index={6} file="segments_to_painter.sicp" source={segmentsToPainterProgram} prelude={pictureBasis} anim="picture">
+
+Three segments make an arrow pointing along the first edge. In the second frame the first edge points up, so the same painter draws an arrow pointing up.
+
+</Example>
+
+<Prose>
+
+Representing painters as functions erects a powerful abstraction barrier. We can create and intermix all sorts of primitive painters, based on a variety of graphics capabilities; any function can serve as a painter, provided that it takes a frame as argument and draws something scaled to fit the frame. Painters are our second functional representation of data, after the pairs-as-functions of §2.1.3.
+
+**Transforming and combining painters.** An operation on painters, such as `flip_vert` or `beside`, works by creating a painter that invokes the original painters with respect to frames derived from the argument frame. `flip_vert` doesn't have to know how a painter works in order to flip it: it just has to know how to turn a frame upside down. The flipped painter uses the original painter, but in the inverted frame.
+
+Painter operations are based on `transform_painter`, which takes a painter and information on how to transform a frame and produces a new painter. The transformed painter, when called on a frame, transforms the frame and calls the original painter on the transformed frame. The arguments to `transform_painter` are points, represented as vectors, that specify the corners of the new frame: mapped into the frame, the first point gives the new frame's origin and the other two give the ends of its edge vectors. So arguments within the unit square specify a frame contained within the original frame.
+
+</Prose>
+
+<Example index={7} file="transform_painter.sicp" source={transformPainterProgram} prelude={pictureBasis} anim="picture">
+
+`shrink_to_upper_right` puts `letter_f` in the top right quarter. Rotating that painter by 90 degrees counterclockwise moves the quarter to the top left and turns the F on its side; flipping it moves it to the bottom right, upside down. `squash_inwards`, applied to `wave` in the bottom left quarter's frame, squeezes the figure toward the diagonal. `rotate90` is a pure rotation only for square frames, because it also stretches the image to fit the rotated frame.
+
+</Example>
+
+<Prose>
+
+Frame transformation is also the key to combining two or more painters. `beside` takes two painters and transforms them to paint in the left and right halves of an argument frame. When the compound painter is given a frame, it calls the first transformed painter to paint in the left half and the second to paint in the right half. The prelude of this example has the whole picture language, `transform_painter`, the flips and rotations and `below` included; the program's own `beside` takes the place of the prelude's.
+
+</Prose>
+
+<Example index={8} file="beside.sicp" source={besideProgram} prelude={pictureLanguage} anim="picture">
+
+`beside` need not know anything about its component painters other than that each will draw something in its designated frame. Here the right half is itself a compound painter, an F below a turned F, and it divides its half again without knowing that it is only half.
+
+</Example>
+
+<Prose>
+
+**Levels of language for robust design.** The picture language exploits critical ideas about abstraction with functions and data. The fundamental data abstraction, painters, is implemented with functional representations, which let the language treat different basic drawing capabilities uniformly. The means of combination satisfy the closure property, which lets us build up complex designs easily. And all the tools for abstracting functions are available for abstracting means of combination.
+
+We have also glimpsed another crucial idea about languages and program design: *stratified design*, the notion that a complex system should be structured as a sequence of levels described by a sequence of languages. Each level is constructed by combining parts that are regarded as primitive at that level, and the parts constructed at each level are used as primitives at the next. The language at each level has primitives, means of combination and means of abstraction appropriate to that level of detail.
+
+Stratified design pervades the engineering of complex systems. In computer engineering, resistors and transistors are combined, in a language of analog circuits, to produce and-gates and or-gates, which are the primitives of a language for digital-circuit design. These are combined into processors, bus structures and memory systems, which in turn are combined into computers, using languages appropriate to computer architecture. Computers are combined into distributed systems, using languages for network interconnections, and so on.
+
+As a tiny example of stratification, the picture language uses primitive elements, points and lines, to give the shapes of a painter like `wave`. Most of our description focused on combining these primitives with geometric combiners such as `beside` and `below`. We also worked at a higher level, treating `beside` and `below` as primitives to be manipulated in a language whose operations, such as `square_of_four`, capture common patterns of combining geometric combiners.
+
+Stratified design helps make programs *robust*: small changes in a specification are likely to need correspondingly small changes in the program. Suppose we wanted to change the square limit of `wave`. We could work at the lowest level, changing the details of the `wave` element; at the middle level, changing the way `corner_split` replicates `wave`; or at the highest level, changing how `square_limit` arranges the four copies of the corner. In general, each level of a stratified design provides a different vocabulary for expressing the characteristics of the system, and a different kind of ability to change it.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-2/pictures.ts">
+
+`draw_line` is a primitive in `evaluator/primitives.ts`: it checks that both arguments are pairs of numbers and hands the line to whoever runs the program. The worker (`worker/host.ts`) sends a run's lines to the editor as `draw` events and keeps a trace's lines for the animation. Everything else, from `make_vect` to `square_limit`, is Source in `chapter-2/pictures.ts`, where `pictureBasis` is the prelude described above. Its `frame_coord_map` and `segments_to_painter` look up the frame's parts once per frame instead of once per point, because each line costs a few hundred evaluator steps. The test `chapter-2/pictures.test.ts` asserts that they draw exactly what the book's versions draw, that `wave4` draws 68 lines starting with (0.125, 0) to (0.175, 0.25), that `right_split(wave, 3)` draws 255, that `square_limit(wave, 1)` draws 408 and the `square_of_four` version the same set of lines, that `flipped_pairs(wave)` draws `wave4`, and that the centre of `a_frame` is `[0.55, 0.5]`. The exercises cannot see a picture, so their preludes declare a `draw_line` of their own that records each line, and the tests compare the lines a painter draws.
+
+</UnderTheHood>
+
+<Exercises range="2.44 – 2.52" total={9}>
+<Exercise id="2.44">
+
+Declare the function `up_split` used by `corner_split`. It is similar to `right_split`, except that it switches the roles of `below` and `beside`.
+
+<Solution>
+
+**Solution.** `up_split(painter, n)` is `painter` when `n` is 0, and otherwise `below(painter, beside(smaller, smaller))`, where `smaller` is `up_split(painter, n - 1)`. The painter fills the bottom half and the two smaller copies share the top half, so the pattern grows upward the way `right_split`'s grows to the right. With it, `corner_split(letter_f, 2)` draws 19 Fs.
+
+</Solution>
+</Exercise>
+<Exercise id="2.45">
+
+`right_split` and `up_split` can be expressed as instances of a general splitting operation. Declare a function `split` with the property that evaluating
+
+```js
+const right_split = split(beside, below);
+const up_split = split(below, beside);
+```
+
+produces functions `right_split` and `up_split` with the same behaviours as the ones already declared.
+
+<Solution>
+
+**Solution.** `split(big_op, small_op)` declares a recursive `splitter(painter, n)` that returns `painter` when `n` is 0 and otherwise `big_op(painter, small_op(smaller, smaller))`, and then returns `splitter` itself. The inner function needs a name of its own so that it can call itself; `big_op` and `small_op` are found in `split`'s frame, which `splitter` remembers.
+
+</Solution>
+</Exercise>
+<Exercise id="2.46">
+
+A two-dimensional vector *v* running from the origin to a point can be represented as a pair consisting of an *x*-coordinate and a *y*-coordinate. Implement a data abstraction for vectors by giving a constructor `make_vect` and corresponding selectors `xcor_vect` and `ycor_vect`. In terms of your selectors and constructor, implement functions `add_vect`, `sub_vect` and `scale_vect` that perform vector addition, vector subtraction and multiplication of a vector by a scalar:
+
+(*x*₁, *y*₁) + (*x*₂, *y*₂) = (*x*₁ + *x*₂, *y*₁ + *y*₂)<br />
+(*x*₁, *y*₁) − (*x*₂, *y*₂) = (*x*₁ − *x*₂, *y*₁ − *y*₂)<br />
+*s* · (*x*, *y*) = (*sx*, *sy*)
+
+The starter includes `frame_coord_map`, which should then work with your vectors.
+
+<Solution>
+
+**Solution.** `make_vect` is `pair`, `xcor_vect` is `head` and `ycor_vect` is `tail`. The arithmetic is written with the constructor and selectors only, so it would survive a change of representation. Note the argument order of `scale_vect(s, v)`, which is how `frame_coord_map` calls it.
+
+</Solution>
+</Exercise>
+<Exercise id="2.47">
+
+Here are two possible constructors for frames:
+
+```js
+function make_frame(origin, edge1, edge2) {
+    return list(origin, edge1, edge2);
+}
+
+function make_frame(origin, edge1, edge2) {
+    return pair(origin, pair(edge1, edge2));
+}
+```
+
+For each constructor supply the appropriate selectors to produce an implementation for frames. So that both fit in one program, the editor calls them `make_frame_1` and `make_frame_2`, with selectors `origin_frame_1`, …, `edge2_frame_2`.
+
+<Solution>
+
+**Solution.** For both, the origin is the `head` and the first edge is `head(tail(frame))`. They differ only in the second edge: the list has one more pair, ending in `null`, so `edge2_frame_1` is `head(tail(tail(frame)))`, while in the nested pairs the second edge is the last `tail` itself, so `edge2_frame_2` is `tail(tail(frame))`.
+
+</Solution>
+</Exercise>
+<Exercise id="2.48">
+
+A directed line segment in the plane can be represented as a pair of vectors: the vector running from the origin to the start-point of the segment, and the vector running from the origin to the end-point of the segment. Use your vector representation from Exercise 2.46 to define a representation for segments with a constructor `make_segment` and selectors `start_segment` and `end_segment`.
+
+<Solution>
+
+**Solution.** `make_segment` is `pair` and the selectors are `head` and `tail`. The segment is directed, so the order matters: `segments_to_painter` draws each line from `start_segment` to `end_segment`, and the test checks that it does.
+
+</Solution>
+</Exercise>
+<Exercise id="2.49">
+
+Use `segments_to_painter` to define the following primitive painters:
+
+- `outline`, which draws the outline of the designated frame;
+- `x_painter`, which draws an "X" by connecting opposite corners of the frame;
+- `diamond`, which draws a diamond shape by connecting the midpoints of the sides of the frame;
+- the `wave` painter.
+
+The tests check the first three line by line, in any order and direction, and check that `wave` draws at least ten segments, all inside its frame.
+
+<Solution>
+
+**Solution.** Each painter is a list of segments in unit-square coordinates: the outline joins (0, 0), (1, 0), (1, 1) and (0, 1) in turn; the X joins (0, 0) to (1, 1) and (1, 0) to (0, 1); the diamond joins (0.5, 0), (1, 0.5), (0.5, 1) and (0, 0.5). Because `segments_to_painter` maps every endpoint through the frame's coordinate map, the same lists draw correctly in any frame, which is what the test with a half-width frame checks. `wave` is the seventeen segments of the prelude's figure.
+
+</Solution>
+</Exercise>
+<Exercise id="2.50">
+
+Declare the transformation `flip_horiz`, which flips painters horizontally, and transformations `rotate180` and `rotate270` that rotate painters counterclockwise by 180 degrees and 270 degrees.
+
+<Solution>
+
+**Solution.** Say where the new origin and the ends of the two edges go. Flipping horizontally puts the origin at (1, 0), the end of the first edge at (0, 0) and the end of the second at (1, 1). Rotating by 180 degrees puts them at (1, 1), (0, 1) and (1, 0); by 270 degrees, at (0, 1), (0, 0) and (1, 1). Composing works too: `rotate180` is `rotate90` applied twice, or `flip_vert` after `flip_horiz`, and `rotate270` is `rotate90` three times. `letter_f` makes the difference visible: an F turned by 270 degrees lies on its side with its bars pointing down.
+
+</Solution>
+</Exercise>
+<Exercise id="2.51">
+
+Declare the `below` operation for painters. `below` takes two painters as arguments. The resulting painter, given a frame, draws with the first painter in the bottom of the frame and with the second painter in the top. Define `below` in two different ways: first by writing a function analogous to `beside`, and again, as `below_by_rotation`, in terms of `beside` and suitable rotation operations from Exercise 2.50.
+
+<Solution>
+
+**Solution.** The first `below` splits at (0, 0.5): the bottom painter's frame has corners (0, 0), (1, 0) and (0, 0.5), the top painter's (0, 0.5), (1, 0.5) and (0, 1). For the second, turn both painters clockwise with `rotate270`, put them `beside` each other, and turn the whole result counterclockwise with `rotate90`: the left half becomes the bottom, and each painter is turned back upright. `rotate90(beside(rotate270(painter1), rotate270(painter2)))` draws the same lines as the first `below`.
+
+</Solution>
+</Exercise>
+<Exercise id="2.52">
+
+Make changes to the square limit of `wave` by working at each of the levels described above. In particular:
+
+- Add some segments to the primitive `wave` painter of Exercise 2.49, to add a smile for example. Call the result `smiling_wave`; the prelude provides `wave_segments`.
+- Change the pattern constructed by `corner_split`, for example by using only one copy of the `up_split` and `right_split` images instead of two. Call it `simple_corner_split`.
+- Modify the version of `square_limit` that uses `square_of_four` so as to assemble the corners in a different pattern. Write `square_limit_out`, whose four largest copies look outward from the corners of the square rather than meeting in the middle, with the bottom left one upright and the picture still symmetric.
+
+<Solution>
+
+**Solution.** At the lowest level, `append` two short segments to `wave_segments` for a smile; nothing above notices, and every pattern built from `wave` smiles. At the middle level, `simple_corner_split` puts the painter below one `up_split` and one `right_split` below the smaller corner: 11 copies at `n` = 2 instead of 19. At the top level only the four orientations change: `square_of_four(flip_vert, rotate180, identity, flip_horiz)` keeps `corner_split` upright at the bottom left, where its largest copy sits in the corner, and mirrors it into the other three. Each change was made at one level, in one place.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '2.5', label: 'A layered system of generic operations' }, { id: '3.3.4', label: 'A language for digital circuits' }, { id: '4.1', label: 'Languages built on languages' }]} />

@@ -1,0 +1,200 @@
+import { countLeavesProgram, hierarchyProgram, scaleTreeMapProgram, scaleTreeProgram } from '@sicp/lab';
+
+<Prose>
+
+Representing sequences as lists generalises naturally to sequences whose elements are themselves sequences. The object `[[1, [2, null]], [3, [4, null]]]` constructed by
+
+```js
+pair(list(1, 2), list(3, 4));
+```
+
+is a list of three items, the first of which is itself a list, `list(1, 2)`. Its list notation is `list(list(1, 2), 3, 4)`.
+
+Another way to think of sequences whose elements are sequences is as *trees*. The elements of the sequence are the branches of the tree, and elements that are themselves sequences are subtrees. Seen as a tree, `x` below has three branches: the first is a subtree with two leaves, 1 and 2, and the other two are the leaves 3 and 4.
+
+</Prose>
+
+<Example index={0} file="hierarchy.sicp" source={hierarchyProgram} anim="pairs">
+
+Read the diagram of `x` as a tree by following the heads downward: each pair in the top row is a branch, and the branch whose head points down to another chain is the subtree `list(1, 2)`. `x_twice` is a list of two items, each of them all of `x`. Its length is 2, however much hangs below each item.
+
+</Example>
+
+<Prose>
+
+Recursion is a natural tool for dealing with trees, since we can often reduce operations on trees to operations on their branches, which reduce in turn to operations on the branches of the branches, until we reach the leaves. Compare `length` with `count_leaves`, which returns the total number of leaves of a tree. `length(x)` is 3 but `count_leaves(x)` is 4; `length(list(x, x))` is 2 but `count_leaves(list(x, x))` is 8.
+
+Recall the recursive plan for `length`: the length of a list is 1 plus the length of its tail, and the length of the empty list is 0. `count_leaves` is similar, and its value for the empty list is the same, 0. But in the reduction step, where we strip off the head of the list, we must take into account that the head may itself be a tree whose leaves we need to count. So `count_leaves` of a tree `x` is `count_leaves` of the head of `x` plus `count_leaves` of the tail of `x`. Finally, by taking heads we reach actual leaves, so we need another base case: `count_leaves` of a leaf is 1. The primitive predicate `is_pair` tests whether its argument is a pair. The order of the two tests matters: `null` is not a pair either, so the empty list must be caught first.
+
+</Prose>
+
+<Example index={1} file="count_leaves.sicp" source={countLeavesProgram} anim="tree-recursion">
+
+The tree of calls is a picture of the structure. Every pair costs one call that splits in two, toward its head and toward its tail; the four leaves answer 1 and the two `null`s answer 0. That makes 11 calls for 5 pairs, 4 leaves and 2 empty lists. Try `count_leaves(list(x, x))`.
+
+</Example>
+
+<Prose>
+
+**Mapping over trees.** Just as `map` is a powerful abstraction for sequences, `map` together with recursion is a powerful abstraction for trees. `scale_tree`, analogous to `scale_list`, takes a numeric factor and a tree whose leaves are numbers, and returns a tree of the same shape in which each number is multiplied by the factor. Its recursive plan is that of `count_leaves`.
+
+</Prose>
+
+<Example index={2} file="scale_tree.sicp" source={scaleTreeProgram} anim="pairs">
+
+The result has the same ten pairs as `tree`, in the same shape, with every leaf multiplied by 10. Like `count_leaves`, `scale_tree` makes one call for every pair, every leaf and every `null`, 21 in all.
+
+</Example>
+
+<Prose>
+
+Another way to implement `scale_tree` is to regard the tree as a sequence of subtrees and use `map`. We map over the sequence, scaling each subtree in turn, and return the list of results. In the base case, where the subtree is a leaf, we simply multiply by the factor.
+
+</Prose>
+
+<Example index={3} file="scale_tree_map.sicp" source={scaleTreeMapProgram} anim="calls">
+
+Now `map` walks along each list and `scale_tree` is applied only to subtrees: once to the whole tree and once to `list(2, 3)`. The lambda expression decides, for each element, whether to recurse or to multiply. Many tree operations can be built from the same combination of sequence operations and recursion.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-2/sequences.ts">
+
+Nothing in the Laboratory knows about trees: a tree is list structure, and `is_pair` is the one primitive the recursion needs (`evaluator/primitives.ts`). The diagrams come from the step trace: the scene reads the value of each top-level `const` and redraws it from its box notation. The test `chapter-2/sequences.test.ts` asserts that `length(x)` is 3 and `count_leaves(x)` is 4, that `count_leaves(list(x, x))` is 8, that `count_leaves(x)` makes 11 calls, and that both versions of `scale_tree` scale every leaf, the `map` version applying `scale_tree` only twice to `list(1, list(2, 3), 4)`.
+
+</UnderTheHood>
+
+<Exercises range="2.24 – 2.32" total={9}>
+<Exercise id="2.24">
+
+Suppose we evaluate the expression `list(1, list(2, list(3, 4)))`. Give the result printed by the interpreter, the corresponding box-and-pointer structure, and the interpretation of this as a tree. Record the printed result as the string `printed` and the number of pairs in the structure as `pairs_used`.
+
+<Solution>
+
+**Solution.** It prints `[1, [[2, [[3, [4, null]], null]], null]]`. Each `list` of two items is two pairs, so the structure has six: a chain of two whose second head points down to another chain of two, whose second head points down to the last chain. As a tree, the root has two branches, the leaf 1 and a subtree; that subtree has the leaf 2 and a subtree; and the innermost subtree has the leaves 3 and 4.
+
+</Solution>
+</Exercise>
+<Exercise id="2.25">
+
+Give combinations of `head`s and `tail`s that will pick 7 from each of the following lists, given in list notation. Write each as a function, so that it picks whatever stands where 7 stands:
+
+```js
+list(1, 3, list(5, 7), 9)
+
+list(list(7))
+
+list(1, list(2, list(3, list(4, list(5, list(6, 7))))))
+```
+
+<Solution>
+
+**Solution.** `head(tail(head(tail(tail(xs)))))`: two `tail`s reach the pair holding `list(5, 7)`, `head` takes that list, and `head(tail(…))` takes its second item. `head(head(xs))` for the second. For the third, each `list(k, …)` holds the rest as its second item, so `head(tail(…))` taken six times reaches 7.
+
+</Solution>
+</Exercise>
+<Exercise id="2.26">
+
+Suppose we declare `x` and `y` to be two lists:
+
+```js
+const x = list(1, 2, 3);
+const y = list(4, 5, 6);
+```
+
+What is the result of evaluating each of `append(x, y)`, `pair(x, y)` and `list(x, y)`, in box notation and in list notation? Record each as a `list(…)` of numbers and lists of numbers, written out without using `x` or `y`, and record the lengths of the last two.
+
+<Solution>
+
+**Solution.** `append(x, y)` is `list(1, 2, 3, 4, 5, 6)`. `pair(x, y)` adjoins `x` as a single item to the front of `y`: `list(list(1, 2, 3), 4, 5, 6)`, or `[[1, [2, [3, null]]], [4, [5, [6, null]]]]` in box notation, of length 4. `list(x, y)` is a list of two lists, `list(list(1, 2, 3), list(4, 5, 6))`, of length 2.
+
+</Solution>
+</Exercise>
+<Exercise id="2.27">
+
+Modify your `reverse` function of Exercise 2.18 to produce a `deep_reverse` function that takes a list as argument and returns as its value the list with its elements reversed and with all sublists deep-reversed as well. If `x` is `list(list(1, 2), list(3, 4))`, then `reverse(x)` is `list(list(3, 4), list(1, 2))` and `deep_reverse(x)` is `list(list(4, 3), list(2, 1))`.
+
+<Solution>
+
+**Solution.** Reverse as before, but deep-reverse each element on the way when it is a pair: adjoin `is_pair(head(xs)) ? deep_reverse(head(xs)) : head(xs)`. Equivalently, `reverse(map(t => is_pair(t) ? deep_reverse(t) : t, xs))`.
+
+</Solution>
+</Exercise>
+<Exercise id="2.28">
+
+Write a function `fringe` that takes as argument a tree (represented as a list) and returns a list whose elements are all the leaves of the tree arranged in left-to-right order. If `x` is `list(list(1, 2), list(3, 4))`, then `fringe(x)` is `list(1, 2, 3, 4)` and `fringe(list(x, x))` is `list(1, 2, 3, 4, 1, 2, 3, 4)`.
+
+<Solution>
+
+**Solution.** The plan of `count_leaves`, with lists instead of numbers: the fringe of the empty tree is `null`, of a leaf the list of that leaf, and of anything else the fringe of its head appended to the fringe of its tail. Section 2.2.3 meets it again under the name `enumerate_tree`.
+
+</Solution>
+</Exercise>
+<Exercise id="2.29">
+
+A binary mobile consists of two branches, a left branch and a right branch. Each branch is a rod of a certain length, from which hangs either a weight or another binary mobile. We represent a mobile with `make_mobile(left, right)` and a branch with `make_branch(length, structure)`, both built with `list`. The structure may be a number, a simple weight, or another mobile.
+
+1. Write the selectors `left_branch` and `right_branch`, which return the branches of a mobile, and `branch_length` and `branch_structure`, which return the components of a branch.
+2. Using your selectors, declare a function `total_weight` that returns the total weight of a mobile.
+3. A mobile is *balanced* if the torque applied by its top-left branch equals that applied by its top-right branch (the length of the left rod times the weight hanging from it equals the corresponding product on the right), and each of the submobiles hanging off its branches is balanced. Design a predicate `is_balanced` that tests whether a binary mobile is balanced.
+4. Suppose we change the constructors to use `pair` instead of `list`. How much do you need to change your programs? Record the names of the functions you would have to change as a list of strings, `changes`.
+
+<Solution>
+
+**Solution.** The selectors are `head` and `head(tail(…))` of the mobile or branch. The weight hanging from a branch is its structure if that is a number, and the total weight of the mobile otherwise; `total_weight` adds the two branches. `is_balanced` compares length times weight on the two sides and then requires each structure that is a mobile to be balanced. With `pair`, the right part is the tail itself rather than the head of the tail, so only `right_branch` and `branch_structure` change. Everything else goes through the selectors: the abstraction barrier of §2.1.2 paying off.
+
+</Solution>
+</Exercise>
+<Exercise id="2.30">
+
+Declare a function `square_tree` analogous to the `square_list` function of Exercise 2.21:
+
+```js
+square_tree(list(1, list(2, list(3, 4), 5), list(6, 7)));
+```
+
+should be `list(1, list(4, list(9, 16), 25), list(36, 49))`. Declare `square_tree` both directly, without any higher-order functions, and as `square_tree_map`, using `map` and recursion.
+
+<Solution>
+
+**Solution.** The direct version is `scale_tree` with `square(tree)` in place of `tree * factor`. The `map` version maps a lambda expression over the tree that recurses on subtrees and squares leaves.
+
+</Solution>
+</Exercise>
+<Exercise id="2.31">
+
+Abstract your answer to Exercise 2.30 to produce a function `tree_map` with the property that `square_tree` could be declared as
+
+```js
+function square_tree(tree) {
+  return tree_map(square, tree);
+}
+```
+
+<Solution>
+
+**Solution.** `tree_map(f, tree)` is `square_tree_map` with `square` turned into the parameter `f`: map over the tree, recursing with `tree_map(f, sub_tree)` on subtrees and applying `f` to leaves. `scale_tree(tree, factor)` is then `tree_map(x => x * factor, tree)`.
+
+</Solution>
+</Exercise>
+<Exercise id="2.32">
+
+We can represent a set as a list of distinct elements, and the set of all subsets of the set as a list of lists. If the set is `list(1, 2, 3)`, then the set of all subsets is
+
+```js
+list(null, list(3), list(2), list(2, 3),
+     list(1), list(1, 3), list(1, 2),
+     list(1, 2, 3))
+```
+
+Complete the declaration of `subsets` in the editor, and give a clear explanation of why it works.
+
+<Solution>
+
+**Solution.** The missing function is `subset => pair(head(s), subset)`. Every subset of `s` either leaves out its first element or contains it. Those that leave it out are exactly the subsets of the rest, `rest`. Those that contain it are the subsets of the rest with the first element adjoined, which is what the `map` makes. Appending the two gives them all, and the empty set has the one subset `null`, so a set of *n* elements has 2ⁿ subsets.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['2.2.3', { id: '2.3.3', label: 'Sets as lists and as trees' }, { id: '2.3.4', label: 'Huffman encoding trees' }]} />

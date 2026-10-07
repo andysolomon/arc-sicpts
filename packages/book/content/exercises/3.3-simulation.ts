@@ -417,6 +417,47 @@ function squarer(a, b) {
 `,
 };
 
+export const exercise_3_36: ExerciseSpec = {
+  id: '3.36',
+  starter: `// The program is
+//   const a = make_connector();
+//   const b = make_connector();
+//   set_value(a, 10, "user");
+// Answer by reading make_connector: replace each null.
+
+// In the frame where  for_each_except(setter, inform_about_value, constraints)
+// is evaluated, what are newval and setter?
+const newval_is = null;
+const setter_is = null;
+
+// That frame extends the frame of the call make_connector() that made a.
+// What do value, informant and constraints hold there at that moment?
+const value_is = null;
+const informant_is = null;
+const constraints_is = null;
+
+// Is any frame of b's connector in that environment? (true or false)
+const b_is_visible = null;
+
+// How many times is inform_about_value applied by that for_each_except?
+const informed = null;
+`,
+  tests: [
+    { name: 'the call frame of set_my_value', kind: 'value', expr: 'newval_is === 10 && setter_is === "user"', expected: true },
+    { name: 'the connector\'s state, already updated', kind: 'value', expr: 'value_is === 10 && informant_is === "user"', expected: true },
+    { name: 'no constraints yet', kind: 'value', expr: 'constraints_is === null && informed === 0', expected: true },
+    { name: 'b is out of sight', kind: 'value', expr: 'b_is_visible', expected: false },
+  ],
+  solution: `const newval_is = 10;
+const setter_is = "user";
+const value_is = 10;
+const informant_is = "user";
+const constraints_is = null;
+const b_is_visible = false;
+const informed = 0;
+`,
+};
+
 export const exercise_3_37: ExerciseSpec = {
   id: '3.37',
   prelude: `${constraintSystemDefinitions}

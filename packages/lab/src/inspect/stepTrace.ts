@@ -64,6 +64,8 @@ export interface StepTracer {
   truncated(): boolean;
 }
 
+const LOGGED: ReadonlySet<Node['kind']> = new Set(['application', 'name', 'conditional', 'if', 'return']);
+
 export function createStepTracer(source: string, maxRecords = 400): StepTracer {
   const records: StepRecord[] = [];
   let truncated = false;
@@ -73,10 +75,6 @@ export function createStepTracer(source: string, maxRecords = 400): StepTracer {
   let lastEnv = 'E0';
 
   const record = (text: string, env: string, node: Node, event: StepEvent): void => {
-    if (records.length >= maxRecords) {
-      truncated = true;
-      return;
-    }
     lastNode = node;
     lastEnv = env;
     records.push({
@@ -91,6 +89,16 @@ export function createStepTracer(source: string, maxRecords = 400): StepTracer {
     });
   };
 
+  /**
+   * True once the log is full. Hooks check it before building a record, so a
+   * long run past the limit does not pay for writing out values nobody keeps.
+   */
+  const full = (): boolean => {
+    if (records.length < maxRecords) return false;
+    truncated = true;
+    return true;
+  };
+
   return {
     records,
     truncated: () => truncated,
@@ -102,7 +110,7 @@ export function createStepTracer(source: string, maxRecords = 400): StepTracer {
         }
         thread ??= 0;
         // Spawns happen at the concurrent_execute call; ends after the thread's last step.
-        if (lastNode !== null) {
+        if (lastNode !== null && !full()) {
           record(`thread ${id} ${change === 'spawn' ? 'starts' : 'ends'}`, lastEnv, lastNode, { kind: 'thread', thread: id, change });
         }
       },
@@ -110,6 +118,8 @@ export function createStepTracer(source: string, maxRecords = 400): StepTracer {
         statement = index;
       },
       onEval(node, env) {
+        // Only these kinds of node are logged; others must not mark the log truncated.
+        if (!LOGGED.has(node.kind) || full()) return;
         const id = env.frame.id;
         switch (node.kind) {
           case 'application':
@@ -146,6 +156,7 @@ export function createStepTracer(source: string, maxRecords = 400): StepTracer {
         }
       },
       onCall(info) {
+        if (full()) return;
         const args = info.args.map((arg) => stringify(arg));
         const params = [...info.closure.lambda.params];
         const bindings = params.map((param, i) => `${param}: ${args[i]}`).join(', ');
@@ -167,6 +178,7 @@ export function createStepTracer(source: string, maxRecords = 400): StepTracer {
         );
       },
       onReturn(info) {
+        if (full()) return;
         const value = stringify(info.value);
         record(`${excerpt(source, info.node, 32)} → ${value}`, info.callerEnv.frame.id, info.node, {
           kind: 'return',
@@ -175,10 +187,12 @@ export function createStepTracer(source: string, maxRecords = 400): StepTracer {
         });
       },
       onResult(node, value, env) {
+        if (full()) return;
         const text = stringify(value);
         record(`${excerpt(source, node, 32)} → ${text}`, env.frame.id, node, { kind: 'result', value: text });
       },
       onDefine(symbol, value, env, node) {
+        if (full()) return;
         const assignment = node.kind === 'assignment';
         const text = stringify(value);
         record(`${assignment ? 'assign' : 'declare'} ${symbol} = ${text}`, env.frame.id, node, {

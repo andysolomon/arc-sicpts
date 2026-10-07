@@ -1,0 +1,183 @@
+import { decodeProgram, leafSetProgram } from '@sicp/lab';
+
+<Prose>
+
+This section practises list structure and data abstraction on sets and trees. The application is representing data as sequences of ones and zeros, *bits*. The ASCII standard code, for example, encodes each character as seven bits, which distinguishes 2⁷ = 128 characters. In general, distinguishing *n* symbols takes log₂ *n* bits per symbol. If our messages use only the eight symbols A to H, three bits each will do:
+
+| A | B | C | D | E | F | G | H |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 000 | 001 | 010 | 011 | 100 | 101 | 110 | 111 |
+
+With this code the message BACADAEAFABBAAAGAH is the 54 bits `001000010000011000100000101000001001000000000110000111`.
+
+Codes like ASCII and this one are *fixed-length*: every symbol takes the same number of bits. A *variable-length* code can do better when some symbols are much more frequent than others, by giving them shorter codes. Morse code works this way: E, the most frequent letter, is a single dot. Here is a variable-length code for A to H:
+
+| A | B | C | D | E | F | G | H |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 | 100 | 1010 | 1011 | 1100 | 1101 | 1110 | 1111 |
+
+The same message is now 42 bits, `100010100101101100011010100100000111001111`, a saving of more than 20 per cent.
+
+One difficulty with variable-length codes is knowing where one symbol ends and the next begins. Morse code uses a separator, a pause, after each letter. Another solution is a *prefix code*, in which no symbol's complete code is the beginning, the prefix, of another's. Above, A is 0 and B is 100, so no other code begins with 0 or with 100.
+
+Significant savings come from variable-length prefix codes that exploit the relative frequencies of the symbols. One scheme for building them is the *Huffman encoding method*, after its discoverer David Huffman. A Huffman code is a binary tree whose leaves are the symbols encoded. Each non-leaf node holds the set of all the symbols in the leaves below it, and each leaf a weight, its relative frequency; a non-leaf node's weight is the sum of the weights below it. The weights are not used for encoding or decoding, only to build the tree.
+
+To encode a symbol, start at the root and move down to its leaf, adding a 0 for each left branch and a 1 for each right branch; the symbol sets tell which branch leads to the leaf. In the tree for the code above, D is right, left, right, right: 1011. To decode, start at the root and let each bit choose the left or the right branch. On reaching a leaf, emit its symbol and start again at the root. With the bits 10001010, right, left, left reaches B; then left reaches A; then right, left, right, left reaches C. The message is BAC.
+
+**Representing Huffman trees.** A leaf is a list of the string `"leaf"`, the symbol and the weight. A general tree is a list of the string `"code_tree"`, a left branch, a right branch, a set of symbols and a weight. The set of symbols is simply a list, and merging two nodes appends their symbol lists, with `append` from §2.2.1, and adds their weights. The selectors `symbols` and `weight` must do something slightly different for a leaf and for a general tree: they are simple examples of *generic functions*, functions that handle more than one kind of data, which §2.4 and §2.5 have much more to say about.
+
+**The decoding function.** `decode` takes a list of zeros and ones and a Huffman tree. Its helper `decode_1` takes the remaining bits and the current position in the tree, and keeps moving down, choosing a branch for each bit with `choose_branch`. On reaching a leaf it adjoins the leaf's symbol to the result of decoding the rest of the message, starting again from the root. `choose_branch` signals an error for anything other than a zero or a one.
+
+The program below builds the tree for the code above, which the book draws as figure 2.18, and decodes 10001010 with it.
+
+</Prose>
+
+<Example index={0} file="huffman_decode.sicp" source={decodeProgram} anim="huffman">
+
+The scene reads `tree` back from its list structure and draws it as a code tree: each leaf with its symbol and weight, each other node with its symbol set and total weight, and a 0 or 1 on every branch. A has weight 8, B 3 and the other letters 1 each, so the root weighs 17. `decode` returns `list("B", "A", "C")`, and the scene then lights the path of each symbol in turn: 1 0 0, 0, 1 0 1 0. Change the bits and run again.
+
+</Example>
+
+<Prose>
+
+**Generating Huffman trees.** Given an alphabet of symbols and their relative frequencies, which code encodes messages in the fewest bits? Huffman gave an algorithm for building it, and showed that the result is the best variable-length code for messages whose symbol frequencies match those the code was built from. The idea is to put the least frequent symbols farthest from the root. Start with the set of leaves. Find the two with the lowest weights and merge them into a node whose left and right branches they are, and whose weight is their sum. Replace the two by the new node, and continue: at every step, merge the two lightest nodes. The process stops when one node is left, the root of the whole tree. Here is how the tree above was generated:
+
+| Step | Set of nodes |
+| --- | --- |
+| Initial leaves | (A 8) (B 3) (C 1) (D 1) (E 1) (F 1) (G 1) (H 1) |
+| Merge | (A 8) (B 3) (C D 2) (E 1) (F 1) (G 1) (H 1) |
+| Merge | (A 8) (B 3) (C D 2) (E F 2) (G 1) (H 1) |
+| Merge | (A 8) (B 3) (C D 2) (E F 2) (G H 2) |
+| Merge | (A 8) (B 3) (C D 2) (E F G H 4) |
+| Merge | (A 8) (B C D 5) (E F G H 4) |
+| Merge | (A 8) (B C D E F G H 9) |
+| Final merge | (A B C D E F G H 17) |
+
+The algorithm does not always specify a unique tree, because the two smallest nodes may not be unique, and which of the two becomes the left branch is arbitrary.
+
+**Sets of weighted elements.** The algorithm works with sets of leaves and trees and repeatedly needs the two smallest, so an ordered representation is convenient: a list in increasing order of weight. Its `adjoin_set` is like the one of exercise 2.61, except that items are compared by weight and the item adjoined is never already in the set. `make_leaf_set` turns a list of symbol-frequency pairs into such an ordered set of leaves, ready to be merged.
+
+</Prose>
+
+<Example index={1} file="leaf_set.sicp" source={leafSetProgram} anim="huffman">
+
+The pairs arrive as A 4, B 2, C 1, D 1, and the set of leaves comes out lightest first: D, C, B, A. `make_leaf_set` adjoins from the end of its list, so D goes in first and C, of equal weight, after it. The two leaves at the front are the first the algorithm merges.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-2/symbolicData.ts">
+
+The code-tree scene (`anim/scenes/huffman.ts`) rebuilds each tree from the value the evaluator reports, recognising leaves and trees by their `"leaf"` and `"code_tree"` tags, and finds each decoded symbol's path by searching the tree. Exercises 2.67 to 2.72 build on the same strings: their preludes are the representation, `decode` and `make_leaf_set` from `chapter-2/symbolicData.ts`, plus the answers of earlier exercises. The test `chapter-2/symbolicData.test.ts` asserts that the program decodes BAC, that the tree's symbols are A to H with weight 17, that it encodes the message of the text in 42 bits (against 54) with D as 1011, and that the rock song of exercise 2.70 takes 84 bits.
+
+</UnderTheHood>
+
+<Exercises range="2.67 – 2.72" total={6}>
+<Exercise id="2.67">
+
+Declare an encoding tree and a sample message:
+
+```js
+const sample_tree = make_code_tree(make_leaf("A", 4),
+                                   make_code_tree(make_leaf("B", 2),
+                                                  make_code_tree(make_leaf("D", 1),
+                                                                 make_leaf("C", 1))));
+const sample_message = list(0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0);
+```
+
+Use the `decode` function to decode the message, and give the result.
+
+<Solution>
+
+**Solution.** The codes are A 0, B 10, D 110 and C 111. Reading the bits from the root, 0 · 110 · 0 · 10 · 10 · 111 · 0 is `list("A", "D", "A", "B", "B", "C", "A")`.
+
+</Solution>
+</Exercise>
+<Exercise id="2.68">
+
+The `encode` function takes a message and a tree and produces the list of bits that encodes the message.
+
+```js
+function encode(message, tree) {
+  return is_null(message)
+    ? null
+    : append(encode_symbol(head(message), tree),
+             encode(tail(message), tree));
+}
+```
+
+Write `encode_symbol`, which returns the list of bits that encodes a given symbol according to a given tree. It should signal an error if the symbol is not in the tree at all. Test it by encoding the result of exercise 2.67 with the sample tree and checking that you get the original sample message.
+
+<Solution>
+
+**Solution.** At a leaf the code is complete: return `null`. Otherwise look for the symbol in the symbol set of the left branch; if it is there, the code is 0 followed by its code in the left branch. If not, try the right branch the same way, with a 1. If neither holds it, call `error`. The search uses the symbol sets that `make_code_tree` stored at every node, which is what they are for.
+
+</Solution>
+</Exercise>
+<Exercise id="2.69">
+
+The following function takes a list of symbol-frequency pairs, where no symbol appears in more than one pair, and generates a Huffman encoding tree according to the Huffman algorithm.
+
+```js
+function generate_huffman_tree(pairs) {
+  return successive_merge(make_leaf_set(pairs));
+}
+```
+
+`make_leaf_set` is given above. Write `successive_merge`, using `make_code_tree` to merge the smallest-weight elements of the set until only one element is left, which is the desired Huffman tree. (This function is slightly tricky, but not complicated. If you find yourself designing a complex function, you are almost certainly doing something wrong. You can take significant advantage of the ordered set representation.)
+
+<Solution>
+
+**Solution.** If the set has one element, that is the tree. Otherwise its first two elements are the two lightest, because the set is ordered. Merge them with `make_code_tree`, adjoin the result to the rest of the set with the weighted `adjoin_set`, which puts it where its weight belongs, and merge again. Every Huffman tree for the frequencies of the text, however ties are broken, encodes BACADAEAFABBAAAGAH in 42 bits.
+
+</Solution>
+</Exercise>
+<Exercise id="2.70">
+
+The following eight-symbol alphabet, with relative frequencies, was designed to encode the lyrics of 1950s rock songs efficiently. (The "symbols" of an "alphabet" need not be single letters.)
+
+| A | NA | BOOM | SHA | GET | YIP | JOB | WAH |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 | 16 | 1 | 3 | 2 | 9 | 2 | 1 |
+
+Use `generate_huffman_tree` to generate a Huffman tree for it, and `encode` to encode the following message:
+
+```
+Get a job
+Sha na na na na na na na na
+Get a job
+Sha na na na na na na na na
+Wah yip yip yip yip yip yip yip yip yip
+Sha boom
+```
+
+How many bits are required for the encoding? What is the smallest number of bits needed to encode this song with a fixed-length code for the eight-symbol alphabet?
+
+<Solution>
+
+**Solution.** The song is 36 symbols, with exactly the frequencies of the table. NA gets a one-bit code and YIP two bits; A and SHA take four, and GET, JOB, BOOM and WAH five. Altogether that is 16 × 1 + 9 × 2 + (2 + 3) × 4 + (2 + 2 + 1 + 1) × 5 = 84 bits. Eight symbols need log₂ 8 = 3 bits each in a fixed-length code, so 3 × 36 = 108 bits: Huffman saves about 22 per cent.
+
+</Solution>
+</Exercise>
+<Exercise id="2.71">
+
+Suppose we have a Huffman tree for an alphabet of *n* symbols, and that the relative frequencies of the symbols are 1, 2, 4, …, 2ⁿ⁻¹. Sketch the tree for *n* = 5 and for *n* = 10. In such a tree, for general *n*, how many bits are required to encode the most frequent symbol? The least frequent symbol?
+
+<Solution>
+
+**Solution.** Each weight is larger than the sum of all the smaller ones, since 1 + 2 + … + 2ᵏ⁻¹ = 2ᵏ − 1. So at every step the node built so far is merged with the next leaf, and the tree is a vine: a spine of *n* − 1 nodes, each with a leaf hanging on its right. For *n* = 5 the root's right branch is the leaf of weight 16; its left is a tree whose right branch is the leaf of weight 8; and so on down to the leaves 1 and 2 at the bottom. The most frequent symbol is one step from the root, 1 bit. The two least frequent are at the bottom of the spine, *n* − 1 bits.
+
+</Solution>
+</Exercise>
+<Exercise id="2.72">
+
+Consider the encoding function of exercise 2.68. What is the order of growth in the number of steps needed to encode a symbol? Be sure to include the steps needed to search the symbol list at each node encountered. To answer this question in general is difficult. Consider the special case where the relative frequencies of the *n* symbols are as in exercise 2.71, and give the order of growth, as a function of *n*, of the number of steps needed to encode the most frequent and the least frequent symbols. Make it exact for the `encode_symbol` given: count the applications of `contains`, its search.
+
+<Solution>
+
+**Solution.** For the most frequent symbol, `encode_symbol` first searches the left branch's symbol list at the root, which holds the other *n* − 1 symbols, and fails: *n* applications of `contains`, counting the one that reaches the end of the list. Then it finds the symbol in the right branch's list of one: *n* + 1 in all, Θ(*n*). For the least frequent symbol, it goes left at each of the *n* − 1 nodes of the spine. `make_code_tree` appends the left branch's symbols first, and the least frequent symbol was the very first leaf merged, so it heads every left list and each search succeeds at once: *n* − 1 applications, Θ(*n*) too. That is luck in the order of the lists. Had the search scanned a whole list at each node, as it would for a symbol at the end of each, the least frequent symbol would cost (*n* − 1) + (*n* − 2) + … + 1, which is Θ(*n*²). In general a symbol at depth *d* costs at most *d* searches of at most *n* symbols each.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '2.4', label: 'Generic selectors and tagged data' }, { id: '2.4.2', label: 'Tagged data' }, { id: '3.3.3', label: 'Representing tables' }]} />

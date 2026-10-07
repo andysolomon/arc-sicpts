@@ -1,0 +1,309 @@
+import { ambOfficePrelude, ambParserPrelude, ambiguousSentenceProgram, officeMoveProgram, sentenceProgram } from '@sicp/lab';
+
+<Prose>
+
+Section 4.3.3 describes how the `amb` evaluator works. First, some examples of how it can be used. The advantage of nondeterministic programming is that we can suppress the details of how search is carried out, and so express our programs at a higher level of abstraction.
+
+## Logic puzzles
+
+The following puzzle, adapted from Dinesman (1968), is typical of a large class of simple logic puzzles:
+
+> The software company Gargle is expanding, and Alyssa, Ben, Cy, Lem, and Louis are moving into a row of five private offices in a new building. Alyssa does not move into the last office. Ben does not move into the first office. Cy takes neither the first nor the last office. Lem moves into an office after Ben’s. Louis’s office is not next to Cy’s. Cy’s office is not next to Ben’s. Who moves into which office?
+
+We can find out in a straightforward way by enumerating all the possibilities and imposing the given restrictions:
+
+```js
+function office_move() {
+    const alyssa = amb(1, 2, 3, 4, 5);
+    const ben = amb(1, 2, 3, 4, 5);
+    const cy = amb(1, 2, 3, 4, 5);
+    const lem = amb(1, 2, 3, 4, 5);
+    const louis = amb(1, 2, 3, 4, 5);
+    require(distinct(list(alyssa, ben, cy, lem, louis)));
+    require(alyssa !== 5);
+    require(ben !== 1);
+    require(cy !== 5);
+    require(cy !== 1);
+    require(lem > ben);
+    require(math_abs(louis - cy) !== 1);
+    require(math_abs(cy - ben) !== 1);
+    return list(list("alyssa", alyssa),
+                list("ben", ben),
+                list("cy", cy),
+                list("lem", lem),
+                list("louis", louis));
+}
+```
+
+`distinct` tests whether the elements of a list are all different. It is an ordinary function that makes no choices, so our evaluator has it as a primitive, and `office_move` is declared in the evaluator below.
+
+</Prose>
+
+<Example index={0} file="office_move.sicp" source={officeMoveProgram} prelude={ambOfficePrelude} budget={40000000}>
+
+Alyssa takes office 3, Ben 2, Cy 4, Lem 5 and Louis 1. This simple function works, but it is very slow: all five choices are made before any requirement is checked, so the evaluator builds 1,471 of the 3,125 possible assignments before it reaches the answer, and the Laboratory takes about ten million steps of its own to run the evaluator that does it. Ask for 2 values instead of 1: the search goes on through all the rest, taking about twice as long, and finds no other. Exercises 4.37 and 4.38 discuss improvements.
+
+</Example>
+
+<Prose>
+
+## Parsing natural language
+
+Programs designed to accept natural language as input usually start by trying to *parse* the input, that is, to match it against some grammatical structure. To recognise simple sentences such as “The cat eats”, we classify words by their parts of speech, with the part of speech at the head of each list:
+
+```js
+const nouns = list("noun", "student", "professor", "cat", "class");
+
+const verbs = list("verb", "studies", "lectures", "eats", "sleeps");
+
+const articles = list("article", "the", "a");
+```
+
+We also need a *grammar*: rules that say how grammatical elements are composed from simpler ones. A very simple grammar might stipulate that a sentence is a noun phrase followed by a verb, and a noun phrase is an article followed by a noun. A program with one function for each rule parses such sentences. At the lowest level, parsing a word means checking that the next not-yet-parsed word is a member of the list for the required part of speech. We keep the input not yet parsed in a variable `not_yet_parsed`; each time we check a word, we require that it is there and of the right kind, remove it, and return it tagged with its part of speech:
+
+```js
+function parse_word(word_list) {
+    require(! is_null(not_yet_parsed));
+    require(! is_null(member(head(not_yet_parsed), tail(word_list))));
+    const found_word = head(not_yet_parsed);
+    not_yet_parsed = tail(not_yet_parsed);
+    return list(head(word_list), found_word);
+}
+
+let not_yet_parsed = null;
+
+function parse_input(input) {
+    not_yet_parsed = input;
+    const sent = parse_sentence();
+    require(is_null(not_yet_parsed));
+    return sent;
+}
+```
+
+`parse_word` changes `not_yet_parsed` by assignment. For this to work, the `amb` evaluator must undo the effects of assignments when it backtracks, and §4.3.3 shows that it does.
+
+The `amb` evaluator is convenient here because it is easy to express the constraints with `require`. Search and backtracking really pay off with grammars where there are choices for how the units can be decomposed. Add prepositions, and define a prepositional phrase, such as “for the cat”, as a preposition followed by a noun phrase. A sentence is then a noun phrase followed by a verb phrase, where a verb phrase is either a verb or a verb phrase extended by a prepositional phrase:
+
+```js
+const prepositions = list("prep", "for", "to", "in", "by", "with");
+
+function parse_prepositional_phrase() {
+    return list("prep-phrase",
+                parse_word(prepositions),
+                parse_noun_phrase());
+}
+
+function parse_sentence() {
+    return list("sentence",
+                parse_noun_phrase(),
+                parse_verb_phrase());
+}
+
+function parse_verb_phrase() {
+    function maybe_extend(verb_phrase) {
+        return amb(verb_phrase,
+                   maybe_extend(list("verb-phrase",
+                                     verb_phrase,
+                                     parse_prepositional_phrase())));
+    }
+    return maybe_extend(parse_word(verbs));
+}
+```
+
+While we are at it, we let noun phrases grow too, to permit such things as “a cat in the class”. What we called a noun phrase is now a *simple* noun phrase, and a noun phrase is either a simple noun phrase or a noun phrase extended by a prepositional phrase:
+
+```js
+function parse_simple_noun_phrase() {
+    return list("simple-noun-phrase",
+                parse_word(articles),
+                parse_word(nouns));
+}
+
+function parse_noun_phrase() {
+    function maybe_extend(noun_phrase) {
+        return amb(noun_phrase,
+                   maybe_extend(list("noun-phrase",
+                                     noun_phrase,
+                                     parse_prepositional_phrase())));
+    }
+    return maybe_extend(parse_simple_noun_phrase());
+}
+```
+
+The evaluator below has this grammar declared.
+
+</Prose>
+
+<Example index={1} file="parse.sicp" source={sentenceProgram} prelude={ambParserPrelude} budget={10000000}>
+
+“The student with the cat sleeps in the class” has exactly one parse: the second value asked for is not there. The subject is a noun phrase extended by “with the cat”, and the verb phrase is “sleeps” extended by “in the class”. Try a sentence that is not grammatical, such as one ending in “the”, and there are no values at all.
+
+</Example>
+
+<Prose>
+
+A given input may have more than one legal parse. In “The professor lectures to the student with the cat”, it may be that the professor is lecturing with the cat, or that the student has the cat. Our nondeterministic program finds both.
+
+</Prose>
+
+<Example index={2} file="ambiguous.sicp" source={ambiguousSentenceProgram} prelude={ambParserPrelude} budget={10000000}>
+
+The first parse attaches “with the cat” to the verb phrase “lectures to the student”: the professor lectures with the cat. `retry` gives the second, where “with the cat” extends the noun phrase “the student”, and a second `retry` finds nothing more.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-4/amb.test.ts">
+
+The puzzle and the grammar are `ambOfficeMove` and `ambSentenceParser` in `chapter-4/amb.ts`, declared in the `amb` evaluator's global environment before the examples run. The test `chapter-4/amb.test.ts` asserts that `office_move()` has exactly one value, the one above, that the search reaches 1,471 assignments, one dead end for each but the last, and takes the Laboratory fewer than 12 million steps; that the first sentence has one parse and the second two, both as printed in the book; and that once a parse has failed for good, every assignment to `not_yet_parsed` has been undone. The answers to exercises 4.37 and 4.43–4.45 are checked there by running what they describe: the puzzle with its requirements reordered, the five parses, `get_args` from right to left, and Louis’s grammar.
+
+</UnderTheHood>
+
+<Exercises range="4.36 – 4.47" total={12}>
+<Exercise id="4.36">
+
+Modify the office-move function to omit the requirement that Louis’s office is not next to Cy’s. How many solutions are there to this modified puzzle? (The check searches all 3,125 assignments, so it takes a few seconds.)
+
+<Solution>
+
+**Solution.** Five, against one before. Louis and Cy are next to each other in four of them, so that requirement does most of the work of making the answer unique.
+
+</Solution>
+</Exercise>
+<Exercise id="4.37">
+
+Does the order of the restrictions in the office-move function affect the answer? Does it affect the time to find an answer? Answer both, say how many complete assignments the search builds before it reaches the answer however the restrictions are ordered, and say which restriction is best imposed first in our evaluator, where `distinct` is a primitive and costs no more than `!==`.
+
+<Solution>
+
+**Solution.** The answer cannot change: every restriction is checked after all five choices are made, and an assignment is accepted only if it meets all of them. The order of the choices alone decides which assignments are built, so the search builds the same 1,471 whatever the order of the restrictions. The time does change, because a rejected assignment is tested only until the first restriction it fails. `distinct` rejects 3,005 of the 3,125 assignments at once, so it belongs first here; moved to the end, it more than doubles the evaluator's work. In the book's Scheme, where `distinct` is an expensive interpreted function, the cheap one-name tests are better placed before it.
+
+</Solution>
+</Exercise>
+<Exercise id="4.38">
+
+In the office-move problem, how many sets of assignments are there of people to offices, both before and after the requirement that office assignments be distinct? It is very inefficient to generate all possible assignments and leave it to backtracking to eliminate them. Most of the restrictions depend on only one or two of the names, and can be imposed before offices have been chosen for everyone. Write and demonstrate a much more efficient nondeterministic function that generates only the possibilities not already ruled out by earlier restrictions. (To find its solution and make sure there is no other, the book’s version calls `try_next`, the loop in `analyze_amb` that moves on to the next alternative, 7,810 times; yours should need fewer than 1,000 calls.)
+
+<Solution>
+
+**Solution.** Each of five people can take any of five offices, 5⁵ = 3,125 assignments; distinct offices leave 5! = 120. Restrictions on one person go into the choices themselves: Cy chooses only from 2, 3 and 4, Alyssa never 5, Ben never 1. Every other requirement is checked as soon as the names it mentions have been chosen, so a bad partial assignment is abandoned before anything is chosen on top of it. This version calls `try_next` 144 times.
+
+</Solution>
+</Exercise>
+<Exercise id="4.39">
+
+Write an ordinary JavaScript program to solve the office-move puzzle, without `amb`.
+
+<Solution>
+
+**Solution.** Generate the 120 permutations of the offices, as in section 2.2.3, and filter them by the restrictions. The nondeterministic program hides exactly this loop: here we have to write the generation and the filtering ourselves.
+
+</Solution>
+</Exercise>
+<Exercise id="4.40">
+
+Solve the following Liars puzzle (adapted from Phillips 1934):
+
+> Alyssa, Cy, Eva, Lem, and Louis meet for a business lunch at SoSoService. Their meals arrive one after the other, a considerable time after they placed their orders. To entertain Ben, who expects them back at the office for a meeting, they decide to each make one true statement and one false statement about their orders:
+>
+> - Alyssa: “Lem’s meal arrived second. Mine arrived third.”
+> - Cy: “Mine arrived first. Eva’s arrived second.”
+> - Eva: “Mine arrived third, and poor Cy’s arrived last.”
+> - Lem: “Mine arrived second. Louis’s arrived fourth.”
+> - Louis: “Mine arrived fourth. Alyssa’s meal arrived first.”
+>
+> What was the real order in which the five diners received their meals?
+
+<Solution>
+
+**Solution.** “One true and one false” means the two statements have different truth values, so each diner contributes `require(p !== q)`. Imposing each one as soon as its names are chosen keeps the search small. Lem’s meal came first, Eva’s second, Alyssa’s third, Louis’s fourth and Cy’s last.
+
+</Solution>
+</Exercise>
+<Exercise id="4.41">
+
+Use the `amb` evaluator to solve the following puzzle (adapted from Phillips 1961):
+
+> Alyssa, Ben, Cy, Eva, and Louis each pick a different chapter of SICP JS and solve all the exercises in that chapter. Louis solves the exercises in the Functions chapter, Alyssa the ones in the Data chapter, and Cy the ones in the State chapter. They decide to check each other’s work, and Alyssa volunteers to check the exercises in the Meta chapter. The exercises in the Register Machines chapter are solved by Ben and checked by Louis. The person who checks the exercises in the Functions chapter solves the exercises that are checked by Eva. Who checks the exercises in the Data chapter?
+
+Try to write the program so that it runs efficiently (see exercise 4.38). Also determine how many solutions there are if we are not told that Alyssa checks the exercises in the Meta chapter.
+
+<Solution>
+
+**Solution.** Eva must solve the remaining chapter, Meta. Nobody checks their own chapter, so Ben, Cy and Eva share the checking of Functions, Data and State, with Cy not on State. The last clue leaves one way: Cy checks Functions, Eva checks State (solved by Cy), and Ben checks Data. Without the clue about Alyssa there are two solutions: the same one, and one where Alyssa checks Functions, Ben State, Cy Meta and Eva Data.
+
+</Solution>
+</Exercise>
+<Exercise id="4.42">
+
+Exercise 2.42 described the eight-queens puzzle of placing queens on a chessboard so that no two attack each other. Write a nondeterministic program to solve this puzzle.
+
+<Solution>
+
+**Solution.** Place the queens column by column: choose a row for the next column with `an_integer_between`, and require at once that it is safe from the queens already placed. A choice that fails is undone by backtracking, so the program reads like the definition of a solution. On a 4 × 4 board there are two placements, on 5 × 5 ten.
+
+</Solution>
+</Exercise>
+<Exercise id="4.43">
+
+With the grammar given above, the sentence “The professor lectures to the student in the class with the cat” can be parsed in five different ways. Give the five parses, in the order the evaluator finds them, by saying for each which phrase “in the class” extends and which “with the cat” extends, and explain the differences in shades of meaning among them.
+
+<Solution>
+
+**Solution.** Name each phrase by its head word. Every `maybe_extend` first tries not extending at all, so the evaluator keeps the noun phrases short at first and hangs the prepositional phrases on the verb. (1) The lecturing is in the class and with the cat. (2) The lecturing is in the class, the class that has the cat. (3) The student is the one in the class; the lecturing is with the cat. (4) The student is in the class and has the cat. (5) The student is in the class, and the class has the cat.
+
+</Solution>
+</Exercise>
+<Exercise id="4.44">
+
+The evaluators of sections 4.1 and 4.2 do not determine the order in which argument expressions are evaluated. The `amb` evaluator evaluates them from left to right. Explain why our parsing program wouldn’t work if the argument expressions were evaluated in some other order: change `get_args` to evaluate them from right to left, and say which order of the words “the”, “cat” and “eats” the parser then accepts.
+
+<Solution>
+
+**Solution.** `parse_word` always takes the next word of `not_yet_parsed`, so the order in which the parts of a phrase are parsed must be the order of the words. Right to left, `list("sentence", parse_noun_phrase(), parse_verb_phrase())` parses the verb phrase first, and a simple noun phrase its noun before its article: the parser reads every sentence backwards, and accepts “eats cat the” as a parse of “the cat eats”.
+
+</Solution>
+</Exercise>
+<Exercise id="4.45">
+
+Louis Reasoner suggests that, since a verb phrase is either a verb or a verb phrase followed by a prepositional phrase, it would be much more straightforward to declare `parse_verb_phrase` as follows (and similarly for noun phrases):
+
+```js
+function parse_verb_phrase() {
+    return amb(parse_word(verbs),
+               list("verb-phrase",
+                    parse_verb_phrase(),
+                    parse_prepositional_phrase()));
+}
+```
+
+Does this work? Parse “the professor lectures to the student” with it: is the first value right, and does a `retry` ever finish? Does the program’s behavior change if we interchange the order of expressions in the `amb`?
+
+<Solution>
+
+**Solution.** The first value is right. “lectures” alone leaves words over, so the search backs into the `amb`, whose second alternative parses a verb phrase again from “lectures” (the assignment to `not_yet_parsed` has been undone) and then “to the student”. But each `retry` goes one level deeper into the second alternative, which calls `parse_verb_phrase` before it consumes a word: an endless recursion. With the expressions interchanged, that recursion comes first, and no parse is ever found.
+
+</Solution>
+</Exercise>
+<Exercise id="4.46">
+
+Extend the grammar given above to handle more complex sentences. For example, you could extend noun phrases and verb phrases to include adjectives and adverbs, or you could handle compound sentences. Here, add the adjectives “lazy”, “clever” and “old”, any number of which may stand between an article and its noun, as in “the clever old professor lectures to the lazy student”. Your declarations are added after the book’s grammar, and a function you declare again replaces the book’s.
+
+<Solution>
+
+**Solution.** A simple noun phrase becomes an article followed by a *described noun*, which is either a noun or an adjective followed by a described noun. The recursion cannot run away, because every adjective it accepts consumes a word of the input. This kind of grammar can become arbitrarily complex, but it is only a toy as far as real language understanding is concerned.
+
+</Solution>
+</Exercise>
+<Exercise id="4.47">
+
+Alyssa P. Hacker is more interested in generating interesting sentences than in parsing them. She reasons that by simply changing `parse_word` so that it ignores the input sentence and instead always succeeds and generates an appropriate word, we can use the parsing programs to do generation instead. Implement Alyssa’s idea, and generate the first half-dozen sentences.
+
+<Solution>
+
+**Solution.** `parse_word` returns its part of speech with `an_element_of` the words. The idea works, but the sentences are boring: “the student studies”, then “the student studies for the student”, then “… for the student for the student”, and so on. The grammar is recursive, and depth-first search falls into the last recursion it meets and never comes back out. Exercise 4.48 offers a way out.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '4.3.3', label: 'Undoing assignments on backtracking' }, { id: '4.4.1', label: 'Puzzles as logic programs' }]} />

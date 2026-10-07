@@ -1,9 +1,10 @@
-import type { JobHandle, LabEvent, ProcessShapeSnapshot, TerminalEvent } from '@sicp/lab';
+import type { JobHandle, LabEvent, ProcessShapeSnapshot, Segment, TerminalEvent } from '@sicp/lab';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useDuration } from '../hooks.ts';
 import { labClient } from '../lab/client.ts';
 import { useSectionId } from '../mdx/SectionContext.ts';
+import { Drawing } from '../viz/Drawing.tsx';
 import { PlayIcon, RunToEndIcon, StepBackIcon, StepIcon, StopIcon } from '../shell/icons.tsx';
 import { accentButton, accentIconButton, iconButton, outlineButton } from './buttons.ts';
 import { CodeEditor } from './CodeEditor.tsx';
@@ -34,13 +35,19 @@ export interface SourceEditorProps {
   onStep?: ((index: number) => void) | undefined;
 }
 
+/** What a run has shown so far: lines from `display` and lines drawn by `draw_line`. */
+interface Shown {
+  output: string[];
+  drawing: Segment[];
+}
+
 type RunState =
   | { status: 'idle' }
-  | { status: 'running'; output: string[] }
-  | { status: 'done'; output: string[]; value: string; steps: number; ms: number }
-  | { status: 'error'; output: string[]; message: string; steps: number; ms: number }
-  | { status: 'budget'; output: string[]; steps: number; ms: number }
-  | { status: 'cancelled'; output: string[]; steps: number };
+  | ({ status: 'running' } & Shown)
+  | ({ status: 'done'; value: string; steps: number; ms: number } & Shown)
+  | ({ status: 'error'; message: string; steps: number; ms: number } & Shown)
+  | ({ status: 'budget'; steps: number; ms: number } & Shown)
+  | ({ status: 'cancelled'; steps: number } & Shown);
 
 type TraceDone = Extract<TerminalEvent, { type: 'trace-done' }>;
 
@@ -79,6 +86,7 @@ function RunOutput({ state, fading }: { state: RunState; fading: boolean }) {
           ? `cancelled · ${pluralSteps(state.steps)}`
           : `evaluate · ${pluralSteps(state.steps)} · ${formatMs(state.ms)}`;
   const output = shown.status === 'idle' ? [] : shown.output;
+  const drawing = shown.status === 'idle' ? [] : shown.drawing;
 
   return (
     <div
@@ -97,6 +105,7 @@ function RunOutput({ state, fading }: { state: RunState; fading: boolean }) {
             {line}
           </code>
         ))}
+        {drawing.length > 0 && <Drawing segments={drawing} />}
         {shown.status === 'idle' && <span className="text-sm text-ink-3">Run the program to see its value.</span>}
         {shown.status === 'done' && (
           <code data-testid="output-value" className="text-[13.5px] break-words whitespace-pre-wrap text-num">
@@ -118,7 +127,17 @@ function RunOutput({ state, fading }: { state: RunState; fading: boolean }) {
   );
 }
 
-export function SourceEditor({ file, source: supplied, editorId, mode = 'run', budget, prelude, onShape, onSource, onStep }: SourceEditorProps) {
+export function SourceEditor({
+  file,
+  source: supplied,
+  editorId,
+  mode = 'run',
+  budget,
+  prelude,
+  onShape,
+  onSource,
+  onStep,
+}: SourceEditorProps) {
   const sectionId = useSectionId();
   const { source, setSource, reset } = usePersistentSource(sectionId, editorId, supplied);
   const sourceRef = useRef(source);
@@ -152,8 +171,9 @@ export function SourceEditor({ file, source: supplied, editorId, mode = 'run', b
   const start = useCallback(() => {
     job.current?.cancel();
     const output: string[] = [];
+    let drawing: Segment[] = [];
     let shapeSeen = false;
-    setRun({ status: 'running', output });
+    setRun({ status: 'running', output, drawing });
     const handle = labClient().submit(
       {
         type: 'run',
@@ -167,23 +187,27 @@ export function SourceEditor({ file, source: supplied, editorId, mode = 'run', b
         switch (event.type) {
           case 'display':
             output.push(event.text);
-            setRun({ status: 'running', output: [...output] });
+            setRun({ status: 'running', output: [...output], drawing });
+            return;
+          case 'draw':
+            drawing = [...drawing, ...event.segments];
+            setRun({ status: 'running', output: [...output], drawing });
             return;
           case 'shape':
             shapeSeen = true;
             onShape?.(event.snapshot, event.id);
             return;
           case 'done':
-            setRun({ status: 'done', output, value: event.value, steps: event.steps, ms: event.ms });
+            setRun({ status: 'done', output, drawing, value: event.value, steps: event.steps, ms: event.ms });
             break;
           case 'error':
-            setRun({ status: 'error', output, message: event.error.message, steps: event.steps, ms: event.ms });
+            setRun({ status: 'error', output, drawing, message: event.error.message, steps: event.steps, ms: event.ms });
             break;
           case 'budget-exhausted':
-            setRun({ status: 'budget', output, steps: event.steps, ms: event.ms });
+            setRun({ status: 'budget', output, drawing, steps: event.steps, ms: event.ms });
             break;
           case 'cancelled':
-            setRun({ status: 'cancelled', output, steps: event.steps });
+            setRun({ status: 'cancelled', output, drawing, steps: event.steps });
             break;
           default:
             return;
@@ -374,6 +398,7 @@ function StepLog({ trace, index }: { trace: TraceDone | null; index: number }) {
               {line}
             </code>
           ))}
+          {trace.drawing.length > 0 && <Drawing segments={trace.drawing} />}
           {outcome.status === 'done' && <code className="text-[13.5px] text-num">{outcome.value}</code>}
           {outcome.status === 'error' && <code className="text-[13.5px] text-bad">{outcome.error.message}</code>}
           {outcome.status === 'budget-exhausted' && (

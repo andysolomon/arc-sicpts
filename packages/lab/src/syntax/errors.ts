@@ -8,7 +8,9 @@ export class SourceError extends Error {
   readonly loc: Loc | null;
 
   constructor(phase: ErrorPhase, message: string, loc: Loc | null) {
-    super(loc === null ? message : `Line ${loc.line}: ${message}`);
+    super(
+      loc === null ? message : loc.hidden === true ? `Hidden prelude, line ${loc.line}: ${message}` : `Line ${loc.line}: ${message}`,
+    );
     this.name = 'SourceError';
     this.phase = phase;
     this.loc = loc;

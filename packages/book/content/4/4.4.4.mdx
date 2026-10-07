@@ -1,0 +1,419 @@
+import {
+  dependsOnProgram,
+  driverStepsProgram,
+  queryPrelude,
+} from '@sicp/lab';
+
+<Prose>
+
+Section 4.4.2 described how the query system works. Here are the details: the complete system, as the book gives it, running in the Laboratory under every example of §4.4.
+
+## 4.4.4.1 The driver loop
+
+The driver reads an input. If it is an assertion or rule to be added, it is added; otherwise it is a query. The driver passes the query to `evaluate_query` with an initial frame stream holding one empty frame, and turns each resulting frame into a copy of the query with its variables instantiated. The book’s loop reads with a prompt; the Laboratory’s driver takes the input as a string and returns the number of answers:
+
+```js
+function query(input) {
+    const expression = parse(input + ";");
+    const query_syntax = convert_to_query_syntax(expression);
+    if (is_assertion(query_syntax)) {
+        add_rule_or_assertion(assertion_body(query_syntax));
+        display("Assertion added to data base.");
+        return undefined;
+    } else {
+        return display_answers(
+                   stream_map(
+                       frame =>
+                         unparse(instantiate_expression(expression, frame)),
+                       evaluate_query(query_syntax, singleton_stream(null))));
+    }
+}
+```
+
+As in the other evaluators of this chapter, `parse` turns the input string into the JavaScript syntax representation of §4.1.2, and `convert_to_query_syntax` (§4.4.4.7) turns that into the query language’s own representation. The frames instantiate the syntax representation, and `unparse` writes it back as a string.
+
+</Prose>
+
+<Example index={0} file="driver_steps.sicp" source={driverStepsProgram} prelude={queryPrelude} budget={1_000_000}>
+
+The driver’s steps one at a time. In the query syntax the predicate `job` has become a tag, the list a plain list, and `$x` stays a name. The first frame of the stream binds `$x`; instantiating and unparsing gives the answer.
+
+</Example>
+
+<Prose>
+
+## 4.4.4.2 The evaluator
+
+`evaluate_query` takes a query and a stream of frames and returns a stream of extended frames. It identifies syntactic forms by data-directed dispatch with `get` and `put`, as in the generic operations of chapter 2. Anything that is not a syntactic form is a simple query.
+
+```js
+function evaluate_query(query, frame_stream) {
+    const qfun = get(type(query), "evaluate_query");
+    return is_undefined(qfun)
+           ? simple_query(query, frame_stream)
+           : qfun(contents(query), frame_stream);
+}
+```
+
+For each frame of the input, `simple_query` matches the pattern against all assertions with `find_assertions` and applies all possible rules with `apply_rules`, and combines the two streams with `stream_append_delayed`. `stream_flatmap` combines the streams for the individual frames.
+
+```js
+function simple_query(query_pattern, frame_stream) {
+    return stream_flatmap(
+               frame =>
+                 stream_append_delayed(
+                     find_assertions(query_pattern, frame),
+                     () => apply_rules(query_pattern, frame)),
+               frame_stream);
+}
+```
+
+`conjoin` handles `and` as a series combination: it finds the extensions that satisfy the first conjunct, and uses that stream as the input of the rest. `disjoin` handles `or` in parallel, merging the streams with `interleave_delayed`. `put` makes `evaluate_query` dispatch to them.
+
+```js
+function conjoin(conjuncts, frame_stream) {
+    return is_empty_conjunction(conjuncts)
+           ? frame_stream
+           : conjoin(rest_conjuncts(conjuncts),
+                     evaluate_query(first_conjunct(conjuncts),
+                                    frame_stream));
+}
+put("and", "evaluate_query", conjoin);
+
+function disjoin(disjuncts, frame_stream) {
+    return is_empty_disjunction(disjuncts)
+           ? null
+           : interleave_delayed(
+                 evaluate_query(first_disjunct(disjuncts), frame_stream),
+                 () => disjoin(rest_disjuncts(disjuncts), frame_stream));
+}
+put("or", "evaluate_query", disjoin);
+```
+
+`not` is a filter: a frame stays in the stream only if the negated query cannot extend it. `javascript_predicate` is a similar filter. It instantiates the predicate’s variables with the frame and evaluates the result with `evaluate` from §4.1, in `the_global_environment`, so it can use any JavaScript expression the metacircular evaluator handles, as long as its variables are bound. `always_true`, the body of a rule without one, passes every frame.
+
+```js
+function negate(exps, frame_stream) {
+    return stream_flatmap(
+               frame =>
+                 is_null(evaluate_query(negated_query(exps),
+                                        singleton_stream(frame)))
+                 ? singleton_stream(frame)
+                 : null,
+               frame_stream);
+}
+put("not", "evaluate_query", negate);
+
+function javascript_predicate(exps, frame_stream) {
+    return stream_flatmap(
+               frame =>
+                 evaluate(instantiate_expression(
+                              javascript_predicate_expression(exps),
+                              frame),
+                          the_global_environment)
+                 ? singleton_stream(frame)
+                 : null,
+               frame_stream);
+}
+put("javascript_predicate", "evaluate_query", javascript_predicate);
+```
+
+## 4.4.4.3 Finding assertions by pattern matching
+
+`find_assertions` fetches the assertions worth checking (§4.4.4.5) and checks each against the pattern and frame; `check_an_assertion` returns a one-frame stream or the empty stream. The matcher itself checks the pattern against the data element by element, accumulating bindings, and returns either a frame or the string `"failed"`:
+
+```js
+function pattern_match(pattern, data, frame) {
+    return frame === "failed"
+           ? "failed"
+           : equal(pattern, data)
+           ? frame
+           : is_variable(pattern)
+           ? extend_if_consistent(pattern, data, frame)
+           : is_pair(pattern) && is_pair(data)
+           ? pattern_match(tail(pattern),
+                           tail(data),
+                           pattern_match(head(pattern),
+                                         head(data),
+                                         frame))
+           : "failed";
+}
+
+function extend_if_consistent(variable, data, frame) {
+    const binding = binding_in_frame(variable, frame);
+    return is_undefined(binding)
+           ? extend(variable, data, frame)
+           : pattern_match(binding_value(binding), data, frame);
+}
+```
+
+If the variable has no binding, it is bound to the data. Otherwise the data is matched against the stored value in the same frame. A value stored by pattern matching contains only constants, so this just tests equality, but one stored by unification may contain variables, and the match then binds or checks them. A stored binding is never modified, and a variable never has two.
+
+## 4.4.4.4 Rules and unification
+
+`apply_rules` is the rule analogue of `find_assertions`. `apply_a_rule` unifies the pattern with the conclusion of the rule and, if that succeeds, evaluates the body in the unified frame. First, though, it renames all the rule’s variables, combining each name with a number unique to this application, so that `$x` becomes, say, `$x_7`. Two applications of a rule, or two rules that both say `$x`, must not have their variables confused.
+
+```js
+function apply_a_rule(rule, query_pattern, query_frame) {
+    const clean_rule = rename_variables_in(rule);
+    const unify_result = unify_match(query_pattern,
+                                     conclusion(clean_rule),
+                                     query_frame);
+    return unify_result === "failed"
+           ? null
+           : evaluate_query(rule_body(clean_rule),
+                            singleton_stream(unify_result));
+}
+```
+
+The unifier is the pattern matcher made symmetric: it has an extra clause for a variable on the right. `extend_if_possible` is `extend_if_consistent` with two more checks. If the variable is unbound and the value is another variable that is bound, it unifies with that variable’s value. And it refuses to bind a variable to a pattern that contains it, which `depends_on` detects: unifying `list($x, $x)` with `list($y, ⟨expression involving $y⟩)` would mean finding a `$y` equal to an expression involving `$y`.
+
+```js
+function extend_if_possible(variable, value, frame) {
+    const binding = binding_in_frame(variable, frame);
+    if (! is_undefined(binding)) {
+        return unify_match(binding_value(binding),
+                           value, frame);
+    } else if (is_variable(value)) {
+        const binding = binding_in_frame(value, frame);
+        return ! is_undefined(binding)
+               ? unify_match(variable,
+                             binding_value(binding),
+                             frame)
+               : extend(variable, value, frame);
+    } else if (depends_on(value, variable, frame)) {
+        return "failed";
+    } else {
+        return extend(variable, value, frame);
+    }
+}
+```
+
+</Prose>
+
+<Example index={1} file="depends_on.sicp" source={dependsOnProgram} prelude={queryPrelude} budget={1_000_000}>
+
+`$x` is bound to `$y`, then must also be `list("f", $y)`, which makes `$y` equal to an expression containing itself, so the unification fails. Binding a variable to itself is different: `list($x, $x)` and `list($y, $y)` unify, the second binding attempt matching `$y` against `$y`, which `equal` accepts.
+
+</Example>
+
+<Prose>
+
+## 4.4.4.5 Maintaining the data base
+
+To examine as few irrelevant entries as possible, assertions are stored in streams, one for each kind of information, in a table indexed by the kind: `get_stream(key, "assertion-stream")`. Rules are stored likewise by the kind in their conclusion. Fetching the candidates for a pattern returns everything with the same first symbol. `add_rule_or_assertion` stores a new item at the *front* of its stream:
+
+```js
+function store_assertion_in_index(assertion) {
+    const key = index_key_of(assertion);
+    const current_assertion_stream =
+                get_stream(key, "assertion-stream");
+    put(key, "assertion-stream",
+        pair(assertion, () => current_assertion_stream));
+}
+```
+
+So the most recent assertion or rule of a kind is tried first. The table is the two-dimensional table of §3.3.3, written in Source alongside the system.
+
+## 4.4.4.6 Stream operations
+
+`stream_append_delayed` and `interleave_delayed` are `stream_append` and `interleave` of §3.5.3 with a delayed second argument, which postpones looping in some cases. `stream_flatmap` maps a function over a stream of frames and combines the resulting streams, interleaving them rather than appending:
+
+```js
+function stream_flatmap(fun, s) {
+    return flatten_stream(stream_map(fun, s));
+}
+function flatten_stream(stream) {
+    return is_null(stream)
+           ? null
+           : interleave_delayed(
+                 head(stream),
+                 () => flatten_stream(stream_tail(stream)));
+}
+```
+
+The delays and the interleaving matter, in ways exercises 4.68 to 4.70 explore: without them, some queries that have answers never produce one.
+
+</Prose>
+
+<Prose>
+
+## 4.4.4.7 Query syntax functions and instantiation
+
+Queries are written as JavaScript so that `parse` can read them and `javascript_predicate` can hold any JavaScript expression. `convert_to_query_syntax` turns the JavaScript syntax representation into the query language’s: the function symbol of an application becomes a tag, applications of `pair` and `list` build actual pairs and lists, literals become their values, and variables stay names. The argument of `javascript_predicate` stays JavaScript syntax, to be instantiated and evaluated.
+
+A variable is a name whose symbol starts with a dollar sign. The book assumes a primitive `char_at` for that test; the Laboratory compares strings instead, since a symbol starts with `"$"` exactly when it lies between `"$"` and `"%"`.
+
+Answers go the other way. `instantiate_expression` replaces each variable of the query’s syntax representation by its value in the frame, as found by `instantiate_term`, which follows bindings through until it reaches values or unbound variables; `convert` turns that value back into syntax, with pairs as applications of `pair`. `unparse` writes the syntax as a string, an application as its function name and comma-separated arguments, and a list construction as one application of `list`. In the Laboratory, strings inside an answer get single quotes, because the answer itself is displayed in double ones.
+
+Finally, the syntactic forms are identified by their tags through `type` and `contents`, and a rule is `rule(conclusion, body)`, with `rule_body` supplying `always_true` when there is no body.
+
+## 4.4.4.8 Frames and bindings
+
+A frame is a list of bindings, each a pair of a variable and a value:
+
+```js
+function binding_in_frame(variable, frame) {
+    return assoc(variable, frame);
+}
+function extend(variable, value, frame) {
+    return pair(make_binding(variable, value), frame);
+}
+```
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-4/query.ts">
+
+`chapter-4/query.ts` holds the system part by part, `queryEval`, `queryAssertions`, `queryRules`, `queryDataBase`, `queryStreams`, `querySyntax` and `queryFrames`, so that an exercise can replace one function and keep the rest; `queryPrelude` adds the list and stream libraries, the metacircular evaluator, the table and the Gargle data base. The test `chapter-4/query.test.ts` runs the driver’s steps above, and checks that `depends_on` stops the circular unification.
+
+</UnderTheHood>
+
+<Exercises range="4.68 – 4.76" total={9}>
+<Exercise id="4.68">
+
+Louis Reasoner wonders why `simple_query` and `disjoin` are implemented using delayed expressions rather than being defined as follows:
+
+```js
+function simple_query(query_pattern, frame_stream) {
+    return stream_flatmap(
+               frame =>
+                 stream_append(find_assertions(query_pattern, frame),
+                               apply_rules(query_pattern, frame)),
+               frame_stream);
+}
+function disjoin(disjuncts, frame_stream) {
+    return is_empty_disjunction(disjuncts)
+           ? null
+           : interleave(
+                 evaluate_query(first_disjunct(disjuncts), frame_stream),
+                 disjoin(rest_disjuncts(disjuncts), frame_stream));
+}
+```
+
+Can you give examples of queries where these simpler definitions would lead to undesirable behaviour? The check runs your query in the real system, which must find an answer, and in Louis’s, which must give up without one after 100 rule applications.
+
+<Solution>
+
+**Solution.** Louis’s `stream_append` evaluates `apply_rules` before `simple_query` returns anything, even the assertions it has found. With a recursive rule, applying it evaluates its body, which applies it again, before the first frame exists. The married rule of §4.4.3 is an example: the real system displays Minnie before looping; Louis’s displays nothing. Louis’s `disjoin` likewise evaluates all its disjuncts before returning any frame.
+
+</Solution>
+</Exercise>
+<Exercise id="4.69">
+
+Why do `disjoin` and `stream_flatmap` interleave the streams rather than simply append them? Give examples that illustrate why interleaving works better. (Hint: Why did we use `interleave` in §3.5.3?) The check compares the first 20 answers of the real system with those of one that appends.
+
+<Solution>
+
+**Solution.** Appending reaches the second stream only when the first is exhausted, and an infinite first stream never is. Interleaving takes from both in turn, so every answer of either appears eventually. With rules that generate the natural numbers, `or(natural($x), colour($x))` gives `"red"` second when interleaved, and never when appended.
+
+</Solution>
+</Exercise>
+<Exercise id="4.70">
+
+Why does `flatten_stream` use a delayed expression in its body? What would be wrong with defining it as follows?
+
+```js
+function flatten_stream(stream) {
+    return is_null(stream)
+           ? null
+           : interleave(head(stream),
+                        flatten_stream(stream_tail(stream)));
+}
+```
+
+Give a query that has an answer which this version cannot produce. The check runs it in the real system and in one with this `flatten_stream`, which gives up after 100 rule applications.
+
+<Solution>
+
+**Solution.** Without the delay, `flatten_stream` evaluates `flatten_stream(stream_tail(stream))` before it returns anything, and so walks the whole stream of streams first. When that stream is infinite, as the frames of a recursive rule such as `natural($x)` are, no frame is ever returned.
+
+</Solution>
+</Exercise>
+<Exercise id="4.71">
+
+Alyssa P. Hacker proposes to use a simpler version of `stream_flatmap` in `negate`, `javascript_predicate` and `find_assertions`. She observes that the function mapped over the frame stream in these cases always produces either the empty stream or a singleton stream, so no interleaving is needed when combining these streams.
+
+```js
+function simple_stream_flatmap(fun, s) {
+    return simple_flatten(stream_map(fun, s));
+}
+function simple_flatten(stream) {
+    return stream_map(⟨??⟩,
+                      stream_filter(⟨??⟩, stream));
+}
+```
+
+Fill in the missing expressions in Alyssa’s program. The check runs the query system with her version in those three functions. Does the system’s behaviour change?
+
+<Solution>
+
+**Solution.** Keep the non-empty streams, then take the one frame from each. The behaviour does not change: interleaving streams of at most one element yields their elements in order, which is exactly what this does.
+
+</Solution>
+</Exercise>
+<Exercise id="4.72">
+
+Implement for the query language a syntactic form called `unique`. An application of `unique` should succeed if there is precisely one item in the data base satisfying a specified query. For example, `unique(job($x, list("computer", "wizard")))` should give the one answer `unique(job(list("Bitdiddle", "Ben"), list("computer", "wizard")))`, since Ben is the only computer wizard, and `unique(job($x, list("computer", "programmer")))` should give none, since there is more than one computer programmer. Moreover, `and(job($x, $j), unique(job($anyone, $j)))` should list all the jobs that are filled by only one person, and the people who fill them.
+
+Write `uniquely_asserted`, which takes the contents of the `unique` query and a stream of frames, and make `evaluate_query` dispatch to it with `put("unique", "evaluate_query", uniquely_asserted)`. For each frame, it should use `evaluate_query` to find the stream of all extensions that satisfy the query, and eliminate any stream that does not have exactly one item. Test it with a query that lists all people who supervise precisely one person.
+
+<Solution>
+
+**Solution.** Like `negate`, it maps over the frames with `stream_flatmap` and evaluates the inner query on a singleton stream; it keeps the result when its head exists and its tail is empty. Alyssa and Eben Scrooge each supervise exactly one person.
+
+</Solution>
+</Exercise>
+<Exercise id="4.73">
+
+Our implementation of `and` as a series combination is elegant, but inefficient: in processing the second query we must scan the data base for each frame produced by the first. If the data base has *N* elements and a typical query produces *N*/*k* output frames, that requires *N*²/*k* calls to the matcher. Another approach is to process the two clauses separately, then look for all pairs of output frames that are compatible: *N*²/*k*² compatibility checks, a factor of *k* fewer.
+
+Devise an implementation of `and` that uses this strategy. You must implement a function `merge_frames` that takes two frames, checks whether their bindings are compatible, and if so produces a frame that merges them; this operation is similar to unification.
+
+<Solution>
+
+**Solution.** Merging is unification of each binding of one frame into the other. `conjoin` evaluates every conjunct on the same input frame and merges the streams pairwise. For `and(job($x, $j), address($x, $a))` that is 18 assertion checks instead of 90. The price is in the filters: a `not` or `javascript_predicate` now sees the input frame, not the bindings of the other conjuncts, so rules like `lives_near` stop working, the problem of exercise 4.74 made worse.
+
+</Solution>
+</Exercise>
+<Exercise id="4.74">
+
+In §4.4.3 we saw that `not` and `javascript_predicate` can cause the query language to give wrong answers if these filtering operations are applied to frames in which variables are unbound. Devise a way to fix this shortcoming. One idea is to perform the filtering in a delayed manner by appending to the frame a promise to filter that is fulfilled only when enough variables have been bound to make the operation possible. We could wait to perform filtering until all other operations have been performed. However, for efficiency’s sake, we would like to perform filtering as soon as possible so as to cut down on the number of intermediate frames generated.
+
+Rewrite `negate`, `javascript_predicate`, `simple_query` and `conjoin` to do this: a filter that cannot run yet waits in the frame, `simple_query` runs any waiting filter that its matches have made ready, and filters still waiting at the end of an `and` run there.
+
+<Solution>
+
+**Solution.** A waiting filter is stored in the frame under a name that is not a pattern variable, like the history of exercise 4.65. A filter is ready when instantiating each of its variables gives a value without variables. Ready filters must be run in the frame *without* themselves, or checking one would find it waiting again and check it again for ever. Now `and(not(job($x, list("computer", "programmer"))), supervisor($x, $y))` gives the same six answers in either order.
+
+</Solution>
+</Exercise>
+<Exercise id="4.75">
+
+Redesign the query language as a nondeterministic program to be implemented using the evaluator of §4.3, rather than as a stream process. In this approach, each query will produce a single answer (rather than the stream of all answers) and the user can type `retry` to see more answers. You should find that much of the mechanism we built in this section is subsumed by nondeterministic search and backtracking. You will probably also find, however, that your new query language has subtle differences in behaviour from the one implemented here. Can you find examples that illustrate this difference?
+
+Here is one to predict. The `amb` version tries alternatives depth first, as a stream system that appends rather than interleaves would; the check uses such a system to stand for it.
+
+<Solution>
+
+**Solution.** `amb` backtracks chronologically: it exhausts the choices of the most recent choice point before revisiting older ones. For `or(natural($x), colour($x))` it chooses the first disjunct, and within it ever larger numbers, so its first answer is 0 and retrying never reaches `"red"`. The stream version interleaves the disjuncts, and gives `"red"` second. Answers that the stream version finds in an infinite search, the `amb` version can miss.
+
+</Solution>
+</Exercise>
+<Exercise id="4.76">
+
+When we implemented the JavaScript evaluator in §4.1, we saw how to use local environments to avoid name conflicts between the parameters of functions: in `sum_of_squares(3, 4)`, the `x` of `square` and the `x` of `sum_of_squares` live in different frames. In the query system, we used a different strategy to avoid name conflicts in applying rules: each time we apply a rule we rename its variables with new names that are guaranteed to be unique. The analogous strategy for the JavaScript evaluator would be to do away with local environments and simply rename the variables in the body of a function each time we apply the function.
+
+Implement for the query language a rule-application method that uses environments rather than renaming. See if you can build on your environment structure to create constructs in the query language for dealing with large systems, such as the rule analogue of block-structured functions. Can you relate any of this to the problem of making deductions in a context (“If I supposed that *P* were true, then I would be able to deduce *A* and *B*.”) as a method of problem solving? (This problem is open-ended.)
+
+To check your understanding of what renaming, or an environment, prevents: predict how many answers three queries get when `apply_a_rule` does not rename at all. The check runs them with renaming switched off.
+
+<Solution>
+
+**Solution.** Without renaming, the variables of a rule are shared by every application of it. In `append_to_form(list("a"), list("b"), $z)` the recursive application finds `$u` already bound to `"a"` by the first and cannot bind it to `"b"`, so there is no answer. `outranked_by(list("Reasoner", "Louis"), $who)` keeps only the direct supervisor, since the inner application’s `$staff_person` is still Louis. `wheel` applies no rule inside itself, so its five answers are unaffected. Environments would give each application its own frame of rule variables, as function applications get their own frames in §4.1, and a block of local rules would be a frame of rules visible only within one rule’s body.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '4.3.3', label: 'Exercise 4.75: the query language on amb' }, { id: '4.1.3', label: 'Exercise 4.76: environments instead of renaming' }, { id: '5.4', label: 'An evaluator as a machine' }]} />

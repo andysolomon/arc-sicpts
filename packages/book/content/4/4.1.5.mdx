@@ -1,0 +1,74 @@
+import { dataAsProgramProgram, factorialMachineProgram, metacircularPrelude } from '@sicp/lab';
+
+<Prose>
+
+One way to see what a program means is as the description of an abstract machine, perhaps an infinitely large one. The familiar factorial
+
+```js
+function factorial(n) {
+    return n === 1
+           ? 1
+           : factorial(n - 1) * n;
+}
+```
+
+describes a machine with parts that decrement, multiply and test for equality, a two-position switch, and another factorial machine inside it. The machine is infinite because it contains a copy of itself.
+
+In the same way, the evaluator is a very special machine. Its input is the description of some other machine, and given that description it configures itself to emulate the machine described. Fed the declaration of `factorial`, it computes factorials.
+
+</Prose>
+
+<Example index={0} file="factorial_machine.sicp" source={factorialMachineProgram} prelude={metacircularPrelude} budget={5000000}>
+
+The same evaluator that ran `append` on the previous page is now a factorial machine; nothing about it changed except its input. Replace the string with any other program and it becomes that machine instead.
+
+</Example>
+
+<Prose>
+
+Seen this way, the evaluator is a *universal machine*: it mimics any other machine that is described as a JavaScript program. Imagine the analogue for electrical circuits, a circuit that takes as input a signal encoding the plans of another circuit, a filter say, and then behaves like that filter. Such a circuit would be almost unimaginably complex. It is remarkable that the program evaluator is a rather simple program.
+
+That JavaScript is the language of the descriptions is inessential. Given a JavaScript program that is an evaluator for C, our evaluator emulates the C evaluator, which can emulate any machine described in C. Any evaluator can emulate any other. What can be computed in principle, ignoring time and memory, is therefore independent of language and computer; it reflects an underlying notion of *computability*, first made clear by Alan Turing in 1936. Turing described a simple model, now called a *Turing machine*, argued that any effective process can be formulated as a program for one (the *Church–Turing thesis*), built a universal machine, and used it to show that there are well-posed problems that no such machine can solve.
+
+The evaluator is also a bridge between the data objects a program manipulates and the programming language itself. To someone typing programs into it, `x * x;` is a program to be executed. To the evaluator it is a string, and after parsing a list, to be manipulated by well-defined rules. The user’s programs are the evaluator’s data, and nothing stops us from building programs as data directly:
+
+</Prose>
+
+<Example index={1} file="data_as_program.sicp" source={dataAsProgramProgram} prelude={metacircularPrelude}>
+
+No text was parsed: the program was assembled with the constructors of §4.1.2, displayed as the list it is, and then evaluated. JavaScript offers the converse, a primitive `eval` that parses a string and evaluates it in the current environment, so that `eval("5 * 5;")` and `evaluate(parse("5 * 5;"), the_global_environment)` both give 25. (`eval` is not part of our Source, and is often restricted for security reasons.)
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-4/metacircularPrograms.ts">
+
+The programs of these pages are in `chapter-4/metacircularPrograms.ts`. The test `chapter-4/metacircular.test.ts` asserts that the factorial machine gives 120 and that the program built from constructors evaluates to 25. The Laboratory itself is a universal machine of the same kind, written in TypeScript: `evaluator/machine.ts` takes the syntax tree of any Source program and behaves as the program describes, including the metacircular evaluator, which then behaves as its own input describes.
+
+</UnderTheHood>
+
+<Exercises range="4.15" total={1}>
+<Exercise id="4.15">
+
+Given a one-argument function `f` and an object `a`, `f` is said to *halt* on `a` if evaluating `f(a)` returns a value (as opposed to terminating with an error message or running forever). Show that it is impossible to write a function `halts` that correctly determines whether `f` halts on `a` for any function `f` and object `a`. Use the following reasoning: if you had such a function `halts`, you could implement the following program:
+
+```js
+function run_forever() { return run_forever(); }
+
+function strange(f) {
+    return halts(f, f)
+           ? run_forever()
+           : "halted";
+}
+```
+
+Now consider evaluating `strange(strange)` and show that any possible outcome, either halting or running forever, violates the intended behavior of `halts`. The checker asks what `strange(strange)` does for each answer `halts` could give.
+
+<Solution>
+
+**Solution.** If `halts(strange, strange)` is true, `strange(strange)` runs forever, so `halts` was wrong. If it is false, `strange(strange)` returns `"halted"`, so `halts` was wrong again. Either way `halts` fails on this one input, so no such function exists. This is Turing’s *Halting Theorem*, the first clear example of a *noncomputable* problem; the argument holds even if `halts` may read the function’s text and environment.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['4.1.6', { id: '4.2', label: 'Changing the rules: lazy evaluation' }, { id: '5.5', label: 'Programs translated into machines' }]} />

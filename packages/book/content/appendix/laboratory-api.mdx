@@ -17,9 +17,15 @@ The Laboratory is the TypeScript package `@sicp/lab`. The Book never evaluates c
 | `prepare(source, options?)` | Parses and returns a `Machine` without running it. |
 | `Machine.run(maxSteps?)` | Advances at most `maxSteps` steps and returns the status; `paused` means call again. |
 
-Options are `budget` (steps, default 100 000), `prelude` (source evaluated first in an enclosing frame), `display` (receives output lines), `hooks` and `seed`.
+Options are `budget` (steps, default 100 000), `prelude` (source evaluated first in an enclosing frame), `display` (receives output lines), `draw` (receives each line drawn by `draw_line`, as a `Segment` `[x1, y1, x2, y2]`), `hooks` and `seed`. An error raised by code in the prelude says so, as `Hidden prelude, line N: …`.
 
 Every program starts in a frame that extends two outer frames: `global`, which holds the primitives, and `library`, which holds the list and stream functions of Source §2 and §3, written in Source (`evaluator/library.ts`). A declaration in the program shadows a library function of the same name. `createLibraryEnvironment(display)` returns that starting environment, which is how the CLI's REPL begins.
+
+| Export | What it does |
+| --- | --- |
+| `toTaggedList(program)` | A syntax tree to the tagged lists of §4.1.2; the primitive `parse` uses it. |
+| `metacircularPrelude`, `analyzingPrelude`, … | The evaluators of Chapter 4 as Source text, ready to be a prelude. |
+| `omit(source, ...names)`, `pick(source, ...names)` | A program without, or with only, the named top-level declarations: how an exercise hides all of an evaluator except the functions the reader rewrites. |
 
 ## Threads
 
@@ -31,6 +37,7 @@ Every program starts in a frame that extends two outer frames: `global`, which h
 | --- | --- |
 | `processShape(source)` | Returns a `ProcessShapeSnapshot`: for each top-level statement that makes calls, the call depth at every call and return, the maximum depth, and whether the process is recursive or iterative. |
 | `maxDepth(source)` | The deepest stack of pending calls in a run. |
+| `createCallLogTracer(names)` | Hooks that log every call of the named compound functions, with arguments and result as text and the watched call pending below it. Chapter 4's animations watch the Source functions of an evaluator this way, such as `evaluate` and `apply`. |
 | `createStepTracer(source)` | Hooks that record a readable log of evaluation steps, each with its frame id, source span, top-level statement index and a structured `event` (`call`, `return`, `result`, `name`, `define`, `thread` or `eval`) from which the Book's animations rebuild trees, frames and call stacks. |
 
 Inspectors attach through `MachineHooks`: `onEval`, `onCall`, `onReturn`, `onResult`, `onDefine`, `onTopLevelStatement`, `onThread`. A hook observes; it cannot change the result.
@@ -42,9 +49,11 @@ Inspectors attach through `MachineHooks`: `onEval`, `onCall`, `onReturn`, `onRes
 | `createLabHost({ post })` | The worker side. Handles `run`, `trace`, `check` and `cancel` requests and posts events. Jobs run in slices so that a cancel can arrive between them. |
 | `LabClient` | The page side. `submit(params, onEvent)` returns a handle with `cancel()` and a `finished` promise that resolves with the terminal event. A worker that does not confirm a cancel is replaced. |
 
-Events for a run are `started`, then any number of `display` and `shape`, then exactly one of `done`, `error`, `budget-exhausted` or `cancelled`.
+A run may ask to `inspect` its process shape or the calls of named functions. Events for a run are `started`, then any number of `display`, `draw` and `shape`, then a `calls` log if one was asked for, then exactly one of `done`, `error`, `budget-exhausted` or `cancelled`.
 
-A `check` request runs an exercise's hidden tests, each on a fresh run of the submission. A `value` test compares an expression's value with the expected one. A `shape` test compares an answer with the measured kind of process, recursive or iterative. A `calls` test applies a function and bounds how many times a named function is applied along the way, which is how a check tells a logarithmic process from a linear one that computes the same values.
+A `trace` request returns the step log in one `trace-done` event, together with the program's output and everything it drew.
+
+A `check` request runs an exercise's hidden tests, each on a fresh run of the submission. A `value` test compares an expression's value with the expected one. A `shape` test compares an answer with the measured kind of process, recursive or iterative. A `calls` test applies a function and bounds how many times a named function is applied along the way, which is how a check tells a logarithmic process from a linear one that computes the same values. An `error` test passes when a call stops with an error, optionally one whose message contains given text, which is how a check confirms that a program refuses bad input.
 
 </Prose>
 

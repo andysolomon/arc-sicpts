@@ -48,9 +48,17 @@ unary-operator  ::= "!" | "-"
 
 `display`, `stringify`, `error`, `get_time`; `pair`, `head`, `tail`, `set_head`, `set_tail`, `list`, `is_null`, `is_pair`, `list_to_string`, `display_list`; `is_number`, `is_string`, `is_boolean`, `is_undefined`, `is_function`; and the `math_` family, including `math_abs`, `math_sqrt`, `math_floor`, `math_pow`, `math_atan2`, `math_max`, `math_min`, `math_log`, `math_exp`, `math_random`, with the constants `math_PI` and `math_E`.
 
+For the picture language of §2.2.4, `draw_line(start, end)` draws a line between two vectors, each a pair of numbers, on a unit square whose origin is at the bottom left. The editor shows the drawing under the program's output.
+
 ## Library functions
 
 Written in Source and evaluated before every program, in a frame of their own that a program's declarations shadow. Lists: `equal`, `length`, `map`, `build_list`, `for_each`, `reverse`, `append`, `member`, `remove`, `remove_all`, `filter`, `enum_list`, `list_ref`, `accumulate`. Streams, whose tails are functions of no arguments: `stream_tail`, `is_stream`, `list_to_stream`, `stream_to_list`, `stream_length`, `stream_map`, `build_stream`, `stream_for_each`, `stream_reverse`, `stream_append`, `stream_member`, `stream_remove`, `stream_remove_all`, `stream_filter`, `enum_stream`, `integers_from`, `eval_stream`, `stream_ref`. The source is `packages/lab/src/evaluator/library.ts`.
+
+`display(value, prefix)` shows the string `prefix` before the value, and `error(value, message)` stops with `message` followed by the value, as in Source.
+
+For lists and the evaluators of Chapter 4: `set_head`, `set_tail`, `is_list`, `length`, `list_ref`, `append`, `reverse`, `member`, `equal`; `apply_in_underlying_javascript(f, list_of_arguments)`, which applies any function, compound or primitive, to the elements of a list; and `parse(text)`, which returns the tagged-list representation of §4.1.2. Functions that take functions, such as `map`, `filter` and `accumulate`, are not primitives: the pages that use them declare them in their hidden prelude.
+
+For the threads of §3.4: `concurrent_execute(f, g, ...)` runs each function of no arguments in a thread of its own and returns once all have finished, and `test_and_set(cell)` sets the head of a pair to `true` in one atomic step, returning what it was.
 
 </Prose>
 

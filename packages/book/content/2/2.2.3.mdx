@@ -1,0 +1,344 @@
+import {
+  mixAndMatchProgram,
+  permutationsProgram,
+  primeSumPairsProgram,
+  signalFlowProgram,
+  sumOddSquaresProgram,
+} from '@sicp/lab';
+
+<Prose>
+
+Data abstraction lets us design programs without becoming enmeshed in the details of data representations, and keeps us free to experiment with alternative representations. This section introduces another powerful design principle for working with data structures: the use of *conventional interfaces*.
+
+In §1.3 we saw how higher-order functions capture common patterns in programs that deal with numbers. Our ability to do the same for compound data depends crucially on the style in which we manipulate our data structures. Consider `sum_odd_squares`, analogous to `count_leaves`, which takes a tree and computes the sum of the squares of the leaves that are odd.
+
+</Prose>
+
+<Example index={0} file="sum_odd_squares.sicp" source={sumOddSquaresProgram} anim="tree-recursion">
+
+Every pair splits the call in two, as in `count_leaves`; the enumeration of the leaves lives in that branching and in the `is_null` and `is_pair` tests. The filter (`is_odd`), the map (`square`) and the accumulation (`+` with 0 for the empty tree) are scattered through the same conditional. The leaves 1, 3 and 5 contribute 1 + 9 + 25 = 35.
+
+</Example>
+
+<Prose>
+
+On the surface, that function is very different from this one, which constructs a list of all the even Fibonacci numbers Fib(*k*) with *k* ≤ *n*:
+
+```js
+function even_fibs(n) {
+  function next(k) {
+    if (k > n) {
+      return null;
+    } else {
+      const f = fib(k);
+      return is_even(f)
+        ? pair(f, next(k + 1))
+        : next(k + 1);
+    }
+  }
+  return next(0);
+}
+```
+
+Yet a more abstract description of the two computations reveals a great deal of similarity. The first program
+
+- enumerates the leaves of a tree;
+- filters them, selecting the odd ones;
+- squares each of the selected ones; and
+- accumulates the results using `+`, starting with 0.
+
+The second program
+
+- enumerates the integers from 0 to *n*;
+- computes the Fibonacci number for each integer;
+- filters them, selecting the even ones; and
+- accumulates the results using `pair`, starting with the empty list.
+
+A signal-processing engineer would find it natural to think of these processes as *signals* flowing through a cascade of stages. In `sum_odd_squares`, an *enumerator* generates a signal consisting of the leaves of the tree. The signal passes through a *filter*, which eliminates all but the odd elements, then through a *map*, a transducer that applies `square` to each element. The output of the map feeds an *accumulator*, which combines the elements using `+`, starting from 0. The plan for `even_fibs` is analogous.
+
+Unfortunately, the two declarations above fail to exhibit this signal-flow structure. There are no distinct parts of either function that correspond to the elements of the signal-flow description: the enumeration is spread over the program and mingled with the map, the filter and the accumulation. If we could organise our programs to make the signal-flow structure manifest, they would be much clearer.
+
+**Sequence operations.** The key is to concentrate on the signals that flow from one stage to the next. If we represent these signals as lists, we can use list operations to implement each stage. The map stages are `map` from §2.2.1. Filtering a sequence to keep only the elements that satisfy a predicate is `filter`, and accumulation is `accumulate`: `accumulate(plus, 0, list(1, 2, 3, 4, 5))` is 15, `accumulate(times, 1, list(1, 2, 3, 4, 5))` is 120, and `accumulate(pair, null, list(1, 2, 3, 4, 5))` rebuilds the list. All that remains is to enumerate the elements to be processed: `enumerate_interval(low, high)` for a range of integers, and `enumerate_tree` for the leaves of a tree, which is the `fringe` of Exercise 2.28 under a name that puts it in this family. The program below declares them all, as the book does, and gives each stage of `sum_odd_squares` a name of its own, so the signal can be seen at every stage.
+
+</Prose>
+
+<Example index={1} file="signal_flow.sicp" source={signalFlowProgram} anim="pairs">
+
+The signal-flow diagram, one stage at a time: the tree, its five leaves, the three odd ones and their squares, which the last line adds up to 35. Each stage is a list, so any stage can be taken out and replaced by another that takes and makes lists. `plus` and `times` are the operators `+` and `*` as functions, since an operator cannot be passed as an argument.
+
+</Example>
+
+<Prose>
+
+Without the names, the stages nest, and each function reads as its signal-flow plan:
+
+```js
+function sum_odd_squares(tree) {
+  return accumulate(plus,
+                    0,
+                    map(square,
+                        filter(is_odd,
+                               enumerate_tree(tree))));
+}
+
+function even_fibs(n) {
+  return accumulate(pair,
+                    null,
+                    filter(is_even,
+                           map(fib,
+                               enumerate_interval(0, n))));
+}
+```
+
+The value of expressing programs as sequence operations is that it helps us make modular designs, constructed by combining relatively independent pieces. We can encourage modular design by providing a library of standard components together with a conventional interface for connecting them in flexible ways. Modular construction is a powerful strategy for controlling complexity in engineering: signal-processing designers build systems by cascading elements chosen from standard families of filters and transducers. Sequence operations are a library of standard program elements that we can mix and match in the same way.
+
+</Prose>
+
+<Example index={2} file="mix_and_match.sicp" source={mixAndMatchProgram} anim="pairs">
+
+Three programs from the same parts. `even_fibs(12)` keeps the even ones among Fib(0) to Fib(12); `list_fib_squares(10)` squares the first eleven Fibonacci numbers; `product_of_squares_of_odd_elements` multiplies 1, 9 and 25 to print 225. `fib` here is the iterative version of §1.2.2, so the whole program stays fast.
+
+</Example>
+
+<Prose>
+
+Conventional data-processing applications fit the same mould. Given a sequence of personnel records, a selector `salary` and a predicate `is_programmer`, the salary of the highest-paid programmer is
+
+```js
+function salary_of_highest_paid_programmer(records) {
+  return accumulate(math_max,
+                    0,
+                    map(salary,
+                        filter(is_programmer, records)));
+}
+```
+
+These examples only hint at the range of operations that can be expressed as sequence operations. Sequences, implemented here as lists, are a conventional interface that lets us combine processing modules. And when we represent structures uniformly as sequences, the data-structure dependencies in our programs are confined to a small number of sequence operations. By changing these, we can experiment with other representations of sequences while leaving the design of our programs intact. Section 3.5 does exactly that, to admit infinite sequences.
+
+**Nested mappings.** The sequence paradigm extends to many computations that are commonly expressed with nested loops. Consider this problem: given a positive integer *n*, find all ordered pairs of distinct positive integers *i* and *j*, where 1 ≤ *j* < *i* ≤ *n*, such that *i* + *j* is prime. If *n* is 6, the pairs are
+
+| *i* | 2 | 3 | 4 | 4 | 5 | 6 | 6 |
+|---|---|---|---|---|---|---|---|
+| *j* | 1 | 2 | 1 | 3 | 2 | 1 | 5 |
+| *i* + *j* | 3 | 5 | 5 | 7 | 7 | 7 | 11 |
+
+A natural way to organise this computation is to generate the sequence of all ordered pairs of positive integers up to *n*, filter it to keep the pairs whose sum is prime, and then, for each pair (*i*, *j*) that passes the filter, produce the triple (*i*, *j*, *i* + *j*).
+
+To generate the pairs, map along `enumerate_interval(1, n)`. For each *i*, map along `enumerate_interval(1, i - 1)`, and for each *j* there generate `list(i, j)`. (A "pair" here is a list of two elements, not a `pair`.) That gives a sequence of pairs for each *i*, and accumulating all of them with `append` gives the required sequence. Mapping and then accumulating with `append` is so common that we isolate it as a function, `flatmap`. The filter predicate receives one of these two-element lists and must extract the integers, and the final map turns each surviving pair into a triple.
+
+</Prose>
+
+<Example index={3} file="prime_sum_pairs.sicp" source={primeSumPairsProgram} anim="pairs">
+
+`all_pairs` shows the flattened sequence for *n* = 4: six two-element lists, one stretch for each *i*, with nothing for *i* = 1. The value is the table above, as seven triples. `is_prime` is a compact form of the trial division of §1.2.6.
+
+</Example>
+
+<Prose>
+
+Nested mappings are also useful for sequences other than intervals. Suppose we wish to generate all the *permutations* of a set *S*, all the ways of ordering its items. The permutations of {1, 2, 3} are {1, 2, 3}, {1, 3, 2}, {2, 1, 3}, {2, 3, 1}, {3, 1, 2} and {3, 2, 1}. Here is a plan: for each item *x* in *S*, recursively generate the sequence of permutations of *S* − *x*, the set *S* without *x*, and adjoin *x* to the front of each one. That yields, for each *x*, the permutations of *S* that begin with *x*. Combining these sequences for all *x* gives all the permutations of *S*.
+
+This strategy reduces the problem of generating permutations of *S* to permutations of sets with fewer elements. In the terminal case we reach the empty list, which represents a set of no elements, and generate `list(null)`: a sequence with one item, the empty set. The function `remove` returns all the items of a sequence except a given one, and can be expressed as a simple filter. (The list library has a `remove` that drops only the first occurrence; the declaration in the program takes its place.)
+
+</Prose>
+
+<Example index={4} file="permutations.sicp" source={permutationsProgram} anim="pairs">
+
+Six permutations of three items, each a list of three: 24 pairs. The comments in the program are introduced by `//`; everything from there to the end of the line is ignored.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-2/sequences.ts">
+
+`map`, `filter`, `accumulate` and `append` are in the Laboratory's list library (`evaluator/library.ts`), written in Source with the same argument order as here; the programs on this page declare their own copies, as the book does, and those take precedence. A signal is an ordinary list, which is why the box-and-pointer scene can draw each stage. The test `chapter-2/sequences.test.ts` asserts that both forms of `sum_odd_squares` give 35, that the stages are `list(1, 2, 3, 4, 5)`, `list(1, 3, 5)` and `list(1, 9, 25)`, that `even_fibs(12)` is `list(0, 2, 8, 34, 144)`, that `prime_sum_pairs(6)` is the table above, that `permutations(list(1, 2, 3))` lists all six orders, and that the queens program finds 92 solutions on the eight-by-eight board after trying 15 720 positions. For boards of 3 to 5 it checks that Louis Reasoner's version applies `queen_cols` (*n*ⁿ⁺¹ − 1) / (*n* − 1) times, and for 3 to 6 that it takes 3.6, 11, 37 and 136 times as many evaluator steps.
+
+</UnderTheHood>
+
+<Exercises range="2.33 – 2.43" total={11}>
+<Exercise id="2.33">
+
+Fill in the missing expressions in the editor to complete these declarations of some basic list-manipulation operations as accumulations:
+
+```js
+function map(f, sequence) {
+  return accumulate((x, y) => ⟨??⟩, null, sequence);
+}
+function append(seq1, seq2) {
+  return accumulate(pair, ⟨??⟩, ⟨??⟩);
+}
+function length(sequence) {
+  return accumulate(⟨??⟩, 0, sequence);
+}
+```
+
+<Solution>
+
+**Solution.** `map` adjoins `f(x)` to the mapped rest: `pair(f(x), y)`. `append` is `accumulate(pair, seq2, seq1)`: rebuilding `seq1` with `pair` but ending in `seq2` instead of `null`. `length` ignores each element and adds 1: `(x, y) => y + 1`.
+
+</Solution>
+</Exercise>
+<Exercise id="2.34">
+
+Evaluating a polynomial in *x* at a given value of *x* can be formulated as an accumulation. We evaluate the polynomial *aₙxⁿ* + *aₙ₋₁xⁿ⁻¹* + ⋯ + *a*₁*x* + *a*₀ using a well-known algorithm called *Horner's rule*, which structures the computation as (⋯(*aₙx* + *aₙ₋₁*)*x* + ⋯ + *a*₁)*x* + *a*₀. In other words, we start with *aₙ*, multiply by *x*, add *aₙ₋₁*, multiply by *x*, and so on, until we reach *a*₀. Fill in the template in the editor to produce a function that evaluates a polynomial using Horner's rule. Assume that the coefficients are arranged in a sequence, from *a*₀ through *aₙ*. To compute 1 + 3*x* + 5*x*³ + *x*⁵ at *x* = 2 you would evaluate `horner_eval(2, list(1, 3, 0, 5, 0, 1))`.
+
+<Solution>
+
+**Solution.** `(this_coeff, higher_terms) => this_coeff + x * higher_terms`. `accumulate` combines from the right, so `higher_terms` is already the value of the higher coefficients in Horner form, and one multiplication and one addition fold in the next. 1 + 3·2 + 5·8 + 32 = 79. Horner's rule uses fewer additions and multiplications than computing each power separately; in fact no algorithm for arbitrary polynomials can use fewer.
+
+</Solution>
+</Exercise>
+<Exercise id="2.35">
+
+Redeclare `count_leaves` from §2.2.2 as an accumulation:
+
+```js
+function count_leaves(t) {
+  return accumulate(⟨??⟩, ⟨??⟩, map(⟨??⟩, ⟨??⟩));
+}
+```
+
+<Solution>
+
+**Solution.** Map each branch of `t` to its number of leaves, `sub => is_pair(sub) ? count_leaves(sub) : 1`, and add the results with `plus` starting from 0. Alternatively, `map(x => 1, enumerate_tree(t))` turns every leaf into a 1 for `accumulate` to add.
+
+</Solution>
+</Exercise>
+<Exercise id="2.36">
+
+The function `accumulate_n` is similar to `accumulate` except that it takes as its third argument a sequence of sequences, all with the same number of elements. It combines all the first elements with the accumulation function, all the second elements, and so on, and returns a sequence of the results. If `s` is `list(list(1, 2, 3), list(4, 5, 6), list(7, 8, 9), list(10, 11, 12))`, then `accumulate_n(plus, 0, s)` is `list(22, 26, 30)`. Fill in the missing expressions:
+
+```js
+function accumulate_n(op, init, seqs) {
+  return is_null(head(seqs))
+    ? null
+    : pair(accumulate(op, init, ⟨??⟩),
+           accumulate_n(op, init, ⟨??⟩));
+}
+```
+
+<Solution>
+
+**Solution.** The first column is `map(head, seqs)`, and the rest of the columns are the columns of `map(tail, seqs)`. Mapping a selector over a list of lists slices it the other way.
+
+</Solution>
+</Exercise>
+<Exercise id="2.37">
+
+Represent vectors *v* = (*vᵢ*) as sequences of numbers, and matrices *m* = (*mᵢⱼ*) as sequences of vectors, the rows of the matrix. The matrix with rows 1 2 3 4, 4 5 6 6 and 6 7 8 9 is
+
+```js
+list(list(1, 2, 3, 4),
+     list(4, 5, 6, 6),
+     list(6, 7, 8, 9))
+```
+
+With this representation, sequence operations express the basic matrix and vector operations concisely: `dot_product(v, w)` returns the sum Σᵢ *vᵢwᵢ*; `matrix_times_vector(m, v)` returns the vector *t* with *tᵢ* = Σⱼ *mᵢⱼvⱼ*; `matrix_times_matrix(m, n)` returns the matrix *p* with *pᵢⱼ* = Σₖ *mᵢₖnₖⱼ*; and `transpose(m)` returns the matrix *n* with *nᵢⱼ* = *mⱼᵢ*. The dot product is
+
+```js
+function dot_product(v, w) {
+  return accumulate(plus, 0, accumulate_n(times, 1, list(v, w)));
+}
+```
+
+Fill in the missing expressions in the editor for the other three. (`accumulate_n` is that of Exercise 2.36.)
+
+<Solution>
+
+**Solution.** `matrix_times_vector` maps `row => dot_product(row, v)` over `m`. `transpose` is `accumulate_n(pair, null, mat)`: accumulating each column with `pair` rebuilds it as a list, which becomes a row. `matrix_times_matrix` maps each row of `m` to `matrix_times_vector(cols, row)`, since the rows of `cols` are the columns of `n`.
+
+</Solution>
+</Exercise>
+<Exercise id="2.38">
+
+`accumulate` is also known as `fold_right`, because it combines the first element of the sequence with the result of combining all the elements to the right. There is also a `fold_left`, which combines elements working in the opposite direction (it is in the editor). What are the values of
+
+```js
+fold_right(divide, 1, list(1, 2, 3));
+fold_left(divide, 1, list(1, 2, 3));
+fold_right(list, null, list(1, 2, 3));
+fold_left(list, null, list(1, 2, 3));
+```
+
+Work them out, then record them as `right_divide`, `left_divide`, `right_list` and `left_list`, writing the last two out with `list` and `null`. Then give a property that `op` should satisfy to guarantee that `fold_right` and `fold_left` produce the same values for any sequence, and record which of `plus`, `minus`, `times`, `divide` and `math_max` have it, as a list of strings `same_both_ways`.
+
+<Solution>
+
+**Solution.** `fold_right` gives 1 / (2 / (3 / 1)) = 1.5 and `fold_left` gives ((1 / 1) / 2) / 3 = 1/6. With `list`, `fold_right` nests to the right, `list(1, list(2, list(3, null)))`, and `fold_left` to the left, `list(list(list(null, 1), 2), 3)`. Both folds agree for every sequence when `op` is associative and the initial value commutes with every element, which holds when `op` is associative and commutative: `plus`, `times` and `math_max`. Subtraction and division are neither.
+
+</Solution>
+</Exercise>
+<Exercise id="2.39">
+
+Complete the following declarations of `reverse` (Exercise 2.18) in terms of `fold_right` and `fold_left` from Exercise 2.38, renamed `reverse_right` and `reverse_left` so that both fit in one program:
+
+```js
+function reverse(sequence) {
+  return fold_right((x, y) => ⟨??⟩, null, sequence);
+}
+
+function reverse(sequence) {
+  return fold_left((x, y) => ⟨??⟩, null, sequence);
+}
+```
+
+<Solution>
+
+**Solution.** With `fold_right`, `y` is the reversed rest of the list, and `x` belongs at its end: `append(y, list(x))`, which costs time proportional to the length each step, Θ(*n*²) in all. With `fold_left`, `x` is the reversed list so far and `y` the next element, which goes on the front: `pair(y, x)`, Θ(*n*) in all.
+
+</Solution>
+</Exercise>
+<Exercise id="2.40">
+
+Write a function `unique_pairs` that, given an integer *n*, generates the sequence of pairs (*i*, *j*) with 1 ≤ *j* < *i* ≤ *n*. Use `unique_pairs` to simplify the declaration of `prime_sum_pairs` given above.
+
+<Solution>
+
+**Solution.** `unique_pairs` is the `flatmap` from the text, given a name. `prime_sum_pairs(n)` becomes `map(make_pair_sum, filter(is_prime_sum, unique_pairs(n)))`: one stage each for enumerating, filtering and mapping, with the nesting hidden inside the enumerator.
+
+</Solution>
+</Exercise>
+<Exercise id="2.41">
+
+Write a function to find all ordered triples of distinct positive integers *i*, *j* and *k* less than or equal to a given integer *n* that sum to a given integer *s*. Write each triple as `list(i, j, k)` with *i* > *j* > *k*: first `unique_triples(n)`, then `triples_with_sum(n, s)` from it.
+
+<Solution>
+
+**Solution.** `unique_triples(n)` flatmaps over *i* from 1 to *n* and, for each, maps `pair(i, …)` over `unique_pairs(i - 1)`, which are the pairs below *i*. `triples_with_sum` filters these by their sum. There are C(*n*, 3) unique triples: 10 for *n* = 5.
+
+</Solution>
+</Exercise>
+<Exercise id="2.42">
+
+The eight-queens puzzle asks how to place eight queens on a chessboard so that no queen is in check from any other (no two queens in the same row, column or diagonal). One way to solve it is to work across the board, placing a queen in each column. Once we have placed *k* − 1 queens, we must place the *k*th queen in a position where it does not check any of the queens already on the board. We can formulate this approach recursively. Assume that we have already generated the sequence of all possible ways to place *k* − 1 queens in the first *k* − 1 columns of the board. For each of these ways, generate an extended set of positions by placing a queen in each row of the *k*th column. Now filter these, keeping only the positions for which the queen in the *k*th column is safe with respect to the other queens. This produces the sequence of all ways to place *k* queens in the first *k* columns. Continuing, we produce not only one solution but all solutions to the puzzle.
+
+The function `queens` in the editor returns the sequence of all solutions to placing *n* queens on an *n* × *n* chessboard. Its internal function `queen_cols` returns the sequence of all ways to place queens in the first *k* columns. In it, `rest_of_queens` is a way to place *k* − 1 queens in the first *k* − 1 columns, and `new_row` is a proposed row for the queen in column *k*. Complete the program by implementing the representation for sets of board positions: `adjoin_position`, which adjoins a new row-column position to a set of positions, and `empty_board`, which represents an empty set of positions. Then write `is_safe`, which determines for a set of positions whether the queen in the *k*th column is safe with respect to the others. (Only the new queen needs checking: the others are already safe from each other.)
+
+<Solution>
+
+**Solution.** A set of positions can be just the list of rows, newest column first: `empty_board` is `null` and `adjoin_position(row, col, rest)` is `pair(row, rest)`. The column of each queen is then implied by its place in the list. The new queen is at the head; the queen *d* places further along is *d* columns away, and checks it if it is in the same row or its row differs by exactly *d*. There are 92 solutions on the eight-by-eight board.
+
+</Solution>
+</Exercise>
+<Exercise id="2.43">
+
+Louis Reasoner is having a terrible time doing Exercise 2.42. His `queens` function seems to work, but it runs extremely slowly. (Louis never does manage to wait long enough for it to solve even the 6 × 6 case.) When Louis asks Eva Lu Ator for help, she points out that he has interchanged the order of the nested mappings in the `flatmap`, writing it as
+
+```js
+flatmap(new_row =>
+          map(rest_of_queens =>
+                adjoin_position(new_row, k, rest_of_queens),
+              queen_cols(k - 1)),
+        enumerate_interval(1, board_size));
+```
+
+Explain why this interchange makes the program run slowly. Estimate how long it will take Louis's program to solve the eight-queens puzzle, assuming that the program in Exercise 2.42 solves the puzzle in time *T*. Make it checkable in three parts: fix Louis's program in the editor; write `louis_calls(n)`, the number of times his version applies `queen_cols` on an *n* × *n* board; and record your estimate, in units of *T*, as `louis_estimate`. Count the board positions each version tries.
+
+<Solution>
+
+**Solution.** In Louis's version, `queen_cols(k - 1)` is evaluated inside the function given to `flatmap`, once for every `new_row`: *n* times for every application of `queen_cols(k)`. So `queen_cols(k)` is applied *n*ⁿ⁻ᵏ times, 1 + *n* + ⋯ + *n*ⁿ = (*n*ⁿ⁺¹ − 1) / (*n* − 1) applications in all, against *n* + 1 for the original: 19 173 961 against 9 for eight queens. The work does not grow quite that much, because the repeated calls are the cheap ones near the left of the board. The original tries *n* positions for each way of filling the previous columns, 15 720 for eight queens. Louis's tries the positions of column *k* again *n*ⁿ⁻ᵏ times, about 51 million. So his program takes about 3 200 *T*. The measured ratio of evaluator steps tracks this count closely: 3.6, 11, 37 and 136 for boards of 3 to 6.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['2.2.4', { id: '2.3.3', label: 'Sets as lists' }, { id: '3.5.1', label: 'Streams are delayed lists' }, { id: '3.5.3', label: 'Nested mappings over infinite streams' }]} />

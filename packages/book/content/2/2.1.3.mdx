@@ -1,0 +1,82 @@
+import { functionalPairProgram, ratOnFunctionalPairsProgram } from '@sicp/lab';
+
+<Prose>
+
+We began the rational-number implementation in §2.1.1 by implementing `add_rat`, `sub_rat` and the rest in terms of three unspecified functions: `make_rat`, `numer` and `denom`. At that point we could think of the operations as defined in terms of data objects (numerators, denominators and rational numbers) whose behaviour was specified by those three functions.
+
+But exactly what is meant by *data*? It is not enough to say "whatever is implemented by the given selectors and constructors". Not every set of three functions can serve as the basis of a rational-number implementation. We need to guarantee that if we construct a rational number `x` from a pair of integers `n` and `d`, then dividing the `numer` of `x` by its `denom` gives the same result as dividing `n` by `d`. In other words, for any integer *n* and any nonzero integer *d*, if *x* is `make_rat(n, d)`, then
+
+`numer(x)` / `denom(x)` = *n* / *d*.
+
+This is in fact the only condition `make_rat`, `numer` and `denom` must fulfil to form a suitable basis for a rational-number representation. In general, we can think of data as defined by some collection of selectors and constructors, together with specified conditions that these functions must fulfil in order to be a valid representation.
+
+This point of view defines not only "high-level" data objects such as rational numbers but lower-level objects as well. Consider the pair, which we used to define rational numbers. We never said what a pair was, only that the language supplied the functions `pair`, `head` and `tail`. The only thing we need to know about them is that if we glue two objects together using `pair`, we can retrieve them using `head` and `tail`: for any objects `x` and `y`, if `z` is `pair(x, y)` then `head(z)` is `x` and `tail(z)` is `y`. Any triple of functions that satisfies this condition can be used to implement pairs. Strikingly, we can implement `pair`, `head` and `tail` without any data structures at all, using only functions.
+
+</Prose>
+
+<Example index={0} file="functional_pairs.sicp" source={functionalPairProgram} anim="frames">
+
+`pair(1, 2)` returns a function, `dispatch`, and its frame stays behind holding `x` and `y`, exactly as `average_damp` kept its `f` in §1.3.4. `head(x)` applies that function to 0, and the lookup of `x` inside `dispatch` finds 1 in the frame of `pair(1, 2)`. `tail(x)` asks for 1 and gets 2. Declaring `pair`, `head` and `tail` in the program hides the primitives of the same names.
+
+</Example>
+
+<Prose>
+
+This use of functions corresponds to nothing like our intuitive notion of what data should be. Nevertheless, to show that it is a valid way to represent pairs, all we need is to verify that the functions satisfy the condition above.
+
+The subtle point is that the value returned by `pair(x, y)` is a function, namely the internally declared `dispatch`, which takes one argument and returns `x` or `y` depending on whether the argument is 0 or 1. Correspondingly, `head(z)` is defined to apply `z` to 0. Hence if `z` is the function formed by `pair(x, y)`, then `z` applied to 0 yields `x`, and `head(pair(x, y))` yields `x`, as desired. Similarly, `tail(pair(x, y))` applies the function returned by `pair(x, y)` to 1, which returns `y`. This functional implementation is therefore valid, and if we access pairs only through `pair`, `head` and `tail`, we cannot tell it apart from one that uses "real" data structures.
+
+</Prose>
+
+<Example index={1} file="rationals_on_functions.sicp" source={ratOnFunctionalPairsProgram} anim="calls">
+
+The rational-number package of §2.1.1, word for word, on top of functional pairs. It still prints `"5 / 6"`. Follow a selector down the tree of calls: `numer(x)` calls `head(x)`, which calls the `dispatch` function hidden inside `x`. The package above the barrier cannot tell the difference.
+
+</Example>
+
+<Prose>
+
+The point of exhibiting the functional representation of pairs is not that our language works this way (an efficient implementation of pairs might use JavaScript's native arrays, as the Laboratory does) but that it could work this way. The functional representation, although obscure, is a perfectly adequate way to represent pairs, since it fulfils the only conditions that pairs need to fulfil. The example also shows that the ability to manipulate functions as objects automatically provides the ability to represent compound data. This may seem a curiosity now, but functional representations of data will play a central role in our programming repertoire. This style of programming is often called *message passing*, and chapter 3 uses it as a basic tool for modelling and simulation.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-2/dataAbstraction.ts">
+
+The Laboratory's own `pair` is a primitive in `evaluator/primitives.ts` that returns a two-element array. A program's declaration of `pair` binds the name in the program's frame, which is searched before the global frame where the primitive lives, so every later use finds the program's version. The value of `pair(1, 2)` is a `Closure` (`evaluator/values.ts`) whose environment is the body block of the call, extending the call's frame. The test `chapter-2/dataAbstraction.test.ts` asserts that `head(x)` displays 1 and `tail(x)` is 2, that the frame behind `pair(1, 2)` binds `x` to 1 and `y` to 2, and that the rational package on functional pairs prints `"5 / 6"`.
+
+</UnderTheHood>
+
+<Exercises range="2.4 – 2.6" total={3}>
+<Exercise id="2.4">
+
+Here is an alternative functional representation of pairs. For this representation, verify that `head(pair(x, y))` yields `x` for any objects `x` and `y`. What is the corresponding definition of `tail`? (Hint: to verify that this works, make use of the substitution model of §1.1.5.)
+
+<Solution>
+
+**Solution.** By substitution, `head(pair(x, y))` becomes `pair(x, y)((p, q) => p)`, then `(m => m(x, y))((p, q) => p)`, then `((p, q) => p)(x, y)`, which is `x`. A pair is a function that hands both of its parts to whatever function it is given; a selector is a function that chooses one. So `tail(z)` is `z((p, q) => q)`.
+
+</Solution>
+</Exercise>
+<Exercise id="2.5">
+
+Show that we can represent pairs of nonnegative integers using only numbers and arithmetic operations if we represent the pair *a* and *b* as the integer that is the product 2ᵃ3ᵇ. Give the corresponding definitions of the functions `pair`, `head` and `tail`.
+
+<Solution>
+
+**Solution.** By unique factorisation, 2ᵃ3ᵇ determines *a* and *b*: *a* is the number of times 2 divides it, and *b* the number of times 3 does. `pair(a, b)` is `math_pow(2, a) * math_pow(3, b)`, and `head` and `tail` count the factors of 2 and of 3 by dividing until the remainder is not zero. `pair(3, 2)` is 72, and the exercise checks that the round trip recovers both parts, zeros included.
+
+</Solution>
+</Exercise>
+<Exercise id="2.6">
+
+In case representing pairs as functions was not mind-boggling enough, consider that, in a language that can manipulate functions, we can get by without numbers (at least insofar as nonnegative integers are concerned) by implementing 0 and the operation of adding 1 as `zero` and `add_1` in the starter. This representation is known as *Church numerals*, after its inventor, Alonzo Church, the logician who invented the λ-calculus. Define `one` and `two` directly (not in terms of `zero` and `add_1`). (Hint: use substitution to evaluate `add_1(zero)`.) Give a direct definition of the addition function `plus` (not in terms of repeated application of `add_1`).
+
+<Solution>
+
+**Solution.** The numeral *n* is the function that takes *f* and returns *f* applied *n* times. Substitution turns `add_1(zero)` into `f => x => f((x => x)(x))`, which is `f => x => f(x)`: that is `one`, and `two` is `f => x => f(f(x))`. To add, apply *f* `n` times to `x`, then `m` more times to the result: `plus(m, n)` is `f => x => m(f)(n(f)(x))`.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '2.4.3', label: 'Message passing' }, { id: '3.1.1', label: 'Objects with local state' }, { id: '3.3.1', label: 'Mutation is just assignment' }]} />

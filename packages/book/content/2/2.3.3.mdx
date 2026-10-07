@@ -1,0 +1,259 @@
+import { lookupProgram, setGrowthProgram, treeSetProgram, unbalancedTreeProgram, unorderedSetProgram } from '@sicp/lab';
+
+<Prose>
+
+We have built representations for rational numbers and for algebraic expressions. In one of them we could choose to simplify at construction time or at selection time, but otherwise representing them with lists was straightforward. Sets are different: there are several reasonable representations, and they differ significantly from one another.
+
+Informally, a set is a collection of distinct objects. To be more precise we use data abstraction and define "set" by the operations used on it: `union_set`, `intersection_set`, `is_element_of_set` and `adjoin_set`. `is_element_of_set` is a predicate that tells whether a given element is a member of a set. `adjoin_set` takes an object and a set and returns a set with the elements of the original and the adjoined object. `union_set` computes the set of elements in either argument, and `intersection_set` the set of elements in both. Any representation that implements these operations consistently with those meanings will do. (Formally: `is_element_of_set(x, adjoin_set(x, S))` is true for any set `S` and object `x`; `is_element_of_set(x, union_set(S, T))` equals `is_element_of_set(x, S) || is_element_of_set(x, T)`; and `is_element_of_set(x, null)` is false.)
+
+**Sets as unordered lists.** One way to represent a set is as a list of its elements in which no element appears more than once, with the empty set as the empty list. `is_element_of_set` is then like `member` of §2.3.1, except that it uses `equal` instead of `===`, so that the elements need not be numbers or strings. `adjoin_set` returns the set unchanged if the object is already in it, and otherwise uses `pair` to add it. `intersection_set` is recursive: given the intersection of `set2` with the tail of `set1`, we need only decide whether to include the head of `set1`, which depends on whether it is also in `set2`.
+
+</Prose>
+
+<Example index={0} file="unordered_sets.sicp" source={unorderedSetProgram} anim="pairs">
+
+Adjoining 4 to `list(1, 2, 3)` puts it in front; adjoining 3 to a set that already holds it returns the set unchanged. The intersection keeps the elements of `set1` that `set2` also holds, in `set1`'s order: `list(4, 3)`. The displayed `true` is `equal` at work: a list is an element of a set that holds an equal list.
+
+</Example>
+
+<Prose>
+
+In designing a representation, one issue we should be concerned with is efficiency. All the set operations use `is_element_of_set`, so its speed matters for the whole implementation. To check membership it may have to scan the entire set: when the object turns out not to be there, it takes *n* steps for a set of *n* elements. It grows as Θ(*n*), and so does `adjoin_set`. `intersection_set` checks membership in `set2` for every element of `set1`, so it grows as the product of the sizes, Θ(*n*²) for two sets of size *n*. The same is true of `union_set`.
+
+**Sets as ordered lists.** One way to speed up the set operations is to list the elements in increasing order. That needs a way to compare two objects; to keep the discussion simple, we consider only sets of numbers, compared with `<` and `>`. The set of 1, 3, 6 and 10 may then be represented only as `list(1, 3, 6, 10)`.
+
+Ordering helps `is_element_of_set` first: we can stop as soon as we reach an element larger than the one we are looking for.
+
+```js
+function is_element_of_set(x, set) {
+  return is_null(set)
+    ? false
+    : x === head(set)
+      ? true
+      : x < head(set)
+        ? false
+        : is_element_of_set(x, tail(set));
+}
+```
+
+In the worst case the item is the largest in the set and we save nothing. Searching for items of many sizes, though, we can expect to examine about half the set on average: about *n*/2 steps. That is still Θ(*n*), but a factor of 2 better on average.
+
+`intersection_set` gains far more. Compare the first elements, `x1` and `x2`, of the two sets. If they are equal, that gives an element of the intersection, and the rest of the intersection is the intersection of the two tails. If `x1` is less than `x2`, then `x1` cannot be anywhere in `set2`, since `x2` is the smallest element there; so the intersection is that of `set2` with the tail of `set1`. Symmetrically if `x2` is less than `x1`:
+
+```js
+function intersection_set(set1, set2) {
+  if (is_null(set1) || is_null(set2)) {
+    return null;
+  } else {
+    const x1 = head(set1);
+    const x2 = head(set2);
+    return x1 === x2
+      ? pair(x1, intersection_set(tail(set1), tail(set2)))
+      : x1 < x2
+        ? intersection_set(tail(set1), set2)
+        : intersection_set(set1, tail(set2));
+  }
+}
+```
+
+Each step removes the first element of `set1`, of `set2`, or of both, so the number of steps is at most the sum of the sizes rather than their product: Θ(*n*) instead of Θ(*n*²). The program below measures both versions, renamed so they can sit side by side, on the intersection of 1, …, *n* with itself.
+
+</Prose>
+
+<Example index={1} file="set_growth.sicp" source={setGrowthProgram} anim="growth">
+
+Each top-level call is one measurement of compound function calls, counting those of `enum_list`, `equal` and `length` too. Doubling *n* from 40 to 80 takes the unordered intersection from 1806 calls to 6806, nearly four times as many; the ordered one goes from 166 to 326, about twice. At *n* = 80 the ordered version is twenty times faster, and the gap keeps widening.
+
+</Example>
+
+<Prose>
+
+**Sets as binary trees.** We can do better still by arranging the elements in a tree. Each node holds one element of the set, the *entry* at that node, and a link to each of two other, possibly empty, nodes. The left link points to elements smaller than the entry, the right link to elements greater. The same set can be represented by a tree in many ways; all we require is that everything in a left subtree be smaller than the entry and everything in a right subtree larger.
+
+The advantage is this. To check whether *x* is in the set, compare it with the entry at the top. If *x* is smaller, only the left subtree need be searched; if larger, only the right. If the tree is *balanced*, each subtree is about half the size of the whole, so one step reduces a search of size *n* to one of size *n*/2, and the number of steps grows as Θ(log *n*), the halving we saw in fast exponentiation (§1.2.4) and half-interval search (§1.3.3).
+
+We represent a tree as a list of three items: the entry, the left subtree and the right subtree, with the empty list for a missing subtree. The functions `entry`, `left_branch`, `right_branch` and `make_tree` isolate this choice: we represent sets in terms of trees, and trees in terms of lists, a data abstraction built on a data abstraction. `is_element_of_set` follows the strategy just described. `adjoin_set` compares `x` with the entry to decide which branch to adjoin it to, and pieces the new branch together with the original entry and the other branch; adjoining to an empty tree makes a node with empty branches. Figure 2.16 of the book shows three trees for the set of 1, 3, 5, 7, 9 and 11; here they are built and drawn:
+
+</Prose>
+
+<Example index={2} file="tree_sets.sicp" source={treeSetProgram} anim="pairs">
+
+Each node is a list of three: entry, left branch, right branch, with a slash where a branch is empty. `tree_a` has 7 at the root, `tree_b` 3 and `tree_c` 5; all three hold the same six numbers, and every search on them agrees. Searching `tree_a` for 11 looks at 7, then 9, then 11: three entries instead of the six an unordered list might need.
+
+</Example>
+
+<Prose>
+
+The logarithmic search assumes the tree is balanced, and nothing guarantees that. Where a new element lands depends on how it compares with what is already there; adjoining elements in a random order tends to keep the tree balanced on average, but adjoining 1 through 7 in sequence produces the tree of figure 2.17, whose left subtrees are all empty. It has no advantage over an ordered list. One remedy is an operation that transforms any tree into a balanced tree with the same elements, run after every few `adjoin_set`s; exercise 2.64 builds one. Other remedies design new data structures, such as B-trees and red-black trees, for which searching and insertion both take Θ(log *n*) steps.
+
+</Prose>
+
+<Example index={3} file="unbalanced.sicp" source={unbalancedTreeProgram} anim="pairs">
+
+`unbalanced` is figure 2.17: every node hangs off the right branch of the one before, and its depth, displayed first, is 7. Adjoining the same seven numbers starting from the middle, 4, 2, 6, 1, 3, 5, 7, gives `balanced`, of depth 3. Same set, same `adjoin_set`; only the order of arrival differs.
+
+</Example>
+
+<Prose>
+
+**Sets and information retrieval.** The choice of representation can have a large effect on the performance of the programs that use the data, and the techniques of this section appear again and again in information retrieval. Consider a data base of many records, such as the personnel files of a company. Each record has a part that serves as its identifying *key*, an employee number, say, and a `key` selector retrieves it. The data base is a set of records, and `lookup` takes a key and a data base and returns the record with that key, or false if there is none. It is implemented almost exactly like `is_element_of_set`. With the records as an unordered list:
+
+</Prose>
+
+<Example index={4} file="lookup.sicp" source={lookupProgram} anim="pairs">
+
+No record has key 5, so the first lookup displays `false`. The second returns Alyssa's record, a list of key, name and salary. `personnel` is a list of three such lists, drawn as one row of pairs with a record hanging below each.
+
+</Example>
+
+<Prose>
+
+Information-retrieval systems in which records are "randomly accessed" are usually built on a tree-based method like the binary trees above. Data abstraction helps here: a designer can start with a quick and dirty representation such as unordered lists, test the rest of the system against it, and later replace it with something sophisticated. If the data base is accessed only through abstract selectors and constructors, the change does not touch the rest of the system.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-2/symbolicData.ts">
+
+The growth chart runs its program in the Laboratory worker with `inspect.processShape` on, which counts the compound applications made by each top-level call (`inspect/processShape.ts`). The test `chapter-2/symbolicData.test.ts` asserts all eight counts, from 156 to 6806 unordered and from 46 to 326 ordered. It also asserts that the three trees of figure 2.16 list as 1, 3, 5, 7, 9, 11 in order, that `unbalanced` has depth 7 and `balanced` depth 3, and both lookups.
+
+</UnderTheHood>
+
+<Exercises range="2.59 – 2.66" total={8}>
+<Exercise id="2.59">
+
+Implement the `union_set` operation for the unordered-list representation of sets.
+
+<Solution>
+
+**Solution.** Adjoin the elements of `set1` to `set2` one at a time: if `set1` is empty the union is `set2`, otherwise it is the union of the tail of `set1` with `adjoin_set(head(set1), set2)`. `adjoin_set` keeps out duplicates. Each adjoin scans `set2`, so this is Θ(*n*²), like intersection.
+
+</Solution>
+</Exercise>
+<Exercise id="2.60">
+
+We specified that a set would be a list with no duplicates. Now suppose we allow duplicates, so that the set of 1, 2 and 3 could be `list(2, 3, 2, 1, 3, 2, 2)`. Design `is_element_of_set`, `adjoin_set`, `union_set` and `intersection_set` for this representation. How does the efficiency of each compare with the non-duplicate version? Are there applications for which you would prefer this representation? The tests check the point of it: `adjoin_set` must not search the set, and `union_set` must not work through its arguments by calling itself.
+
+<Solution>
+
+**Solution.** `is_element_of_set` and `intersection_set` are unchanged. `adjoin_set` no longer needs to check: it is `pair(x, set)`, Θ(1) instead of Θ(*n*). `union_set` is `append(set1, set2)`, Θ(*n*) instead of Θ(*n*²). The price is that lists grow with every repeated element, so membership and intersection, Θ(*n*) and Θ(*n*²) in the length of the lists, become slower than with the same set kept without duplicates. The representation pays off when adjoins and unions are frequent and lookups rare, or when duplicates are rare anyway.
+
+</Solution>
+</Exercise>
+<Exercise id="2.61">
+
+Give an implementation of `adjoin_set` using the ordered representation. By analogy with `is_element_of_set`, show how to take advantage of the ordering to produce a function that requires on average about half as many steps as with the unordered representation.
+
+<Solution>
+
+**Solution.** Walk down the list while the elements are smaller than `x`, copying them. At the first element that is not smaller, stop: if it equals `x`, the set already has it and the rest can be returned as it is; otherwise `x` goes in front of it. An empty remainder means `x` is the largest, giving `list(x)`. On average the walk stops halfway, so the steps are about *n*/2, against the full scan the unordered version always makes to rule out a duplicate.
+
+</Solution>
+</Exercise>
+<Exercise id="2.62">
+
+Give a Θ(*n*) implementation of `union_set` for sets represented as ordered lists.
+
+<Solution>
+
+**Solution.** Merge, as `intersection_set` does: compare the first elements; if they are equal, keep one and advance both lists; otherwise keep the smaller and advance its list. When either list runs out, the rest of the other is the remainder of the union. Each step removes at least one element, so there are at most *n*₁ + *n*₂ steps. Building the union by adjoining elements one at a time would scan the growing result each time, which is Θ(*n*²) when the sets interleave.
+
+</Solution>
+</Exercise>
+<Exercise id="2.63">
+
+Each of the following two functions converts a binary tree to a list.
+
+```js
+function tree_to_list_1(tree) {
+  return is_null(tree)
+    ? null
+    : append(tree_to_list_1(left_branch(tree)),
+             pair(entry(tree),
+                  tree_to_list_1(right_branch(tree))));
+}
+
+function tree_to_list_2(tree) {
+  function copy_to_list(tree, result_list) {
+    return is_null(tree)
+      ? result_list
+      : copy_to_list(left_branch(tree),
+                     pair(entry(tree),
+                          copy_to_list(right_branch(tree), result_list)));
+  }
+  return copy_to_list(tree, null);
+}
+```
+
+(a) Do the two functions produce the same result for every tree? If not, how do the results differ? What lists do they produce for the trees of figure 2.16?
+
+(b) Do they have the same order of growth in the number of steps required to convert a balanced tree with *n* elements to a list? If not, which grows more slowly?
+
+Make (b) concrete by writing `append_calls(tree)`, the number of times `append` is applied, counting its own recursive applications, when `tree_to_list_1(tree)` is evaluated.
+
+<Solution>
+
+**Solution.** (a) Both produce the entries in order: everything in the left subtree, then the entry, then the right subtree. For all three trees of figure 2.16 that is `list(1, 3, 5, 7, 9, 11)`. (b) `tree_to_list_2` does a constant amount of work per node, one `pair`, so it is Θ(*n*). `tree_to_list_1` appends at every node, and `append` copies its first argument: one application per element of the left subtree's list, plus one for `null`. So `append_calls` is the sum over all nodes of the left subtree's size plus 1: 10 for `tree_a`, 8 for `tree_b`, 10 for `tree_c`. In a balanced tree each level of the tree adds up to about *n*/2 elements, over log₂ *n* levels; for 255 elements, 1024 applications, (*n* + 1)/2 · log₂(*n* + 1) exactly. `tree_to_list_1` is Θ(*n* log *n*), and `tree_to_list_2` grows more slowly.
+
+</Solution>
+</Exercise>
+<Exercise id="2.64">
+
+The following function `list_to_tree` converts an ordered list to a balanced binary tree. The helper `partial_tree` takes as arguments an integer *n* and a list of at least *n* elements, and constructs a balanced tree containing the first *n* elements of the list. The result it returns is a pair whose head is the constructed tree and whose tail is the list of elements not included in the tree.
+
+```js
+function list_to_tree(elements) {
+  return head(partial_tree(elements, length(elements)));
+}
+
+function partial_tree(elts, n) {
+  if (n === 0) {
+    return pair(null, elts);
+  } else {
+    const left_size = math_floor((n - 1) / 2);
+    const left_result = partial_tree(elts, left_size);
+    const left_tree = head(left_result);
+    const non_left_elts = tail(left_result);
+    const right_size = n - (left_size + 1);
+    const this_entry = head(non_left_elts);
+    const right_result = partial_tree(tail(non_left_elts), right_size);
+    const right_tree = head(right_result);
+    const remaining_elts = tail(right_result);
+    return pair(make_tree(this_entry, left_tree, right_tree),
+                remaining_elts);
+  }
+}
+```
+
+(a) Write a short paragraph explaining as clearly as you can how `partial_tree` works. Draw the tree produced by `list_to_tree` for the list `list(1, 3, 5, 7, 9, 11)`: write it out with `make_tree` as `drawn`.
+
+(b) What is the order of growth in the number of steps required by `list_to_tree` to convert a list of *n* elements? Answer with `partial_tree_calls(n)`, the number of times `partial_tree` is applied.
+
+<Solution>
+
+**Solution.** (a) To build a balanced tree of the first *n* elements, `partial_tree` sets aside one element for the root and splits the other *n* − 1 into a left half of ⌊(*n* − 1)/2⌋ and a right half of the rest. It builds the left subtree recursively from the front of the list; the first element that subtree did not use becomes the entry; then it builds the right subtree from the elements after that, and returns the tree with whatever is left over. Because the list is ordered and consumed from the front, everything in the left subtree is smaller than the entry and everything in the right larger. For the six elements the left half has two, so the root is 5, over a left subtree of 1 with 3 to its right and a right subtree of 9 between 7 and 11. (b) Each application with *n* > 0 does a constant amount of work and makes two more, on *n* − 1 elements between them, so `partial_tree_calls(n)` is 2*n* + 1, and `list_to_tree` is Θ(*n*).
+
+</Solution>
+</Exercise>
+<Exercise id="2.65">
+
+Use the results of exercises 2.63 and 2.64 to give Θ(*n*) implementations of `union_set` and `intersection_set` for sets implemented as (balanced) binary trees.
+
+<Solution>
+
+**Solution.** Convert both trees to ordered lists with `tree_to_list_2`, Θ(*n*); combine them with the Θ(*n*) ordered-list union of exercise 2.62 or the intersection of the text; and convert back with `list_to_tree`, Θ(*n*) again. Three linear passes are linear, and since `list_to_tree` builds the result, it comes out balanced: the union of two sets of 100 has depth 8, the least possible for 200 elements.
+
+</Solution>
+</Exercise>
+<Exercise id="2.66">
+
+Implement the `lookup` function for the case where the set of records is structured as a binary tree, ordered by the numerical values of the keys.
+
+<Solution>
+
+**Solution.** `lookup` is `is_element_of_set` for trees with the key in place of the element: compare the given key with the key of the entry's record, return the record if they match, and otherwise search the left or the right branch. An empty tree means no such record, so the answer is false. On a balanced tree of 1000 records it looks at no more than 10 entries.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['2.3.4', { id: '3.3.3', label: 'Representing tables' }, { id: '4.4.1', label: 'Deductive information retrieval' }]} />

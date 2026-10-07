@@ -1,0 +1,103 @@
+import { memberProgram, quotationProgram } from '@sicp/lab';
+
+<Prose>
+
+Every compound data object we have built so far was made, in the end, of numbers. This section extends what our programs can represent by letting them work with *strings* of characters as data.
+
+So far we have used strings only to display messages, through `display` and `error`. But a string is a value like any other, so it can go into a pair, and we can form compound data out of strings:
+
+```js
+list("a", "b", "c", "d")
+list(23, 45, 17)
+list(list("Jakob", 27), list("Lova", 9), list("Luisa", 24))
+```
+
+Quotation marks are what tell a string from a name. The expression `z` denotes the value of the name `z`, while `"z"` denotes a string of one character, the last letter of the English alphabet in lower case. The same letters mean different things with and without the marks:
+
+</Prose>
+
+<Example index={0} file="quotation.sicp" source={quotationProgram} anim="pairs">
+
+`values` holds what the names `a` and `b` stand for, the numbers 1 and 2. `strings` holds the one-letter strings themselves, and `mixed` has one of each. The diagrams show the strings in their quotation marks, as the interpreter prints them.
+
+</Example>
+
+<Prose>
+
+In §1.1.6 we introduced `===` and `!==` as primitive predicates on numbers. From now on we allow two strings as operands too: `===` is true exactly when the two strings are the same, character for character, and `!==` when they are not. (What "the same" means in a programming language is a deeper question than it looks; §3.1.3 returns to it.)
+
+With `===` we can write a useful function `member`. It takes an item, a string or a number, and a list. If the item is not in the list, `member` returns `null`. Otherwise it returns the sublist that begins with the item's first occurrence:
+
+</Prose>
+
+<Example index={1} file="member.sicp" source={memberProgram} anim="pairs">
+
+`"apple"` is not among the pear, the banana and the prune, so the first search prints `null`. The second returns `list("apple", "pear")`. That value is no copy: it is the very tail of `fruit` that starts at `"apple"`, the last two pairs of the first diagram. (The diagrams cannot show that the pairs are shared; each structure is drawn on its own.) The list library defines `member` this way too, so later programs can use it without declaring it.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-2/symbolicData.ts">
+
+Strings in the Laboratory are JavaScript strings, so `===` on two of them compares their characters (`evaluator/primitives.ts`). `list_to_string`, which `display_list` uses, prints them back in double quotation marks. The test `chapter-2/symbolicData.test.ts` asserts the three lists the first program prints, that `member` returns `null` and then `list("apple", "pear")`, and that `'"' === ""` is false.
+
+</UnderTheHood>
+
+<Exercises range="2.53 – 2.55" total={3}>
+<Exercise id="2.53">
+
+What is the result of evaluating each of the following expressions, in list notation? Write each as a string, as `display_list` would print it. Give the third in box notation as well.
+
+```js
+list("a", "b", "c")
+list(list("george"))
+tail(list(list("x1", "x2"), list("y1", "y2")))
+tail(head(list(list("x1", "x2"), list("y1", "y2"))))
+member("red", list("blue", "shoes", "yellow", "socks"))
+member("red", list("red", "shoes", "blue", "socks"))
+```
+
+<Solution>
+
+**Solution.** `list("a", "b", "c")` and `list(list("george"))` print as they are written. The tail of a two-element list is a one-element list, so the third is `list(list("y1", "y2"))`: a list whose only element is a list. In box notation that is `[["y1", ["y2", null]], null]`, where the outer pair's tail is `null`. The fourth takes the tail of the first sublist, `list("x2")`. `"red"` is not among the first four strings, so the fifth is `null`; it is the head of the sixth list, so `member` returns the whole list.
+
+</Solution>
+</Exercise>
+<Exercise id="2.54">
+
+Two lists are *equal* if they contain equal elements arranged in the same order. For example,
+
+```js
+equal(list("this", "is", "a", "list"), list("this", "is", "a", "list"))
+```
+
+is true, but
+
+```js
+equal(list("this", "is", "a", "list"), list("this", list("is", "a"), "list"))
+```
+
+is false. More precisely, `a` and `b` are `equal` if they are both strings or both numbers and they are `===`, or if they are both pairs such that `head(a)` is `equal` to `head(b)` and `tail(a)` is `equal` to `tail(b)`. Using this idea, implement `equal` as a function.
+
+<Solution>
+
+**Solution.** If `a` is a pair, `b` must be a pair too, with equal heads and equal tails, and the two recursive calls do the rest. Otherwise `a` is a number, a string or `null`, and `a === b` decides. That last case also covers a pair compared with a non-pair, since `===` between them is false. The recursion follows the structure of both arguments at once, the way `count_leaves` in §2.2.2 follows one.
+
+</Solution>
+</Exercise>
+<Exercise id="2.55">
+
+Within a string in double quotation marks, single ones can appear, and vice versa: `'say "your name" aloud'` and `"say 'your name' aloud"` are both valid strings, and they differ at positions 4 and 14, counting from 0. Depending on the font, two single quotation marks may be hard to tell from one double quotation mark. Can you spot which is which in the expression below, and work out its value? Give the value, and the number of characters in each of the two strings.
+
+```js
+'"' === ""
+```
+
+<Solution>
+
+**Solution.** On the left, single quotation marks enclose one double quotation mark: a string of one character. On the right, two double quotation marks enclose nothing: the empty string. A string of one character is not the same as the empty string, so the value is `false`.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['2.3.2', '2.3.3', { id: '3.1.3', label: 'Sameness and change' }, { id: '4.1.2', label: 'Programs as data' }]} />

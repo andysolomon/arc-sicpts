@@ -3,6 +3,7 @@ export { isDeclaration } from './syntax/ast.ts';
 export { SourceError, type ErrorPhase } from './syntax/errors.ts';
 export { tokenize, KEYWORDS, type Token, type TokenType } from './syntax/tokenize.ts';
 export { parse } from './syntax/parse.ts';
+export { toTaggedList } from './syntax/taggedList.ts';
 
 export {
   assign,
@@ -19,6 +20,7 @@ export {
   isClosure,
   isPair,
   isPrimitive,
+  MAX_TEXT,
   stringify,
   typeName,
   type Closure,
@@ -26,7 +28,7 @@ export {
   type Primitive,
   type Value,
 } from './evaluator/values.ts';
-export { createGlobalEnvironment } from './evaluator/primitives.ts';
+export { createGlobalEnvironment, type Segment } from './evaluator/primitives.ts';
 export {
   createFrameIds,
   DEFAULT_BUDGET,
@@ -57,6 +59,12 @@ export {
   type ProcessShapeSnapshot,
 } from './inspect/processShape.ts';
 export { createStepTracer, type StepEvent, type StepRecord } from './inspect/stepTrace.ts';
+export {
+  createCallLogTracer,
+  type CallLogOptions,
+  type CallLogTracer,
+  type WatchedCall,
+} from './inspect/callLog.ts';
 
 export type * from './worker/protocol.ts';
 export { isTerminal } from './worker/protocol.ts';
@@ -131,3 +139,25 @@ export {
   type HeapValue,
   type PairIds,
 } from './inspect/heap.ts';
+export * from './chapter-2/dataAbstraction.ts';
+export * from './chapter-2/sequences.ts';
+export * from './chapter-2/pictures.ts';
+export * from './chapter-2/symbolicData.ts';
+export * from './chapter-2/multipleRepresentations.ts';
+export * from './chapter-2/genericArithmetic.ts';
+export * from './chapter-2/symbolicAlgebra.ts';
+
+export { declaredNames, omit, pick } from './chapter-4/source.ts';
+export {
+  evaluatorCore,
+  evaluatorData,
+  evaluatorSetup,
+  evaluatorSyntax,
+  metacircularEvaluator,
+  metacircularPrelude,
+} from './chapter-4/metacircular.ts';
+export * from './chapter-4/metacircularPrograms.ts';
+export * from './chapter-4/analyze.ts';
+export * from './chapter-4/lazy.ts';
+export * from './chapter-4/amb.ts';
+export * from './chapter-4/query.ts';

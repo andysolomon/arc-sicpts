@@ -10,17 +10,27 @@ import type { SceneRegistry } from './chapter-3/registry.ts';
 import { BranchesScene } from './scenes/BranchesScene.tsx';
 import { CallsScene } from './scenes/CallsScene.tsx';
 import { CobwebScene } from './scenes/CobwebScene.tsx';
+import { ComplexPlaneScene } from './scenes/ComplexPlaneScene.tsx';
 import { EnvironmentScene } from './scenes/EnvironmentScene.tsx';
 import { GrowthScene } from './scenes/GrowthScene.tsx';
 import { HalfIntervalScene } from './scenes/HalfIntervalScene.tsx';
+import { HuffmanScene } from './scenes/HuffmanScene.tsx';
 import { IntegralScene } from './scenes/IntegralScene.tsx';
 import { NewtonScene } from './scenes/NewtonScene.tsx';
 import { NewtonsMethodScene } from './scenes/NewtonsMethodScene.tsx';
+import { OperationTableScene } from './scenes/OperationTableScene.tsx';
 import { OrderScene } from './scenes/OrderScene.tsx';
 import { SeriesScene } from './scenes/SeriesScene.tsx';
+import { PairsScene } from './scenes/PairsScene.tsx';
+import { PictureScene } from './scenes/PictureScene.tsx';
 import { SubstitutionScene } from './scenes/SubstitutionScene.tsx';
 import { TreeScene } from './scenes/TreeScene.tsx';
 import { useTrace } from './useTrace.ts';
+import { TaggedListScene } from './chapter4/TaggedListScene.tsx';
+import { EvalApplyScene } from './chapter4/EvalApplyScene.tsx';
+import { ThunkScene } from './chapter4/ThunkScene.tsx';
+import { AmbSearchScene } from './chapter4/AmbSearchScene.tsx';
+import { QueryScene } from './chapter4/QueryScene.tsx';
 
 /**
  * The animations a section can place under an editor. Each one is drawn from
@@ -60,6 +70,27 @@ export type AnimKind =
   | 'fixed-point'
   /** Tangent lines on any g, as `newtons_method` runs (§1.3.4). */
   | 'newtons-method'
+  /** Box-and-pointer diagrams of every structure the program names, and of its value (§2.1, §2.2). */
+  | 'pairs'
+  /** The lines a painter draws, revealed in the order it draws them (§2.2.4). */
+  | 'picture'
+  /** Every complex number the program names, as an arrow in the plane, read through its own selectors (§2.4). */
+  | 'complex-plane'
+  /** The operation-and-type table, filled by each put and lit by each get (§2.4.3). */
+  | 'operation-table'
+  /** Huffman code trees with 0 and 1 on their branches, and the path of each decoded symbol (§2.3.4). */
+  | 'huffman'
+
+  /** The tagged lists `parse` returns for the program, as a tree, with the syntax predicate that recognizes each component (§4.1.2). */
+  | 'tagged-list'
+  /** The `evaluate`–`apply` cycle of the metacircular evaluator, from its calls (§4.1.1). */
+  | 'eval-apply'
+  /** Thunks created, forced and memoized by the lazy evaluator (§4.2.2). */
+  | 'thunks'
+  /** The choices `amb` makes and the backtracking a failed `require` causes, as a search tree (§4.3). */
+  | 'amb-search'
+  /** Frames flowing through a query: patterns matched against assertions, rules unified (§4.4). */
+  | 'query-frames'
   /** The numbers the program displays, plotted as series (§3.1.2, §3.5.3). */
   | 'series'
   /** Chapter 3's own scenes, registered per section in `chapter-3/`. */
@@ -91,6 +122,16 @@ export interface AnimationProps {
 
 export function Animation({ kind, source, stepIndex, prelude }: AnimationProps): ReactNode {
   switch (kind) {
+    case 'tagged-list':
+      return <TaggedListScene source={source} prelude={prelude} />;
+    case 'eval-apply':
+      return <EvalApplyScene source={source} prelude={prelude} />;
+    case 'thunks':
+      return <ThunkScene source={source} prelude={prelude} />;
+    case 'amb-search':
+      return <AmbSearchScene source={source} prelude={prelude} />;
+    case 'query-frames':
+      return <QueryScene source={source} prelude={prelude} />;
     case 'reduce':
       return <SubstitutionScene source={source} title="Collapsing a combination" />;
     case 'order':
@@ -101,6 +142,10 @@ export function Animation({ kind, source, stepIndex, prelude }: AnimationProps):
       return <GrowthScene source={source} />;
     case 'series':
       return <Series source={source} prelude={prelude} />;
+    case 'complex-plane':
+      return <ComplexPlaneScene source={source} prelude={prelude} />;
+    case 'operation-table':
+      return <OperationTableScene source={source} prelude={prelude} />;
     case 'substitution+frames':
       return (
         <div className="flex flex-col gap-4">
@@ -122,8 +167,13 @@ function Series({ source, prelude }: { source: string; prelude: string | undefin
   return <SeriesScene trace={trace} />;
 }
 
+type Chapter4Kind = 'tagged-list' | 'eval-apply' | 'thunks' | 'amb-search' | 'query-frames';
+
 interface TracedProps {
-  kind: Exclude<AnimKind, 'reduce' | 'order' | 'process' | 'substitution+frames' | 'growth' | 'series' | Chapter3Kind>;
+  kind: Exclude<
+    AnimKind,
+    'reduce' | 'order' | 'process' | 'substitution+frames' | 'growth' | 'complex-plane' | 'operation-table' | 'series' | Chapter3Kind | Chapter4Kind
+  >;
   source: string;
   stepIndex?: number | undefined;
   title?: string;
@@ -131,11 +181,31 @@ interface TracedProps {
 }
 
 /** Scenes that follow a method through many calls need a longer log than the default. */
-const LONG_TRACE: ReadonlySet<TracedProps['kind']> = new Set(['tree-recursion', 'integral', 'half-interval', 'fixed-point', 'newtons-method']);
+const RECORDS: Partial<Record<TracedProps['kind'], number>> = {
+  'tree-recursion': 4000,
+  integral: 4000,
+  'half-interval': 4000,
+  'fixed-point': 4000,
+  'newtons-method': 4000,
+  // The structures a program names can be declared after thousands of steps.
+  pairs: 20_000,
+  huffman: 20_000,
+  // The picture comes with the trace, not from its records.
+  picture: 1,
+};
+
+/** Scenes that read only what the program built, not each step, can trace a longer run. */
+const BUDGET: Partial<Record<TracedProps['kind'], number>> = { pairs: 200_000, picture: 1_000_000, huffman: 200_000 };
 
 /** Scenes that need the evaluator's trace of the current text. */
 function Traced({ kind, source, stepIndex, title, prelude }: TracedProps) {
-  const { trace } = useTrace(source, { ...(LONG_TRACE.has(kind) && { maxRecords: 4000 }), prelude });
+  const maxRecords = RECORDS[kind];
+  const budget = BUDGET[kind];
+  const { trace } = useTrace(source, {
+    ...(maxRecords !== undefined && { maxRecords }),
+    ...(budget !== undefined && { budget }),
+    prelude,
+  });
   const synced = stepIndex !== undefined ? { stepIndex } : {};
   switch (kind) {
     case 'tree':
@@ -160,5 +230,11 @@ function Traced({ kind, source, stepIndex, title, prelude }: TracedProps) {
       return <CobwebScene source={source} trace={trace} />;
     case 'newtons-method':
       return <NewtonsMethodScene source={source} trace={trace} />;
+    case 'pairs':
+      return <PairsScene trace={trace} {...(title !== undefined && { title })} />;
+    case 'picture':
+      return <PictureScene trace={trace} {...(title !== undefined && { title })} />;
+    case 'huffman':
+      return <HuffmanScene trace={trace} {...(title !== undefined && { title })} />;
   }
 }

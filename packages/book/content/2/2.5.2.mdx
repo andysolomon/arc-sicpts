@@ -1,0 +1,156 @@
+import { coercionProgram, crossTypeProgram, genericArithmeticDefinitions } from '@sicp/lab';
+
+<Prose>
+
+We now have a unified arithmetic system that encompasses ordinary numbers, complex numbers, rational numbers, and any other type of number we might decide to invent. But we have ignored an important issue. The operations so far treat the different types as completely independent: there are separate packages for adding, say, two ordinary numbers or two complex numbers. We have not yet considered that it is meaningful to define operations that cross the type boundaries, such as the addition of a complex number to an ordinary number. We went to great pains to put barriers between the parts of our programs so that they can be developed and understood separately. We would like to introduce cross-type operations in a carefully controlled way, without seriously violating those module boundaries.
+
+One way is to design a different function for each combination of types for which the operation is valid. We could extend the complex package with a function that adds a complex number to an ordinary number, and install it under the types `list("complex", "javascript_number")`.
+
+</Prose>
+
+<Example index={0} file="cross_type.sicp" source={crossTypeProgram} prelude={genericArithmeticDefinitions} anim="pairs">
+
+The prelude is the whole system of §2.5.1, every package installed. The new method receives `z` with its `"complex"` tag already stripped and `x` as a bare number, and returns a complex number of its own making: 3 + 4*i* plus 5 is 8 + 4*i*. Swap the arguments of `add` and the call fails: the table has nothing under `list("javascript_number", "complex")`, so an almost identical second function would be needed for that order.
+
+</Example>
+
+<Prose>
+
+This technique works, but it is cumbersome. The cost of introducing a new type is then not just the construction of its package but also the construction and installation of the functions that implement the cross-type operations, which can easily be much more code than the operations on the type itself. It also undermines our ability to combine separate packages additively, or at least to limit the extent to which the implementors of one package must take account of the others. Handling mixed operations on complex and ordinary numbers seems a reasonable responsibility for the complex package. Combining rational and complex numbers, however, might be done by the complex package, by the rational package, or by some third package that uses operations extracted from both. Formulating coherent policies on the division of responsibility among packages can be an overwhelming task in a system with many packages and many cross-type operations.
+
+## Coercion
+
+In the general situation of completely unrelated operations acting on completely unrelated types, explicit cross-type operations, cumbersome as they are, are the best one can hope for. Fortunately, we can usually do better by taking advantage of additional structure latent in the type system. Often the different types are not completely independent, and objects of one type may be viewed as being of another. This is called *coercion*. If we are asked to combine an ordinary number with a complex number, we can view the ordinary number as a complex number whose imaginary part is zero. That turns the problem into combining two complex numbers, which the complex package already does.
+
+In general, we implement the idea with coercion functions that transform an object of one type into an equivalent object of another. `javascript_number_to_complex` turns an ordinary number into the complex number with that real part and zero imaginary part. Coercion functions go in a special coercion table, indexed under the names of the two types, with `put_coercion` and `get_coercion`. Some slots stay empty, since it is not generally possible to coerce any object of each type into every other type: there is no way to turn an arbitrary complex number into an ordinary number, so there is no `complex_to_javascript_number`.
+
+With the coercion table set up, coercion can be handled uniformly by changing `apply_generic`. When asked to apply an operation, it first checks, as before, whether the operation is defined for the arguments' types, and dispatches if so. Otherwise it tries coercion. For simplicity we consider only two arguments (Exercise 2.82 generalizes). If the first argument's type can be coerced to the second's, it coerces the first argument and tries again. Otherwise it tries the other way round. If neither type can be coerced to the other, it gives up.
+
+</Prose>
+
+<Example index={1} file="coercion.sicp" source={coercionProgram} prelude={genericArithmeticDefinitions} anim="pairs">
+
+As before, the prelude is the system of §2.5.1. The program declares the coercion table, as Source has none, and a new `apply_generic`. The system's own `add` still calls the old `apply_generic`, so `add` is declared again to call the new one. The first attempt finds no method for `list("javascript_number", "complex")`; `get_coercion` finds `javascript_number_to_complex`, and the second attempt adds two complex numbers. 5 + (3 + 4*i*) is 8 + 4*i*, now in either order.
+
+</Example>
+
+<Prose>
+
+This scheme has many advantages over explicit cross-type operations. We still need coercion functions to relate the types, possibly *n*² of them for a system with *n* types, but only one for each pair of types rather than one for each pair of types *and each generic operation*. What we are counting on is that the appropriate transformation between types depends only on the types themselves, not on the operation to be applied.
+
+On the other hand, there are applications for which the scheme is not general enough. Even when neither of the objects to be combined can be converted to the type of the other, it may still be possible to perform the operation by converting both to a third type. To deal with such complexity and still keep programs modular, we usually have to build systems that use still further structure in the relations among types, as we discuss next.
+
+## Hierarchies of types
+
+The coercion scheme relied on natural relations between pairs of types. Often there is more "global" structure. Suppose we are building a generic arithmetic system for integers, rational numbers, real numbers and complex numbers. It is natural to regard an integer as a special kind of rational number, which is in turn a special kind of real number, which is in turn a special kind of complex number. What we have is a *hierarchy of types*, in which integers are a *subtype* of rational numbers (any operation that can be applied to a rational number can automatically be applied to an integer), and rational numbers form a *supertype* of integers. This hierarchy is of a very simple kind, in which each type has at most one supertype and at most one subtype. Such a structure is called a *tower*:
+
+```
+complex
+   ↑
+  real
+   ↑
+rational
+   ↑
+integer
+```
+
+With a tower, adding a new type is much simpler: we need only specify how the new type is embedded in the next supertype above it, and how it is the supertype of the type below it. To add an integer to a complex number we need not define `integer_to_complex`. We define how an integer becomes a rational number, how a rational becomes a real, and how a real becomes a complex number, and let the system carry the integer up through these steps before adding the two complex numbers.
+
+We can redesign `apply_generic` this way. For each type we supply a `raise` function that "raises" objects of that type one level in the tower. When asked to operate on objects of different types, the system successively raises the lower ones until all are at the same level (Exercises 2.83 and 2.84).
+
+Another advantage of a tower is that every type easily "inherits" all operations defined on a supertype. If we supply no special function for the real part of an integer, `real_part` should still be defined for integers, since integers are a subtype of complex numbers. In a tower, `apply_generic` can arrange this uniformly: if the operation is not defined for the given type, raise the object to its supertype and try again, crawling up the tower until the operation can be performed or the top is reached.
+
+Yet another advantage is a simple way to "lower" an object to its simplest representation. If we add 2 + 3*i* to 4 − 3*i*, it would be nice to get the integer 6 rather than the complex number 6 + 0*i*. Exercise 2.85 implements such lowering. The trick is a general way to tell objects that can be lowered, such as 6 + 0*i*, from those that cannot, such as 6 + 2*i*.
+
+## Inadequacies of hierarchies
+
+If the types in a system can be arranged naturally in a tower, generic operations on mixed types become much simpler. Unfortunately, this is usually not the case. Consider the types of geometric figures. A *polygon* has the subtypes *triangle* and *quadrilateral*; a triangle has the subtypes *isosceles triangle* and *right triangle*; and an *isosceles right triangle* is both. So a type may have more than one subtype, and, more troublesome, more than one supertype: an isosceles right triangle may be regarded as an isosceles triangle or as a right triangle. With several supertypes there is no unique way to "raise" a type, and finding the "correct" supertype in which to apply an operation may mean searching the whole type network from within a function such as `apply_generic`. Since a type generally has several subtypes too, coercing a value "down" the hierarchy has the same problem. Dealing with large numbers of interrelated types while still preserving modularity in the design of large systems is very difficult, and remains an area of research.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-2/genericArithmetic.ts">
+
+The coercion table is a second list, like the operation table, keyed by two type names (`coercionTableDefinitions`), and the new `apply_generic` is `applyGenericWithCoercion`. Because a prelude's functions see the prelude's own names, a program that redeclares `apply_generic` changes only the operations it declares after it; the exercises use the same arrangement. The test `chapter-2/genericArithmetic.test.ts` asserts that the cross-type method gives `["complex", ["rectangular", [8, 4]]]` and that the swapped call fails with "no method", that with coercion both orders give 8 + 4*i*, that the program's `apply_generic` runs exactly twice for `add(make_javascript_number(5), z)`, and that a rational and a complex number, with no coercion between them, still fail.
+
+</UnderTheHood>
+
+<Exercises range="2.81 – 2.86" total={6}>
+<Exercise id="2.81">
+
+Louis Reasoner has noticed that `apply_generic` may try to coerce the arguments to each other's type even if they already have the same type. Therefore, he reasons, we need to put functions in the coercion table to "coerce" arguments of each type to their own type. In addition to `javascript_number_to_complex`, he would do:
+
+```js
+function javascript_number_to_javascript_number(n) { return n; }
+
+function complex_to_complex(n) { return n; }
+
+put_coercion("javascript_number", "javascript_number",
+             javascript_number_to_javascript_number);
+put_coercion("complex", "complex", complex_to_complex);
+```
+
+1. With Louis's coercion functions installed, what happens if `apply_generic` is called with two arguments of type `"complex"` or two of type `"javascript_number"` for an operation that is not found in the table for those types? For example, suppose we have a generic exponentiation `exp(x, y)` that calls `apply_generic("exp", list(x, y))`, and have put a method for exponentiation, using `math_pow`, in the JavaScript-number package but not in any other package. What happens if we call `exp` with two complex numbers? Set `exp_on_complex` to your answer.
+2. Is Louis correct that something had to be done about coercion with arguments of the same type, or does `apply_generic` work correctly as is? Set `louis_is_right`.
+3. Modify `apply_generic` so that it doesn't try coercion if the two arguments have the same type.
+
+The prelude installs Louis's coercions, so the starter's `apply_generic` shows you the answer to the first question if you call `exp` on two complex numbers.
+
+<Solution>
+
+**Solution.** With Louis's coercions, `exp` on two complex numbers finds no method, finds `complex_to_complex`, "coerces" the first argument to the type it already has, and calls `apply_generic` again with the same operation and the same types. That finds no method either, and so on forever: the program loops. Without his coercions, `get_coercion("complex", "complex")` is undefined both ways and `apply_generic` reports that there is no method, which is the correct answer, so Louis is wrong: the original works as is, if wastefully, since it looks for coercions that cannot help. The fix compares the two types before looking in the coercion table, and signals the error at once when they are equal. Mixed types are coerced as before: `exp(z, 3)` coerces 3 to complex and then fails cleanly on two complex numbers.
+
+</Solution>
+</Exercise>
+<Exercise id="2.82">
+
+Show how to generalize `apply_generic` to handle coercion in the general case of multiple arguments. One strategy is to attempt to coerce all the arguments to the type of the first argument, then to the type of the second argument, and so on. Give an example of a situation where this strategy (and likewise the two-argument version given above) is not sufficiently general. Hint: consider the case where there are some suitable mixed-type operations present in the table that will not be tried. In the starter, the table has an `"add3"` method for three complex numbers only; say which of the three calls listed there your strategy fails on.
+
+<Solution>
+
+**Solution.** `coerce_all(args, target)` coerces every argument to `target`, leaving arguments already of that type alone, and returns `undefined` if any argument cannot be coerced. `apply_generic` tries the original types first, then each argument's type in turn as the target, and looks the operation up under the coerced types. The strategy only ever tries types that some argument already has. `add3(1, make_rational(1, 2), 3)` mixes ordinary and rational numbers, both of which coerce to complex, and the only method is for complex numbers; but no argument is complex, so the call fails (call 3). The same blindness skips mixed-type methods: a method for `list("rational", "complex")` is never tried for an ordinary and a complex number, since coercing everything to one type never produces a mixed list.
+
+</Solution>
+</Exercise>
+<Exercise id="2.83">
+
+Suppose you are designing a generic arithmetic system for the tower of types integer, rational, real, complex. For each type (except complex), design a function that raises objects of that type one level in the tower. Show how to install a generic `raise` operation that will work for each type (except complex).
+
+<Solution>
+
+**Solution.** An integer *n* becomes the rational *n*/1, a rational *n*/*d* becomes the real number *n* / *d*, and a real *x* becomes the complex number *x* + 0*i*. Each function is installed as `"raise"` under the one-element type list of its type, and `raise(x)` is `apply_generic("raise", list(x))`. With nothing installed for `"complex"`, raising a complex number is an error, as it should be. Inside the rational package the raising function would use `numer` and `denom`; installed from outside, it has to reach into the pair.
+
+</Solution>
+</Exercise>
+<Exercise id="2.84">
+
+Using the `raise` operation of Exercise 2.83, modify `apply_generic` so that it coerces its arguments to have the same type by the method of successive raising, as discussed in this section. You will need to devise a way to test which of two types is higher in the tower. Do this in a manner that is "compatible" with the rest of the system and will not lead to problems in adding new levels to the tower.
+
+<Solution>
+
+**Solution.** The level of an object is the number of times it can be raised before there is no `"raise"` method for its type: 0 for complex, 3 for an integer. Comparing levels needs no list of the tower's types, so adding a new level only means installing its `raise`. When no method fits two arguments of different types, `apply_generic` raises the one with the greater level, the lower in the tower, by one step and tries again; an integer and a complex number take three rounds. Arguments of the same type are never raised, which avoids the loop of Exercise 2.81.
+
+</Solution>
+</Exercise>
+<Exercise id="2.85">
+
+This section mentioned a method for "simplifying" a data object by lowering it in the tower of types as far as possible. Design a function `drop` that accomplishes this for the tower described in Exercise 2.83. The key is to decide, in some general way, whether an object can be lowered. For example, the complex number 1.5 + 0*i* can be lowered as far as `"real"`, the complex number 1 + 0*i* can be lowered as far as `"integer"`, and the complex number 2 + 3*i* cannot be lowered at all. Here is a plan for determining whether an object can be lowered: begin by defining a generic operation `project` that "pushes" an object down in the tower. For example, projecting a complex number would involve throwing away the imaginary part. Then a number can be dropped if, when we `project` it and `raise` the result back to the type we started with, we end up with something equal to what we started with. Show how to implement this idea in detail, by writing a `drop` function that drops an object as far as possible. You will need to design the various projection operations and install `project` as a generic operation in the system. A real number can be projected to an integer with `math_round`, which returns the closest integer to its argument. You will also need a generic equality predicate, such as the one of Exercise 2.79. Finally, use `drop` to rewrite `apply_generic` from Exercise 2.84 so that it "simplifies" its answers.
+
+<Solution>
+
+**Solution.** A complex number projects to the real number of its real part, a real *x* to the rational `math_round(x)`/1, and a rational *n*/*d* to the integer nearest *n* / *d*. `drop(x)` stops when the type of `x` has no `project`; otherwise it projects, raises the result back, and continues from the projection only if `is_equal` says nothing was lost. In `apply_generic`, only the results of `add`, `sub`, `mul` and `div` are dropped. Dropping every result goes wrong: `raise` would be undone as soon as it was done, `project` would drop further than one level, and `is_equal` returns a boolean, which has no type tag at all. With that, (2 + 3*i*) + (4 − 3*i*) is the integer 6.
+
+</Solution>
+</Exercise>
+<Exercise id="2.86">
+
+Suppose we want to handle complex numbers whose real parts, imaginary parts, magnitudes and angles can be either ordinary numbers, rational numbers, or other numbers we might wish to add to the system. Describe and implement the changes to the system needed to accommodate this. You will have to define operations such as `sine` and `cosine` that are generic over ordinary numbers and rational numbers.
+
+<Solution>
+
+**Solution.** Every operation the complex packages apply to parts must become generic: `+` becomes `add`, `*` becomes `mul`, `square` becomes `mul(x, x)`, and `math_sqrt`, `math_atan2`, `math_sin` and `math_cos` become new generic operations `square_root`, `arctan`, `sine` and `cosine`. These are installed for ordinary numbers as the primitives themselves and for rational numbers by converting to an ordinary number first. Mixed parts, such as a rational real part and an ordinary imaginary part, rely on coercion from rational to ordinary numbers in `apply_generic`. Then ½ + *i* plus ⅓ + 2*i* is ⅚ + 3*i* with a rational real part, and the magnitude of 3/1 + 4*i* is 5.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '2.5.3', label: 'Polynomials with generic coefficients' }, { id: '3.3.3', label: 'Tables, built properly' }, { id: '4.1.2', label: 'Dispatch on the type of an expression' }]} />

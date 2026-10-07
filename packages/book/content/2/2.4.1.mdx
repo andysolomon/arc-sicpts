@@ -1,0 +1,78 @@
+import { polarProgram, rectangularProgram } from '@sicp/lab';
+
+<Prose>
+
+Data abstraction, as §2.1 practised it, separates the use of a data object from its representation. The rational-number package had one abstraction barrier, the constructor and selectors `make_rat`, `numer` and `denom`, and everything above it was written without knowing that a rational number is a pair. But it may not always make sense to speak of *the* underlying representation of a data object. There might be more than one useful representation, and we might want a system that copes with several at once.
+
+Large programs are written by many people over long periods, under requirements that change. Not everyone can agree in advance on how data will be represented, so besides barriers that isolate representation from use, we need barriers that isolate different design choices from each other and let them coexist in one program. And since large programs are often assembled from modules designed in isolation, we need conventions that let modules be incorporated *additively*, without being redesigned or reimplemented.
+
+This section builds *generic functions*, functions that operate on data represented in more than one way. The main technique is to give data objects *type tags*, explicit information about how they are to be processed, and then to organise the dispatch on those tags as a table: *data-directed programming*. The running example is complex arithmetic, small and a little unrealistic, but clear. Section 2.5 uses the same ideas to build a generic arithmetic package that handles every kind of number.
+
+Complex numbers, like rational numbers, are naturally represented as ordered pairs, and there are two obvious ways to do it. Think of the complex numbers as a plane with a real axis and an imaginary axis. The number *z* = *x* + *iy*, where *i*² = −1, is the point whose real coordinate is *x* and whose imaginary coordinate is *y*. In this *rectangular form*, adding complex numbers is adding coordinates:
+
+- real part of (*z*₁ + *z*₂) = real part of *z*₁ + real part of *z*₂
+- imaginary part of (*z*₁ + *z*₂) = imaginary part of *z*₁ + imaginary part of *z*₂
+
+Multiplying is more natural in *polar form*, as a magnitude *r* (the distance from the origin) and an angle *A* (measured from the real axis). The product of two complex numbers is the first stretched by the length of the second and rotated through its angle:
+
+- magnitude of (*z*₁ · *z*₂) = magnitude of *z*₁ · magnitude of *z*₂
+- angle of (*z*₁ · *z*₂) = angle of *z*₁ + angle of *z*₂
+
+So there are two representations, each suited to different operations. Yet someone writing a program that uses complex numbers should have all the operations available whichever representation the computer uses: it is often useful to find the magnitude of a number given by rectangular coordinates, or the real part of one given in polar form.
+
+We follow the strategy of §2.1.1 and assume four selectors, `real_part`, `imag_part`, `magnitude` and `angle`, and two constructors: `make_from_real_imag` returns a complex number with given real and imaginary parts, and `make_from_mag_ang` one with given magnitude and angle. For any complex number `z`, both `make_from_real_imag(real_part(z), imag_part(z))` and `make_from_mag_ang(magnitude(z), angle(z))` produce numbers equal to `z`. With these we can write the arithmetic exactly as the formulas say, adding and subtracting in terms of real and imaginary parts, multiplying and dividing in terms of magnitudes and angles:
+
+```js
+function add_complex(z1, z2) {
+  return make_from_real_imag(real_part(z1) + real_part(z2),
+                             imag_part(z1) + imag_part(z2));
+}
+
+function mul_complex(z1, z2) {
+  return make_from_mag_ang(magnitude(z1) * magnitude(z2),
+                           angle(z1) + angle(z2));
+}
+```
+
+`sub_complex` and `div_complex` are the same with `-` and `/`. To complete the package we must choose a representation. Imagine two programmers, Ben Bitdiddle and Alyssa P. Hacker, designing representations independently. Ben chooses rectangular form. Selecting the real and imaginary parts is then immediate, and so is constructing a number from them. For the magnitude and angle, or to construct a number from them, he uses the trigonometric relations
+
+- *x* = *r* cos *A* and *y* = *r* sin *A*,
+- *r* = √(*x*² + *y*²) and *A* = arctan(*y*, *x*),
+
+where arctan(*y*, *x*) is the angle whose tangent is *y* / *x*, computed by `math_atan2`, the signs of the two arguments telling it which quadrant the angle is in.
+
+</Prose>
+
+<Example index={0} file="rectangular.sicp" source={rectangularProgram} anim="complex-plane">
+
+Figure 2.20, drawn from the program: each complex number it names is an arrow from the origin, with its real and imaginary parts dashed and its angle marked. `sum` closes the parallelogram on `z1` and `z2`; `product` has the angles of `z1` and `z2` laid end to end. The picture is read through `real_part` and `imag_part`, so it shows the numbers, not the pairs; the caption says how each is stored. Ben's product is `pair(2.0000000000000004, 4)`: multiplication went through magnitudes and angles and back, and the trigonometry rounded.
+
+</Example>
+
+<Prose>
+
+Alyssa chooses polar form. For her, selecting the magnitude and angle is immediate, and she uses the same trigonometric relations to obtain the real and imaginary parts.
+
+</Prose>
+
+<Example index={1} file="polar.sicp" source={polarProgram} anim="complex-plane">
+
+The arithmetic and the four declarations at the bottom are character for character those of Ben's program, and the picture is the same. Only the stored pairs differ: `z1`, 3 + *i*, is now `pair(3.1622776601683795, 0.3217505543966422)`, its magnitude and angle, and this time `product` is stored exactly as it was computed, a magnitude and an angle, while `sum` had to be converted from its real and imaginary parts.
+
+</Example>
+
+<Prose>
+
+The discipline of data abstraction ensures that the same `add_complex`, `sub_complex`, `mul_complex` and `div_complex` work with Ben's representation and with Alyssa's. In real systems rectangular form is preferable most of the time, because converting between the two forms accumulates roundoff, and that is what makes this example unrealistic. It is still a clear illustration of a system with generic operations, and a good introduction to the more substantial systems later in the chapter.
+
+But a program can have only one `real_part`. Whichever representation is loaded last wins, and every complex number in the program had better be in that form. Section 2.4.2 lets both representations live in one system.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-2/multipleRepresentations.ts">
+
+The plane is drawn by `anim/scenes/ComplexPlaneScene.tsx`. It cannot tell from `pair(3, 1)` whether that is Ben's 3 + *i* or Alyssa's number of magnitude 3, so it asks the program: it appends a probe that applies the program's own `real_part` and `imag_part` to each top-level constant, and draws what they answer. The test `chapter-2/multipleRepresentations.test.ts` asserts that Ben stores the sum of 3 + *i* and 1 + *i* as `[4, 2]` and their product as `[2.0000000000000004, 4]`, that Alyssa stores the product as `[4.47213595499958, 1.1071487177940904]`, and that her selectors read back 4, 2, 2.0000000000000004 and 4 for the parts of the sum and the product.
+
+</UnderTheHood>
+
+<Enables items={[{ id: '2.4.2', label: 'Both representations at once' }, { id: '2.5.1', label: 'Complex numbers in the generic arithmetic' }]} />

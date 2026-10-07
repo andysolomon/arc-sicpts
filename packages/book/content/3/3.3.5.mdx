@@ -221,6 +221,24 @@ Ben Bitdiddle tells Louis that the trouble can be avoided by declaring a squarer
 
 </Solution>
 </Exercise>
+<Exercise id="3.36">
+
+Suppose we evaluate the following statements in the global environment:
+
+```js
+const a = make_connector();
+const b = make_connector();
+set_value(a, 10, "user");
+```
+
+At some point during the evaluation of `set_value`, the expression `for_each_except(setter, inform_about_value, constraints)` from the connector's local function is evaluated. Work out the environment in which it is evaluated, as an environment diagram would show it, and answer the questions in the editor.
+
+<Solution>
+
+**Solution.** `set_value(a, 10, "user")` applies the function `a("set_value")` returns, `set_my_value`, so a new frame binds `newval` to 10 and `setter` to `"user"`. That frame extends the frame in which `set_my_value` was declared: the frames of the call `make_connector()` that made `a`, which hold `value`, `informant` and `constraints`. The two assignments have already run, so `value` is 10 and `informant` is `"user"`, while `constraints` is still the empty list, `null`, since nothing was connected to `a`; `for_each_except` therefore applies `inform_about_value` to nothing. `b` was made by a separate call of `make_connector`, so its frames are not in this environment at all: the two connectors share only the program frame and what is outside it.
+
+</Solution>
+</Exercise>
 <Exercise id="3.37">
 
 The converter is clumsy to write in the style of a network. With an *expression-oriented* style it can be written as

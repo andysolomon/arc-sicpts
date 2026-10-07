@@ -313,12 +313,16 @@ Explain why the deadlock-avoidance method described above works: number the acco
 
 </Solution>
 </Exercise>
+<Exercise id="3.49">
+
+Give a scenario where the deadlock-avoidance mechanism of Exercise 3.48 does not work. Hint: in the exchange problem, each thread knows in advance which accounts it will need. Consider a situation where a thread must get access to some shared resources before it can know which additional shared resources it will require. The editor describes one such scenario; answer its questions.
+
+<Solution>
+
+**Solution.** Here a thread must hold an account before it may read whom that account points to, so it learns its second account only after taking the first. Thread A holds account 2 and then discovers it needs account 1; numbering would have it take 1 first, but it could not have known that, and letting go of 2 to start again in order would let the partner change in between, so the rule cannot be followed. Meanwhile thread B holds account 1 and discovers it needs 2. Each waits for the account the other holds: a cycle, and a deadlock. Ordering works only when every thread can name all its resources before it takes any.
+
+</Solution>
+</Exercise>
 </Exercises>
-
-<Prose>
-
-Exercise 3.49 asks for a situation where this method does not help: one in which a thread must use some shared resource before it can find out which others it needs (for example, it must read an account to learn which other account to update), so it cannot take them in a fixed order. It is a question for discussion, not for a check, and is omitted from the list above.
-
-</Prose>
 
 <Enables items={[{ id: '3.5.5', label: 'Modularity, objects and time' }, { id: '3.5.1', label: 'Streams as delayed lists' }]} />

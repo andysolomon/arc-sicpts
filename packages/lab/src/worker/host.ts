@@ -1,7 +1,9 @@
 import { prepare, type Session } from '../evaluator/evaluate.ts';
 import { DEFAULT_BUDGET, type Machine } from '../evaluator/machine.ts';
+import type { Segment } from '../evaluator/primitives.ts';
 import { stringify } from '../evaluator/values.ts';
 import { createHeapInspector } from '../inspect/heap.ts';
+import { createCallLogTracer } from '../inspect/callLog.ts';
 import { createProcessShapeTracer } from '../inspect/processShape.ts';
 import { createStepTracer } from '../inspect/stepTrace.ts';
 import { SourceError } from '../syntax/errors.ts';
@@ -43,6 +45,9 @@ interface Job {
 }
 
 const TRACE_BUDGET = 20_000;
+
+/** Lines a single job may draw; a runaway painter stops being shown here. */
+export const MAX_SEGMENTS = 20_000;
 
 function defaultYield(): Promise<void> {
   // A message channel avoids the 4 ms clamp that nested timers get.
@@ -92,13 +97,37 @@ export function createLabHost(deps: HostDeps): LabHost {
     const { id, source } = request;
     const started = now();
     const tracer = request.inspect?.processShape === true ? createProcessShapeTracer(source) : null;
+    const watch = request.inspect?.calls;
+    const callLog =
+      watch === undefined
+        ? null
+        : createCallLogTracer(watch.names, {
+            ...(watch.maxCalls !== undefined && { maxCalls: watch.maxCalls }),
+            ...(watch.maxText !== undefined && { maxText: watch.maxText }),
+          });
+    const hooks = [...(tracer === null ? [] : [tracer.hooks]), ...(callLog === null ? [] : [callLog.hooks])];
+
+    // Lines are sent in batches, after each slice, rather than one message each.
+    let drawn = 0;
+    let batch: Segment[] = [];
+    const flush = (): void => {
+      if (batch.length === 0) return;
+      post({ type: 'draw', id, segments: batch });
+      batch = [];
+    };
 
     let machine: Machine;
     try {
       machine = prepare(source, {
         budget: request.budget ?? DEFAULT_BUDGET,
-        display: (text) => post({ type: 'display', id, text }),
-        ...(tracer !== null && { hooks: [tracer.hooks] }),
+        display: (text) => {
+          flush();
+          post({ type: 'display', id, text });
+        },
+        draw: (segment) => {
+          if (drawn++ < MAX_SEGMENTS) batch.push(segment);
+        },
+        ...(hooks.length > 0 && { hooks }),
         ...(request.prelude !== undefined && { prelude: request.prelude }),
         ...(request.seed !== undefined && { seed: request.seed }),
       }).machine;
@@ -109,6 +138,7 @@ export function createLabHost(deps: HostDeps): LabHost {
 
     let sent = 0;
     const finished = await drive(machine, job, () => {
+      flush();
       if (tracer !== null && tracer.version() !== sent) {
         sent = tracer.version();
         post({ type: 'shape', id, snapshot: tracer.snapshot() });
@@ -117,6 +147,7 @@ export function createLabHost(deps: HostDeps): LabHost {
 
     const { steps } = machine;
     const ms = now() - started;
+    if (finished && callLog !== null) post({ type: 'calls', id, calls: callLog.calls, truncated: callLog.truncated() });
     if (!finished) post({ type: 'cancelled', id, steps, forced: false });
     else if (machine.status === 'done') post({ type: 'done', id, value: stringify(machine.value), steps, ms });
     else if (machine.status === 'budget-exhausted') {
@@ -133,12 +164,16 @@ export function createLabHost(deps: HostDeps): LabHost {
       request.inspect?.heap === true
         ? createHeapInspector(source, () => session?.machine.programEnv ?? null, { records: () => tracer.records.length })
         : null;
+    const drawing: Segment[] = [];
     let outcome: TraceOutcome;
     try {
       session = prepare(source, {
         budget: request.budget ?? TRACE_BUDGET,
         hooks: heap === null ? [tracer.hooks] : [tracer.hooks, heap.hooks],
         display: (text) => output.push(text),
+        draw: (segment) => {
+          if (drawing.length < MAX_SEGMENTS) drawing.push(segment);
+        },
         ...(request.prelude !== undefined && { prelude: request.prelude }),
         ...(request.seed !== undefined && { seed: request.seed }),
       });
@@ -160,6 +195,7 @@ export function createLabHost(deps: HostDeps): LabHost {
       outcome,
       output,
       ...(heap !== null && { heap: heap.snapshots }),
+      drawing,
     });
   }
 
@@ -204,6 +240,17 @@ export function createLabHost(deps: HostDeps): LabHost {
         return count <= test.atMost
           ? result(true, null)
           : result(false, `${test.call} applies ${test.fn} ${count} times; at most ${test.atMost} expected`);
+      }
+
+      if (test.kind === 'error') {
+        const failing = session.follow(`${test.call};`, { budget, ...seed });
+        if (!(await drive(failing, job))) return 'cancelled';
+        if (failing.status === 'done') return result(false, `${test.call} is ${stringify(failing.value)}, but an error was expected`);
+        if (failing.status !== 'error') return result(false, describe(failing));
+        const message = failing.error?.message ?? '';
+        return test.message === undefined || message.includes(test.message)
+          ? result(true, null)
+          : result(false, `${test.call} stops with "${message}", not with an error about "${test.message}"`);
       }
 
       const expr = session.follow(`${test.expr};`, { budget, ...seed });

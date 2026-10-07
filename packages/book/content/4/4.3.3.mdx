@@ -1,0 +1,452 @@
+import { ambPrelude, ambevalProgram, undoProgram } from '@sicp/lab';
+
+<Prose>
+
+The evaluation of an ordinary JavaScript program may return a value, may never terminate, or may signal an error. In nondeterministic JavaScript, it may in addition discover a dead end, and then evaluation must backtrack to a previous choice point. This extra case complicates the interpreter.
+
+We build the `amb` evaluator by modifying the analyzing evaluator of section 4.1.7, because its execution functions are a convenient framework for backtracking. As there, a component is evaluated by calling an execution function produced by analysing it. The difference between ordinary and nondeterministic JavaScript lies entirely in the execution functions.
+
+## Execution functions and continuations
+
+The execution functions of the ordinary evaluator take one argument, the environment. Those of the `amb` evaluator take three: the environment and two *continuation functions*. Evaluating a component finishes by calling one of them. If the evaluation results in a value, the *success continuation* is called with that value; if it discovers a dead end, the *failure continuation* is called. Constructing and calling the right continuations is the whole mechanism of backtracking.
+
+The success continuation receives a value and carries on with the computation. Along with the value it receives another failure continuation, to be called if that value later leads to a dead end. The failure continuation tries another branch. When a component is a choice among alternatives, the evaluator picks one, passes its value to the success continuation, and passes along with it a failure continuation that will choose differently.
+
+A failure is triggered when a user program explicitly rejects the current line of attack, as `require` does with `amb()`. The failure continuation in hand at that point makes the most recent choice point choose another alternative; if it has none left, a failure at an earlier choice point is triggered, and so on. The driver loop also calls failure continuations, in response to `retry`, to find another value. And when a side effect, such as an assignment, happens on a branch that later fails, it may have to be undone before a new choice is made: the assignment produces a failure continuation that undoes it and then propagates the failure.
+
+In summary, failure continuations are constructed by
+
+- `amb` expressions, to make alternative choices if the current one leads to a dead end;
+- the top-level driver, to report failure when the choices are exhausted;
+- assignments, to intercept failures and undo assignments during backtracking.
+
+Failures are initiated only when a dead end is encountered: when the user program executes `amb()`, or when the user asks to `retry`. Failure continuations are also called while a failure is being processed: the one created by an assignment calls the one it intercepted, after undoing the assignment, and the one for an `amb` that has run out of choices calls the failure continuation originally given to that `amb`.
+
+## Structure of the evaluator
+
+The syntax and data representations, and the basic `analyze` function, are those of section 4.1.7, with one more syntactic form to recognise. `parse` reads `amb(…)` as a function application, so the evaluator treats every application whose function expression is the name `amb` as a choice point. As a result `amb` is not a name with proper scoping: our nondeterministic programs must not declare it.
+
+```js
+function is_amb(component) {
+    return is_tagged_list(component, "application") &&
+           is_name(function_expression(component)) &&
+           symbol_of_name(function_expression(component)) === "amb";
+}
+function amb_choices(component) {
+    return arg_expressions(component);
+}
+```
+
+`analyze` gets a clause `is_amb(component) ? analyze_amb(component)` before the one for applications. The top-level function `ambeval` analyses a component and applies the resulting execution function to an environment and two continuations:
+
+```js
+function ambeval(component, env, succeed, fail) {
+    return analyze(component)(env, succeed, fail);
+}
+```
+
+A success continuation is a function of two arguments, `(value, fail) => …`: the value just obtained and another failure continuation, to be used if that value leads to a subsequent failure. A failure continuation is a function of no arguments, `() => …`. Called with a success continuation that returns its value and a failure continuation that returns `"failed"`, `ambeval` evaluates a component and returns either its first value or `"failed"`. `program_environment` makes the frame for a program’s own declarations, as the driver loop does.
+
+</Prose>
+
+<Example index={0} file="ambeval.sicp" source={ambevalProgram} prelude={ambPrelude} budget={5000000}>
+
+The success continuation `(value, fail) => value` returns the first value and throws away the failure continuation that would have produced the next. In the second program `amb(1, 2, 3)` first chooses 1, the requirement fails, and the failure continuation chooses 2; so the value is 20. `amb()` fails at once, and the failure continuation we passed returns `"failed"`.
+
+</Example>
+
+<Prose>
+
+Most of the complexity of the `amb` evaluator results from the mechanics of passing the continuations around as the execution functions call each other. Compare each of the following with the corresponding function of section 4.1.7.
+
+## Simple expressions
+
+The execution functions for the simplest kinds of expressions simply succeed with the value, passing along the failure continuation they were given:
+
+```js
+function analyze_literal(component) {
+    return (env, succeed, fail) =>
+             succeed(literal_value(component), fail);
+}
+
+function analyze_name(component) {
+    return (env, succeed, fail) =>
+             succeed(lookup_symbol_value(symbol_of_name(component),
+                                         env),
+                     fail);
+}
+
+function analyze_lambda_expression(component) {
+    const params = lambda_parameter_symbols(component);
+    const bfun = analyze(lambda_body(component));
+    return (env, succeed, fail) =>
+             succeed(make_function(params, bfun, env),
+                     fail);
+}
+```
+
+Looking up a name always succeeds. If `lookup_symbol_value` does not find the name, it signals an error, as usual: that is a bug in the program, not a reason to try another choice.
+
+## Conditionals and sequences
+
+The execution function for a conditional calls the predicate’s execution function with a success continuation that tests the predicate’s value and goes on to the consequent or the alternative. If the predicate fails, the conditional’s own failure continuation is called.
+
+```js
+function analyze_conditional(component) {
+    const pfun = analyze(conditional_predicate(component));
+    const cfun = analyze(conditional_consequent(component));
+    const afun = analyze(conditional_alternative(component));
+    return (env, succeed, fail) =>
+             pfun(env,
+                  // success continuation for evaluating the predicate
+                  // to obtain pred_value
+                  (pred_value, fail2) =>
+                    is_truthy(pred_value)
+                    ? cfun(env, succeed, fail2)
+                    : afun(env, succeed, fail2),
+                  // failure continuation for evaluating the predicate
+                  fail);
+}
+```
+
+To execute `a` and then `b` in a sequence, we call `a` with a success continuation that calls `b`:
+
+```js
+function analyze_sequence(stmts) {
+    function sequentially(a, b) {
+        return (env, succeed, fail) =>
+                 a(env,
+                   // success continuation for calling a
+                   (a_value, fail2) =>
+                     is_return_value(a_value)
+                     ? succeed(a_value, fail2)
+                     : b(env, succeed, fail2),
+                   // failure continuation for calling a
+                   fail);
+    }
+    function loop(first_fun, rest_funs) {
+        return is_null(rest_funs)
+               ? first_fun
+               : loop(sequentially(first_fun, head(rest_funs)),
+                      tail(rest_funs));
+    }
+    const funs = map(analyze, stmts);
+    return is_null(funs)
+           ? (env, succeed, fail) => succeed(undefined, fail)
+           : loop(head(funs), tail(funs));
+}
+```
+
+The book returns `env => undefined` for an empty sequence, an execution function that ignores its continuations: in JavaScript the computation would quietly stop there, and the Laboratory, which checks the number of arguments, stops with an error. The empty `else {}` of `require` is such a sequence, so our evaluator succeeds with `undefined` instead.
+
+## Declarations and assignments
+
+A declaration must evaluate its value expression before declaring the name. The value expression’s execution function is called with a success continuation that declares the name and propagates the success:
+
+```js
+function analyze_declaration(component) {
+    const symbol = declaration_symbol(component);
+    const vfun = analyze(declaration_value_expression(component));
+    return (env, succeed, fail) =>
+             vfun(env,
+                  (val, fail2) => {
+                      assign_symbol_value(symbol, val, env);
+                      return succeed(undefined, fail2);
+                  },
+                  fail);
+}
+```
+
+Assignments are more interesting: this is the first place where the continuations are really used rather than just passed around. If the new value is obtained and the assignment made, this branch of the computation might still fail later, and backtracking must then undo the assignment. So the success continuation (marked *1*) saves the old value before assigning the new one, and the failure continuation that goes along with the assignment’s value (marked *2*) restores the old value before continuing the failure. Whatever failure would otherwise have called `fail2` calls this function instead.
+
+```js
+function analyze_assignment(component) {
+    const symbol = assignment_symbol(component);
+    const vfun = analyze(assignment_value_expression(component));
+    return (env, succeed, fail) =>
+             vfun(env,
+                  (val, fail2) => {              // *1*
+                      const old_value = lookup_symbol_value(symbol,
+                                                            env);
+                      assign_symbol_value(symbol, val, env);
+                      return succeed(val,
+                                     () => {     // *2*
+                                         assign_symbol_value(symbol,
+                                                             old_value,
+                                                             env);
+                                         return fail2();
+                                     });
+                  },
+                  fail);
+}
+```
+
+Declarations need no undoing: a name cannot be used before its declaration is evaluated, so its previous value does not matter.
+
+</Prose>
+
+<Example index={1} file="undo.sicp" source={undoProgram} prelude={ambPrelude} budget={5000000} anim="amb-search">
+
+`count = count + 1` runs three times, once for each value of `x`, yet the value found is `list(3, 1)`: each dead end undid the assignment on its way back to `amb(1, 2, 3)`, so the third branch starts from 0 like the others. Exercise 4.49 makes assignment permanent, and then the count is 3.
+
+</Example>
+
+<Prose>
+
+## Return statements, blocks and applications
+
+A return statement wraps its value in a return value and passes it to the success continuation. A block calls its body’s execution function in an extended environment, with the same continuations.
+
+```js
+function analyze_return_statement(component) {
+    const rfun = analyze(return_expression(component));
+    return (env, succeed, fail) =>
+             rfun(env,
+                  (val, fail2) =>
+                    succeed(make_return_value(val), fail2),
+                  fail);
+}
+
+function analyze_block(component) {
+    const body = block_body(component);
+    const locals = scan_out_declarations(body);
+    const unassigneds = list_of_unassigned(locals);
+    const bfun = analyze(body);
+    return (env, succeed, fail) =>
+             bfun(extend_environment(locals, unassigneds, env),
+                  succeed,
+                  fail);
+}
+```
+
+Applications contain no new ideas, only the technical complexity of keeping track of the continuations while the argument expressions are evaluated. `get_args` walks down the list of argument execution functions, calling each with a success continuation that calls `get_args` on the rest, whose own success continuation adjoins the new argument to the arguments that follow:
+
+```js
+function analyze_application(component) {
+    const ffun = analyze(function_expression(component));
+    const afuns = map(analyze, arg_expressions(component));
+    return (env, succeed, fail) =>
+             ffun(env,
+                  (fun, fail2) =>
+                    get_args(afuns,
+                             env,
+                             (args, fail3) =>
+                               execute_application(fun,
+                                                   args,
+                                                   succeed,
+                                                   fail3),
+                             fail2),
+                  fail);
+}
+
+function get_args(afuns, env, succeed, fail) {
+    return is_null(afuns)
+           ? succeed(null, fail)
+           : head(afuns)(env,
+                         // success continuation for this afun
+                         (arg, fail2) =>
+                           get_args(tail(afuns),
+                                    env,
+                                    // success continuation for
+                                    // recursive call to get_args
+                                    (args, fail3) =>
+                                      succeed(pair(arg, args),
+                                              fail3),
+                                    fail2),
+                         fail);
+}
+
+function execute_application(fun, args, succeed, fail) {
+    return is_primitive_function(fun)
+           ? succeed(apply_primitive_function(fun, args),
+                     fail)
+           : is_compound_function(fun)
+           ? function_body(fun)(
+                 extend_environment(function_parameters(fun),
+                                    args,
+                                    function_environment(fun)),
+                 (body_result, fail2) =>
+                   succeed(is_return_value(body_result)
+                           ? return_value_content(body_result)
+                           : undefined,
+                           fail2),
+                 fail)
+           : error(fun, "unknown function type - execute_application");
+}
+```
+
+`get_args` evaluates the arguments from left to right, which is what makes `parse_word` see the words of a sentence in order.
+
+## Evaluating `amb` expressions
+
+The `amb` syntactic form is the key element of the nondeterministic language. Here we see the essence of the interpretation process and the reason for keeping track of the continuations. The execution function for `amb` declares a loop `try_next` that cycles through the execution functions for the possible values. Each is called with a failure continuation that tries the next one. When there are no more alternatives, the whole `amb` expression fails.
+
+```js
+function analyze_amb(component) {
+    const cfuns = map(analyze, amb_choices(component));
+    return (env, succeed, fail) => {
+               function try_next(choices) {
+                   return is_null(choices)
+                          ? fail()
+                          : head(choices)(env,
+                                          succeed,
+                                          () =>
+                                            try_next(tail(choices)));
+               }
+               return try_next(cfuns);
+           };
+}
+```
+
+## The driver loop
+
+The driver loop is complex, because of `retry`. Its `internal_loop` takes a function `retry` and either calls it, when the input is `retry`, or starts a new problem by calling `ambeval`. The failure continuation of that call says that there are no more values and starts the driver loop again. The success continuation is more subtle: it prints the value and calls the internal loop again with a `retry` function that tries the next alternative. That function is the failure continuation that came with the value. Ordinarily it is used if the current branch later fails; here the branch has succeeded, and we invoke the failure alternative to search for more successful evaluations.
+
+```js
+function driver_loop(env, inputs) {
+    let unread = inputs;
+    function user_read(prompt_string) {
+        if (is_null(unread)) {
+            return null;
+        } else {
+            const input = program_text(head(unread));
+            unread = tail(unread);
+            display(input, prompt_string);
+            return input;
+        }
+    }
+    function internal_loop(retry) {
+        const input = user_read(input_prompt);
+        if (is_null(input)) {
+            display("evaluator terminated");
+        } else if (input === "retry") {
+            return retry();
+        } else {
+            display("Starting a new problem");
+            const program = parse(input);
+            const program_env = program_environment(program, env);
+            return ambeval(
+                       program,
+                       program_env,
+                       // ambeval success
+                       (val, next_alternative) => {
+                           user_print(output_prompt, val);
+                           return internal_loop(next_alternative);
+                       },
+                       // ambeval failure
+                       () => {
+                           display("There are no more values of");
+                           display(input);
+                           return driver_loop(program_env, unread);
+                       });
+        }
+    }
+    return internal_loop(() => {
+                             display("There is no current problem");
+                             return driver_loop(env, unread);
+                         });
+}
+```
+
+This is the book’s driver loop with one change: `user_read` takes the next input from the list `inputs` instead of from a prompt. The first `retry` function complains that there is no current problem, which is what happens if the first input is `retry`. `amb_solutions` is the same idea without the printing: its success continuation adds the value to a list and calls `next_alternative` until it has as many values as were asked for.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-4/amb.test.ts">
+
+`chapter-4/amb.ts` assembles the evaluator from the syntax and data structures of §4.1 (`evaluatorSyntax`, `evaluatorData`) and the code on this page. It adds `&&` and `||` as derived conditional expressions, so requirements can use them, and a few primitives the examples need. The test `chapter-4/amb.test.ts` checks the three values of `first_value` above, that the undo example finds `list(3, 1)` after two dead ends, that `require` cannot succeed with the book’s analysis of the empty sequence, and that `driver_loop` answers a first `retry` with “There is no current problem”.
+
+</UnderTheHood>
+
+<Exercises range="4.48 – 4.52" total={5}>
+<Exercise id="4.48">
+
+Implement a new syntactic form `ramb` that is like `amb` except that it searches alternatives in a random order, rather than from left to right. Show how this can help with Alyssa’s problem in exercise 4.47.
+
+<Solution>
+
+**Solution.** `analyze_ramb` is `analyze_amb` with `try_next` picking a random alternative from those not yet tried, and passing on the rest without it. In Alyssa’s generator, a `ramb` in `maybe_extend` and in `parse_word` makes each retry likely to take a different branch, so the sentences vary in their words and their shape instead of growing one prepositional phrase longer each time.
+
+</Solution>
+</Exercise>
+<Exercise id="4.49">
+
+Change the implementation of assignment so that it is not undone upon failure. For example, the program below chooses two distinct elements from a list and counts the trials needed to make a successful choice; with permanent assignment its first two values are `list("a", "b", 2)` and `list("a", "c", 3)`. What values would have been given with the original meaning of assignment?
+
+```js
+let count = 0;
+let x = an_element_of(list("a", "b", "c"));
+let y = an_element_of(list("a", "b", "c"));
+count = count + 1;
+require(x !== y);
+list(x, y, count);
+```
+
+<Solution>
+
+**Solution.** Drop the saving and restoring: the success continuation assigns and passes on the failure continuation it was given. With the original assignment, every failed trial is undone on the way back, so each value reports a count of 1: `list("a", "b", 1)` and `list("a", "c", 1)`.
+
+</Solution>
+</Exercise>
+<Exercise id="4.50">
+
+We shall horribly abuse the syntax for conditional statements by implementing a construct of the form
+
+```js
+if (evaluation_succeeds_take) { statement } else { alternative }
+```
+
+It permits the user to catch the failure of a statement. It evaluates the statement as usual and returns as usual if the evaluation succeeds. If the evaluation fails, the alternative is evaluated instead:
+
+```js
+if (evaluation_succeeds_take) {
+    const x = an_element_of(list(1, 3, 5));
+    require(is_even(x));
+    x;
+} else {
+    "all odd";
+}
+```
+
+has the value `"all odd"`, and with `list(1, 3, 5, 8)` it has the value 8. Implement this construct by extending the `amb` evaluator. Hint: `is_amb` shows how to abuse the existing syntax to implement a new syntactic form.
+
+<Solution>
+
+**Solution.** The new form is a conditional statement whose predicate is the name `evaluation_succeeds_take`, recognised before ordinary conditionals. Its execution function runs the consequent with the same success continuation and a failure continuation of its own, which runs the alternative with the original continuations. So the alternative runs only once the statement has no more values.
+
+</Solution>
+</Exercise>
+<Exercise id="4.51">
+
+With the permanent assignment of exercise 4.49 and the construct of exercise 4.50, what will be the result of evaluating this program?
+
+```js
+let pairs = null;
+if (evaluation_succeeds_take) {
+    const p = prime_sum_pair(list(1, 3, 5, 8), list(20, 35, 110));
+    pairs = pair(p, pairs); // using permanent assignment
+    amb();
+} else {
+    pairs;
+}
+```
+
+<Solution>
+
+**Solution.** `amb()` rejects every pair as soon as it has been recorded, so the search goes through all of them: (3, 20), (3, 110) and (8, 35), as in §4.3.1. Permanent assignment keeps each one in `pairs`, newest first. When the choices run out, the statement has failed, and the alternative returns `list(list(8, 35), list(3, 110), list(3, 20))`.
+
+</Solution>
+</Exercise>
+<Exercise id="4.52">
+
+If we had not realised that `require` could be an ordinary function that uses `amb`, we would have had to implement it as a syntactic form, with syntax functions `is_require` and `require_predicate`, a clause `is_require(component) ? analyze_require(component)` in `analyze`, and the function `analyze_require`. Complete its definition.
+
+<Solution>
+
+**Solution.** When the predicate’s value is false, the requirement fails by calling `fail2`, the failure continuation that came with that value, so the search goes back to the choice that produced it. Otherwise it succeeds with `"ok"`.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '4.4.1', label: 'Logic programming, where search is the whole language' }, { id: '4.4.4', label: 'Streams of frames instead of continuations' }]} />

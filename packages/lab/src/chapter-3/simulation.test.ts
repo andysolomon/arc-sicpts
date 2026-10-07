@@ -154,7 +154,7 @@ describe('section 3.3.5: propagation of constraints', () => {
   it('signals a contradiction when F is set while C still determines it', () => {
     const outcome = run(constraintContradictionProgram);
     expect(outcome.status).toBe('error');
-    expect(outcome.status === 'error' && outcome.error.message).toMatch(/\[77, \[212, null\]\] contradiction/);
+    expect(outcome.status === 'error' && outcome.error.message).toMatch(/contradiction \[77, \[212, null\]\]/);
   });
 
   it('shows the values arriving at every connector of the network, constants first', () => {
