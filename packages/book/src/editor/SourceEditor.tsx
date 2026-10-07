@@ -21,6 +21,8 @@ export interface SourceEditorProps {
   mode?: 'run' | 'step';
   /** Maximum evaluator steps for a run. */
   budget?: number;
+  /** Declarations evaluated before the program, which the reader does not see. */
+  prelude?: string | undefined;
   /**
    * Ask the Laboratory for a process-shape trace and receive each snapshot.
    * Called with `null` when a run starts or the editor is reset.
@@ -116,7 +118,7 @@ function RunOutput({ state, fading }: { state: RunState; fading: boolean }) {
   );
 }
 
-export function SourceEditor({ file, source: supplied, editorId, mode = 'run', budget, onShape, onSource, onStep }: SourceEditorProps) {
+export function SourceEditor({ file, source: supplied, editorId, mode = 'run', budget, prelude, onShape, onSource, onStep }: SourceEditorProps) {
   const sectionId = useSectionId();
   const { source, setSource, reset } = usePersistentSource(sectionId, editorId, supplied);
   const sourceRef = useRef(source);
@@ -158,6 +160,7 @@ export function SourceEditor({ file, source: supplied, editorId, mode = 'run', b
         source: sourceRef.current,
         inspect: { processShape: onShape !== undefined },
         ...(budget !== undefined && { budget }),
+        ...(prelude !== undefined && { prelude }),
       },
       (event: LabEvent) => {
         if (job.current?.id !== event.id) return;
@@ -192,7 +195,7 @@ export function SourceEditor({ file, source: supplied, editorId, mode = 'run', b
       },
     );
     job.current = handle;
-  }, [budget, onShape]);
+  }, [budget, onShape, prelude]);
 
   const resetAll = useCallback(() => {
     job.current?.cancel();
@@ -229,7 +232,7 @@ export function SourceEditor({ file, source: supplied, editorId, mode = 'run', b
     if (tracing.current !== null) return tracing.current;
     const text = sourceRef.current;
     const pending = labClient()
-      .submit({ type: 'trace', source: text })
+      .submit({ type: 'trace', source: text, ...(prelude !== undefined && { prelude }) })
       .finished.then((end) => {
         if (end.type !== 'trace-done' || sourceRef.current !== text) return null;
         setTrace(end);
@@ -237,7 +240,7 @@ export function SourceEditor({ file, source: supplied, editorId, mode = 'run', b
       });
     tracing.current = pending;
     return pending;
-  }, []);
+  }, [prelude]);
 
   const stepTo = useCallback(
     async (target: (current: number, length: number) => number) => {

@@ -58,9 +58,11 @@ export interface AnimationProps {
   source: string;
   /** For step-mode editors: the stepper's record index, which some scenes follow. */
   stepIndex?: number | undefined;
+  /** Declarations the editor evaluates before the program, unseen. */
+  prelude?: string | undefined;
 }
 
-export function Animation({ kind, source, stepIndex }: AnimationProps): ReactNode {
+export function Animation({ kind, source, stepIndex, prelude }: AnimationProps): ReactNode {
   switch (kind) {
     case 'reduce':
       return <SubstitutionScene source={source} title="Collapsing a combination" />;
@@ -78,7 +80,7 @@ export function Animation({ kind, source, stepIndex }: AnimationProps): ReactNod
         </div>
       );
     default:
-      return <Traced kind={kind} source={source} stepIndex={stepIndex} />;
+      return <Traced kind={kind} source={source} stepIndex={stepIndex} prelude={prelude} />;
   }
 }
 
@@ -87,14 +89,15 @@ interface TracedProps {
   source: string;
   stepIndex?: number | undefined;
   title?: string;
+  prelude?: string | undefined;
 }
 
 /** Scenes that follow a method through many calls need a longer log than the default. */
 const LONG_TRACE: ReadonlySet<TracedProps['kind']> = new Set(['tree-recursion', 'integral', 'half-interval', 'fixed-point', 'newtons-method']);
 
 /** Scenes that need the evaluator's trace of the current text. */
-function Traced({ kind, source, stepIndex, title }: TracedProps) {
-  const { trace } = useTrace(source, LONG_TRACE.has(kind) ? { maxRecords: 4000 } : {});
+function Traced({ kind, source, stepIndex, title, prelude }: TracedProps) {
+  const { trace } = useTrace(source, { ...(LONG_TRACE.has(kind) && { maxRecords: 4000 }), prelude });
   const synced = stepIndex !== undefined ? { stepIndex } : {};
   switch (kind) {
     case 'tree':
