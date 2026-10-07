@@ -3,12 +3,13 @@ import { quote } from '../chapter-5/eceval.ts';
 import { instructionText } from '../machines/controller.ts';
 import { runEceval } from '../chapter-5/eceval.ts';
 import { collectGarbage, memoryImage } from '../chapter-5/memory.ts';
-import { evaluate, prepare } from '../evaluator/evaluate.ts';
+import { evaluate, prepare, type Session } from '../evaluator/evaluate.ts';
 import { listToArray } from '../evaluator/values.ts';
 import { recordMachine, type MachineRecorder } from '../machines/inspect.ts';
 import { DEFAULT_BUDGET, type Machine } from '../evaluator/machine.ts';
 import type { Segment } from '../evaluator/primitives.ts';
 import { stringify } from '../evaluator/values.ts';
+import { createHeapInspector } from '../inspect/heap.ts';
 import { createCallLogTracer } from '../inspect/callLog.ts';
 import { createProcessShapeTracer } from '../inspect/processShape.ts';
 import { createStepTracer } from '../inspect/stepTrace.ts';
@@ -144,6 +145,7 @@ export function createLabHost(deps: HostDeps): LabHost {
         },
         ...(hooks.length > 0 && { hooks }),
         ...(request.prelude !== undefined && { prelude: request.prelude }),
+        ...(request.seed !== undefined && { seed: request.seed }),
       }).machine;
     } catch (error) {
       post({ type: 'error', id, error: payload(error), steps: 0, ms: now() - started });
@@ -173,20 +175,28 @@ export function createLabHost(deps: HostDeps): LabHost {
     const { id, source } = request;
     const tracer = createStepTracer(source, request.maxRecords);
     const output: string[] = [];
+    let session: Session | null = null;
+    const heap =
+      request.inspect?.heap === true
+        ? createHeapInspector(source, () => session?.machine.programEnv ?? null, { records: () => tracer.records.length })
+        : null;
     const drawing: Segment[] = [];
     let outcome: TraceOutcome;
     try {
-      const { machine } = prepare(source, {
+      session = prepare(source, {
         budget: request.budget ?? TRACE_BUDGET,
-        hooks: [tracer.hooks],
+        hooks: heap === null ? [tracer.hooks] : [tracer.hooks, heap.hooks],
         display: (text) => output.push(text),
         draw: (segment) => {
           if (drawing.length < MAX_SEGMENTS) drawing.push(segment);
         },
         ...(request.prelude !== undefined && { prelude: request.prelude }),
+        ...(request.seed !== undefined && { seed: request.seed }),
       });
+      const { machine } = session;
       // A trace is bounded by its small budget, so it runs in one go.
       machine.run();
+      heap?.finish();
       if (machine.status === 'done') outcome = { status: 'done', value: stringify(machine.value) };
       else if (machine.status === 'error') outcome = { status: 'error', error: payload(machine.error) };
       else outcome = { status: 'budget-exhausted' };
@@ -200,6 +210,7 @@ export function createLabHost(deps: HostDeps): LabHost {
       truncated: tracer.truncated(),
       outcome,
       output,
+      ...(heap !== null && { heap: heap.snapshots }),
       drawing,
     });
   }
@@ -224,9 +235,11 @@ export function createLabHost(deps: HostDeps): LabHost {
     try {
       // Each test gets a fresh run of the program, so tests cannot affect each other.
       const output: string[] = [];
+      const seed = request.seed === undefined ? {} : { seed: request.seed };
       const session = prepare(request.source, {
         budget,
         display: (text) => output.push(text),
+        ...seed,
         ...(request.prelude !== undefined && { prelude: request.prelude }),
         ...(request.context !== undefined && { context: request.context }),
       });
@@ -237,6 +250,7 @@ export function createLabHost(deps: HostDeps): LabHost {
         let count = 0;
         const measured = session.follow(`${test.call};`, {
           budget,
+          ...seed,
           hooks: [{ onCall: (info) => void (info.name === test.fn && count++) }],
         });
         if (!(await drive(measured, job))) return 'cancelled';
@@ -248,7 +262,7 @@ export function createLabHost(deps: HostDeps): LabHost {
       }
 
       if (test.kind === 'error') {
-        const failing = session.follow(`${test.call};`, { budget });
+        const failing = session.follow(`${test.call};`, { budget, ...seed });
         if (!(await drive(failing, job))) return 'cancelled';
         if (failing.status === 'done') return result(false, `${test.call} is ${stringify(failing.value)}, but an error was expected`);
         if (failing.status !== 'error') return result(false, describe(failing));
@@ -275,7 +289,7 @@ export function createLabHost(deps: HostDeps): LabHost {
         return missing === undefined ? result(true, null) : result(false, `${test.call} displays no line containing ${missing}`);
       }
 
-      const expr = session.follow(`${test.expr};`, { budget });
+      const expr = session.follow(`${test.expr};`, { budget, ...seed });
       if (!(await drive(expr, job))) return 'cancelled';
       if (expr.status !== 'done') return result(false, describe(expr));
 
@@ -287,7 +301,7 @@ export function createLabHost(deps: HostDeps): LabHost {
 
       const call = `${test.call};`;
       const tracer = createProcessShapeTracer(call);
-      const measured = session.follow(call, { budget, hooks: [tracer.hooks] });
+      const measured = session.follow(call, { budget, ...seed, hooks: [tracer.hooks] });
       if (!(await drive(measured, job))) return 'cancelled';
       if (measured.status !== 'done') return result(false, describe(measured));
       const kind = tracer.snapshot().runs[0]?.kind ?? 'iterative';

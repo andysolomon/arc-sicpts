@@ -26,7 +26,9 @@ import { APPLY_PRIMITIVE, ERROR_TEXT, isClosure, isPair, isPrimitive, stringify,
  * That gives us, for free:
  *   - a step budget and cooperative pausing (nothing can freeze the host),
  *   - proper tail calls (an iterative process really runs in constant space),
- *   - an exact measure of call depth for `inspect/processShape`.
+ *   - an exact measure of call depth for `inspect/processShape`,
+ *   - threads: `concurrent_execute` gives each function its own stack, and the
+ *     machine interleaves their steps (§3.4).
  */
 
 export type MachineStatus = 'ready' | 'paused' | 'done' | 'error' | 'budget-exhausted';
@@ -69,6 +71,11 @@ export interface MachineHooks {
   onResult?(node: Node, value: Value, env: Environment): void;
   /** A declaration or assignment has bound a name. */
   onDefine?(symbol: string, value: Value, env: Environment, node: Node): void;
+  /**
+   * The machine changed which thread it is running. Thread 0 is the program;
+   * `concurrent_execute` numbers the threads it starts from 1 upwards.
+   */
+  onThread?(thread: number, reason: 'spawn' | 'switch' | 'end'): void;
 }
 
 export const DEFAULT_BUDGET = 100_000;
@@ -93,7 +100,27 @@ export interface MachineOptions {
   frameIds?: FrameIds;
   /** Id and label for the program frame; defaults to the next `E` id and `program`. */
   programFrame?: { id: string; label: string };
+  /**
+   * Seeds the scheduler that interleaves threads, so that a run with threads
+   * can be repeated exactly. Without a seed every run interleaves differently.
+   */
+  seed?: number;
 }
+
+/** A small, fast PRNG (mulberry32): the same seed gives the same schedule. */
+function scheduler(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** After each step, the chance that the scheduler picks a thread afresh. */
+const SWITCH_CHANCE = 0.3;
 
 type Continuation =
   | { k: 'seq'; stmts: readonly Statement[]; i: number; env: Environment; last: Value; top: boolean }
@@ -107,7 +134,27 @@ type Continuation =
   | { k: 'define'; node: ConstDeclaration | LetDeclaration; env: Environment }
   | { k: 'assign'; node: Assignment; env: Environment }
   | { k: 'call'; node: Application; lambda: Lambda; callerEnv: Environment }
-  | { k: 'fallthrough' };
+  | { k: 'fallthrough' }
+  /** The bottom of a new thread: apply its function, with nothing to return to. */
+  | { k: 'thread'; fn: Value; node: Application; env: Environment }
+  /** Below `thread`: the thread's function has returned, so the thread ends. */
+  | { k: 'thread-end' };
+
+/** A thread's registers while another thread runs. */
+interface Thread {
+  id: number;
+  stack: Continuation[];
+  evaluating: boolean;
+  node: Node;
+  env: Environment;
+  val: Value;
+  depth: number;
+  status: 'runnable' | 'waiting' | 'done';
+  /** The thread that started this one and waits for it; `null` for the program. */
+  parent: number | null;
+  /** How many threads this one still waits for. */
+  waitingFor: number;
+}
 
 export class Machine {
   steps = 0;
@@ -121,13 +168,17 @@ export class Machine {
 
   private readonly hooks: readonly MachineHooks[];
   private readonly frameIds: FrameIds;
-  private readonly stack: Continuation[] = [];
+  private stack: Continuation[] = [];
   /** How many pending calls each function currently has. */
   private readonly pending = new Map<Lambda, number>();
   private evaluating = true;
   private node: Node;
   private env: Environment;
   private val: Value = undefined;
+  /** Empty until `concurrent_execute` starts threads; then every thread, by id. */
+  private threads: Thread[] = [];
+  private current = 0;
+  private readonly random: () => number;
 
   constructor(program: Program, options: MachineOptions) {
     this.budget = options.budget ?? DEFAULT_BUDGET;
@@ -137,6 +188,12 @@ export class Machine {
     this.programEnv = extend(options.parent, frame.id, frame.label);
     this.node = program;
     this.env = this.programEnv;
+    this.random = scheduler(options.seed ?? Math.floor(Math.random() * 2 ** 32));
+  }
+
+  /** The thread now running: 0 is the program, 1 upwards are threads it started. */
+  get thread(): number {
+    return this.current;
   }
 
   /**
@@ -166,6 +223,7 @@ export class Machine {
         this.step();
         this.steps++;
         taken++;
+        if (this.threads.length > 0) this.schedule();
       }
     } catch (error) {
       this.status = 'error';
@@ -453,6 +511,14 @@ export class Machine {
         // The body ran off its end without a return statement.
         this.setValue(undefined);
         return;
+
+      case 'thread':
+        this.apply(frame.fn, [], frame.node, frame.env);
+        return;
+
+      case 'thread-end':
+        this.endThread();
+        return;
     }
   }
 
@@ -517,6 +583,10 @@ export class Machine {
   }
 
   private apply(fn: Value, args: Value[], node: Application, callerEnv: Environment): void {
+    if (isPrimitive(fn) && fn.control === 'concurrent_execute') {
+      this.spawn(args, node, callerEnv);
+      return;
+    }
     if (isPrimitive(fn) && fn.name === APPLY_PRIMITIVE) {
       // `apply_in_underlying_javascript(f, list(a, b))` is `f(a, b)`, so it can
       // apply compound functions too, which no ordinary primitive can.
@@ -596,6 +666,116 @@ export class Machine {
 
     if (lambda.body.kind === 'block') this.stack.push({ k: 'fallthrough' });
     this.setEval(lambda.body, env);
+  }
+
+  /**
+   * `concurrent_execute(f, g, ...)`: start a thread for each function and
+   * suspend the caller until they have all returned. Its value is `undefined`.
+   */
+  private spawn(fns: Value[], node: Application, env: Environment): void {
+    fns.forEach((fn, i) => {
+      if (!isClosure(fn) && !isPrimitive(fn)) {
+        this.fail(`concurrent_execute expects functions, got ${typeName(fn)} as argument ${i + 1}`, node);
+      }
+      if (isClosure(fn) && fn.lambda.params.length !== 0) {
+        this.fail(`concurrent_execute expects functions of no arguments, got ${stringify(fn)} as argument ${i + 1}`, node);
+      }
+    });
+    if (fns.length === 0) {
+      this.finish(node, undefined, env);
+      return;
+    }
+    for (const hook of this.hooks) hook.onResult?.(node, undefined, env);
+    // The caller resumes with the value of concurrent_execute once its threads end.
+    this.setValue(undefined);
+    if (this.threads.length === 0) this.threads.push(this.save(0, null));
+    const parent = this.current;
+    const waiting = this.threads[parent];
+    if (waiting === undefined) throw new Error('the running thread is always recorded');
+    this.store(waiting);
+    waiting.status = 'waiting';
+    waiting.waitingFor = fns.length;
+    for (const fn of fns) {
+      const thread = this.save(this.threads.length, parent);
+      thread.stack = [{ k: 'thread-end' }, { k: 'thread', fn, node, env }];
+      thread.evaluating = false;
+      thread.val = undefined;
+      this.threads.push(thread);
+      for (const hook of this.hooks) hook.onThread?.(thread.id, 'spawn');
+    }
+    this.schedule();
+  }
+
+  private endThread(): void {
+    const thread = this.threads[this.current];
+    if (thread === undefined) throw new Error('thread-end runs only inside a thread');
+    thread.status = 'done';
+    thread.stack = [];
+    for (const hook of this.hooks) hook.onThread?.(thread.id, 'end');
+    const parent = thread.parent === null ? undefined : this.threads[thread.parent];
+    if (parent !== undefined && --parent.waitingFor === 0) parent.status = 'runnable';
+    this.schedule();
+  }
+
+  /** A record of the registers as they are now, for thread `id`. */
+  private save(id: number, parent: number | null): Thread {
+    return {
+      id,
+      stack: this.stack,
+      evaluating: this.evaluating,
+      node: this.node,
+      env: this.env,
+      val: this.val,
+      depth: this.depth,
+      status: 'runnable',
+      parent,
+      waitingFor: 0,
+    };
+  }
+
+  private store(thread: Thread): void {
+    thread.stack = this.stack;
+    thread.evaluating = this.evaluating;
+    thread.node = this.node;
+    thread.env = this.env;
+    thread.val = this.val;
+    thread.depth = this.depth;
+  }
+
+  /**
+   * Pick the thread to run next: the running one usually carries on, but after
+   * any step another runnable thread may be chosen instead. When only the
+   * program is left, the machine goes back to running without threads.
+   */
+  private schedule(): void {
+    const running = this.threads[this.current];
+    if (running === undefined) return;
+    const runnable = this.threads.filter((t) => t.status === 'runnable');
+    if (runnable.length === 1 && runnable[0]?.id === 0 && this.threads.every((t) => t.id === 0 || t.status === 'done')) {
+      if (this.current !== 0) this.switchTo(0);
+      this.threads = [];
+      return;
+    }
+    const stay = running.status === 'runnable' && this.random() >= SWITCH_CHANCE;
+    if (stay) return;
+    const next = runnable[Math.floor(this.random() * runnable.length)];
+    if (next === undefined) this.fail('Every thread is waiting: deadlock', this.node);
+    else if (next.id !== this.current) this.switchTo(next.id);
+  }
+
+  private switchTo(id: number): void {
+    const from = this.threads[this.current];
+    const to = this.threads[id];
+    if (from === undefined || to === undefined) throw new Error(`no thread ${id}`);
+    if (from.status !== 'done') this.store(from);
+    this.current = id;
+    this.stack = to.stack;
+    this.evaluating = to.evaluating;
+    this.node = to.node;
+    this.env = to.env;
+    this.val = to.val;
+    this.depth = to.depth;
+    for (const hook of this.hooks) hook.onThread?.(id, 'switch');
   }
 
   private leave(lambda: Lambda): void {

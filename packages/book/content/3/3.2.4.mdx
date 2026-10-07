@@ -1,0 +1,108 @@
+import { envModelInternalSqrtProgram, envModelMutualRecursionProgram, envModelTooEarlyProgram } from '@sicp/lab';
+
+<Prose>
+
+One kind of evaluation is still missing from the model: a block that contains declarations, such as the body of a function with internal functions, or a branch of an `if` statement that declares a constant. Every block opens a new scope for the names declared in it. To evaluate a block in some environment, extend that environment with a new frame holding every name declared directly in the block (not those inside nested blocks), and evaluate the block's statements in the extended environment.
+
+Section 1.1.8 used exactly this kind of block to package the square-root method inside `sqrt`. Here it is again, ready to be stepped through.
+
+</Prose>
+
+<Example index={0} mode="step" file="sqrt.sicp" source={envModelInternalSqrtProgram} anim="frames">
+
+Step until the first call of `is_good_enough`, with `guess` equal to 1; that is the moment the book draws. E1 binds `x` to 2. E2, labelled *block*, extends E1 and holds the three internal functions, each with an environment pointer looping back to E2. The frames of `sqrt_iter` and `is_good_enough` both extend E2. When `is_good_enough` uses `x`, the lookup goes out through E2 to E1.
+
+</Example>
+
+<Prose>
+
+Look at the shape of the environment at that point. In the program frame, `sqrt` is bound to a function object whose environment is the program environment. Calling `sqrt(2)` made E1, which binds the parameter `x` to 2 and extends the program environment. The body of `sqrt` is a block with declarations, so evaluating it extended E1 by a new frame for those names, giving E2, and the rest of the body ran in E2.
+
+The first statement of that block declares `is_good_enough`, so evaluating it binds `is_good_enough` in E2 to a function object whose environment is E2. The same goes for `improve` and `sqrt_iter`. Then `sqrt_iter(1)` is evaluated, still in E2, which makes E3, binding `guess` to 1. `sqrt_iter` calls `is_good_enough(guess)`, and that call makes E4, binding a different `guess`, also to 1. Two frames bind `guess`, and they never interfere. And since both functions were made in E2, both E3 and E4 extend E2. So when the body of `is_good_enough` mentions `x`, the search goes from E4 to E2 to E1 and finds the `x` that `sqrt` was called with.
+
+That explains both reasons internal declarations are worth having:
+
+- The names of the internal functions cannot collide with names outside `sqrt`, because they are bound in the frame the block makes, not in the program frame.
+- The internal functions can use the parameters of the enclosing function as free names, because they are evaluated in environments that extend the frame of those parameters.
+
+**Why every name is entered first.** The rule says the block's frame holds *all* the names declared in the block from the moment the block starts, not one by one as each declaration is reached. The names are *scanned out* in advance, and each stays unassigned until its declaration is evaluated. One benefit is that internal functions can refer to each other in any order:
+
+</Prose>
+
+<Example index={1} file="even_odd.sicp" source={envModelMutualRecursionProgram} anim="frames">
+
+At the start of the block, its frame already has both `is_even` and `is_odd`, unassigned. By the time `is_even(3)` runs, both declarations have been evaluated, so `is_even` can find `is_odd`, which is declared after it, and the other way round.
+
+</Example>
+
+<Prose>
+
+The other reason is more important. A name declared in a block means the same binding everywhere in that block, including the statements before its declaration. In the program below, the `z` in `x + z` belongs to `f`'s block, because `f` declares a `z`. The program's own `z` is shadowed for the whole block. If names were added only as their declarations were reached, `x + z` would quietly use the outer `z` = 1, and the same name in the same block would mean two different things at two moments. Scanning names out first rules that out: at `x + z`, the block's `z` exists but has no value yet, and using it is an error.
+
+</Prose>
+
+<Example index={2} file="too_early.sicp" source={envModelTooEarlyProgram} anim="frames">
+
+The animation stops at the error. The block frame shows `y` and `z`, both unassigned, and the lookup of `z` never gets as far as E0. Swap the two declarations in `f` and the program returns 11.
+
+</Example>
+
+<Prose>
+
+Only code that runs before a declaration has been evaluated can meet its name unassigned: an earlier statement of the block, or a function that such a statement calls. Function bodies are not evaluated until the function is applied, so internal functions that mention each other are fine as long as nobody calls them before every declaration in the block has run. Section 4.1.6 comes back to these questions when we build an evaluator.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/evaluator/machine.ts">
+
+`scan` in `evaluator/machine.ts` does this: on entering a block that declares anything, it makes a frame with every declared name, each with `assigned: false`; the program itself is scanned the same way into the program frame E0. A lookup that finds an unassigned binding fails with *used before its declaration was evaluated* instead of looking further out. The tests in `chapter-3/environmentModel.test.ts` check that the internal functions of `sqrt` are declared in E2, which extends E1, that the even/odd program returns `false`, and that the program above fails with that error.
+
+</UnderTheHood>
+
+<Exercises range="3.11" total={1}>
+<Exercise id="3.11">
+
+In §3.2.3 we saw how the environment model describes functions with local state, and now we have seen internal declarations. A typical message-passing object uses both. Take the bank account of §3.1.1, repeated below and provided to your answer, and trace the environment structure made by
+
+```js
+const acc = make_account(50);
+acc("deposit")(40);    // 90
+acc("withdraw")(60);   // 30
+```
+
+Where is the local state of `acc` kept? Now make another account, `const acc2 = make_account(100);`. How do the two accounts keep their states apart, and what part of the environment structure do `acc` and `acc2` share? Answer the questions in the editor in code.
+
+```js
+function make_account(balance) {
+  function withdraw(amount) {
+    if (balance >= amount) {
+      balance = balance - amount;
+      return balance;
+    } else {
+      return "insufficient funds";
+    }
+  }
+  function deposit(amount) {
+    balance = balance + amount;
+    return balance;
+  }
+  function dispatch(m) {
+    return m === "withdraw"
+           ? withdraw
+           : m === "deposit"
+           ? deposit
+           : error(m, "unknown request: make_account");
+  }
+  return dispatch;
+}
+```
+
+<Solution>
+
+**Solution.** `make_account(50)` makes two frames: one binding `balance` to 50, then, because the body is a block with declarations, a block frame extending it that binds `withdraw`, `deposit` and `dispatch`, all three made in that block frame. `acc` is `dispatch`, so its environment pointer leads to the block frame. `acc("deposit")(40)` applies `dispatch` (a frame binding `m`) and then `deposit` (a frame binding `amount`); both extend the block frame, and the assignment in `deposit` looks outward past it to change `balance` in the frame of `make_account(50)`. That frame is where `acc`'s state lives. `acc2` gets its own pair of frames, so its `balance` is a different binding. The two accounts share no frame of their own: their environments meet only at the program frame (and the global environment beyond it). What they do share is code: the function objects of both accounts are made from the same three declarations.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '3.3.1', label: 'Mutable data and message passing' }, { id: '4.1.6', label: 'Scanning out declarations in the evaluator' }]} />

@@ -17,7 +17,9 @@ The Laboratory is the TypeScript package `@sicp/lab`. The Book never evaluates c
 | `prepare(source, options?)` | Parses and returns a `Machine` without running it. |
 | `Machine.run(maxSteps?)` | Advances at most `maxSteps` steps and returns the status; `paused` means call again. |
 
-Options are `budget` (steps, default 100 000), `prelude` (source evaluated first in an enclosing frame), `context` (declarations evaluated in the program's own frame before it, so that they call the program's functions), `display` (receives output lines), `draw` (receives each line drawn by `draw_line`, as a `Segment` `[x1, y1, x2, y2]`), `onMachine` (receives every register machine `make_machine` creates), `onPair` (receives every pair `pair` and `list` allocate, in order) and `hooks`. An error raised by code in the prelude says so, as `Hidden prelude, line N: …`.
+Options are `budget` (steps, default 100 000), `prelude` (source evaluated first in an enclosing frame), `context` (declarations evaluated in the program's own frame before it, so that they call the program's functions), `display` (receives output lines), `draw` (receives each line drawn by `draw_line`, as a `Segment` `[x1, y1, x2, y2]`), `onMachine` (receives every register machine `make_machine` creates), `onPair` (receives every pair `pair` and `list` allocate, in order), `hooks` and `seed`. An error raised by code in the prelude says so, as `Hidden prelude, line N: …`.
+
+Every program starts in a frame that extends two outer frames: `global`, which holds the primitives, and `library`, which holds the list and stream functions of Source §2 and §3 and the register-machine language of §5.1, written in Source (`evaluator/library.ts`). A declaration in the program shadows a library function of the same name. `createLibraryEnvironment(display)` returns that starting environment, which is how the CLI's REPL begins.
 
 | Export | What it does |
 | --- | --- |
@@ -38,6 +40,9 @@ Options are `budget` (steps, default 100 000), `prelude` (source evaluated first
 | `memoryImage(source)`, `collectGarbage(image)` | A program's pairs as the vectors of typed pointers of §5.3.1, and the stop-and-copy collector of §5.3.2 run on them step by step. |
 
 In Source, `make_machine(register_names, operations, controller)` returns a machine as the message-passing object of §5.2.1, so `start`, `get_register_contents` and `set_register_contents` work as in the book. Besides `"print_statistics"`, a machine's stack answers `"statistics"` with `list(total_pushes, maximum_depth)`, which exercise checks read. `prompt()` and the evaluator's `user_read` return the strings queued by `set_inputs(list(...))`, and `null` when there are none. Operations may be primitives or Source functions; a Source function is applied on a machine of its own.
+## Threads
+
+`concurrent_execute(f, g, ...)` gives each function of no arguments a thread of its own: a separate stack of continuations, with the frames shared. After every step a scheduler may switch to another runnable thread, so an assignment such as `balance = balance - amount`, which takes several steps, can be interrupted between reading `balance` and writing it. The call returns `undefined` once all of its threads have finished. `test_and_set(cell)` is a single primitive step, which is what makes it atomic. The scheduler draws from a seeded generator: a `seed` option, accepted by `prepare`, `evaluate` and the `run`, `trace` and `check` requests, replays an interleaving exactly, and a run without one interleaves differently each time. Trace records carry the thread they ran in, and `thread` events mark where threads start and end.
 
 ## Inspecting
 
@@ -46,9 +51,9 @@ In Source, `make_machine(register_names, operations, controller)` returns a mach
 | `processShape(source)` | Returns a `ProcessShapeSnapshot`: for each top-level statement that makes calls, the call depth at every call and return, the maximum depth, and whether the process is recursive or iterative. |
 | `maxDepth(source)` | The deepest stack of pending calls in a run. |
 | `createCallLogTracer(names)` | Hooks that log every call of the named compound functions, with arguments and result as text and the watched call pending below it. Chapter 4's animations watch the Source functions of an evaluator this way, such as `evaluate` and `apply`. |
-| `createStepTracer(source)` | Hooks that record a readable log of evaluation steps, each with its frame id, source span, top-level statement index and a structured `event` (`call`, `return`, `result`, `name`, `define` or `eval`) from which the Book's animations rebuild trees, frames and call stacks. |
+| `createStepTracer(source)` | Hooks that record a readable log of evaluation steps, each with its frame id, source span, top-level statement index and a structured `event` (`call`, `return`, `result`, `name`, `define`, `thread` or `eval`) from which the Book's animations rebuild trees, frames and call stacks. |
 
-Inspectors attach through `MachineHooks`: `onEval`, `onCall`, `onReturn`, `onResult`, `onDefine`, `onTopLevelStatement`. A hook observes; it cannot change the result.
+Inspectors attach through `MachineHooks`: `onEval`, `onCall`, `onReturn`, `onResult`, `onDefine`, `onTopLevelStatement`, `onThread`. A hook observes; it cannot change the result.
 
 ## Running off the main thread
 

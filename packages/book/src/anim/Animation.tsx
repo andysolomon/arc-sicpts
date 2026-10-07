@@ -1,4 +1,12 @@
 import type { ReactNode } from 'react';
+import { scenes as scenes31 } from './chapter-3/section-3.1.tsx';
+import { scenes as scenes32 } from './chapter-3/section-3.2.tsx';
+import { scenes as scenes33 } from './chapter-3/section-3.3.tsx';
+import { scenes as scenes33Simulation } from './chapter-3/section-3.3-simulation.tsx';
+import { scenes as scenes34 } from './chapter-3/section-3.4.tsx';
+import { scenes as scenes35 } from './chapter-3/section-3.5.tsx';
+import { scenes as scenes35Paradigm } from './chapter-3/section-3.5-paradigm.tsx';
+import type { SceneRegistry } from './chapter-3/registry.ts';
 import { BranchesScene } from './scenes/BranchesScene.tsx';
 import { CallsScene } from './scenes/CallsScene.tsx';
 import { CobwebScene } from './scenes/CobwebScene.tsx';
@@ -16,6 +24,7 @@ import { NewtonScene } from './scenes/NewtonScene.tsx';
 import { NewtonsMethodScene } from './scenes/NewtonsMethodScene.tsx';
 import { OperationTableScene } from './scenes/OperationTableScene.tsx';
 import { OrderScene } from './scenes/OrderScene.tsx';
+import { SeriesScene } from './scenes/SeriesScene.tsx';
 import { PairsScene } from './scenes/PairsScene.tsx';
 import { PictureScene } from './scenes/PictureScene.tsx';
 import { SubstitutionScene } from './scenes/SubstitutionScene.tsx';
@@ -94,7 +103,25 @@ export type AnimKind =
   /** The choices `amb` makes and the backtracking a failed `require` causes, as a search tree (§4.3). */
   | 'amb-search'
   /** Frames flowing through a query: patterns matched against assertions, rules unified (§4.4). */
-  | 'query-frames';
+  | 'query-frames'
+  /** The numbers the program displays, plotted as series (§3.1.2, §3.5.3). */
+  | 'series'
+  /** Chapter 3's own scenes, registered per section in `chapter-3/`. */
+  | Chapter3Kind;
+
+const chapter3 = {
+  ...scenes31,
+  ...scenes32,
+  ...scenes33,
+  ...scenes33Simulation,
+  ...scenes34,
+  ...scenes35,
+  ...scenes35Paradigm,
+} satisfies SceneRegistry;
+type Chapter3Kind = keyof typeof chapter3;
+
+/** Running a program for its output alone can take many more steps than a full trace allows. */
+const SERIES_BUDGET = 1_000_000;
 
 export interface AnimationProps {
   kind: AnimKind;
@@ -140,6 +167,8 @@ export function Animation({ kind, source, stepIndex, prelude, special, start }: 
       return <SubstitutionScene source={source} title="What the process leaves pending" maxSteps={160} />;
     case 'growth':
       return <GrowthScene source={source} />;
+    case 'series':
+      return <Series source={source} prelude={prelude} />;
     case 'complex-plane':
       return <ComplexPlaneScene source={source} prelude={prelude} />;
     case 'operation-table':
@@ -151,16 +180,28 @@ export function Animation({ kind, source, stepIndex, prelude, special, start }: 
           <Traced kind="frames" source={source} stepIndex={stepIndex} title="What the machine does instead" />
         </div>
       );
-    default:
-      return <Traced kind={kind} source={source} stepIndex={stepIndex} prelude={prelude} />;
+    default: {
+      const scene = (chapter3 as SceneRegistry)[kind];
+      if (scene !== undefined) return scene({ source, stepIndex, prelude });
+      return <Traced kind={kind as TracedProps['kind']} source={source} stepIndex={stepIndex} prelude={prelude} />;
+    }
   }
+}
+
+function Series({ source, prelude }: { source: string; prelude: string | undefined }) {
+  // Only the output is drawn, so one record is enough.
+  const { trace } = useTrace(source, { budget: SERIES_BUDGET, maxRecords: 1, prelude });
+  return <SeriesScene trace={trace} />;
 }
 
 type Chapter4Kind = 'tagged-list' | 'eval-apply' | 'thunks' | 'amb-search' | 'query-frames';
 type Chapter5Kind = 'machine' | 'memory' | 'garbage-collection' | 'compiled' | 'compare';
 
 interface TracedProps {
-  kind: Exclude<AnimKind, 'reduce' | 'order' | 'process' | 'substitution+frames' | 'growth' | 'complex-plane' | 'operation-table' | Chapter4Kind | Chapter5Kind>;
+  kind: Exclude<
+    AnimKind,
+    'reduce' | 'order' | 'process' | 'substitution+frames' | 'growth' | 'complex-plane' | 'operation-table' | 'series' | Chapter3Kind | Chapter4Kind | Chapter5Kind
+  >;
   source: string;
   stepIndex?: number | undefined;
   title?: string;

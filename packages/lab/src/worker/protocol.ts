@@ -1,3 +1,4 @@
+import type { HeapSnapshot } from '../inspect/heap.ts';
 import type { WatchedCall } from '../inspect/callLog.ts';
 import type { Segment } from '../evaluator/primitives.ts';
 import type { GcRun } from '../chapter-5/memory.ts';
@@ -24,6 +25,8 @@ export interface RunRequest {
     /** Log the calls to these functions, sent once the run ends. */
     calls?: { names: string[]; maxCalls?: number; maxText?: number };
   };
+  /** Seeds the scheduler of `concurrent_execute`; see `MachineOptions.seed`. */
+  seed?: number;
 }
 
 /** Evaluate a program and return the whole step log for the stepper. */
@@ -34,6 +37,9 @@ export interface TraceRequest {
   budget?: number;
   prelude?: string;
   maxRecords?: number;
+  seed?: number;
+  /** `heap`: also snapshot the program frame's bindings as a graph of pairs after each top-level statement (§3.3). */
+  inspect?: { heap?: boolean };
 }
 
 export type TestSpec =
@@ -61,6 +67,8 @@ export interface CheckRequest {
   tests: TestSpec[];
   /** Budget for each test; defaults to 100 000. */
   budget?: number;
+  /** Seeds the scheduler for every test, so that a check with threads is repeatable. */
+  seed?: number;
 }
 
 /** Run a program and record every register machine it makes and starts (§5.1, §5.2). */
@@ -178,6 +186,8 @@ export type LabEvent =
       truncated: boolean;
       outcome: TraceOutcome;
       output: string[];
+      /** Present when the request asked for `inspect.heap`. */
+      heap?: HeapSnapshot[];
       /** Every line drawn by `draw_line`, up to the drawing limit. */
       drawing: Segment[];
     }

@@ -1,0 +1,109 @@
+import { imperativeFactorialProgram, aliasedAccountProgram, separateAccountProgram, simplifiedWithdrawProgram } from '@sicp/lab';
+
+<Prose>
+
+Assignment lets us model objects with local state, and §3.1.2 showed that this can make programs more modular. The price is that we lose the substitution model. Once names can change their values, the simple picture of §1.1.5, in which applying a function means replacing its parameters by the arguments and evaluating the body, no longer predicts what programs do. In fact no model with the clean mathematical properties of substitution will do.
+
+The clearest way to see this is to strip `make_withdraw` down to the bone. `make_simplified_withdraw` does not check the balance at all; it subtracts and returns the result. Beside it, `make_decrementer` does the same subtraction but never assigns anything.
+
+</Prose>
+
+<Example index={0} file="decrementer.sicp" source={simplifiedWithdrawProgram} anim="local-state">
+
+Both objects start with a balance of 25 and both are applied to 20. `W` remembers the result, so the next call starts from 5 and goes to −5; `D` subtracts from 25 every time, so its balance never moves. Swap the order of the four calls and `D`'s answers stay the same while `W`'s change.
+
+</Example>
+
+<Prose>
+
+Substitution handles `make_decrementer` perfectly. To evaluate `make_decrementer(25)(20)`, replace `balance` by 25 in the body of `make_decrementer`, and then `amount` by 20:
+
+```js
+make_decrementer(25)(20)
+(amount => 25 - amount)(20)
+25 - 20
+5
+```
+
+Try the same with `make_simplified_withdraw(25)(20)`. Substituting 25 for `balance` everywhere in the body gives
+
+```js
+(amount => { balance = 25 - amount; return 25; })(20)
+```
+
+and then substituting 20 for `amount`, the function returns 25: the wrong answer. Worse, the result is not even sensible, since we have nothing left to assign to. The trouble is that substitution treats a name as nothing more than another way of writing a value. Once there is assignment, a name refers to a *place* where a value is kept, and what is in that place can change. The `balance` before the assignment and the `balance` after it are different values, so no single value can be substituted for both. §3.2 replaces the substitution model with the environment model, in which names are bound in frames, the places the animations in this section draw.
+
+**Sameness and change.** The difficulty goes deeper than one model of evaluation. As soon as things can change, it becomes hard to say what it means for two things to be "the same".
+
+Make two decrementers with `make_decrementer(25)`. Are they the same? Yes, in every way that matters: one can be used in place of the other in any computation, and nobody could tell. Now make two withdrawal processors with `make_simplified_withdraw(25)`. Call them `W1` and `W2`. `W1(20)` is 5, and a second `W1(20)` is −15, but `W2(20)` is still 5. Even though they were made by evaluating the same expression, using one in place of the other changes the results.
+
+A language in which "equals can be substituted for equals" without changing the value of any expression is called *referentially transparent*. The programs of the first two chapters were all referentially transparent; including assignment breaks that. Without it, deciding when an expression can be simplified by replacing it with an equivalent one becomes much harder, and so does reasoning about programs at all.
+
+The same puzzle arises in the world we are modelling. Suppose Peter and Paul each have an account with $100. It matters a great deal whether these are two accounts that happen to hold the same amount, or one account that both of them use.
+
+</Prose>
+
+<Example index={1} file="separate_accounts.sicp" source={separateAccountProgram} anim="local-state">
+
+Two calls of `make_account`, so two frames with a `balance` each. Peter's withdrawals change E1, Paul's change E3, and neither can see the other's.
+
+</Example>
+
+<Example index={2} file="joint_account.sicp" source={aliasedAccountProgram} anim="local-state">
+
+Here `paul_acc` is declared as `peter_acc` itself. There is one call of `make_account`, one frame and one balance, and both names lead to it: Paul's withdrawal of 20 leaves 70 for Peter. The only difference in the text is the second declaration; change `peter_acc` back to `make_account(100)` and the card splits in two.
+
+</Example>
+
+<Prose>
+
+When one computational object can be reached through more than one name, the names are *aliases*. Aliasing is what makes a joint account work, and it is also the source of some of the hardest bugs to find: a change made through one name shows up under another name somewhere far away in the program. Bugs of that kind are called *side-effect bugs*.
+
+What counts as "the same" depends on what we care about. With rational numbers in Chapter 2 we never asked whether two equal fractions were the same object; a rational number *is* its value. A bank account is different. It stays the same account when its balance changes, and two accounts with equal balances are still different accounts. To reason about identity like this, we have to be able to observe change: we can tell that two names denote the same object only by changing it through one name and looking at it through the other. That idea of "the same object" depends on a notion of time, which the language now has whether we want it or not.
+
+**Pitfalls of imperative programming.** Programming without assignment is called *functional programming*; programming that makes heavy use of assignment is *imperative programming*. Apart from the problems of reasoning just described, imperative programs are prone to errors that functional programs cannot have. Recall the iterative factorial of §1.2.1, which passed its state, `product` and `counter`, as arguments to each step. Here it is in imperative style, with the two state variables updated by assignment. (Where SICP JS uses a `while` loop, the Laboratory's Source subset has no loops, so `iter` calls itself; the effect is the same.)
+
+</Prose>
+
+<Example index={3} file="factorial_imperative.sicp" source={imperativeFactorialProgram} anim="frames">
+
+Watch `product` and `counter` change in the block frame of each call. `factorial(5)` gives 120. `factorial_swapped` updates `counter` before `product`, so each step multiplies by the *next* counter, and the result is 6! = 720. In the functional version this mistake could not happen: both new values were computed from the old ones at once, as the arguments of one call.
+
+</Example>
+
+<Prose>
+
+The functional version had no order of assignments to get wrong. The imperative version makes us think about the order in which statements run, and about which value of each variable a statement sees. Programs that use assignment must get this right everywhere, and the problem becomes much worse when several processes run at the same time, which is the subject of §3.4. Still, programs are often written in imperative style, and we use assignment where it serves; the point is to know what it costs.
+
+</Prose>
+
+<UnderTheHood file="packages/book/src/anim/model/localState.ts">
+
+The cards come from `localStateKeyframes` in `anim/model/localState.ts`. It rebuilds the frames from the trace, and groups the program's names by the frame their function values remember: two names for functions of one frame share a card, and two calls of `make_account` give two. `tests/chapter3-local-state.test.tsx` asserts that Peter's and Paul's separate accounts end at 60 and 80 while the joint one ends at 40 under both names, and that the decrementer's balance never changes. `chapter-3/localState.test.ts` checks the values each program prints and that swapping the assignments computes 720 instead of 120.
+
+</UnderTheHood>
+
+<Exercises range="3.7 – 3.8" total={2}>
+<Exercise id="3.7">
+
+Consider password-protected accounts as in Exercise 3.3. Suppose the banking system also needs joint accounts. Write `make_joint(acc, password, new_password)`, which takes a password-protected account, its password, and a new password, and returns a way to reach the same account with the new password. If Peter's account was made with `make_account(100, "open sesame")`, then after `const paul_acc = make_joint(peter_acc, "open sesame", "rosebud");` Paul can use `"rosebud"` while Peter still uses `"open sesame"`, and both see the same balance. `make_account` of Exercise 3.3 is provided.
+
+<Solution>
+
+**Solution.** `make_joint` returns a new dispatching function `(p, m) => ...` that checks `p` against `new_password` and, if it matches, passes the message on to `acc` with the original `password`, which it remembers in its frame. Otherwise it returns `amount => "Incorrect password"`. No balance is copied: `paul_acc` is a second route to the one frame that holds Peter's balance, an alias with a different lock.
+
+</Solution>
+</Exercise>
+<Exercise id="3.8">
+
+When §1.1.3 described how to evaluate a combination, it said that the operands are evaluated first, but not in what order. With assignment, the order can change the result. Write a function `f` such that `f(0) + f(1)` is 0 if the operands of `+` are evaluated from left to right, and 1 if they are evaluated from right to left. So that each check can start afresh, write `make_f`, which returns a new such `f`. JavaScript, and the Laboratory, evaluate operands from left to right, so in the editor `f(0) + f(1)` should be 0; the checker imitates the other order by calling `f(1)` before `f(0)`.
+
+<Solution>
+
+**Solution.** Let `f` return its argument the first time it is called and 0 every time after. Left to right, `f(0)` is 0 and `f(1)` is 0. Right to left, `f(1)` is 1 and then `f(0)` is 0. `make_f` declares `let called = false;` and returns a function that sets it to `true` on its first call.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '3.2.1', label: 'The environment model' }, { id: '3.3.1', label: 'Sharing and identity' }, { id: '3.4.1', label: 'The nature of time in concurrent systems' }, { id: '3.5.5', label: 'Modularity of functional programs' }]} />

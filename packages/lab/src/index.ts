@@ -124,6 +124,26 @@ export {
   transformProgram,
 } from './chapter-1/returnedValues.ts';
 
+export * from './chapter-3/localState.ts';
+export * from './chapter-3/environmentModel.ts';
+export * from './chapter-3/mutableData.ts';
+export * from './chapter-3/simulation.ts';
+export * from './chapter-3/concurrency.ts';
+export * from './chapter-3/streams.ts';
+export * from './chapter-3/streamParadigm.ts';
+
+export {
+  createHeapInspector,
+  createPairIds,
+  heapGraph,
+  type HeapBinding,
+  type HeapInspector,
+  type HeapInspectorOptions,
+  type HeapPair,
+  type HeapSnapshot,
+  type HeapValue,
+  type PairIds,
+} from './inspect/heap.ts';
 export * from './chapter-2/dataAbstraction.ts';
 export * from './chapter-2/sequences.ts';
 export * from './chapter-2/pictures.ts';

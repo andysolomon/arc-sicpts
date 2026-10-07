@@ -5,6 +5,13 @@ import { Link } from 'react-router';
 import { Animation, type AnimKind } from '../anim/Animation.tsx';
 import { repoFile } from '../config.ts';
 import { BlackBoxDiagram } from '../diagrams/BlackBoxDiagram.tsx';
+import { diagrams as diagrams31 } from '../diagrams/chapter-3/section-3.1.tsx';
+import { diagrams as diagrams32 } from '../diagrams/chapter-3/section-3.2.tsx';
+import { diagrams as diagrams33 } from '../diagrams/chapter-3/section-3.3.tsx';
+import { diagrams as diagrams33Simulation } from '../diagrams/chapter-3/section-3.3-simulation.tsx';
+import { diagrams as diagrams34 } from '../diagrams/chapter-3/section-3.4.tsx';
+import { diagrams as diagrams35 } from '../diagrams/chapter-3/section-3.5.tsx';
+import { diagrams as diagrams35Paradigm } from '../diagrams/chapter-3/section-3.5-paradigm.tsx';
 import { Figure } from '../diagrams/Figure.tsx';
 import { LabArchitectureDiagram } from '../diagrams/LabArchitectureDiagram.tsx';
 import { LayersDiagram } from '../diagrams/LayersDiagram.tsx';
@@ -193,6 +200,13 @@ export const mdxComponents: MDXComponents = {
   LayersDiagram,
   BlackBoxDiagram,
   LabArchitectureDiagram,
+  ...diagrams31,
+  ...diagrams32,
+  ...diagrams33,
+  ...diagrams33Simulation,
+  ...diagrams34,
+  ...diagrams35,
+  ...diagrams35Paradigm,
   p: (props) => <p className="m-0" {...props} />,
   code: (props) => <code className="rounded bg-paper-2 px-[5px] py-px text-[0.88em]" {...props} />,
   pre: (props) => (

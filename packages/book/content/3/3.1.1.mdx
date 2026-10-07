@@ -1,0 +1,116 @@
+import { makeAccountProgram, makeWithdrawProgram, newWithdrawProgram, withdrawProgram } from '@sicp/lab';
+
+<Prose>
+
+Look around and the world seems to be made of things, and many of those things change. A bank account is a good example. Whether you may take out $100 right now is not settled by the account alone; it depends on everything that has happened to it: every deposit and every withdrawal so far. When an object's behaviour is shaped by its past like this, we say it *has state*. We usually do not need the whole past to describe that state, though. For the account, one number is enough: the current balance.
+
+A large system built from such objects is rarely one tangle. The objects interact with only a few others, and each keeps most of its state to itself. That suggests a way to organise a program: one computational object for each real object, each holding its own *state variables*, and changing them when something happens to it. For a program to work like this, a name must be able to stand for different values at different times. Until now, a name meant one value forever. This section adds the means to change it: *assignment*.
+
+**Local state variables.** Start with a single account and one operation, `withdraw`. It takes an amount; if the balance covers it, it takes the amount off and returns what is left, and otherwise it refuses with a message. Start with $100 and withdraw $25, then $25 again, then $60: the third request is refused. The same expression, `withdraw(25)`, gives 75 the first time and 50 the second. No function in the first two chapters behaved like that.
+
+</Prose>
+
+<Example index={0} file="withdraw.sicp" source={withdrawProgram} anim="frames">
+
+The program frame holds `balance`, and each call of `withdraw` gets a new frame that extends it. Step to an assignment and the frame that changes is lit: it is the program frame, wherever the assignment ran. Change the withdrawals, or add `balance = 1000;` before them, to see that anything in the program can reach the balance.
+
+</Example>
+
+<Prose>
+
+Two pieces of syntax are new. `let balance = 100;` declares a name that may later be reassigned; a name declared with `const` may not, and the Laboratory reports an error if you try. And `balance = balance - amount` is an *assignment*: it evaluates the right-hand side and then changes the value of the name on the left. An assignment is an expression, and its value is the value it stored, although we normally use it as a statement for its effect.
+
+Order now matters in a way it never did before. The consequent of the conditional is a block of two statements. The assignment comes first and the `return` second, so the function returns the balance *after* the withdrawal. Swap them and the answer changes. With only constants, the order of declarations hardly mattered; with assignment, a program is a sequence of events.
+
+`withdraw` works, but `balance` belongs to the whole program: any other function can read it or, worse, change it. It would be better if the balance were private to the withdrawal operation, so that only `withdraw` could touch it. We can arrange that by declaring `balance` inside a function that then returns the withdrawal operation.
+
+</Prose>
+
+<Example index={1} file="new_withdraw.sicp" source={newWithdrawProgram} anim="frames">
+
+`make_withdraw_balance_100` runs once. Its body declares `balance` in a frame of its own and returns a lambda made in that frame, so the frame survives the call. Every call of `new_withdraw` extends that frame, and every assignment changes the `balance` there. The program frame never has a `balance`: try adding `balance;` at the end and the Laboratory says the name is not declared.
+
+</Example>
+
+<Prose>
+
+From the outside, `new_withdraw` behaves exactly like `withdraw`, but now nothing else can reach its balance. Pairing a `let` declaration with assignment in this way is the general technique for building objects with local state. It comes at a price. The substitution model of §1.1.5 cannot explain what this program does: substituting values for names leaves nothing that could remember a changed balance. We will see in §3.1.3 exactly how the model fails, and §3.2 gives the environment model that replaces it. The frames drawn above are that model at work.
+
+A small change makes the starting balance a parameter. `make_withdraw` creates *withdrawal processors*: each call makes a new object with a balance of its own.
+
+</Prose>
+
+<Example index={2} file="make_withdraw.sicp" source={makeWithdrawProgram} anim="local-state">
+
+Each card is one object: the name the program gives it, the call that made it, and the state its frame keeps, with earlier values struck through. `W1` and `W2` start equal, but a withdrawal from one leaves the other alone, which is why `W2(40)` is refused while `W1(40)` succeeds. Make a third processor with `const W3 = make_withdraw(10);` and it gets a card of its own.
+
+</Example>
+
+<Prose>
+
+An account needs deposits as well as withdrawals. The two operations must share one balance, so both should be declared inside the function that holds it. `make_account` declares `withdraw` and `deposit` next to each other, and returns a third function, `dispatch`, that takes a *message* naming an operation and returns the right one. This is the message-passing style of §2.4.3, now carrying state. `acc("withdraw")` is the withdrawal operation of the account `acc`, and applying it to 50 performs the withdrawal.
+
+</Prose>
+
+<Example index={3} file="make_account.sicp" source={makeAccountProgram} anim="frames">
+
+`make_account(100)` binds `balance` in its frame E1, and the body's declarations of `withdraw`, `deposit` and `dispatch` sit in a block frame E2 just inside it. Withdrawals and deposits run in fresh frames, but each assignment changes the same `balance` in E1: 50, refused, 90, then 30. Send an unknown message, such as `acc("transfer")`, and `dispatch` signals an error.
+
+</Example>
+
+<Prose>
+
+Each call of `make_account` creates a new frame with a new `balance`, so `const another_acc = make_account(50);` is a second, completely independent account. Note also that the message test in `dispatch` happens every time the account is used; the operations themselves are made once, when the account is.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/evaluator/environment.ts">
+
+The Laboratory's `assign` (in `evaluator/environment.ts`) looks the name up through the chain of frames and changes the binding where it finds it, refusing names declared with `const`. The step trace records an assignment in the frame where it *ran*, such as the frame of one withdrawal; the frames animation (`anim/model/environment.ts`) makes the same outward search as `assign` to draw the change in the frame that *binds* the name. `chapter-3/localState.test.ts` asserts the balances above and that constants cannot be assigned; `tests/chapter3-local-state.test.tsx` asserts that `new_withdraw`'s balance ends at 35 in the frame its body made, and that `W1` and `W2` keep separate histories.
+
+</UnderTheHood>
+
+<Exercises range="3.1 – 3.4" total={4}>
+<Exercise id="3.1">
+
+An *accumulator* is a function that is called again and again with one number and adds each number to a running sum, returning the sum so far. Write `make_accumulator`, which makes accumulators, each with its own sum. The argument of `make_accumulator` is the starting sum: if `a` is `make_accumulator(5)`, then `a(10)` returns 15 and a second `a(10)` returns 25.
+
+<Solution>
+
+**Solution.** The parameter itself can serve as the state variable, since parameters can be assigned like names declared with `let`. `make_accumulator(sum)` returns `amount => { sum = sum + amount; return sum; }`. Each call of `make_accumulator` makes a new frame, so two accumulators never share a sum.
+
+</Solution>
+</Exercise>
+<Exercise id="3.2">
+
+When testing software it helps to know how often a function is called. Write `make_monitored`, which takes a one-argument function `f` and returns a function `mf` with a counter inside. If `mf` is given the string `"how many calls"`, it returns the count. Given `"reset count"`, it sets the counter to zero. Given anything else, it applies `f` to it, returns the result, and adds one to the count. For example, after `const s = make_monitored(math_sqrt);`, `s(100)` is 10 and then `s("how many calls")` is 1.
+
+<Solution>
+
+**Solution.** `make_monitored` declares `let calls = 0;` and returns a lambda that compares its argument with the two messages first. Only the third branch counts: `calls = calls + 1; return f(x);`. The count lives in the frame of the call to `make_monitored`, so each monitored function keeps its own.
+
+</Solution>
+</Exercise>
+<Exercise id="3.3">
+
+Change `make_account` so that it makes password-protected accounts. `make_account(100, "secret password")` should return an account that takes a password as well as a message, and carries out the request only when the password is the one it was made with. Otherwise it should reply `"Incorrect password"`: so `acc("secret password", "withdraw")(40)` is 60, while `acc("some other password", "deposit")(50)` is `"Incorrect password"`.
+
+<Solution>
+
+**Solution.** The password is just one more piece of local state, the parameter `password`, which never changes. `dispatch(p, m)` checks `p !== password` first and in that case returns `amount => "Incorrect password"`, a function, because the caller is going to apply whatever comes back to an amount. A refused request never reaches `withdraw` or `deposit`, so it leaves the balance alone.
+
+</Solution>
+</Exercise>
+<Exercise id="3.4">
+
+Change the account of Exercise 3.3 once more: if it is accessed more than seven times in a row with an incorrect password, it should call the function `call_the_cops`, which is provided. A correct password in between starts the count again.
+
+<Solution>
+
+**Solution.** Add a second state variable, `let wrong_attempts = 0;`, to the account. `dispatch` increments it on every wrong password and calls `call_the_cops()` once it exceeds 7; a correct password sets it back to 0. The counter is in the account's frame, so each account keeps its own count. This shows one strength of local state: the new feature changed one function and nothing that uses it.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['3.1.2', '3.1.3', { id: '3.2.3', label: 'Frames as the repository of local state' }, { id: '3.3.1', label: 'Mutable list structure' }]} />

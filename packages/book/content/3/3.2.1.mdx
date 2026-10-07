@@ -1,0 +1,80 @@
+import { envModelAssignmentProgram, envModelSquareProgram } from '@sicp/lab';
+
+<Prose>
+
+Back in Chapter 1 we explained function application with the substitution model: to apply a function, replace each parameter in its body by the corresponding argument, then evaluate what results. Section 3.1 broke that story. Once a name can be assigned, it no longer stands for one value; it stands for a *place* whose contents can change, and rewriting text cannot describe a place. So we need a better model of evaluation, one that keeps track of where values live. It is called the *environment model*.
+
+An *environment* is a sequence of *frames*. A frame is a table of *bindings*, each pairing a name with a value; a frame holds at most one binding for any name. Every frame except the outermost also points to its *enclosing environment*, the rest of the sequence. To find the value of a name in an environment, look in the first frame; if it has no binding for the name, try the next, and so on outward. The first binding found is the answer. If no frame has one, the name is *unbound* in that environment.
+
+The diagram below is the book's first example. Frames II and III both extend frame I. Pick an environment and a name and watch the search. In environment A, `x` is 7: frame II binds it before the search ever reaches frame I, so its binding *shadows* the outer one. In environment B, `x` is 3, found one frame out. Try `z` in B: it is bound in frame II, but frame II is not part of B, so `z` is unbound there.
+
+</Prose>
+
+<EnvModelSimpleDiagram caption={<p>Four environments, three frames. C and D are the same environment, frame I alone. A starts at frame II, B at frame III, and both continue into frame I.</p>} />
+
+<Prose>
+
+The environment is what gives an expression its meaning. `x + 1` has no value by itself; it has one only with respect to an environment that says what `x` is. Even `+` is a name that has to be looked up. We assume a *global environment* of one frame binding the primitive functions, with no enclosing environment. A program is not evaluated directly in that frame: it gets a *program frame* of its own, which extends the global environment and holds the names the program declares. That way a program can declare a name such as `square` without touching the primitives. In the animations of this chapter, `E0` is the program frame, and the dashed box above it stands for everything outside: the primitives and the library.
+
+**The rules.** Evaluating an application works as before: evaluate the function expression and the argument expressions, then apply the function's value to the arguments' values. What changes is what a function *is* and what applying one *does*.
+
+In the environment model, a function is a pair: some code, and a pointer to an environment. There is only one way to make one, which is to evaluate a lambda expression. The code comes from the lambda expression's text, and the environment is the one the lambda expression was evaluated in. A function declaration such as
+
+```js
+function square(x) {
+  return x * x;
+}
+```
+
+is sugar for a constant declaration of a lambda expression,
+
+```js
+const square = x => x * x;
+```
+
+which evaluates `x => x * x` in the program environment and binds `square` to the result, also in the program frame. Diagrams draw such a function object as two bubbles: the left one leads to the code (its parameters and body), and the right one to the environment it was made in.
+
+To apply a function to arguments, make a new frame that binds the function's parameters to the arguments. The frame's enclosing environment is *the environment part of the function*, not the environment the call happened in. Then evaluate the function's body in the new environment.
+
+Step through the program below. The declaration puts `square` in E0 as a pair of bubbles whose environment pointer loops back to E0, where it was made. Applying it creates E1, binding `x` to 5 and pointing to E0, because that is where `square`'s pointer leads. The body `x * x` is evaluated in E1, where `x` is found in the first frame.
+
+</Prose>
+
+<Example index={0} mode="step" file="square.sicp" source={envModelSquareProgram} anim="frames">
+
+The two bubbles in the row for `square` are the function object: code on the left, environment on the right. Hover over them to see the parameters. When `square(5)` runs, the arrow from E1 to E0 is the frame's enclosing environment, taken from the function's right bubble.
+
+</Example>
+
+<Prose>
+
+Those are the two rules of the model, stated once more:
+
+- **Applying a function** constructs a frame binding its parameters to the call's arguments, and evaluates the body in the environment made of that frame followed by the function's own environment.
+- **Evaluating a lambda expression** in an environment makes a function object: the text of the lambda expression paired with a pointer to that environment.
+
+Declarations add bindings to the current frame. Before a block runs, every name it declares is entered in its frame as *unassigned*, and the declaration's evaluation gives the name its value; using the name before that is an error. Section 3.2.4 explains why. The language also distinguishes names that may change (`let`) from those that may not (`const`, and function declarations, which count as constants).
+
+Finally, assignment. To evaluate `name = value` in an environment, find the first frame in the environment that binds `name`, and change that binding. If no frame binds it, the assignment is an error, and so is assigning to a constant. Notice that assignment never creates a binding: it changes one that a declaration made.
+
+</Prose>
+
+<Example index={1} mode="step" file="assignment.sicp" source={envModelAssignmentProgram} anim="frames">
+
+`count = count + by` runs in the frame of `bump(1)`, which binds only `by`. The assignment looks outward like a lookup does, finds `count` in E0, and changes it there; the accent arrow marks the binding it changes. The next call sees the new value. Change `let count` to `const count` and the assignment stops the program; remove the declaration of `count` and it fails for the other reason.
+
+</Example>
+
+<Prose>
+
+These rules are more involved than the substitution model, but still short, and unlike the substitution model they describe what an interpreter actually does. Chapter 4 turns them into a working evaluator. The rest of this section uses them on small programs: plain function applications (§3.2.2), objects with local state (§3.2.3) and internal declarations (§3.2.4).
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-3/environmentModel.test.ts">
+
+The Laboratory's evaluator is built on exactly these rules. In `evaluator/environment.ts`, an environment is a frame plus a pointer to the enclosing environment; `lookup` walks outward until a frame has the name, and `assign` uses the same walk to find the binding it changes, refusing constants and names that are not declared. A function value (`Closure` in `evaluator/values.ts`) is the lambda expression's syntax paired with the environment it was evaluated in, which is why the animations write it as `fn[E0]`. The tests in `chapter-3/environmentModel.test.ts` check that `square(5)` makes one frame extending E0, that the assignments of `bump` run in E1 and E2 but change `count` in E0, and that assigning to a constant or an undeclared name is an error.
+
+</UnderTheHood>
+
+<Enables items={['3.2.2', '3.2.3', '3.2.4', { id: '4.1.3', label: 'Environments as data in the evaluator' }]} />
