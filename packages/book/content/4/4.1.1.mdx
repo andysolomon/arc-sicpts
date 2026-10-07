@@ -1,0 +1,213 @@
+import { evalApplyProgram, metacircularPrelude, returnProgram } from '@sicp/lab';
+
+<Prose>
+
+Our evaluator for JavaScript will be written in JavaScript. That may seem circular, but evaluation is a process, and JavaScript is our tool for describing processes. An evaluator written in the language it evaluates is called *metacircular*.
+
+The metacircular evaluator is the environment model of chapter 3 written down as a program. That model has two rules:
+
+- To evaluate a function application, evaluate its parts, then apply the value of the function expression to the values of the argument expressions.
+- To apply a compound function to arguments, evaluate its body in a new environment: the function’s own environment, extended by a frame that binds its parameters to the arguments.
+
+Statements and expressions to be evaluated in environments are reduced to functions to be applied to arguments, which are reduced in turn to new statements and expressions to be evaluated in new environments, and so on, until we reach names, whose values are looked up, and primitive functions, which are applied directly. The two functions at the heart of the evaluator, `evaluate` and `apply`, are this cycle.
+
+If we grant ourselves primitives, what is left for an evaluator to do? The connective tissue: it lets us nest combinations, so that `2 * (1 + 5)` reduces `1 + 5` to 6 before `*` sees it; it keeps track of names; it lets us declare compound functions; and it provides conditionals, blocks and the other syntactic forms.
+
+The evaluator does not depend on how programs are written down. It tests a component with abstract *syntax predicates*, such as `is_assignment`, and takes it apart with *selectors*, such as `assignment_value_expression`. Section 4.1.2 says how components are represented; section 4.1.3 how functions and environments are.
+
+## The function `evaluate`
+
+`evaluate` takes a program *component*, a statement or an expression, and an environment. It is a case analysis on the syntactic type of the component.
+
+```js
+function evaluate(component, env) {
+    return is_literal(component)
+           ? literal_value(component)
+           : is_name(component)
+           ? lookup_symbol_value(symbol_of_name(component), env)
+           : is_application(component)
+           ? apply(evaluate(function_expression(component), env),
+                   list_of_values(arg_expressions(component), env))
+           : is_operator_combination(component)
+           ? evaluate(operator_combination_to_application(component),
+                      env)
+           : is_conditional(component)
+           ? eval_conditional(component, env)
+           : is_lambda_expression(component)
+           ? make_function(lambda_parameter_symbols(component),
+                           lambda_body(component), env)
+           : is_sequence(component)
+           ? eval_sequence(sequence_statements(component), env)
+           : is_block(component)
+           ? eval_block(component, env)
+           : is_return_statement(component)
+           ? eval_return_statement(component, env)
+           : is_function_declaration(component)
+           ? evaluate(function_decl_to_constant_decl(component), env)
+           : is_declaration(component)
+           ? eval_declaration(component, env)
+           : is_assignment(component)
+           ? eval_assignment(component, env)
+           : error(component, "unknown syntax -- evaluate");
+}
+```
+
+A literal is its own value; a name is looked up. An application has its function expression and argument expressions evaluated, and the results go to `apply`. An operator combination such as `x * x` is rewritten as an application of the function named `*` and evaluated again. Every other syntactic form has its own evaluation function.
+
+This dispatch is a chain of conditionals, so a new syntactic form means editing `evaluate`. Most real interpreters dispatch in a data-directed style instead (exercise 4.3).
+
+## The function `apply`
+
+`apply` takes a function and a list of arguments. A primitive is handed to `apply_primitive_function`. A compound function has its body evaluated in its own environment extended by a frame for its parameters:
+
+```js
+function apply(fun, args) {
+    if (is_primitive_function(fun)) {
+        return apply_primitive_function(fun, args);
+    } else if (is_compound_function(fun)) {
+        const result = evaluate(function_body(fun),
+                                extend_environment(
+                                    function_parameters(fun),
+                                    args,
+                                    function_environment(fun)));
+        return is_return_value(result)
+               ? return_value_content(result)
+               : undefined;
+    } else {
+        error(fun, "unknown function type -- apply");
+    }
+}
+```
+
+A function returns a value by evaluating a return statement; if its body ends without one, its value is `undefined`. To tell the two apart, a return statement wraps its value in a *return value*, and `apply` unwraps it.
+
+</Prose>
+
+<Example index={0} file="eval_apply.sicp" source={evalApplyProgram} prelude={metacircularPrelude} budget={5000000} anim="eval-apply">
+
+The whole evaluator of this section, with its syntax functions and data structures, is hidden above the editor; `evaluate_program` parses the string and calls `evaluate` on it. In the cycle above, every call of `evaluate` and `apply` the program causes is a keyframe. Watch `square(3) + 1` become an application of `+`, `square(3)` go to `apply` as a compound function with argument 3, and its body come back to `evaluate` in the new environment. Change the program string and the cycle is recomputed.
+
+</Example>
+
+<Prose>
+
+## Arguments, conditionals and sequences
+
+`list_of_values` evaluates the argument expressions of an application and returns the list of their values:
+
+```js
+function list_of_values(exps, env) {
+    return map(arg => evaluate(arg, env), exps);
+}
+```
+
+`eval_conditional` evaluates the predicate, and then only one of the branches. The predicate’s value belongs to the language being implemented; `is_truthy` turns it into a value the implementation language can test. Here the two languages are the same, but they need not be.
+
+```js
+function eval_conditional(component, env) {
+    return is_truthy(evaluate(conditional_predicate(component), env))
+           ? evaluate(conditional_consequent(component), env)
+           : evaluate(conditional_alternative(component), env);
+}
+```
+
+`eval_sequence` evaluates the statements of a program or a block in order. The value is that of the last statement, unless some statement produces a return value: then that value is the result, and the statements after it are never evaluated.
+
+```js
+function eval_sequence(stmts, env) {
+    if (is_empty_sequence(stmts)) {
+        return undefined;
+    } else if (is_last_statement(stmts)) {
+        return evaluate(first_statement(stmts), env);
+    } else {
+        const first_stmt_value =
+            evaluate(first_statement(stmts), env);
+        if (is_return_value(first_stmt_value)) {
+            return first_stmt_value;
+        } else {
+            return eval_sequence(rest_statements(stmts), env);
+        }
+    }
+}
+```
+
+## Blocks, return statements, assignments and declarations
+
+The names declared in a block have the whole block as their scope, so `eval_block` scans them out first and evaluates the body in a new frame that binds each of them to the placeholder `"*unassigned*"`. Evaluating a declaration later replaces the placeholder with the declared value.
+
+```js
+function eval_block(component, env) {
+    const body = block_body(component);
+    const locals = scan_out_declarations(body);
+    const unassigneds = list_of_unassigned(locals);
+    return evaluate(body, extend_environment(locals,
+                                             unassigneds,
+                                             env));
+}
+function list_of_unassigned(symbols) {
+    return map(symbol => "*unassigned*", symbols);
+}
+function scan_out_declarations(component) {
+    return is_sequence(component)
+           ? accumulate(append,
+                        null,
+                        map(scan_out_declarations,
+                            sequence_statements(component)))
+           : is_declaration(component)
+           ? list(declaration_symbol(component))
+           : null;
+}
+```
+
+Declarations inside nested blocks are left for those blocks; and declarations in conditionals, function bodies and lambda expressions are always inside a nested block.
+
+```js
+function eval_return_statement(component, env) {
+    return make_return_value(evaluate(return_expression(component),
+                                      env));
+}
+function eval_assignment(component, env) {
+    const value = evaluate(assignment_value_expression(component),
+                           env);
+    assign_symbol_value(assignment_symbol(component), value, env);
+    return value;
+}
+function eval_declaration(component, env) {
+    assign_symbol_value(
+        declaration_symbol(component),
+        evaluate(declaration_value_expression(component), env),
+        env);
+    return undefined;
+}
+```
+
+An assignment’s value is the value assigned. To keep the evaluator short, `eval_assignment` allows assignment to constants too; exercise 4.11 fixes that. A declaration’s value is `undefined`, which matters only at the top level of a program (exercise 4.8 has the real rule).
+
+</Prose>
+
+<Example index={1} file="return.sicp" source={returnProgram} prelude={metacircularPrelude} budget={5000000}>
+
+`first_positive(5, 7)` evaluates `return a;` inside the conditional, so the return value travels out of the block and out of `eval_sequence` before the `display` is reached. `first_positive(-1, 7)` falls through the empty `else`, displays its message once and returns 7. The sum is 12.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-4/metacircular.ts">
+
+The evaluator is a Source program, `evaluatorCore` and its neighbours in `chapter-4/metacircular.ts`, run by the Laboratory’s own evaluator: an evaluator inside an evaluator. `parse` is a Laboratory primitive (`syntax/taggedList.ts`), and the cycle above is drawn by asking the worker to log the calls of the Source functions `evaluate` and `apply` (`inspect/callLog.ts`). The test `chapter-4/metacircular.test.ts` asserts that `square(3) + 1` makes 18 calls of `evaluate` and 3 of `apply` (one for `square`, two for the primitives `*` and `+`), and that the return-statement example displays its message once and returns 12.
+
+</UnderTheHood>
+
+<Exercises range="4.1" total={1}>
+<Exercise id="4.1">
+
+We cannot tell whether the metacircular evaluator evaluates argument expressions from left to right or from right to left: `list_of_values` inherits its order from the underlying language. Write a version of `list_of_values` that evaluates argument expressions from left to right regardless of the order in which `pair` evaluates its arguments, and a version that evaluates them from right to left. The checker runs both inside the evaluator on arguments that assign to the same variable.
+
+<Solution>
+
+**Solution.** The order must not depend on `pair`, so name the intermediate results with constant declarations, which are evaluated from top to bottom. Left to right evaluates the first argument expression before the rest; right to left evaluates the rest first.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['4.1.2', '4.1.3', { id: '5.4', label: 'The same cycle as a register machine' }]} />

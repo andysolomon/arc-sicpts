@@ -1,0 +1,135 @@
+import { lazierProgram, lazyListPrelude, lazyListsProgram, solveProgram } from '@sicp/lab';
+
+<Prose>
+
+In section 3.5.1, we showed how to implement streams as delayed lists. We used a lambda expression to construct a promise to compute the tail of a stream, without actually fulfilling that promise until later. We were forced to create streams as a new kind of data object, similar but not identical to lists, and this required us to reimplement many ordinary list operations (`map`, `append`, and so on) for use with streams.
+
+With lazy evaluation, streams and lists can be identical, so there is no need for separate list and stream operations. All we need to do is to arrange matters so that `pair` is non-strict. One way to accomplish this is to extend the lazy evaluator to allow for non-strict primitives, and to implement `pair` as one of these. An easier way is to recall (section 2.1.3) that there is no fundamental need to implement `pair` as a primitive at all. Instead, we can represent pairs as functions:
+
+```js
+function pair(x, y) {
+    return m => m(x, y);
+}
+function head(z) {
+    return z((p, q) => p);
+}
+function tail(z) {
+    return z((p, q) => q);
+}
+```
+
+We can install these declarations simply by typing them at the driver loop: the primitive `pair`, `head` and `tail` of the global environment are shadowed by them. In terms of these basic operations, the standard declarations of the list operations work with infinite lists, streams, as well as finite ones, and the stream operations can be implemented as list operations:
+
+```js
+function list_ref(items, n) {
+    return n === 0
+           ? head(items)
+           : list_ref(tail(items), n - 1);
+}
+function map(fun, items) {
+    return is_null(items)
+           ? null
+           : pair(fun(head(items)),
+                  map(fun, tail(items)));
+}
+function scale_list(items, factor) {
+    return map(x => x * factor, items);
+}
+function add_lists(list1, list2) {
+    return is_null(list1)
+           ? list2
+           : is_null(list2)
+           ? list1
+           : pair(head(list1) + head(list2),
+                  add_lists(tail(list1), tail(list2)));
+}
+const ones = pair(1, ones);
+const integers = pair(1, add_lists(ones, integers));
+```
+
+</Prose>
+
+<Example index={0} file="lazy_lists.sicp" source={lazyListsProgram} prelude={lazyListPrelude} budget={5000000}>
+
+`lazy_pairs` and `list_operations` are the declarations above, as strings for the driver loop; they are declared in the example’s hidden prelude, after the lazy evaluator. `ones` is a pair whose tail is `ones` itself, and `integers` is declared in terms of itself, exactly as the streams of section 3.5.2 were, with no lambda expressions for delays: every argument of the user’s `pair` is delayed already. Try `list_ref(integers, 40)`.
+
+</Example>
+
+<Prose>
+
+Note that these lazy lists are even lazier than the streams of chapter 3: the head of the list, as well as the tail, is delayed. In fact, even accessing the head or tail of a lazy pair need not force the value of a list element. The value is forced only when it is really needed, for use as the argument of a primitive, say, or to be printed as an answer. This extra laziness permits delayed versions of more general kinds of list structure, not just sequences; Hughes (1990) discusses some applications of lazy trees, and exercise 4.30 asks for examples of your own.
+
+</Prose>
+
+<Example index={1} file="lazier.sicp" source={lazierProgram} prelude={lazyListPrelude} budget={1000000}>
+
+The head of `p` is `head(null)`, and nothing goes wrong as long as nobody asks for it: `tail(p)` is 5. Change the last input to `"head(p);"` and the thunk is forced at last. The error it raises says that `null` was applied as a function, because the `head` in the thunk is the user’s, which applies its argument.
+
+</Example>
+
+<Prose>
+
+Lazy pairs also help with the problem that arose with streams in section 3.5.4, where we found that formulating stream models of systems with loops may require us to sprinkle our programs with additional lambda expressions for delays, beyond the ones required to construct a stream pair. With lazy evaluation, all arguments to functions are delayed uniformly. For instance, we can implement functions to integrate lists and solve differential equations as we originally intended in section 3.5.4:
+
+```js
+function integral(integrand, initial_value, dt) {
+    const int = pair(initial_value,
+                     add_lists(scale_list(integrand, dt),
+                               int));
+    return int;
+}
+function solve(f, y0, dt) {
+    const y = integral(dy, y0, dt);
+    const dy = map(f, y);
+    return y;
+}
+```
+
+</Prose>
+
+<Example index={2} file="solve.sicp" source={solveProgram} prelude={lazyListPrelude} budget={20000000}>
+
+`solve(x => x, 1, 0.01)` solves *dy*/*dt* = *y* with *y*(0) = 1, so its 100th element approximates *e* = 2.71828… at *t* = 1. `y` is passed to `integral` before `dy` has a value; that is fine, because the argument `dy` is a thunk, forced only when an element of the integrand is needed. The book takes 1000 steps of 0.001 and gets 2.716924. The work grows in proportion to the number of steps, and that run needs about a hundred million Laboratory steps, many seconds of an evaluator running inside an evaluator, so this one takes 100 steps of 0.01. It prints 2.704813829421526, which is 1.01¹⁰⁰, as Euler’s method predicts.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-4/lazy.test.ts">
+
+No new evaluator is needed: these programs run in the lazy evaluator of section 4.2.2 (`lazyEvaluator` in `chapter-4/lazy.ts`), and the pairs are the user’s own functions. The test `chapter-4/lazy.test.ts` asserts that `list_ref(integers, 17)` prints 18 in fewer than 1.5 million Laboratory steps, that `tail(p)` is 5 while `head(p)` stops with `unknown function type -- apply null`, and that `solve` prints 2.704813829421526, within 10⁻¹² of 1.01¹⁰⁰, in fewer than 12 million steps, twice as many as 50 steps of 0.02 take.
+
+</UnderTheHood>
+
+<Exercises range="4.30 – 4.32" total={3}>
+<Exercise id="4.30">
+
+Give some examples that illustrate the difference between the streams of chapter 3 and the lazier lazy lists described in this section. How can you take advantage of this extra laziness? Make your examples checkable by predicting what they do.
+
+<Solution>
+
+**Solution.** A stream evaluates its head when the pair is made and delays only its tail, so `pair(head(null), () => …)` fails at once; a lazy list delays both, and `head(null)` is never evaluated unless that element is used, so the second element can be taken. Data structures can therefore be built from elements that are expensive, erroneous or infinite to compute, and processed by their shape alone: a lazy tree can be counted, searched by structure or mapped over, and its leaves are computed only when something looks at them, which is the idea behind the lazy trees of Hughes (1990).
+
+</Solution>
+</Exercise>
+<Exercise id="4.31">
+
+Ben Bitdiddle tests the lazy list implementation given above by evaluating `head(list("a", "b", "c"))`. To his surprise, this produces an error. After some thought, he realizes that the lists obtained from the primitive `list` function are different from the lists manipulated by the new declarations of `pair`, `head` and `tail`. Modify the evaluator such that applications of the primitive `list` function typed at the driver loop produce true lazy lists.
+
+<Solution>
+
+**Solution.** The primitive `list` builds the evaluator’s own pairs, which the user’s `head` tries to apply as a function. Instead of applying the primitive, `apply` can rewrite `list(a, b, c)` as `pair(a, pair(b, pair(c, null)))` and evaluate that in the environment of the application. The name `pair` then means whatever it means there, the user’s lazy `pair` once it has been declared, and the elements stay unevaluated, as the elements of a lazy list should.
+
+</Solution>
+</Exercise>
+<Exercise id="4.32">
+
+Modify the driver loop for the evaluator so that lazy pairs and lists will print in some reasonable way. (What are you going to do about infinite lists?) You may also need to modify the representation of lazy pairs so that the evaluator can identify them in order to print them. Here the representation is the text’s, and the checkable part is a function `print_form`, giving what `user_print` should display.
+
+<Solution>
+
+**Solution.** The text’s lazy pair is a compound function with the single parameter `m`, which is how `print_form` recognizes one (a tag would be more robust: `pair` could return `list("lazy_pair", m => m(x, y))`). Its head and tail are found as the user’s `head` and `tail` find them, by applying it to `(p, q) => p` or `(p, q) => q`, and forcing the result. An infinite list cannot be printed whole, so `print_form` stops after ten elements and says so. With `print_form` written, `user_print` displays `print_form(object)` in place of the object.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '3.5.4', label: 'Streams and delayed evaluation' }, { id: '2.1.3', label: 'Pairs as functions' }, '4.3.1', { id: '5.4', label: 'Lazy evaluation in the explicit-control evaluator' }]} />

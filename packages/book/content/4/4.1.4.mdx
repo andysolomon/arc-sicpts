@@ -1,0 +1,114 @@
+import { driverLoopProgram, metacircularPrelude, newPrimitiveProgram } from '@sicp/lab';
+
+<Prose>
+
+With the evaluator we hold a description, in JavaScript, of the process by which JavaScript is evaluated. Because the description is a program, we can run it, and it becomes a working model of evaluation to experiment with.
+
+Our evaluator reduces everything, in the end, to the application of primitive functions. All it needs in order to run is a way to call on the underlying system for those. There must be a binding for each primitive function and each operator, so that when `evaluate` meets the name `head` or `+` it finds an object to pass to `apply`. The global environment provides them, together with constants such as `undefined`:
+
+```js
+function setup_environment() {
+    return extend_environment(append(primitive_function_symbols,
+                                     primitive_constant_symbols),
+                              append(primitive_function_objects,
+                                     primitive_constant_values),
+                              the_empty_environment);
+}
+const the_global_environment = setup_environment();
+```
+
+How primitives are represented does not matter, as long as `is_primitive_function` and `apply_primitive_function` agree. We make a primitive a list of the tag `"primitive"` and the function of the underlying language that implements it:
+
+```js
+function is_primitive_function(fun) {
+    return is_tagged_list(fun, "primitive");
+}
+function primitive_implementation(fun) { return head(tail(fun)); }
+
+const primitive_functions = list(list("head",    head             ),
+                                 list("tail",    tail             ),
+                                 list("pair",    pair             ),
+                                 list("is_null", is_null          ),
+                                 list("+",       (x, y) => x + y  ),
+                                 ⟨more primitive functions⟩
+                                );
+const primitive_function_symbols =
+    map(f => head(f), primitive_functions);
+const primitive_function_objects =
+    map(f => list("primitive", head(tail(f))),
+        primitive_functions);
+```
+
+The constants are set up the same way from `primitive_constants`. To apply a primitive we apply its implementation with the underlying system:
+
+```js
+function apply_primitive_function(fun, arglist) {
+    return apply_in_underlying_javascript(
+               primitive_implementation(fun), arglist);
+}
+```
+
+`apply_in_underlying_javascript` takes a function and a *list* of arguments; in JavaScript it turns the list into an array and uses the function’s `apply` method.
+
+## A driver loop
+
+The book gives the evaluator a *driver loop*, modelled on the read-evaluate-print loop of the underlying system: it prompts for a program, parses it, evaluates it, prints the result after an *output prompt*, and goes round again. Like a JavaScript program, each input is treated as if it were in a block: its declarations are scanned out and bound to `"*unassigned*"` in a new frame, and the environment it ends with is passed on to the next input. A page cannot stop and wait for typing, so here the inputs come from a list instead of from `prompt`:
+
+```js
+function driver_loop(env, inputs) {
+    if (is_null(inputs)) {
+       display("evaluator terminated");
+    } else {
+       const program = parse(head(inputs));
+       const locals = scan_out_declarations(program);
+       const unassigneds = list_of_unassigned(locals);
+       const program_env = extend_environment(locals, unassigneds, env);
+       const output = evaluate(program, program_env);
+       user_print(output_prompt, output);
+       return driver_loop(program_env, tail(inputs));
+    }
+}
+```
+
+`user_print` prints compound functions as `"< compound-function >"` rather than printing their environments, which are very long lists and may even contain cycles.
+
+</Prose>
+
+<Example index={0} file="driver_loop.sicp" source={driverLoopProgram} prelude={metacircularPrelude} budget={5000000}>
+
+The first input declares `append`, and its value is `undefined`. The second runs in an environment that extends the first one’s, so `append` is still there. Add a third input that uses `append` again, or one that declares something new.
+
+</Example>
+
+<Prose>
+
+Any function of the underlying language can be made a primitive, under any name. `list("first", head)` or `list("square", x => x * x)` would do as well as the entries above; the names are the same here only because the language we implement is the one we implement it in. That suggests installing other useful functions of the underlying language, such as `map`, directly. Before running the next example, decide what will happen.
+
+</Prose>
+
+<Example index={1} file="primitives.sicp" source={newPrimitiveProgram} prelude={metacircularPrelude} budget={5000000}>
+
+`square` works: a lambda expression of the underlying language is a perfectly good implementation. `map` does not. This is the situation of exercise 4.14 below: the error message shows what the system’s `map` was given to apply.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/evaluator/machine.ts">
+
+`apply_in_underlying_javascript` is the one primitive the Laboratory’s machine (`evaluator/machine.ts`) treats specially: it spreads the list into arguments and applies the function in place, so that it can apply lambda expressions such as `(x, y) => x + y`, which no ordinary primitive could call. The setup and the driver loop are `evaluatorSetup` in `chapter-4/metacircular.ts`. The test `chapter-4/metacircular.test.ts` asserts the driver loop’s three lines of output, and that the second example prints 26 and then fails to apply a `"compound_function"`.
+
+</UnderTheHood>
+
+<Exercises range="4.14" total={1}>
+<Exercise id="4.14">
+
+Eva Lu Ator and Louis Reasoner are each experimenting with the metacircular evaluator. Eva types in the declaration of `map`, and runs some test programs that use it. They work fine. Louis, in contrast, has installed the system version of `map` as a primitive for the metacircular evaluator. When he tries it, things go terribly wrong. Explain why Louis’s `map` fails even though Eva’s works: what does it receive as its function argument? Then repair Louis’s idea with a primitive `map` whose implementation does work.
+
+<Solution>
+
+**Solution.** A function created by the evaluated program is a list tagged `"compound_function"`, not a function of the underlying JavaScript, so the system’s `map` cannot apply it. Eva’s `map` is evaluated, so it applies its argument with the evaluator’s `apply`. A primitive can do the same: its implementation may call `apply` on each element, and `apply` knows both kinds of function.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['4.1.5', { id: '4.2.2', label: 'A driver loop for the lazy evaluator' }, { id: '5.4.4', label: 'Running the explicit-control evaluator' }]} />
