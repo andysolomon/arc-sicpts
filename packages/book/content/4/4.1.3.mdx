@@ -1,0 +1,197 @@
+import { environmentProgram, functionObjectProgram, metacircularPrelude } from '@sicp/lab';
+
+<Prose>
+
+Besides the representation of components, the evaluator needs data structures of its own: for the functions and environments a program creates as it runs, for return values, and for truth.
+
+## Testing of predicates
+
+We keep the predicates of conditionals proper: they must evaluate to a boolean, and only `true` is truthy.
+
+```js
+function is_truthy(x) {
+    return is_boolean(x)
+           ? x
+           : error(x, "boolean expected, received");
+}
+function is_falsy(x) { return ! is_truthy(x); }
+```
+
+Full JavaScript accepts any value as a predicate, and treats `false`, 0, `NaN`, `""`, `null` and `undefined` as false. That rule would be one change to `is_truthy`.
+
+## Representing functions
+
+Primitive functions are applied by `apply_primitive_function` and recognized by `is_primitive_function`; §4.1.4 describes them. A compound function is made from parameters, a body and an environment:
+
+```js
+function make_function(parameters, body, env) {
+    return list("compound_function", parameters, body, env);
+}
+function is_compound_function(f) {
+    return is_tagged_list(f, "compound_function");
+}
+function function_parameters(f) { return list_ref(f, 1); }
+
+function function_body(f) { return list_ref(f, 2); }
+
+function function_environment(f) { return list_ref(f, 3); }
+```
+
+## Representing return values
+
+A return statement’s value is wrapped, so that `eval_sequence` and `apply` can recognize it:
+
+```js
+function make_return_value(content) {
+    return list("return_value", content);
+}
+function is_return_value(value) {
+    return is_tagged_list(value, "return_value");
+}
+function return_value_content(value) {
+    return head(tail(value));
+}
+```
+
+</Prose>
+
+<Example index={0} file="function_object.sicp" source={functionObjectProgram} prelude={metacircularPrelude}>
+
+To the evaluator, a function is a list. Its parameters are a list of strings and its body is a tagged list: the return statement that an expression body stands for. The environment is the last element; it is not printed here because it contains every primitive. Its length is 2: the frame of the program and the global frame.
+
+</Example>
+
+<Prose>
+
+## Operations on environments
+
+The evaluator needs three operations on environments:
+
+- `lookup_symbol_value(symbol, env)` returns the value bound to the symbol, or signals an error if it is unbound;
+- `extend_environment(symbols, values, base_env)` returns a new environment, a new frame binding the symbols to the values, enclosed by `base_env`;
+- `assign_symbol_value(symbol, value, env)` changes the binding in the innermost frame that binds the symbol, or signals an error.
+
+An environment is a list of frames; its enclosing environment is its `tail`, and the empty environment is the empty list. Each frame is a pair of lists: the names bound in it and their values.
+
+```js
+function enclosing_environment(env) { return tail(env); }
+
+function first_frame(env) { return head(env); }
+
+const the_empty_environment = null;
+
+function make_frame(symbols, values) { return pair(symbols, values); }
+
+function frame_symbols(frame) { return head(frame); }
+
+function frame_values(frame) { return tail(frame); }
+
+function extend_environment(symbols, vals, base_env) {
+    return length(symbols) === length(vals)
+           ? pair(make_frame(symbols, vals), base_env)
+           : error(pair(symbols, vals),
+                   length(symbols) < length(vals)
+                   ? "too many arguments supplied"
+                   : "too few arguments supplied");
+}
+```
+
+To look up a symbol we scan the names of the first frame; if we find it, the value is the corresponding element of the values. Otherwise we search the enclosing environment, and so on; reaching the empty environment is an `"unbound name"` error.
+
+```js
+function lookup_symbol_value(symbol, env) {
+    function env_loop(env) {
+        function scan(symbols, vals) {
+            return is_null(symbols)
+                   ? env_loop(enclosing_environment(env))
+                   : symbol === head(symbols)
+                   ? head(vals)
+                   : scan(tail(symbols), tail(vals));
+        }
+        if (env === the_empty_environment) {
+            error(symbol, "unbound name");
+        } else {
+            const frame = first_frame(env);
+            return scan(frame_symbols(frame), frame_values(frame));
+        }
+    }
+    return env_loop(env);
+}
+```
+
+`assign_symbol_value` scans in the same way, and changes the value it finds with `set_head` instead of returning it. Frames are therefore not quite a data abstraction: assignment reaches into them.
+
+</Prose>
+
+<Example index={1} file="environments.sicp" source={environmentProgram} prelude={metacircularPrelude}>
+
+`env` has two frames, and the inner `x` shadows the outer one. The assignment changes the value list of the first frame in place, so the frame printed last pairs `x` and `y` with 1 and 20. Try assigning to `"z"`, which no frame binds.
+
+</Example>
+
+<Prose>
+
+This is only one of many ways to represent environments, and it is not an efficient one: looking up a name may search through many frames, an approach called *deep binding*. Section 5.5.6 shows how *lexical addressing* avoids the search. Because the rest of the evaluator uses environments only through these functions, any of them can be replaced (exercise 4.9).
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-4/metacircular.ts">
+
+These are `evaluatorData` in `chapter-4/metacircular.ts`. `set_head` and `set_tail` are Laboratory primitives that change a pair in place; the Laboratory’s own environments, in `evaluator/environment.ts`, are records holding maps of bindings, and to the Laboratory a frame of the metacircular evaluator is just another list. The test `chapter-4/metacircular.test.ts` asserts that the example prints 1 and 3 and ends with the frame `[["x", ["y", null]], [1, [20, null]]]`, and that a compound function’s environment from the first example has two frames.
+
+</UnderTheHood>
+
+<Exercises range="4.9 – 4.13" total={5}>
+<Exercise id="4.9">
+
+Instead of representing a frame as a pair of lists, we can represent it as a list of bindings, each binding a symbol–value pair. Rewrite the environment operations to use this representation.
+
+<Solution>
+
+**Solution.** `make_frame` pairs each symbol with its value. Finding a binding is a search of one list, and assignment changes the binding with `set_tail`, so lookup and assignment both shrink to “find the binding in this frame, or try the enclosing environment”.
+
+</Solution>
+</Exercise>
+<Exercise id="4.10">
+
+`lookup_symbol_value` and `assign_symbol_value` share a pattern of traversing the environment. Declare an abstraction that captures it, `scan_environment(symbol, env, found, unbound_message)`, and redeclare the two functions in terms of it.
+
+<Solution>
+
+**Solution.** The traversal is the same; only what happens on finding the symbol differs, so that becomes the argument `found`, applied to the list of values that starts with the symbol’s value. Lookup takes its `head`; assignment changes it with `set_head`.
+
+</Solution>
+</Exercise>
+<Exercise id="4.11">
+
+Our language distinguishes constants (`const`) from variables (`let`), but the evaluator does not: `assign_symbol_value` happily assigns to a constant. Correct this by signaling an error when a constant is assigned. Introduce a way to tell the two kinds of declaration apart; change `scan_out_declarations` (and if necessary `extend_environment`) so that frames record which names are constants; change `assign_symbol_value` to signal the error; and have the evaluation of declarations use a new `assign_constant_value` that does not check. Function parameters must remain assignable.
+
+<Solution>
+
+**Solution.** `scan_out_declarations` can mark a constant’s name, say as `pair("const", symbol)`, so that every caller of `extend_environment`, including `eval_block` and the driver loop, passes the marks along without change. `make_frame` keeps the kinds beside the names; lookup is untouched. Assignment checks the kind it finds; declarations go through the version that does not. Parameters arrive as plain strings, so they are variables.
+
+</Solution>
+</Exercise>
+<Exercise id="4.12">
+
+JavaScript requires an error when the value of a name is used before its declaration is evaluated (see the end of §3.2.4). Change `lookup_symbol_value` to signal an error if the value it finds is `"*unassigned*"`. Similarly, assigning to a variable before its `let` declaration has been evaluated must be an error. Use messages that mention `"unassigned"`.
+
+<Solution>
+
+**Solution.** `lookup_symbol_value` checks the value it finds. For assignment, looking the name up first is enough, because that lookup now signals the error; the declarations themselves go on using `assign_symbol_value`, which must still replace `"*unassigned*"`.
+
+</Solution>
+</Exercise>
+<Exercise id="4.13">
+
+Before ECMAScript 2015, local variables were declared with `var`, whose scope is the whole body of the enclosing function, not the enclosing block. Change `scan_out_declarations` and `eval_block` so that names declared with `const` and `let` follow the scope rules of `var`. Outside strict mode, JavaScript also lets an undeclared name appear on the left of `=`, which adds a binding to the global environment; change `assign_symbol_value` to behave this way. What security problem does strict mode avoid by forbidding this?
+
+<Solution>
+
+**Solution.** The scan must look into nested blocks and conditional statements, though not into function bodies, and blocks lose their frames; `apply` then gives a function one frame for its parameters and all of its body’s names. Assignment that finds no binding adds one to the first frame of the global environment. That is the security problem: any function can create or overwrite global names by a typing mistake, or deliberately, which lets unrelated code interfere through names it never declared.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['4.1.4', { id: '3.2', label: 'The environment model, now as data' }, { id: '5.5.6', label: 'Lexical addressing' }]} />

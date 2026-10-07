@@ -1,0 +1,139 @@
+import {
+  andSeriesProgram,
+  notQueryProgram,
+  patternMatchProgram,
+  queryPrelude,
+  ruleApplicationProgram,
+  unifyProgram,
+} from '@sicp/lab';
+
+<Prose>
+
+Section 4.4.4 presents the query interpreter as a collection of functions. This section gives the overview: the structure of the system, independent of low-level detail. With it, we will be able to see the limitations of the system and the subtle ways in which its logical operations differ from those of mathematical logic.
+
+The evaluator must search, matching queries against facts and rules. It could do so as a nondeterministic program using the `amb` evaluator of §4.3 (exercise 4.75). Ours manages the search with streams. It rests on two operations, *pattern matching* and *unification*.
+
+## Pattern matching
+
+A *pattern matcher* tests whether a datum fits a pattern. The datum `list(list("a", "b"), "c", list("a", "b"))` matches the pattern `list($x, "c", $x)` with `$x` bound to `list("a", "b")`. It matches `list($x, $y, $z)` with `$x` and `$z` both bound to `list("a", "b")` and `$y` to `"c"`. It matches `list(list($x, $y), "c", list($x, $y))` with `$x` bound to `"a"` and `$y` to `"b"`. It does not match `list($x, "a", $y)`, whose second element must be the string `"a"`.
+
+The matcher of the query system takes a pattern, a datum and a *frame* of bindings for pattern variables. It checks whether the datum matches the pattern consistently with the bindings already in the frame, and if so returns the frame extended by any new bindings; otherwise it indicates failure. The functions `pattern_match`, `pattern_of` (a pattern written as a string) and `frame_text` are all in the prelude here:
+
+</Prose>
+
+<Example index={0} file="pattern_match.sicp" source={patternMatchProgram} prelude={queryPrelude} budget={1_000_000}>
+
+The four matches of the paragraph above, each starting from the empty frame, `null`. Give the third one a frame in which `$y` is already bound to `"a"`, as `pattern_match(…, datum, list(pair(pattern_of('$y'), "a")))`, and it fails; bound to `"b"`, it succeeds and adds only `$x`.
+
+</Example>
+
+<Prose>
+
+The pattern matcher is all the mechanism needed for simple queries without rules. To process `job($x, list("computer", "programmer"))`, scan the assertions and select those that match the pattern relative to an empty frame. Each match gives a frame, and the frame’s value for `$x` instantiates the pattern into an answer.
+
+## Streams of frames
+
+The testing of patterns against frames is organised with streams. Given a single frame, the matcher runs through the data base one entry at a time, producing either a failure or an extension of the frame. Filtering out the failures leaves a stream of all the frames that extend the given one by a match with some assertion.
+
+A query takes an *input stream* of frames and does this for every frame in it, as figure 4.8 of the book shows. For each input frame it generates a stream of all the extensions of that frame by matches in the data base, and it combines all those streams into one *output stream*. To answer a simple query, give it an input stream of one empty frame. Its output is all the extensions of the empty frame: all the answers.
+
+The real elegance of streams of frames shows in compound queries. To handle an `and` of two queries, such as “all people who can do the job of a computer programmer trainee”,
+
+```js
+and(can_do_job($x, list("computer", "programmer", "trainee")),
+    job($person, $x))
+```
+
+we first find all entries that match the first pattern, which gives a stream of frames binding `$x`. Then, for each of those frames, we find all entries that match `job($person, $x)` *consistently with the binding of `$x`*. The `and` of two queries is a series combination, figure 4.10: frames that pass the first query are filtered and further extended by the second.
+
+</Prose>
+
+<Example index={1} file="and_series.sicp" source={andSeriesProgram} prelude={queryPrelude} budget={2_000_000} anim="query-frames">
+
+Only one `can_do_job` assertion matches, so one frame, with `$x` bound to `list("computer", "programmer")`, flows into the `job` pattern, which extends it twice. Watch the frame in of the `job` matches: it is that one frame every time.
+
+</Example>
+
+<Prose>
+
+An `or` is a parallel combination, figure 4.12: the input stream goes separately to each query and the output streams are merged. Even from this high-level description it is clear that compound queries can be slow. A query may produce several output frames for each input frame, and each query in an `and` takes its input from the previous one, so an `and` could in the worst case perform a number of matches exponential in the number of queries (exercise 4.73). In practice the added conditions of an `and` tend to reduce rather than multiply the frames.
+
+From the stream-of-frames viewpoint, `not` is a filter. Given `not(job($x, list("computer", "programmer")))`, we try, for each input frame, to extend it to satisfy `job($x, list("computer", "programmer"))`, and remove from the input stream every frame for which that is possible. What passes are the frames whose binding for `$x` is not a computer programmer.
+
+</Prose>
+
+<Example index={2} file="not_filter.sicp" source={notQueryProgram} prelude={queryPrelude} budget={2_000_000}>
+
+The `supervisor` pattern produces three frames, one each for Alyssa, Cy and Lem. The `not` passes only the frame in which `$x` is Lem: the other two can be extended by a `job` assertion, so they are removed.
+
+</Example>
+
+<Prose>
+
+`javascript_predicate` is a similar filter. Each frame instantiates the variables in the predicate, the predicate is evaluated, and the frames for which it is false are removed.
+
+## Unification
+
+To handle rules we must find the rules whose conclusions match a pattern. Conclusions contain variables, so we need a generalisation of pattern matching in which both sides may contain variables: *unification*.
+
+A unifier takes two patterns and determines whether some assignment of values to their variables makes them equal; if so, it returns a frame of those bindings. Unifying `list($x, "a", $y)` and `list($y, $z, "a")` binds `$x`, `$y` and `$z` all to `"a"`. Unifying `list($x, $y, "a")` and `list($x, "b", $y)` fails: `$y` would have to be both `"b"` and `"a"`. Like the matcher, the unifier takes a frame and only makes unifications consistent with it.
+
+Unification is the most technically difficult part of the query system. With complex patterns it can seem to require deduction. To unify `list($x, $x)` and `list(list("a", $y, "c"), list("a", "b", $z))` is to solve simultaneous equations: `$x` = `list("a", $y, "c")` and `$x` = `list("a", "b", $z)`. These imply `list("a", $y, "c")` = `list("a", "b", $z)`, hence `$y` = `"b"` and `$z` = `"c"`, hence `$x` = `list("a", "b", "c")`.
+
+A successful match binds every variable of the pattern to constants. A successful unification may leave some variables unbound and bind others to values that contain variables. Unifying `list($x, "a")` with `list(list("b", $y), $z)` gives `$z` = `"a"` and `$x` = `list("b", $y)`, and says nothing about `$y`: whatever `$y` turns out to be, `$x` is `list("b", $y)`. If a value for `$y` is later added to the frame, `$x` will refer to it.
+
+</Prose>
+
+<Example index={3} file="unify.sicp" source={unifyProgram} prelude={queryPrelude} budget={1_000_000}>
+
+The four unifications of the text. The frames record the equations as they were solved: in the last one `$x` is bound to `list("a", $y, "c")`, and `$y` to `"b"`. Instantiating `$x` in that frame, which follows the bindings through, gives `list("a", "b", "c")`.
+
+</Example>
+
+<Prose>
+
+## Applying rules
+
+Unification is the key to making inferences from rules. To process `lives_near($x, list("Hacker", "Alyssa", "P"))`, the evaluator first uses the pattern matcher to look for assertions that match. There are none: the data base says nothing directly about who lives near whom. Next it tries to unify the pattern with the conclusion of each rule. It unifies with the conclusion of the `lives_near` rule, giving a frame in which `$x` is bound to `$person_1` and `$person_2` is bound to `list("Hacker", "Alyssa", "P")`. Relative to that frame, the evaluator evaluates the body of the rule. Successful matches there bind `$person_1`, and through it `$x`.
+
+In general, to apply a rule when trying to establish a pattern in a frame:
+
+- unify the pattern with the conclusion of the rule to form, if successful, an extension of the original frame;
+- relative to the extended frame, evaluate the query formed by the body of the rule.
+
+Compare applying a function in the evaluator of §4.1:
+
+- bind the function’s parameters to its arguments to form a frame that extends the function’s environment;
+- relative to the extended environment, evaluate the body of the function.
+
+The similarity is no accident. Function declarations are the means of abstraction in JavaScript, and rules are the means of abstraction in the query language. In each case we unwind the abstraction by creating bindings and evaluating the body relative to them.
+
+</Prose>
+
+<Example index={4} file="apply_rule.sicp" source={ruleApplicationProgram} prelude={queryPrelude} budget={3_000_000} anim="query-frames">
+
+Watch the rule step. Before unifying, the system renames the rule’s variables with a number unique to this application, so `$person_1` becomes something like `$person_1_3`; two applications of one rule must not share variables. The body then runs on the unified frame: two `address` patterns and a `not(same(…))`, which applies the `same` rule. Only Cy lives near Alyssa.
+
+</Example>
+
+<Prose>
+
+## Simple queries, the evaluator and the driver
+
+Now simple queries can use rules as well as assertions. Given a pattern and a stream of frames, the system produces for each input frame two streams: the extensions found by matching the pattern against all assertions, and the extensions found by applying all possible rules. Appending them gives every way the pattern can be satisfied consistently with that frame, and combining the streams for all the input frames gives the output stream.
+
+The function that coordinates all this is `evaluate_query`, the analogue of `evaluate`. It takes a query and a stream of frames and returns a stream of extended frames. Like `evaluate` it classifies its input and dispatches: there is a function for each syntactic form, `and`, `or`, `not` and `javascript_predicate`, and one for simple queries.
+
+The driver loop reads a query, calls `evaluate_query` with it and a stream of one empty frame, instantiates the original query with each frame of the resulting stream, and prints the instantiations. It also recognises `assert`, which adds an assertion or a rule to the data base. The book’s driver reads from a prompt; the Laboratory’s `query` takes a string, but does the same.
+
+Streams, rather than lists of frames, matter: recursive rules can produce infinitely many answers, and delayed evaluation lets the system print each answer as it is found, whether or not there are finitely many.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-4/query.ts">
+
+`pattern_match`, `unify_match`, `apply_a_rule` and the stream functions are the book’s code in `chapter-4/query.ts`; `pattern_of` and `frame_text` are small Laboratory helpers beside the driver. The animation watches the calls of `check_an_assertion`, `apply_a_rule`, `unify_match` and `extend` as the Laboratory runs the query, and reads the frames from their arguments (`src/anim/model/queryFrames.ts`). The tests `chapter-4/query.test.ts` assert each match and unification of this page, the two answers of the trainee query, and that renamed rule variables carry the application number.
+
+</UnderTheHood>
+
+<Enables items={[{ id: '4.4.3', label: 'Where the procedural reading shows' }, { id: '4.4.4', label: 'The same structure, as code' }, { id: '4.3.1', label: 'Search with amb instead' }]} />

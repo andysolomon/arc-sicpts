@@ -1,0 +1,344 @@
+import {
+  andQueryProgram,
+  appendToFormProgram,
+  assertRuleProgram,
+  livesNearProgram,
+  notQueryProgram,
+  pairPatternProgram,
+  predicateQueryProgram,
+  queryPrelude,
+  simpleQueryProgram,
+} from '@sicp/lab';
+
+<Prose>
+
+Chapter 1 drew a line between mathematics, which deals in declarative knowledge (*what is*), and programming, which deals in imperative knowledge (*how to*). Most programming languages, JavaScript among them, compute the values of functions, and so lean towards computations with well-defined inputs and outputs. The constraint system of §3.3.5 and the nondeterministic evaluator of §4.3 have already loosened that bias. *Logic programming* goes further: it combines a relational view of programming with a powerful kind of symbolic pattern matching called *unification*.
+
+Consider `append`. As a function it is a recipe for one question: given two lists, build their concatenation. As knowledge it is two rules:
+
+- for any list `y`, the empty list and `y` append to form `y`;
+- for any `u`, `v`, `y` and `z`, `pair(u, v)` and `y` append to form `pair(u, z)` if `v` and `y` append to form `z`.
+
+The same two rules can answer questions the function cannot: which list, appended to `list("a", "b")`, gives `list("a", "b", "c", "d")`? Which pairs of lists append to form `list("a", "b", "c", "d")`? In a logic programming language the programmer states the rules and the interpreter supplies the *how*. The method is general, and like every general method it can be led into infinite loops and other bad behaviour; §4.4.3 shows how.
+
+The rest of §4.4 is an interpreter for such a language, the *query language*, so called because it is good at retrieving information from data bases by asking questions, or *queries*. It is very different from JavaScript, yet its interpreter has the shape of §4.1’s: an evaluate part that classifies queries, an apply part that implements its means of abstraction (*rules* instead of functions), frames that bind variables to values, and, new here, streams everywhere.
+
+## A sample data base
+
+Gargle, a thriving high-technology company in the Boston area, keeps its personnel records in the query language. Each fact is an *assertion*. Here is the information about Ben Bitdiddle, the resident computer wizard:
+
+```js
+address(list("Bitdiddle", "Ben"),
+        list("Slumerville", list("Ridge", "Road"), 10))
+job(list("Bitdiddle", "Ben"), list("computer", "wizard"))
+salary(list("Bitdiddle", "Ben"), 122000)
+```
+
+Assertions look like function applications, but they are data. The first symbol, `address`, `job` or `salary`, says what *kind of information* the assertion holds; it needs no declaration, and its scope is global. The arguments are lists and primitive values such as strings and numbers.
+
+Ben runs the computer division and supervises two programmers, Alyssa P. Hacker and Cy D. Fect, and a technician, Lem E. Tweakit. Alyssa supervises a programmer trainee, Louis Reasoner. Ben’s own supervisor is the big wheel, Oliver Warbucks, who also supervises the chief accountant Eben Scrooge, whose assistant is Robert Cratchit, and an administrative assistant, DeWitt Aull. Each person has an `address`, a `job`, a `salary` and, except Oliver, a `supervisor`:
+
+```js
+supervisor(list("Hacker", "Alyssa", "P"), list("Bitdiddle", "Ben"))
+job(list("Reasoner", "Louis"),
+    list("computer", "programmer", "trainee"))
+```
+
+The data base also says which jobs can be done by holders of other jobs: a wizard can do the work of a programmer or a technician, a programmer can fill in for a trainee, and, as is well known, an administrative assistant can do the big wheel’s job:
+
+```js
+can_do_job(list("administration", "assistant"),
+           list("administration", "big", "wheel"))
+```
+
+All of these assertions are loaded into every example on this page, together with the rules introduced below.
+
+## Simple queries
+
+The book’s query system reads queries at a prompt. In the Laboratory you pass the query to `query` as a string. `query` displays every answer as it is found and returns how many there were. An answer is a string, displayed in double quotes, so the strings inside it get single ones.
+
+</Prose>
+
+<Example index={0} file="simple_query.sicp" source={simpleQueryProgram} prelude={queryPrelude} budget={2_000_000} anim="query-frames">
+
+The query asks for every `job` assertion whose second item is `list("computer", "programmer")`. `$x` is a *pattern variable*: any name that starts with a dollar sign. It can match anything, so the system answers with every matching assertion, the pattern *instantiated* with the value `$x` took. Step through the animation to see all nine `job` assertions tried. Change `"programmer"` to `"wizard"`.
+
+</Example>
+
+<Prose>
+
+A pattern can have several variables, as in `address($x, $y)`, which lists every address. It can have none, in which case the query asks whether that assertion is in the data base. The same variable may appear twice, as in `supervisor($x, $x)`, which asks for people who supervise themselves; that is why variables have names. The pattern `job($x, list("computer", $type))` matches every job whose description is a two-element list starting with `"computer"`, so it misses Louis, whose description has three. To match a list of any length that starts with `"computer"`, write the rest of it as a variable with `pair`:
+
+</Prose>
+
+<Example index={1} file="pair_pattern.sicp" source={pairPatternProgram} prelude={queryPrelude} budget={2_000_000}>
+
+`pair("computer", $type)` matches `list("computer", "programmer", "trainee")` with `$type` as `list("programmer", "trainee")`, and `list("computer")` with `$type` as `null`. Louis appears this time.
+
+</Example>
+
+<Prose>
+
+The system finds all assignments to the variables in the pattern that *satisfy* it: those for which the instantiated pattern is in the data base. It responds by listing those instantiations. A pattern with no variables is satisfied by the empty assignment if it is in the data base, and by nothing otherwise.
+
+## Compound queries
+
+Simple queries are the primitives. The means of combination are those of logic: `and`, `or` and `not`. To find the addresses of all computer programmers:
+
+</Prose>
+
+<Example index={2} file="and_query.sicp" source={andQueryProgram} prelude={queryPrelude} budget={2_000_000} anim="query-frames">
+
+`and(q1, q2, …)` is satisfied by assignments that satisfy every *qᵢ* at once. The variable `$person` ties the two patterns together: the animation shows each frame that leaves the `job` pattern, with `$person` bound, going on to the `address` pattern, which may only extend it consistently.
+
+</Example>
+
+<Prose>
+
+`or(q1, q2, …)` is satisfied by assignments that satisfy at least one *qᵢ*; `or(supervisor($x, list("Bitdiddle", "Ben")), supervisor($x, list("Hacker", "Alyssa", "P")))` finds everyone supervised by Ben or by Alyssa. `not(q)` is satisfied by the assignments that do not satisfy *q*. Who works for Ben and is not a programmer?
+
+</Prose>
+
+<Example index={3} file="not_query.sicp" source={notQueryProgram} prelude={queryPrelude} budget={2_000_000}>
+
+Only Lem. The `not` here is simpler than it looks: §4.4.2 shows it as a filter on frames, and §4.4.3 shows how that can surprise.
+
+</Example>
+
+<Prose>
+
+The last combination, `javascript_predicate`, holds a JavaScript expression. It is satisfied by the assignments for which the expression, with its variables instantiated, is true. It is for operations the query language lacks, such as comparing numbers; equality is what matching is for, and inequality is what the `same` rule below is for.
+
+</Prose>
+
+<Example index={4} file="javascript_predicate.sicp" source={predicateQueryProgram} prelude={queryPrelude} budget={2_000_000}>
+
+Everyone who earns more than $100,000. The instantiated predicate appears in each answer, as `(122000 > 100000)` and so on: the system evaluates that expression with the metacircular evaluator of §4.1. Try `$amount < 50000`.
+
+</Example>
+
+<Prose>
+
+## Rules
+
+The means of abstraction are *rules*. Two people live near each other if they live in the same town:
+
+```js
+rule(lives_near($person_1, $person_2),
+     and(address($person_1, pair($town, $rest_1)),
+         address($person_2, pair($town, $rest_2)),
+         not(same($person_1, $person_2))))
+```
+
+The final `not` keeps the rule from saying that everyone lives near themselves. `same` is a rule too, the simplest there is, with no body at all: it holds for any `$x`.
+
+```js
+rule(same($x, $x))
+```
+
+The general form is `rule(conclusion, body)`, where the conclusion is a pattern and the body any query. A rule stands for a large, even infinite, set of assertions: all instantiations of its conclusion by assignments that satisfy its body. So a pattern can be satisfied by an assertion that is nowhere in the data base, only implied by a rule.
+
+</Prose>
+
+<Example index={5} file="lives_near.sicp" source={livesNearProgram} prelude={queryPrelude} budget={2_000_000}>
+
+Louis and DeWitt live in Slumerville, as Ben does. No `lives_near` assertion exists; each answer is deduced. Rules can be parts of queries, too: `and(job($x, list("computer", "programmer")), lives_near($x, list("Bitdiddle", "Ben")))` asks for programmers who live near Ben. There are none.
+
+</Example>
+
+<Prose>
+
+Rules can use other rules, as `lives_near` uses `same`, and they can be recursive. A person is a *wheel* if they supervise someone who is in turn a supervisor, and a staff person is outranked by a boss who is their supervisor or, recursively, outranks their supervisor:
+
+```js
+rule(wheel($person),
+     and(supervisor($middle_manager, $person),
+         supervisor($x, $middle_manager)))
+
+rule(outranked_by($staff_person, $boss),
+     or(supervisor($staff_person, $boss),
+        and(supervisor($staff_person, $middle_manager),
+            outranked_by($middle_manager, $boss))))
+```
+
+New assertions and rules go into the data base through `query`, wrapped in `assert`. Here is a rule of our own:
+
+</Prose>
+
+<Example index={6} file="assert_rule.sicp" source={assertRuleProgram} prelude={queryPrelude} budget={2_000_000}>
+
+`assert(…)` adds the rule; it answers nothing, so `query` just reports it. The second query uses it. Try `outranked_by(list("Reasoner", "Louis"), $who)`, which climbs the hierarchy through the recursive rule.
+
+</Example>
+
+<Prose>
+
+## Logic as programs
+
+A rule is a logical implication: *if* an assignment satisfies the body, *then* it satisfies the conclusion. So the query language can make logical deductions. The two rules for `append` from the beginning of this section become a relation `append_to_form(x, y, z)`, read as “`x` and `y` append to form `z`”:
+
+```js
+rule(append_to_form(null, $y, $y))
+
+rule(append_to_form(pair($u, $v), $y, pair($u, $z)),
+     append_to_form($v, $y, $z))
+```
+
+The first rule has no body, so it holds for any `$y`. The second names the head and tail of a list with `pair`. With them, `append_to_form(list("a", "b"), list("c", "d"), $z)` computes the append, and `append_to_form(list("a", "b"), $y, list("a", "b", "c", "d"))` finds the list that completes it. Or ask for every way to split a list:
+
+</Prose>
+
+<Example index={7} file="append_to_form.sicp" source={appendToFormProgram} prelude={queryPrelude} budget={2_000_000}>
+
+Five answers from two rules and no algorithm for splitting. The system may seem intelligent, but it is following a well-determined algorithm, the subject of §4.4.2. Try the other two questions above.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-4/query.ts">
+
+The query system is the book’s JavaScript code of §4.4.4, run by the Laboratory as a Source program on top of the metacircular evaluator; the Gargle data base and its rules are `gargleAssertions` in `chapter-4/query.ts`. The test `chapter-4/query.test.ts` asserts every answer on this page: two programmers, five computer jobs once `pair` is used, Lem alone for the `not`, three salaries above $100,000, Louis and DeWitt near Ben, and the five ways to split `list("a", "b", "c", "d")`, in that order.
+
+</UnderTheHood>
+
+<Exercises range="4.53 – 4.61" total={9}>
+<Exercise id="4.53">
+
+Give simple queries that retrieve the following information from the data base, calling the person each answer is about `$person`:
+
+- all people supervised by Ben Bitdiddle;
+- the names and jobs of all people in the accounting division;
+- the names and addresses of all people who live in Slumerville.
+
+<Solution>
+
+**Solution.** Each is one pattern. For the last two, the division or town is the first item of a list whose length varies, so the rest of the list is a variable written with `pair`.
+
+</Solution>
+</Exercise>
+<Exercise id="4.54">
+
+Formulate compound queries that retrieve the following information:
+
+- the names of all people who are supervised by Ben Bitdiddle, together with their addresses;
+- all people whose salary is less than Ben Bitdiddle’s, together with their salary and Ben Bitdiddle’s salary;
+- all people who are supervised by someone who is not in the computer division, together with the supervisor’s name and job.
+
+The comments in the editor name the variables to use.
+
+<Solution>
+
+**Solution.** The first is an `and` of two patterns sharing `$person`. The second fetches Ben’s salary into `$ben_amount` and compares it with each other salary in a `javascript_predicate`, after both are bound. The third puts its `not` after `supervisor($person, $boss)`, so that `$boss` is bound by the time the filter runs.
+
+</Solution>
+</Exercise>
+<Exercise id="4.55">
+
+Define a rule that says that person 1 can replace person 2 if either person 1 does the same job as person 2 or someone who does person 1’s job can also do person 2’s job, and if person 1 and person 2 are not the same person. Using your rule, give queries that find the following:
+
+- all people who can replace Cy D. Fect;
+- all people who can replace someone who is being paid more than they are, together with the two salaries.
+
+<Solution>
+
+**Solution.** The body binds both jobs, then asks for either the `same` job or a `can_do_job` assertion between them, and excludes `same` people. Ben (a wizard can do a programmer’s job) and Alyssa (the same job) can replace Cy. Only Cy, for Alyssa, and DeWitt, for Oliver Warbucks, can replace someone better paid.
+
+</Solution>
+</Exercise>
+<Exercise id="4.56">
+
+Define a rule that says that a person is a “big shot” in a division if the person works in the division but does not have a supervisor who works in the division.
+
+<Solution>
+
+**Solution.** The division is the first item of the job. The `not` contains an `and` that looks for a supervisor with a job in the same division; `$division` is bound before the `not` runs. The big shots are Ben in computing, Eben Scrooge in accounting and Oliver Warbucks in administration.
+
+</Solution>
+</Exercise>
+<Exercise id="4.57">
+
+Ben Bitdiddle has missed one meeting too many. He adds the firm’s weekly meetings to the data base:
+
+```js
+meeting("accounting", list("Monday", "9am"))
+meeting("administration", list("Monday", "10am"))
+meeting("computer", list("Wednesday", "3pm"))
+meeting("administration", list("Friday", "1pm"))
+meeting("whole-company", list("Wednesday", "4pm"))
+```
+
+- On Friday morning, Ben wants to query the data base for all the meetings that occur that day. What query should he use?
+- Alyssa P. Hacker would rather ask for her meetings by name. She designs a rule that says that a person’s meetings include all `"whole-company"` meetings plus all meetings of that person’s division. Fill in the body of Alyssa’s rule `meeting_time($person, $day_and_time)`.
+- Alyssa arrives at work on Wednesday morning. What query should she make to find the meetings she has to attend that day?
+
+<Solution>
+
+**Solution.** Ben asks for `meeting($division, list("Friday", $time))`. Alyssa’s rule is an `or` of the whole-company meeting and an `and` that finds her division from her job and that division’s meetings. Her Wednesday query puts `"Wednesday"` in the day-and-time list and leaves the time a variable.
+
+</Solution>
+</Exercise>
+<Exercise id="4.58">
+
+Alyssa finds people to ride to work with by asking for `lives_near($person, list("Hacker", "Alyssa", "P"))`. When she asks for all pairs with `lives_near($person_1, $person_2)`, each pair appears twice, once in each order. Why does this happen? Is there a way to find a list of people who live near each other in which each pair appears only once? Write such a query.
+
+<Solution>
+
+**Solution.** The rule is symmetric: if an assignment satisfies it, so does the one with the two people swapped, and the system lists every satisfying assignment. To keep one of each pair, order them, which the query language cannot do by matching alone; a `javascript_predicate` comparing, say, the surnames keeps only one order. There are four pairs.
+
+</Solution>
+</Exercise>
+<Exercise id="4.59">
+
+The following rules implement a `next_to_in` relation that finds adjacent elements of a list:
+
+```js
+rule(next_to_in($x, $y, pair($x, pair($y, $u))))
+
+rule(next_to_in($x, $y, pair($v, $z)),
+     next_to_in($x, $y, $z))
+```
+
+What will the response be to the queries `next_to_in($x, $y, list(1, list(2, 3), 4))` and `next_to_in($x, 1, list(2, 1, 3, 1))`? Write your predictions as lists; the check runs the queries.
+
+<Solution>
+
+**Solution.** The first rule finds a pair at the front of the list, the second looks further along. The first query finds `1` next to `list(2, 3)` and `list(2, 3)` next to `4`. In the second, `1` follows `2` and `3`.
+
+</Solution>
+</Exercise>
+<Exercise id="4.60">
+
+Define rules to implement the `last_pair` operation of exercise 2.17, which returns a list containing the last element of a nonempty list. Check your rules on `last_pair(list(3), $x)`, `last_pair(list(1, 2, 3), $x)` and `last_pair(list(2, $x), list(3))`. Do your rules work correctly on queries such as `last_pair($x, list(3))`?
+
+<Solution>
+
+**Solution.** A one-element list is its own last pair; otherwise the last pair of `pair($u, $v)` is the last pair of `$v`. On `last_pair($x, list(3))` the rules find `list(3)` and then go on for ever: there are infinitely many lists ending in 3, and the second rule keeps making longer ones whose last pair it cannot settle.
+
+</Solution>
+</Exercise>
+<Exercise id="4.61">
+
+The following data base (see Genesis 4) traces the genealogy of the descendants of Ada back to Adam, by way of Cain:
+
+```js
+son("Adam", "Cain")
+son("Cain", "Enoch")
+son("Enoch", "Irad")
+son("Irad", "Mehujael")
+son("Mehujael", "Methushael")
+son("Methushael", "Lamech")
+wife("Lamech", "Ada")
+son("Ada", "Jabal")
+son("Ada", "Jubal")
+```
+
+Formulate rules such as “If *S* is the son of *F*, and *F* is the son of *G*, then *S* is the grandson of *G*” and “If *W* is the wife of *M*, and *S* is the son of *W*, then *S* is the son of *M*” that will enable the query system to find the grandson of Cain; the sons of Lamech; the grandsons of Methushael.
+
+<Solution>
+
+**Solution.** `grandson($g, $s)` is an `and` of two `son` patterns through a shared `$f`. The second rule concludes `son($m, $s)` from `wife($m, $w)` and `son($w, $s)`. A rule may conclude the same kind of fact the data base asserts; queries about `son` then use both.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['4.4.2', '4.4.3', { id: '4.4.4', label: 'The query system as a program' }]} />

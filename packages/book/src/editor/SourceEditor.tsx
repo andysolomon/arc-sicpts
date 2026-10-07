@@ -127,7 +127,17 @@ function RunOutput({ state, fading }: { state: RunState; fading: boolean }) {
   );
 }
 
-export function SourceEditor({ file, source: supplied, editorId, mode = 'run', budget, prelude, onShape, onSource, onStep }: SourceEditorProps) {
+export function SourceEditor({
+  file,
+  source: supplied,
+  editorId,
+  mode = 'run',
+  budget,
+  prelude,
+  onShape,
+  onSource,
+  onStep,
+}: SourceEditorProps) {
   const sectionId = useSectionId();
   const { source, setSource, reset } = usePersistentSource(sectionId, editorId, supplied);
   const sourceRef = useRef(source);

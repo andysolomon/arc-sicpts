@@ -1,3 +1,4 @@
+import type { WatchedCall } from '../inspect/callLog.ts';
 import type { Segment } from '../evaluator/primitives.ts';
 import type { ProcessShapeSnapshot } from '../inspect/processShape.ts';
 import type { StepRecord } from '../inspect/stepTrace.ts';
@@ -16,7 +17,11 @@ export interface RunRequest {
   /** Maximum evaluator steps; defaults to 100 000. */
   budget?: number;
   prelude?: string;
-  inspect?: { processShape?: boolean };
+  inspect?: {
+    processShape?: boolean;
+    /** Log the calls to these functions, sent once the run ends. */
+    calls?: { names: string[]; maxCalls?: number; maxText?: number };
+  };
 }
 
 /** Evaluate a program and return the whole step log for the stepper. */
@@ -79,6 +84,7 @@ export type LabEvent =
   | { type: 'started'; id: number }
   | { type: 'display'; id: number; text: string }
   | { type: 'shape'; id: number; snapshot: ProcessShapeSnapshot }
+  | { type: 'calls'; id: number; calls: WatchedCall[]; truncated: boolean }
   /** Lines drawn by `draw_line` since the last such event. */
   | { type: 'draw'; id: number; segments: Segment[] }
   | { type: 'done'; id: number; value: string; steps: number; ms: number }

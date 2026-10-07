@@ -1,0 +1,102 @@
+import { lazyEvaluator, tryMeProgram, tryMeStrictProgram, unlessProgram } from '@sicp/lab';
+
+<Prose>
+
+Now that we have an evaluator expressed as a JavaScript program, we can experiment with alternative choices in language design simply by modifying the evaluator. New languages are often invented this way: first as an evaluator that embeds the new language in an existing high-level one. Someone who wants to discuss a change to JavaScript can hand over an evaluator that embodies it, and the recipient can try it and send back further modifications. The embedding also lets the designer borrow features of the underlying language, just as our evaluator borrows JavaScript’s primitives and control structure. Only later, if ever, need the language be built in a lower-level language or in hardware. This section and the next explore two such variations, each of which adds significant expressive power.
+
+In section 1.1, where we began our discussion of models of evaluation, we noted that JavaScript is an *applicative-order* language: all the arguments to a function are evaluated when the function is applied. In contrast, *normal-order* languages delay evaluating arguments until their values are actually needed. Delaying evaluation of arguments until the last possible moment, for example until a primitive operation needs them, is called *lazy evaluation*. Consider the function
+
+```js
+function try_me(a, b) {
+    return a === 0 ? 1 : b;
+}
+```
+
+Evaluating `try_me(0, head(null))` signals an error in JavaScript, and in this Laboratory:
+
+</Prose>
+
+<Example index={0} file="try_me.sicp" source={tryMeStrictProgram}>
+
+The error comes from `head(null)`, evaluated before the body of `try_me` is entered, although the body would never have looked at `b`.
+
+</Example>
+
+<Prose>
+
+With lazy evaluation there would be no error. The application would return 1, because the argument `head(null)` would never be evaluated. The next example runs the same two inputs through the lazy evaluator of section 4.2.2, which is in the example’s hidden prelude; `driver_loop` takes the inputs from a list, as in section 4.1.4, and prints the value of each.
+
+</Prose>
+
+<Example index={1} file="try_me_lazily.sicp" source={tryMeProgram} prelude={lazyEvaluator} budget={1000000} anim="thunks">
+
+Both arguments are wrapped in *thunks* when `try_me` is applied. The predicate `a === 0` needs `a`, so that thunk is forced; nothing ever needs `b`, so `head(null)` stays an unevaluated expression to the end. Change the 0 to 5 and run again: now `b` is the value of the body, the driver loop forces it, and the error comes back.
+
+</Example>
+
+<Prose>
+
+An example that exploits lazy evaluation is the declaration of a function `unless`
+
+```js
+function unless(condition, usual_value, exceptional_value) {
+    return condition ? exceptional_value : usual_value;
+}
+```
+
+that can be used in statements such as
+
+```js
+unless(is_null(xs), head(xs), display("error: xs should not be null"));
+```
+
+This won’t work in an applicative-order language, because both the usual value and the exceptional value are evaluated before `unless` is called (compare exercise 1.6). An advantage of lazy evaluation is that some functions, such as `unless`, can do useful computation even if evaluating some of their arguments would produce errors or would not terminate.
+
+</Prose>
+
+<Example index={2} file="unless.sicp" source={unlessProgram} prelude={lazyEvaluator} budget={1000000}>
+
+With `xs` empty, only the exceptional value is evaluated: the message is displayed once, and becomes the value. In the last input the condition is false, so `head(list(7))` is the value and `head(null)` is never touched. `unless` is an ordinary function here, written in the language it extends.
+
+</Example>
+
+<Prose>
+
+If the body of a function is entered before an argument has been evaluated we say that the function is *non-strict* in that argument. If the argument is evaluated before the body is entered we say that the function is *strict* in that argument. In a purely applicative-order language, all functions are strict in each argument. In a purely normal-order language, all compound functions are non-strict in each argument, and primitive functions may be either strict or non-strict. There are also languages (see exercise 4.29) that give programmers detailed control over the strictness of the functions they define.
+
+The difference between the *lazy* and *normal-order* terminologies is somewhat fuzzy. Generally, lazy refers to the mechanisms of particular evaluators, while normal order refers to the semantics of languages, independent of any particular evaluation strategy. Strict and non-strict mean essentially the same as applicative and normal order, but of individual functions and arguments rather than of a whole language.
+
+A striking example of a function that can usefully be made non-strict is `pair`, or in general almost any constructor for data structures. One can do useful computation, combining elements to form data structures and operating on the resulting structures, even if the values of the elements are not known. It makes perfect sense, for instance, to compute the length of a list without knowing the values of its elements. Section 4.2.3 exploits this idea to implement the streams of chapter 3 as lists formed of non-strict pairs.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/chapter-4/lazy.test.ts">
+
+The Laboratory itself evaluates in applicative order (`evaluator/machine.ts` evaluates every argument before a call), which is why the first example fails. The other two run in `lazyEvaluator` from `chapter-4/lazy.ts`, the evaluator of section 4.2.2 written in Source. The test `chapter-4/lazy.test.ts` asserts that the first example stops with `head expects a pair, got null`, that the lazy driver loop prints 1 for `try_me(0, head(null))`, that `unless` displays its message once and gives 7, and the answers to exercise 4.23 below.
+
+</UnderTheHood>
+
+<Exercises range="4.23 – 4.24" total={2}>
+<Exercise id="4.23">
+
+Suppose that, in ordinary applicative-order JavaScript, we declare `unless` as shown above and then declare `factorial` in terms of `unless` as below. What happens if we attempt to evaluate `factorial(5)`? Will our functions work in a normal-order language? Make your answers checkable: whether `factorial(5)` returns in applicative order, its value in the lazy evaluator, and how many times the lazy evaluator applies `factorial` to get it.
+
+<Solution>
+
+**Solution.** Applicative order evaluates `n * factorial(n - 1)` before `unless` is entered, even when `n` is 1, so `factorial` calls itself with 0, −1, −2, … and never returns. In normal order the arguments of `unless` are thunks, and `unless` returns the usual value unevaluated. Printing the result forces `5 * factorial(4)`, the primitive `*` forces `factorial(4)`, and so on down to `factorial(1)`, whose exceptional value is 1. That is five applications, and 120.
+
+</Solution>
+</Exercise>
+<Exercise id="4.24">
+
+Ben Bitdiddle and Alyssa P. Hacker disagree over the importance of lazy evaluation for implementing things such as `unless`. Ben points out that it’s possible to implement `unless` in applicative order as a syntactic form. Alyssa counters that, if one did that, `unless` would be merely syntax, not a function that could be used in conjunction with higher-order functions. Fill in the details on both sides of the argument. Show how to implement `unless` as a derived component, like an operator combination, by catching in `evaluate` applications whose function expression is the name `unless`. Give an example of a situation where it might be useful to have `unless` available as a function, rather than as a syntactic form.
+
+<Solution>
+
+**Solution.** Ben is right that a derived component is enough to keep the usual value unevaluated: `unless(c, u, e)` becomes the conditional expression `c ? e : u`, and only the chosen branch is evaluated. Alyssa is right that this `unless` is not a value. It cannot be named, passed or returned: `map(unless, conditions)`, or a table of functions that includes `unless`, means nothing, because `unless` is recognized only where it is written as the function expression of an application. A function like `unless` would be useful, for instance, to pick element by element between two streams of values, `stream_map_2(unless, failures, results, defaults)`, which only a non-strict function can do without evaluating every default.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['4.2.2', '4.2.3', { id: '1.1.5', label: 'Applicative and normal order, first met' }, { id: '3.5.1', label: 'Streams as delayed lists' }]} />
