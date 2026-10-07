@@ -1,0 +1,352 @@
+import { circuitAgendaProgram, fullAdderSimulationProgram, halfAdderSimulationProgram, halfAdderWiresProgram } from '@sicp/lab';
+
+<Prose>
+
+The parts of a computer are simple: wires and a handful of logic elements. What they do together is anything but. Engineers therefore try out a circuit design in a simulator before building it, and that is what this section builds: a program that simulates digital logic circuits. It is an *event-driven* simulation, the kind used for many other systems as well. Something happens at one moment, and that event causes further events a little later, which cause others, and so on.
+
+The model has two kinds of objects. *Wires* carry *digital signals*, each of which is always 0 or 1. *Function boxes* sit between wires: each one watches its input wires and drives an output wire with a value computed from the inputs. The output does not change instantly. Every kind of box has a *delay*, and a change at an input shows up at the output only that long afterwards.
+
+Three boxes are primitive. An *inverter* outputs the opposite of its single input. An *and-gate* outputs 1 when both inputs are 1, and 0 otherwise. An *or-gate* outputs 1 when at least one input is 1. Each has its own delay: `inverter_delay`, `and_gate_delay` and `or_gate_delay`.
+
+</Prose>
+
+<PrimitiveGatesDiagram caption={<p>The primitive function boxes. Inputs come in on the left, the output leaves on the right; the small circle on the inverter is the negation.</p>} />
+
+<Prose>
+
+Wiring primitive boxes together gives more complex functions. The *half-adder* has two inputs, *A* and *B*, and two outputs, *S* and *C*. *S* is 1 when exactly one of the inputs is 1, and *C* is 1 when both are. The figure shows how it is made: *D* is *A* or *B*, *C* is *A* and *B*, *E* is the inverse of *C*, and *S* is *D* and *E*.
+
+</Prose>
+
+<HalfAdderDiagram caption={<p>A half-adder. <i>S</i> is 1 when <i>A</i> or <i>B</i> is 1 but not both, that is, when <i>D</i> is 1 and <i>C</i> is not.</p>} />
+
+<Prose>
+
+The delays make the outputs arrive at different times. Following the figure, a change at *A* reaches *S* through the or-gate and the last and-gate, or through two and-gates and the inverter, whichever is slower. Such timing differences are a constant headache in real circuit design, and a simulator that models them is genuinely useful.
+
+**A language for circuits.** Our simulator is a small language for describing circuits, embedded in JavaScript. `make_wire()` creates a wire. A gate is attached by calling the function for it with the wires it connects. Here is the half-adder of the figure, built one gate at a time:
+
+```js
+const a = make_wire();
+const b = make_wire();
+const c = make_wire();
+const d = make_wire();
+const e = make_wire();
+const s = make_wire();
+
+or_gate(a, b, d);
+and_gate(a, b, c);
+inverter(c, e);
+and_gate(d, e, s);
+```
+
+Rather than wiring it by hand each time, we can name the pattern. `half_adder(a, b, s, c)` creates the two internal wires and attaches the four gates:
+
+```js
+function half_adder(a, b, s, c) {
+  const d = make_wire();
+  const e = make_wire();
+  or_gate(a, b, d);
+  and_gate(a, b, c);
+  inverter(c, e);
+  and_gate(d, e, s);
+  return "ok";
+}
+```
+
+The half-adder is then a part like any other. A *full-adder*, the building block of binary addition, adds two bits and a carry coming in from the next lower position, and is made of two half-adders and an or-gate:
+
+```js
+function full_adder(a, b, c_in, sum, c_out) {
+  const s = make_wire();
+  const c1 = make_wire();
+  const c2 = make_wire();
+  half_adder(b, c_in, s, c1);
+  half_adder(a, s, sum, c2);
+  or_gate(c1, c2, c_out);
+  return "ok";
+}
+```
+
+</Prose>
+
+<FullAdderDiagram caption={<p>A full-adder. The first half-adder adds <i>B</i> and the incoming carry, the second adds <i>A</i> to that partial sum, and either half-adder's carry becomes the carry out.</p>} />
+
+<Prose>
+
+This is exactly the structure of a language as §1.1 described it. The primitive elements are the gates, wiring them together is the means of combination, and declaring a function like `half_adder` is the means of abstraction. Every circuit we build can become a part in a bigger one.
+
+**Primitive function boxes.** A gate needs three operations on wires. `get_signal(wire)` returns the wire's current signal. `set_signal(wire, v)` changes it, and runs any actions attached to the wire if the value actually changed. `add_action(wire, f)` attaches a function of no arguments that should run whenever the wire's signal changes; this is how a gate learns that one of its inputs moved. The fourth ingredient is `after_delay(time, f)`, which arranges for `f` to run after the given amount of simulated time.
+
+With these, an inverter attaches an action to its input. The action computes the new output from the current input and schedules the output change `inverter_delay` later:
+
+```js
+function inverter(input, output) {
+  function invert_input() {
+    const new_value = logical_not(get_signal(input));
+    after_delay(inverter_delay, () => set_signal(output, new_value));
+  }
+  add_action(input, invert_input);
+  return "ok";
+}
+
+function logical_not(s) {
+  return s === 0
+    ? 1
+    : s === 1
+    ? 0
+    : error(s, "invalid signal");
+}
+```
+
+The and-gate is the same idea with two inputs, and it attaches its action to both, since a change at either can change the output:
+
+```js
+function and_gate(a1, a2, output) {
+  function and_action_function() {
+    const new_value = logical_and(get_signal(a1), get_signal(a2));
+    after_delay(and_gate_delay, () => set_signal(output, new_value));
+  }
+  add_action(a1, and_action_function);
+  add_action(a2, and_action_function);
+  return "ok";
+}
+```
+
+`logical_and` (and `logical_or`) follow the pattern of `logical_not`. The or-gate itself is Exercise 3.28; the programs below contain a version of it so that they can run, so try the exercise before you look.
+
+**Representing wires.** A wire is an object with two pieces of local state: its signal, which starts at 0, and the list of action functions to run when the signal changes. As with the bank accounts of §3.1.1, it is written in message-passing style, as a function `dispatch` that answers requests by name:
+
+```js
+function make_wire() {
+  let signal_value = 0;
+  let action_functions = null;
+  function set_my_signal(new_value) {
+    if (signal_value !== new_value) {
+      signal_value = new_value;
+      return call_each(action_functions);
+    } else {
+      return "done";
+    }
+  }
+  function accept_action_function(fun) {
+    action_functions = pair(fun, action_functions);
+    fun();
+  }
+  function dispatch(m) {
+    return m === "get_signal"
+      ? signal_value
+      : m === "set_signal"
+      ? set_my_signal
+      : m === "add_action"
+      ? accept_action_function
+      : error(m, "unknown operation -- wire");
+  }
+  return dispatch;
+}
+```
+
+`call_each` applies every function in a list in turn, and `get_signal`, `set_signal` and `add_action` simply send the matching message to the wire. Note that `accept_action_function` runs a new action at once as well as storing it. Exercise 3.31 asks why.
+
+Wires are where the need for mutable state shows most clearly. A wire joins several boxes: when one box sets it, every box attached to it must see the new value. A wire is shared, it changes over time, and everyone who holds it sees the change, which is just what an object with local state provides. It would be awkward to model with pure functions.
+
+**The agenda.** All that remains is `after_delay`. It relies on an *agenda*, a data structure that holds the schedule of things to do. Its interface is:
+
+- `make_agenda()` returns a new, empty agenda.
+- `is_empty_agenda(agenda)` is true when nothing is scheduled.
+- `first_agenda_item(agenda)` returns the action that is due first.
+- `remove_first_agenda_item(agenda)` removes that action.
+- `add_to_agenda(time, action, agenda)` schedules `action` to run at `time`.
+- `current_time(agenda)` returns the simulated time.
+
+The simulation uses one agenda, `the_agenda`. `after_delay` puts an action on it at the current time plus the delay, and `propagate` runs the simulation: it keeps taking the first action off the agenda and running it until the agenda is empty. Actions usually schedule new actions, so the agenda can stay busy for a while.
+
+```js
+function after_delay(delay, action) {
+  add_to_agenda(delay + current_time(the_agenda), action, the_agenda);
+}
+
+function propagate() {
+  if (is_empty_agenda(the_agenda)) {
+    return "done";
+  } else {
+    const first_item = first_agenda_item(the_agenda);
+    first_item();
+    remove_first_agenda_item(the_agenda);
+    return propagate();
+  }
+}
+```
+
+`propagate` calls itself as its last act, so it is an iterative process: the Laboratory reuses the frame of each tail call, and a long simulation does not make the stack grow.
+
+**A sample simulation.** To watch a circuit, we attach a *probe* to a wire. A probe is an action that prints the wire's name, the current time and the wire's new signal:
+
+```js
+function probe(name, wire) {
+  add_action(wire, () => display(name + " " + stringify(current_time(the_agenda)) +
+                                 ", new value = " + stringify(get_signal(wire))));
+}
+```
+
+`display` takes a single argument here, so the message is assembled with `+` and `stringify`. Because `display` prints a string with its quotation marks, each line appears as a string, just as the REPL prints it in the book. Now the run: create the agenda, choose the delays (inverter 2, and-gate 3, or-gate 5), make four wires, probe the two outputs, build a half-adder, then set `input_1` to 1 and propagate, and finally set `input_2` to 1 and propagate again.
+
+</Prose>
+
+<Example index={0} file="half_adder_simulation.sicp" source={halfAdderSimulationProgram} anim="circuit-timing">
+
+The run is at the bottom of the program, after the simulator. Each probe prints once when it is attached, at time 0. Setting `input_1` makes `sum` rise at time 8: the or-gate's 5 plus the last and-gate's 3. The second `propagate` starts at time 8; the carry rises 3 later, at 11, and its inverse travels on to pull `sum` down at 16, which is 1 + 1 = 10 in binary. Change the delays (they are declared just before `after_delay`) and watch the times move.
+
+</Example>
+
+<Prose>
+
+The probes only show the outputs. Building the half-adder by hand, as in the first code block, lets every wire carry a probe. The picture then shows how the signal makes its way through the gates.
+
+</Prose>
+
+<Example index={1} file="half_adder_wires.sicp" source={halfAdderWiresProgram} anim="circuit-timing">
+
+Before any input changes, the first `propagate` lets the circuit settle: `e` becomes 1 at time 2, because the inverter's input `c` is 0. Then `a` rises at 5, `d` follows at 10, and `s` at 13. When `b` rises, `c` goes up 3 later, `e` drops 2 after that, and `s` falls at 21. Make the inverter slower, with `inverter_delay` set to 10, and see how much longer `s` shows the wrong sum after `b` rises.
+
+</Example>
+
+<Prose>
+
+A full-adder, adding 1 + 1 with a carry in of 1, should produce a sum of 1 and a carry of 1. It does, but look closely at what `sum` does on its way there.
+
+</Prose>
+
+<Example index={2} file="full_adder_simulation.sicp" source={fullAdderSimulationProgram} anim="circuit-timing">
+
+At time 21, `sum` drops to 0 and comes back to 1 at the very same moment: two actions were due at 21, and the agenda ran them in the order they were scheduled. A real circuit could show a brief *glitch* there. Try other inputs by changing the three `set_signal` lines.
+
+</Example>
+
+<Prose>
+
+**Implementing the agenda.** The agenda is a list of *time segments*. Each segment pairs a time with a queue (§3.3.2) of the actions due at that time:
+
+```js
+function make_time_segment(time, queue) {
+  return pair(time, queue);
+}
+
+function segment_time(s) {
+  return head(s);
+}
+
+function segment_queue(s) {
+  return tail(s);
+}
+```
+
+The segments are kept in order of increasing time. The agenda itself is a headed list: its head is the current time, and its tail is the list of segments. A new agenda is `list(0)`, with time 0 and no segments, and `current_time`, `set_current_time`, `segments` and `set_segments` read and change the two parts. The agenda is empty when it has no segments.
+
+To add an action, `add_to_agenda` walks along the segments. If there is already a segment for the action's time, the action joins that segment's queue. Otherwise, a new segment is created and spliced in before the first segment with a later time, or at the end. Because the agenda has a header, inserting at the front is just a change to the header's tail:
+
+```js
+function add_to_agenda(time, action, agenda) {
+  function belongs_before(segs) {
+    return is_null(segs) || time < segment_time(head(segs));
+  }
+  function make_new_time_segment(time, action) {
+    const q = make_queue();
+    insert_queue(q, action);
+    return make_time_segment(time, q);
+  }
+  function add_to_segments(segs) {
+    if (segment_time(head(segs)) === time) {
+      insert_queue(segment_queue(head(segs)), action);
+    } else {
+      const rest = tail(segs);
+      if (belongs_before(rest)) {
+        set_tail(segs, pair(make_new_time_segment(time, action), tail(segs)));
+      } else {
+        add_to_segments(rest);
+      }
+    }
+  }
+  const segs = segments(agenda);
+  if (belongs_before(segs)) {
+    set_segments(agenda, pair(make_new_time_segment(time, action), segs));
+  } else {
+    add_to_segments(segs);
+  }
+}
+```
+
+`remove_first_agenda_item` deletes the front of the first segment's queue, and drops the segment when its queue becomes empty. `first_agenda_item` returns the action at the front of the first segment's queue, and it is also the one place where time moves: it sets the current time to that segment's time. The simulated clock therefore always reads the time of the action being run.
+
+</Prose>
+
+<Example index={3} file="agenda.sicp" source={circuitAgendaProgram}>
+
+The agenda on its own, with the queue of §3.3.2 above it. Four actions are added out of order; `display_list` shows that the segments are sorted by time, with both actions for time 5 sharing one segment. Running them prints them in time order, and the two at time 5 in the order they were added. The value is the time at which the agenda ran dry.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-3/simulation.ts">
+
+The simulator lives in `chapter-3/simulation.ts` as separate strings of declarations (queue, agenda, wires, gates, adders, simulation), which every program on this page and the exercise checks put together. The timing diagrams come from the lines the probes print: the animation runs the program with a budget of two million steps and reads its output, keeping no step records. The test `chapter-3/simulation.test.ts` asserts that the sample run prints exactly the book's five lines, that a full-adder gets every row of its truth table right, and it checks the answers to Exercises 3.31 and 3.32 by running the changed simulators.
+
+</UnderTheHood>
+
+<Exercises range="3.28 – 3.32" total={5}>
+<Exercise id="3.28">
+
+Declare an or-gate as a primitive function box. Your `or_gate` should be built the same way as `and_gate`.
+
+<Solution>
+
+**Solution.** Copy `and_gate` with `logical_or` in place of `logical_and` and `or_gate_delay` in place of `and_gate_delay`. The action is attached to both inputs, since either can change the output.
+
+</Solution>
+</Exercise>
+<Exercise id="3.29">
+
+An or-gate can also be built as a compound box out of and-gates and inverters. Declare `or_gate` that way, and state its delay in terms of `and_gate_delay` and `inverter_delay`.
+
+<Solution>
+
+**Solution.** By De Morgan's law, *a* or *b* is the same as not ((not *a*) and (not *b*)). Invert both inputs, feed them to an and-gate, and invert its output. A change passes through an inverter, the and-gate and another inverter, so the delay is `2 * inverter_delay + and_gate_delay`, which is 7 with this section's numbers. The two input inverters work side by side, so they cost one inverter delay, not two.
+
+</Solution>
+</Exercise>
+<Exercise id="3.30">
+
+<RippleCarryAdderDiagram caption={<p>A ripple-carry adder: <i>n</i> full-adders side by side. Each carry out feeds the carry in of the next full-adder to the left; the rightmost carry in is 0.</p>} />
+
+A *ripple-carry adder* adds two *n*-bit binary numbers by chaining *n* full-adders, as in the figure. The inputs are *A*₁ … *A*ₙ and *B*₁ … *B*ₙ, the outputs are the sum bits *S*₁ … *S*ₙ and the final carry *C*. Each full-adder's carry out is the carry in of the next one. Write `ripple_carry_adder`, which takes three lists of *n* wires, `A`, `B` and `S`, with the most significant bit first, and a wire `C`. What is the delay before the complete output of an *n*-bit ripple-carry adder is available, in terms of the delays of and-gates, or-gates and inverters?
+
+<Solution>
+
+**Solution.** Recursion on the lists: make a wire for the carry coming up from the lower bits, build the adder for the tails into it (unless this is the last bit, whose carry in stays 0), and attach a full-adder for the head bits. The check adds numbers of up to eight bits.
+
+In the worst case a carry ripples through all *n* stages. Inside one full-adder the carry goes through a half-adder's sum, where the slower of the or-gate and an and-gate plus an inverter is followed by an and-gate, then a half-adder's carry, which is one and-gate, then the or-gate. Each stage therefore costs about max(*or*, *and* + *inv*) + 2 *and* + *or*, and the whole adder about *n* times that: 16*n* with this section's delays.
+
+</Solution>
+</Exercise>
+<Exercise id="3.31">
+
+`accept_action_function` does not just add the new action to the wire's list; it also runs it once, straight away. Why is this needed? Suppose it only stored the action. Work through the half-adder sample simulation again: what would the probes print, and what would `sum` be after the first `propagate`?
+
+<Solution>
+
+**Solution.** Without the first run nothing reaches a consistent starting state. The probes print nothing when they are attached. More importantly, the inverter never runs while its input `c` stays at 0, so `e` stays at 0 instead of 1. When `input_1` rises, `d` becomes 1, but the final and-gate sees `e` = 0 and `sum` stays 0, which is wrong for 1 + 0. Only the carry changes, at 11. The first run of each action is how every gate gets to set its output from its inputs at the start.
+
+</Solution>
+</Exercise>
+<Exercise id="3.32">
+
+The actions of one time segment are kept in a queue, and run in the order they were added. Why does that matter? Consider an and-gate whose inputs change from 0, 1 to 1, 0 within the same segment. What does its output end at with a queue, and what would it end at if each segment were a stack, so that the last action added runs first?
+
+<Solution>
+
+**Solution.** Each input change runs the gate's action, which computes the output *at that moment* and schedules it. When `a1` rises, the inputs are 1, 1 and "set to 1" is scheduled; when `a2` falls, they are 1, 0 and "set to 0" is scheduled. Run in order, the output ends at 0, which is right. Run in reverse, "set to 0" runs first, and the stale "set to 1" runs last, leaving the output at 1.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '3.3.5', label: 'Another simulation built from objects: constraints' }, { id: '3.4.1', label: 'Time and order in concurrent systems' }, { id: '5.2.1', label: 'A simulator for register machines' }]} />

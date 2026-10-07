@@ -1,0 +1,256 @@
+import { celsiusFahrenheitProgram, constraintContradictionProgram, constraintNetworkProgram } from '@sicp/lab';
+
+<Prose>
+
+Programs are usually written to compute in one direction. A function takes its arguments and produces a result, so it computes some quantities from others that are given. Many of the systems we model are not like that. They are *relations* among quantities, and none of the quantities is singled out as the answer. A mechanical engineer's formula for the deflection of a metal rod, *dAE* = *FL*, ties together five quantities: the deflection *d*, the cross-sectional area *A*, the elastic modulus *E*, the force *F* and the length *L*. Knowing any four of them fixes the fifth. To program it as a function, though, we must pick which one to compute, and write the formula again for each other choice.
+
+This section builds a small language in which a relation can be stated once and then used in any direction. Its programs are *constraint networks*, and computing with them is called *constraint propagation*.
+
+**Constraints and connectors.** The primitive elements are *primitive constraints*, each stating a relation among a few quantities. `adder(a, b, c)` states that *a* + *b* = *c*. `multiplier(x, y, z)` states that *x* × *y* = *z*. `constant(3.14, x)` states that *x* is 3.14, always.
+
+Constraints are combined into networks by joining them with *connectors*. A connector is a place that holds a value, possibly shared by several constraints. The relation between Fahrenheit and Celsius temperatures, 9*C* = 5(*F* − 32), is such a network.
+
+</Prose>
+
+<CelsiusFahrenheitDiagram caption={<p>9<i>C</i> = 5(<i>F</i> − 32) as a network. The left multiplier makes <i>u</i> = <i>C</i> × 9, the right one <i>u</i> = <i>v</i> × 5, and the adder <i>F</i> = <i>v</i> + 32, so <i>v</i> = <i>F</i> − 32 and 9<i>C</i> = 5<i>v</i>.</p>} />
+
+<Prose>
+
+The network computes like this. When a connector is given a value, by the user or by one of its constraints, it wakes up every constraint attached to it, except the one that supplied the value. Each constraint woken this way checks whether it now knows enough to determine one of its other connectors. If it does, it sets that connector, which wakes up *its* constraints, and so the values spread outward. Given *C* = 25, the left multiplier finds *u* = 225, the right multiplier then finds *v* = 45, and the adder finds *F* = 77.
+
+**Using the constraint system.** We build the network by making connectors with `make_connector` and attaching constraints to them, packaged as a function in the usual way:
+
+```js
+function celsius_fahrenheit_converter(c, f) {
+  const u = make_connector();
+  const v = make_connector();
+  const w = make_connector();
+  const x = make_connector();
+  const y = make_connector();
+  multiplier(c, w, u);
+  multiplier(v, x, u);
+  adder(v, y, f);
+  constant(9, w);
+  constant(5, x);
+  constant(32, y);
+  return "ok";
+}
+
+const C = make_connector();
+const F = make_connector();
+celsius_fahrenheit_converter(C, F);
+```
+
+To watch the network, we attach *probes* to `C` and `F`. A probe is a constraint too, one that prints a message whenever its connector gains or loses a value. Then we give `C` a value with `set_value(C, 25, "user")`. The third argument says who is setting it, here the user; a connector remembers its *informant*. Both probes report: *C* is 25, and the network worked out that *F* is 77.
+
+If we now try to give `F` the value 212, the connector already holds 77 and complains of a contradiction. To change a value we first retract the old one, with `forget_value(C, "user")`. Only the informant that set a value can make the connector forget it. The network forgets everything it derived from that value, and both probes report `?`. Now `set_value(F, 212, "user")` is accepted, and the network runs the other way: *C* is 100.
+
+</Prose>
+
+<Example index={0} file="celsius_fahrenheit.sicp" source={celsiusFahrenheitProgram} anim="constraint-network">
+
+The three statements at the bottom are the whole session. The same network converts both ways; nothing in `celsius_fahrenheit_converter` says which connector is the input. Only `C` and `F` carry probes, so only they light up; the inner connectors are worked out but not reported. Add `forget_value(F, "user");` and then `set_value(F, -40, "user");` at the end: the one temperature that reads the same on both scales.
+
+</Example>
+
+<Example index={1} file="contradiction.sicp" source={constraintContradictionProgram} anim="constraint-network">
+
+Here `F` is set while `C` still determines it. The connector holds 77 and is offered 212, so `set_my_value` signals an error naming both values. Add `forget_value(C, "user");` before the last line and the error goes away.
+
+</Example>
+
+<Prose>
+
+**Implementing the constraint system.** The constraint system uses procedural objects with local state, much as the circuit simulator does. Its primitives are more complex, but the system as a whole is simpler, because there is no agenda and no notion of delay: a value propagates the moment it is set.
+
+These are the operations on connectors:
+
+- `has_value(connector)` tells whether the connector has a value.
+- `get_value(connector)` returns the connector's value.
+- `set_value(connector, new_value, informant)` says that `informant` asks the connector to take the value `new_value`.
+- `forget_value(connector, retractor)` says that `retractor` asks the connector to drop its value.
+- `connect(connector, new_constraint)` tells the connector to take part in `new_constraint`.
+
+Connectors talk to their constraints through two functions: `inform_about_value(constraint)` tells a constraint that one of its connectors has a value, and `inform_about_no_value(constraint)` that one has lost its value. Each just sends a message to the constraint.
+
+The adder is a function `me` that answers those two messages. When told of a new value, it looks for two connectors with values and sets the third from them; for that it names itself, `me`, as the informant. When told that a value was lost, it asks all three connectors to forget the values that *it* set (the other values are not its to retract), and then checks whether it can still derive something from what is left:
+
+```js
+function adder(a1, a2, sum) {
+  function process_new_value() {
+    if (has_value(a1) && has_value(a2)) {
+      set_value(sum, get_value(a1) + get_value(a2), me);
+    } else if (has_value(a1) && has_value(sum)) {
+      set_value(a2, get_value(sum) - get_value(a1), me);
+    } else if (has_value(a2) && has_value(sum)) {
+      set_value(a1, get_value(sum) - get_value(a2), me);
+    } else {}
+  }
+  function process_forget_value() {
+    forget_value(sum, me);
+    forget_value(a1, me);
+    forget_value(a2, me);
+    process_new_value();
+  }
+  function me(request) {
+    if (request === "I have a value.") {
+      process_new_value();
+    } else if (request === "I lost my value.") {
+      process_forget_value();
+    } else {
+      error(request, "unknown request -- adder");
+    }
+  }
+  connect(a1, me);
+  connect(a2, me);
+  connect(sum, me);
+  return me;
+}
+```
+
+The multiplier has the same shape, with one extra rule. If either factor is 0, the product is 0, even when the other factor is unknown. A constant sets its connector once, when it is created, and treats any message it later receives as an error. A probe prints `"Probe: "`, the name and the value whenever it is told of a value, and `?` when told that the value is gone. All of them are in the program above.
+
+**Representing connectors.** A connector is an object with three pieces of local state: its `value`, the `informant` that set it (`false` when it has no value), and the list of `constraints` it takes part in.
+
+```js
+function make_connector() {
+  let value = false;
+  let informant = false;
+  let constraints = null;
+  function set_my_value(newval, setter) {
+    if (!has_value(me)) {
+      value = newval;
+      informant = setter;
+      return for_each_except(setter, inform_about_value, constraints);
+    } else if (value !== newval) {
+      error(list(value, newval), "contradiction");
+    } else {
+      return "ignored";
+    }
+  }
+  function forget_my_value(retractor) {
+    if (retractor === informant) {
+      informant = false;
+      return for_each_except(retractor, inform_about_no_value, constraints);
+    } else {
+      return "ignored";
+    }
+  }
+  function connect(new_constraint) {
+    if (is_null(member(new_constraint, constraints))) {
+      constraints = pair(new_constraint, constraints);
+    } else {}
+    if (has_value(me)) {
+      inform_about_value(new_constraint);
+    } else {}
+    return "done";
+  }
+  function me(request) {
+    if (request === "has_value") {
+      return informant !== false;
+    } else if (request === "value") {
+      return value;
+    } else if (request === "set_value") {
+      return set_my_value;
+    } else if (request === "forget") {
+      return forget_my_value;
+    } else if (request === "connect") {
+      return connect;
+    } else {
+      error(request, "unknown operation -- connector");
+    }
+  }
+  return me;
+}
+```
+
+Setting a value is accepted only when the connector has none; offering the same value again is ignored, and offering a different one is a contradiction. Forgetting is honoured only when the request comes from the informant. Either way, the news goes to every constraint *except* the one that caused it, which `for_each_except` arranges by comparing constraints with `===`: two references to the same function object are equal, and no others are. A constraint connected to a connector that already holds a value is told about it at once, much as a wire runs a new action straight away in §3.3.4.
+
+To see the propagation in full, the last program builds the converter's network at the top level, so that every connector can carry a probe.
+
+</Prose>
+
+<Example index={2} file="constraint_network.sicp" source={constraintNetworkProgram} anim="constraint-network">
+
+The constants report first, as they are created. Then `C` = 25 travels through `u` and `v` to `F`, but the probe on `C` speaks *last*: the connector informs its constraints in the order of its list, and the multiplier was connected after the probe, so it sits in front. Forgetting `C` empties `F`, `v` and `u`, while `w`, `x` and `y` keep their values, because no one asked their constants to retract. Setting `F` then runs the same chain backwards.
+
+</Example>
+
+<UnderTheHood file="packages/lab/src/chapter-3/simulation.ts">
+
+The constraint system is in `chapter-3/simulation.ts`, next to the circuit simulator, as strings of declarations (connectors, primitive constraints, probe) that the programs and the exercise checks share. The scene reads the `"Probe: name = value"` lines from the program's output and places them on the network by name; `"Celsius temp"` and `"Fahrenheit temp"` count as `C` and `F`. The test `chapter-3/simulation.test.ts` asserts the book's session line for line, the contradiction error, and the order in which values reach every connector of the network.
+
+</UnderTheHood>
+
+<Exercises range="3.33 – 3.37" total={5}>
+<Exercise id="3.33">
+
+Using the primitive constraints `adder`, `multiplier` and `constant`, declare a function `averager` that takes three connectors `a`, `b` and `c` and establishes the constraint that the value of `c` is the average of the values of `a` and `b`.
+
+<Solution>
+
+**Solution.** The relation *c* = (*a* + *b*) / 2 is the same as *a* + *b* = 2*c*. Make a connector `u` for *a* + *b* with an adder, and a constant 2 multiplied by `c` into that same `u`. Since constraints work in every direction, the averager also finds `a` from `b` and `c`.
+
+</Solution>
+</Exercise>
+<Exercise id="3.34">
+
+Louis Reasoner wants a squarer, a constraint with two terminals such that the value of connector `b` is the square of the value of `a`. He proposes
+
+```js
+function squarer(a, b) {
+  return multiplier(a, a, b);
+}
+```
+
+There is a serious flaw in this idea. Find what `b` becomes when `a` is set to 3, and whether `a` gets a value when, on a fresh network, `b` is set to 9.
+
+<Solution>
+
+**Solution.** Setting `a` gives the multiplier both factors, so `b` becomes 9. Setting `b` gives it only the product. Its rules need a product *and one factor* to find the other factor; it cannot know that the two factors are the same connector, so it can do nothing, and `a` never gets a value.
+
+</Solution>
+</Exercise>
+<Exercise id="3.35">
+
+Ben Bitdiddle tells Louis that the trouble can be avoided by declaring a squarer as a new primitive constraint. Fill in the missing parts of Ben's outline. When `b` has a value, `a` is its square root (and a negative `b` is an error); when only `a` has a value, `b` is its square.
+
+<Solution>
+
+**Solution.** Follow `adder`: `process_new_value` sets `a` to `math_sqrt` of `b`, or else `b` to the square of `a` when `a` has a value; `process_forget_value` asks both connectors to forget what `me` set and then tries again; `me` dispatches on the two messages; and the squarer is connected to `a` and `b`.
+
+</Solution>
+</Exercise>
+<Exercise id="3.37">
+
+The converter is clumsy to write in the style of a network. With an *expression-oriented* style it can be written as
+
+```js
+function celsius_fahrenheit_converter(x) {
+  return c_plus(c_times(c_divide(cv(9), cv(5)), x), cv(32));
+}
+```
+
+Here `c_plus`, `c_times` and so on are the constraint versions of the arithmetic operations. `c_plus` takes two connectors and returns a new connector constrained by an adder to be their sum:
+
+```js
+function c_plus(x, y) {
+  const z = make_connector();
+  adder(x, y, z);
+  return z;
+}
+```
+
+Declare the analogous functions `c_minus`, `c_times`, `c_divide` and `cv` (constant value), so that compound constraints can be written like this.
+
+<Solution>
+
+**Solution.** Each makes a fresh connector `z` and states the right relation. `c_times(x, y)` is a multiplier `x` × `y` = `z`; `cv(value)` is a constant on `z`. Subtraction and division have no constraints of their own, so turn them around: `z` = `x` − `y` is the adder `z` + `y` = `x`, and `z` = `x` / `y` is the multiplier `z` × `y` = `x`. They still work in every direction.
+
+Expression-oriented notation is shorter because it does not name the intermediate connectors. Its result is a connector, a value that can be passed and returned like any other, which is why functions over connectors can be combined like ordinary arithmetic.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={[{ id: '4.3.1', label: 'Another way to compute with relations: nondeterministic search' }, { id: '4.4.1', label: 'Logic programs: relations in every direction' }, { id: '3.5.1', label: 'Streams: state without objects' }]} />
