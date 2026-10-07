@@ -11,14 +11,14 @@ import type { SceneProps, SceneRegistry } from './registry.ts';
 const SIMULATION_TRACE = { budget: 2_000_000, maxRecords: 1 } as const;
 
 /** One row per probed wire, its signal over simulated time (§3.3.4). */
-function CircuitTiming({ source }: SceneProps) {
-  const { trace } = useTrace(source, SIMULATION_TRACE);
+function CircuitTiming({ source, prelude }: SceneProps) {
+  const { trace } = useTrace(source, { ...SIMULATION_TRACE, prelude });
   return <CircuitTimingScene trace={trace} />;
 }
 
 /** The Celsius–Fahrenheit network with the values its probes report (§3.3.5). */
-function ConstraintNetworkScene({ source }: SceneProps) {
-  const { trace } = useTrace(source, SIMULATION_TRACE);
+function ConstraintNetworkScene({ source, prelude }: SceneProps) {
+  const { trace } = useTrace(source, { ...SIMULATION_TRACE, prelude });
   return <ConstraintScene trace={trace} />;
 }
 
