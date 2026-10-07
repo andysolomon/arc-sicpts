@@ -2,17 +2,12 @@ import type { StepRecord } from '@sicp/lab';
 import type { Trace } from '../useTrace.ts';
 
 /**
- * Local state, read from the trace (§3.1). Two things live here:
+ * Local state, read from the trace (§3.1).
  *
- * - `resolveAssignments` moves each assignment to the frame that holds the
- *   name. The trace records an assignment in the frame where it ran (the
- *   frame of `amount => { balance = ... }`), but the binding it changes is
- *   the `balance` of an enclosing frame, and that is where a picture of
- *   frames must show the new value.
- * - `localStateKeyframes` groups the program's names by the state they reach:
- *   every name bound to a function made inside a call is an *object*, whose
- *   state is the variables of the frames that function remembers. Two names
- *   for functions of the same frame name the same object (§3.1.3).
+ * `localStateKeyframes` groups the program's names by the state they reach:
+ * every name bound to a function made inside a call is an *object*, whose
+ * state is the variables of the frames that function remembers. Two names
+ * for functions of the same frame name the same object (§3.1.3).
  */
 
 const PROGRAM = 'E0';
@@ -63,19 +58,6 @@ class FrameTracker {
     frame.bindings.set(event.symbol, event.value);
     return target;
   }
-}
-
-/** The same trace, with every assignment record placed in the frame whose binding it changes. */
-export function resolveAssignments(trace: Trace): Trace {
-  const tracker = new FrameTracker();
-  let moved = false;
-  const records = trace.records.map((record) => {
-    const target = tracker.apply(record);
-    if (target === null || target === record.env) return record;
-    moved = true;
-    return { ...record, env: target };
-  });
-  return moved ? { ...trace, records } : trace;
 }
 
 export interface StateCell {

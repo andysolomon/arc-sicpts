@@ -10,7 +10,7 @@ A large system built from such objects is rarely one tangle. The objects interac
 
 </Prose>
 
-<Example index={0} file="withdraw.sicp" source={withdrawProgram} anim="local-state-frames">
+<Example index={0} file="withdraw.sicp" source={withdrawProgram} anim="frames">
 
 The program frame holds `balance`, and each call of `withdraw` gets a new frame that extends it. Step to an assignment and the frame that changes is lit: it is the program frame, wherever the assignment ran. Change the withdrawals, or add `balance = 1000;` before them, to see that anything in the program can reach the balance.
 
@@ -26,7 +26,7 @@ Order now matters in a way it never did before. The consequent of the conditiona
 
 </Prose>
 
-<Example index={1} file="new_withdraw.sicp" source={newWithdrawProgram} anim="local-state-frames">
+<Example index={1} file="new_withdraw.sicp" source={newWithdrawProgram} anim="frames">
 
 `make_withdraw_balance_100` runs once. Its body declares `balance` in a frame of its own and returns a lambda made in that frame, so the frame survives the call. Every call of `new_withdraw` extends that frame, and every assignment changes the `balance` there. The program frame never has a `balance`: try adding `balance;` at the end and the Laboratory says the name is not declared.
 
@@ -52,7 +52,7 @@ An account needs deposits as well as withdrawals. The two operations must share 
 
 </Prose>
 
-<Example index={3} file="make_account.sicp" source={makeAccountProgram} anim="local-state-frames">
+<Example index={3} file="make_account.sicp" source={makeAccountProgram} anim="frames">
 
 `make_account(100)` binds `balance` in its frame E1, and the body's declarations of `withdraw`, `deposit` and `dispatch` sit in a block frame E2 just inside it. Withdrawals and deposits run in fresh frames, but each assignment changes the same `balance` in E1: 50, refused, 90, then 30. Send an unknown message, such as `acc("transfer")`, and `dispatch` signals an error.
 
@@ -64,9 +64,9 @@ Each call of `make_account` creates a new frame with a new `balance`, so `const 
 
 </Prose>
 
-<UnderTheHood file="packages/book/src/anim/model/localState.ts">
+<UnderTheHood file="packages/lab/src/evaluator/environment.ts">
 
-The Laboratory's `assign` (in `evaluator/environment.ts`) looks the name up through the chain of frames and changes the binding where it finds it, refusing names declared with `const`. Its step trace records an assignment in the frame where it *ran*, such as the frame of one withdrawal, so these animations pass the trace through `resolveAssignments`, which moves each assignment to the frame that *binds* the name. `chapter-3/localState.test.ts` asserts the balances above and that constants cannot be assigned; `tests/chapter3-local-state.test.tsx` asserts that `new_withdraw`'s balance ends at 35 in the frame its body made, and that `W1` and `W2` keep separate histories.
+The Laboratory's `assign` (in `evaluator/environment.ts`) looks the name up through the chain of frames and changes the binding where it finds it, refusing names declared with `const`. The step trace records an assignment in the frame where it *ran*, such as the frame of one withdrawal; the frames animation (`anim/model/environment.ts`) makes the same outward search as `assign` to draw the change in the frame that *binds* the name. `chapter-3/localState.test.ts` asserts the balances above and that constants cannot be assigned; `tests/chapter3-local-state.test.tsx` asserts that `new_withdraw`'s balance ends at 35 in the frame its body made, and that `W1` and `W2` keep separate histories.
 
 </UnderTheHood>
 

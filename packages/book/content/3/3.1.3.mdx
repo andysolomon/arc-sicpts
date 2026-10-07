@@ -65,7 +65,7 @@ What counts as "the same" depends on what we care about. With rational numbers i
 
 </Prose>
 
-<Example index={3} file="factorial_imperative.sicp" source={imperativeFactorialProgram} anim="local-state-frames">
+<Example index={3} file="factorial_imperative.sicp" source={imperativeFactorialProgram} anim="frames">
 
 Watch `product` and `counter` change in the block frame of each call. `factorial(5)` gives 120. `factorial_swapped` updates `counter` before `product`, so each step multiplies by the *next* counter, and the result is 6! = 720. In the functional version this mistake could not happen: both new values were computed from the old ones at once, as the arguments of one call.
 

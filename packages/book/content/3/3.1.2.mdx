@@ -10,7 +10,7 @@ Suppose we want a function `rand` that returns a new, apparently random integer 
 
 </Prose>
 
-<Example index={0} file="rand.sicp" source={randProgram} anim="local-state-frames">
+<Example index={0} file="rand.sicp" source={randProgram} anim="frames">
 
 The lambda applied at once in `rand`'s declaration makes a frame holding `x`, and returns a function that remembers it. Each call of `rand` assigns the next number to that `x`. Change `random_init` and the whole sequence changes; keep it and every run prints the same numbers, which is what makes the experiments below repeatable.
 

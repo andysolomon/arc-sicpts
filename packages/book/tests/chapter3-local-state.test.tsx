@@ -15,7 +15,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { scenes } from '../src/anim/chapter-3/section-3.1.tsx';
 import { environmentStates } from '../src/anim/model/environment.ts';
-import { localStateKeyframes, resolveAssignments } from '../src/anim/model/localState.ts';
+import { localStateKeyframes } from '../src/anim/model/localState.ts';
 import { seriesOf } from '../src/anim/model/series.ts';
 import { EnvironmentScene } from '../src/anim/scenes/EnvironmentScene.tsx';
 import { LocalStateScene, visibleHistory } from '../src/anim/scenes/LocalStateScene.tsx';
@@ -41,19 +41,14 @@ const summary = (source: string): string[] => {
 };
 
 const bindingIn = (source: string, frame: string, name: string): string | null | undefined => {
-  const states = environmentStates(source, resolveAssignments(traceOf(source)));
+  const states = environmentStates(source, traceOf(source));
   const last = states[states.length - 1];
   return last?.frames.find((f) => f.id === frame)?.bindings.find((b) => b.name === name)?.value;
 };
 
 describe('assignments land in the frame that binds the name', () => {
   it('changes the balance new_withdraw remembers, not a new binding in the withdrawal\'s own frame', () => {
-    const trace = traceOf(newWithdrawProgram);
-    const assigned = resolveAssignments(trace).records.flatMap((r) =>
-      r.event.kind === 'define' && r.event.assignment ? [`${r.event.symbol} in ${r.env}`] : [],
-    );
     // E1 is the call of make_withdraw_balance_100, E2 the block of its body that declares balance.
-    expect(assigned).toEqual(['balance in E2', 'balance in E2', 'balance in E2']);
     expect(bindingIn(newWithdrawProgram, 'E2', 'balance')).toBe('35');
     expect(bindingIn(newWithdrawProgram, 'E3', 'balance')).toBeUndefined();
   });
@@ -65,11 +60,6 @@ describe('assignments land in the frame that binds the name', () => {
 
   it('changes make_account\'s parameter through withdraw and deposit alike', () => {
     expect(bindingIn(makeAccountProgram, 'E1', 'balance')).toBe('30');
-  });
-
-  it('leaves a trace without assignments as it was', () => {
-    const trace = traceOf('function f(x) { return x; }\nf(1);\n');
-    expect(resolveAssignments(trace)).toBe(trace);
   });
 });
 
@@ -154,14 +144,14 @@ describe('scenes of section 3.1', () => {
   });
 
   it('draws the balance in the remembered frame', () => {
-    const trace = resolveAssignments(traceOf(newWithdrawProgram));
+    const trace = traceOf(newWithdrawProgram);
     render(<EnvironmentScene source={newWithdrawProgram} trace={trace} stepIndex={trace.records.length} />);
     const frame = screen.getAllByTestId('frame').find((f) => f.dataset['frame'] === 'E2');
     expect(frame).toHaveTextContent('balance: 35');
   });
 
-  it('registers both kinds', () => {
-    expect(Object.keys(scenes)).toEqual(['local-state', 'local-state-frames']);
+  it('registers the local-state kind', () => {
+    expect(Object.keys(scenes)).toEqual(['local-state']);
   });
 });
 
