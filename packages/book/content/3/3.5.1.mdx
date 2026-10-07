@@ -1,0 +1,226 @@
+import {
+  delayedPrimeProgram,
+  memoizedStreamProgram,
+  secondPrimeListProgram,
+  streamOperationsProgram,
+  sumPrimesProgram,
+} from '@sicp/lab';
+
+<Prose>
+
+Section 2.2.3 made sequences a common currency between program parts: `map`, `filter` and `accumulate` let us say what a computation does as a pipeline of stages, briefly and clearly. Built from lists, that clarity has a price. Each stage builds a whole new list and hands it on, so a program written this way may copy enormous structures at every step, using far more time and memory than a loop that does the same work.
+
+To see the cost, compare two ways of adding up the primes in an interval. The first keeps a running total in an iterative process, testing each number as it goes. The second is the sequence version: enumerate the interval, keep the primes, add them up. Both use the Θ(√*n*) `is_prime` of §1.2.6.
+
+</Prose>
+
+<Example index={0} file="sum_primes.sicp" source={sumPrimesProgram}>
+
+Both print 1043, the sum of the primes from 10 to 100. The iterative version only ever holds `count` and `accum`. The list version can't start filtering until `enumerate_interval` has built the whole list of 91 numbers, and `filter` then builds a second list before `accumulate` adds it up.
+
+</Example>
+
+<Prose>
+
+Over a short interval that waste doesn't matter much. It becomes absurd when we ask for something small from a long sequence, such as the *second* prime after 10,000:
+
+```js
+head(tail(filter(is_prime,
+                 enumerate_interval(10000, 1000000))));
+```
+
+This gives the right answer, but only after making a list of nearly a million numbers, testing every one of them for primality, and then using two of the results. A loop written by hand would mix the enumerating with the testing and stop as soon as it had the second prime.
+
+</Prose>
+
+<Example index={1} file="second_prime_list.sicp" source={secondPrimeListProgram} budget={2000000}>
+
+The interval here stops at 11,000 so that the run ends, and `tested` counts the calls of the predicate: 1001 numbers tested to find 10,009, of which only the first ten mattered. With the book's 1,000,000 the program runs out of steps long before it has even finished building the list (try it).
+
+</Example>
+
+<Prose>
+
+*Streams* let us keep the sequence style without paying for whole lists. The trick is to build a stream only partly, and to hand the partial result to whoever uses it. When a consumer reaches for a part that hasn't been built yet, the stream builds just enough more of itself to supply it. Programs are written as if the entire sequence were there; underneath, building the sequence and using it are interleaved automatically.
+
+We build a stream from a pair, with the first element in the head. The tail, though, is not the rest of the stream but a *promise* to compute it if it's ever asked for. In JavaScript the natural promise is a function of no arguments: given an item *h* and a stream *t*, the stream whose head is *h* and whose rest is *t* is
+
+```js
+pair(h, () => t)
+```
+
+and wrapping *t* in `() =>` keeps it from being evaluated now. The empty stream is `null`, as for lists. The head of a stream is read with `head`, as for a list; to get the rest we have to call the function in the tail, which `stream_tail` does:
+
+```js
+function stream_tail(stream) {
+  return tail(stream)();
+}
+```
+
+Applying that function *forces* the promise: it evaluates the delayed expression and returns the next pair of the stream, or `null`. With `stream_tail` in place of `tail`, the list operations of chapter 2 have stream analogues: `stream_ref`, `stream_map`, `stream_for_each`, and `display_stream` for looking at a (finite) stream. That we need a second copy of each list function suggests an abstraction we haven't captured yet; §4.2 comes back to it, with an evaluator in which lists and streams are the same thing.
+
+</Prose>
+
+<Example index={2} file="stream_operations.sicp" source={streamOperationsProgram}>
+
+These declarations shadow the library's `stream_tail`, `stream_ref`, `stream_map` and `stream_for_each`, which are written the same way. `display_stream` prints the six squares, forcing one tail per element; `stream_ref(squares, 4)` walks four tails to 25. Note that `stream_map` applies `f` to the head right away, and only promises the rest.
+
+</Example>
+
+<Prose>
+
+So a stream evaluates its tail when it is *selected* by `stream_tail`, not when it is *constructed* by `pair`. The choice is like the one for rational numbers in §2.1.2, where reducing a fraction to lowest terms could happen when it was made or when its parts were read: the data abstraction is the same, and only the timing, and so the efficiency, differs. As data, streams and lists are the same; they differ in when their elements are computed. A list computes head and tail when it is built; a stream computes its tail when someone asks.
+
+Here is the second-prime computation again, in streams. `stream_enumerate_interval` is the stream counterpart of `enumerate_interval`, and `stream_filter` of `filter`:
+
+```js
+function stream_enumerate_interval(low, high) {
+  return low > high
+    ? null
+    : pair(low,
+           () => stream_enumerate_interval(low + 1, high));
+}
+
+head(stream_tail(stream_filter(
+                     is_prime,
+                     stream_enumerate_interval(10000, 1000000))));
+```
+
+Follow what happens. `stream_enumerate_interval(10000, 1000000)` returns at once with a single pair, morally
+
+```js
+pair(10000, () => stream_enumerate_interval(10001, 1000000))
+```
+
+(really the tail is the original lambda expression, in an environment where `low` is 10,000). `stream_filter` tests the head, 10,000, which isn't prime, so it forces the tail and looks at the stream that comes back, headed by 10,001. That isn't prime either, so it forces another tail, and so on until the enumeration produces 10,007. At that point `stream_filter` returns
+
+```js
+pair(10007,
+     () => stream_filter(
+              is_prime,
+              pair(10008,
+                   () => stream_enumerate_interval(10009, 1000000))))
+```
+
+Our expression now applies `stream_tail` to this. Forcing the delayed `stream_filter` makes it force the delayed enumeration in turn, until the next prime, 10,009, comes up. Its pair is what `head` finally receives, and 10,009 is the answer. Only the numbers up to the second prime were ever tested, and the interval was enumerated only as far as the filter needed.
+
+</Prose>
+
+<Example index={3} file="delayed_primes.sicp" source={delayedPrimeProgram} anim="stream-forcing">
+
+`display` returns its argument, so `pair(display(low), ...)` prints each element of the interval when it is made, and the animation draws one cell per printed number. The stream stops growing at 10,009: ten elements, each computed once, and a single promise standing in for the other 989,991 numbers.
+
+</Example>
+
+<Prose>
+
+One way to think about delayed evaluation is as *demand-driven* programming: every stage of a stream pipeline runs only as far as needed to satisfy the stage after it. We have separated the order in which things actually happen from the shape of the functions we wrote. The functions read as if whole streams existed at once; the computation underneath proceeds piece by piece, like a hand-written loop.
+
+**Memoization.** Wrapping tails in functions and calling them when needed is enough for streams to work. But many programs force the same tail more than once, and every forcing repeats the whole computation, which in recursive stream programs can be ruinously slow (exercise 3.57 measures how slow). The remedy is to make a promise remember its value: the first time it is forced it stores what it computed, and afterwards it just returns the stored value. The function `memo` turns any function of no arguments into such a remembering version, in the style of the memoization of exercise 3.27:
+
+```js
+function memo(fun) {
+  let already_run = false;
+  let result = undefined;
+  return () => {
+    if (!already_run) {
+      result = fun();
+      already_run = true;
+      return result;
+    } else {
+      return result;
+    }
+  };
+}
+```
+
+Then we can wrap `memo` around a tail wherever we build a stream pair. A memoizing `stream_map`, for instance:
+
+```js
+function stream_map_optimized(f, s) {
+  return is_null(s)
+    ? null
+    : pair(f(head(s)),
+           memo(() => stream_map_optimized(f, stream_tail(s))));
+}
+```
+
+The streams of this chapter don't memoize by default, so that every tail stays a bare lambda expression; we memoize where it pays. The same holds for the Laboratory's library: its `stream_map`, `stream_filter` and the rest are unmemoized, and a program that wants memoized versions declares its own (under the library's names, if it likes, since a program's declarations shadow the library's).
+
+</Prose>
+
+<Example index={4} file="memo.sicp" source={memoizedStreamProgram} anim="stream-forcing">
+
+Both streams print each square as it is computed and are asked for element 4 twice. Without `memo`, the second `stream_ref` forces the same four tails again, and 4, 9, 16 and 25 are computed twice (the red cells). With `memo`, the second walk finds every tail already evaluated and prints nothing. Change `stream_ref(memoized, 4)` to `stream_ref(memoized, 6)` and only 36 and 49 are new.
+
+</Example>
+
+<Prose>
+
+Delayed evaluation is the key to making streams practical, and it has a long history. It was built into the call-by-name parameter passing of Algol 60; Landin (1965) first used that mechanism to implement streams, and Friedman and Wise (1976) brought delayed streams to Lisp with a `pair` that always delays its arguments, so that every list behaves as a stream. The memoizing version is also called *call-by-need*; in Algol's terms, our plain promises are call-by-name thunks and the memoized ones call-by-need thunks.
+
+</Prose>
+
+<UnderTheHood file="packages/lab/src/evaluator/library.ts">
+
+The stream library is Source code, evaluated into the `library` frame below every program: `stream_tail(s)` is `tail(s)()`, and no tail is memoized. The tests in `chapter-3/streams.test.ts` check that the list version tests 1001 numbers to find 10,009 (and runs out of steps with the interval up to 1,000,000), that the stream version makes exactly the ten elements from 10,000 to 10,009, and that the memoized stream prints four fewer squares. The animation reads only what the program printed; `tests/chapter3-streams.test.tsx` checks its counts.
+
+</UnderTheHood>
+
+<Exercises range="3.50 – 3.52" total={3}>
+<Exercise id="3.50">
+
+Declare `stream_map_2`, which takes a function of two arguments and two streams and returns the stream of the function's values on corresponding elements of the two, ending when either stream ends. It is to `stream_map` what a two-argument `map` is to `map` (Source has no rest parameters, so we don't try for any number of streams). Then declare `stream_map_2_optimized`, the same function with memoized tails, as `stream_map_optimized` does it.
+
+<Solution>
+
+**Solution.** The result is empty as soon as either stream is; otherwise its head is `f(head(s1), head(s2))` and its tail promises `stream_map_2` on the two tails. The optimized version wraps that promise in `memo(...)`, so a second `stream_ref` over the same elements finds them already computed: the last test counts six applications of `f`, not twelve.
+
+</Solution>
+</Exercise>
+<Exercise id="3.51">
+
+Our `display` returns its argument after printing it. Predict what each of these statements prints:
+
+```js
+let x = stream_map(display, stream_enumerate_interval(0, 10));
+stream_ref(x, 5);
+stream_ref(x, 7);
+```
+
+and what they print with `stream_map_optimized` in place of `stream_map`. Answer with lists of the printed numbers.
+
+<Solution>
+
+**Solution.** `stream_map` applies `display` to the head at once, so declaring `x` prints 0. `stream_ref(x, 5)` forces five tails and prints 1 to 5. Without memoization, `stream_ref(x, 7)` forces those same tails again and prints 1 to 7. With memoization the first five tails are already evaluated, so the last statement prints only 6 and 7.
+
+</Solution>
+</Exercise>
+<Exercise id="3.52">
+
+Consider
+
+```js
+let sum = 0;
+function accum(x) {
+  sum = x + sum;
+  return sum;
+}
+const seq = stream_map(accum, stream_enumerate_interval(1, 20));
+const y = stream_filter(is_even, seq);
+const z = stream_filter(x => x % 5 === 0, seq);
+stream_ref(y, 7);
+display_stream(z);
+```
+
+What is `sum` after each statement from `const seq` on? What does `stream_ref(y, 7)` return, and what does `display_stream(z)` print? How would the answers change if every tail of every stream pair were memoized? Explain.
+
+<Solution>
+
+**Solution.** Without memoization, every walk over `seq` runs `accum` again on the elements it passes, and the running total keeps growing. `seq` computes its head (sum 1); `y` walks to the first even total, 6 (sum 6); `z` forces `seq`'s tail all over again, running `accum` on 2, 3 and 4 until the total is 15. `stream_ref(y, 7)` forces the tails after `y`'s head, which run `accum` on 4 to 17 and return 162; `display_stream(z)` prints 15 and then runs `accum` on 5 to 20, printing the totals that happen to be multiples of 5: 180, 230, 305, and leaving `sum` at 362. Memoized, every element of `seq` is computed once, so `sum` is the true running total: 1, 6, 10, 136, 210; `stream_ref` returns 136 and `display_stream` prints 10, 15, 45, 55, 105, 120, 190, 210. Answers that depend on such details are a warning: mixing delayed evaluation with assignment makes the order of events matter again, which is exactly what streams were meant to let us forget.
+
+</Solution>
+</Exercise>
+</Exercises>
+
+<Enables items={['3.5.2', '3.5.3', '3.5.4', '4.2.3']} />
