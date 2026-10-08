@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { neighbours, type Page } from '../toc.ts';
 
 const card =
-  'flex min-h-11 flex-col gap-1 rounded-lg border border-line bg-transparent px-4 py-3.5 text-ink no-underline transition-colors hover:bg-paper-2 hover:no-underline';
+  'pressable flex min-h-11 flex-col gap-1 rounded-lg border border-line bg-transparent px-4 py-3.5 text-ink no-underline transition-colors hover:bg-paper-2 hover:no-underline';
 const label = 'font-mono text-[11px] text-ink-3';
 
 export function PrevNext({ page }: { page: Page }) {

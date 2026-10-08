@@ -33,7 +33,7 @@ export function Drawer({ open, onClose, current }: DrawerProps) {
         <motion.div
           key="scrim"
           data-testid="drawer-scrim"
-          className="fixed inset-x-0 top-14 bottom-0 z-30 bg-ink/30"
+          className="fixed inset-x-0 top-(--shell-header-height) bottom-0 z-30 bg-ink/30"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -48,7 +48,7 @@ export function Drawer({ open, onClose, current }: DrawerProps) {
           role="dialog"
           aria-modal="true"
           aria-label="Contents"
-          className="fixed top-14 bottom-0 left-0 z-[31] w-[min(320px,86vw)] overflow-y-auto border-r border-line bg-paper px-3 pt-5 pb-10 shadow-[0_20px_60px_color-mix(in_oklab,var(--color-ink)_25%,transparent)]"
+          className="fixed top-(--shell-header-height) bottom-0 left-0 z-[31] w-[min(320px,86vw)] overflow-y-auto overscroll-contain border-r border-line bg-paper px-3 pt-5 pb-10 shadow-[0_20px_60px_color-mix(in_oklab,var(--color-ink)_25%,transparent)]"
           initial={{ x: '-100%' }}
           animate={{ x: 0 }}
           exit={{ x: '-100%' }}

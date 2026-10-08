@@ -57,9 +57,9 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
               go(selected);
             }
           }}
-          className="h-12 border-b border-line bg-transparent px-4 text-[17px] text-ink outline-none placeholder:text-ink-3"
+          className="h-12 border-b border-line bg-transparent px-4 text-[17px] text-ink focus-visible:-outline-offset-2 placeholder:text-ink-3"
         />
-        <ul id="search-results" role="listbox" aria-label="Results" className="m-0 flex max-h-[50vh] list-none flex-col overflow-y-auto p-1.5">
+        <ul id="search-results" role="listbox" aria-label="Results" className="m-0 flex max-h-[50dvh] list-none flex-col overflow-y-auto overscroll-contain p-1.5">
           {results.map((page, index) => (
             <li
               key={page.path}

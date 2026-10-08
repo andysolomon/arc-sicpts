@@ -21,9 +21,10 @@ const theme = EditorView.theme({
   '&': {
     backgroundColor: 'transparent',
     color: 'var(--color-ink)',
-    fontSize: '13.5px',
+    fontSize: 'var(--editor-font-size)',
   },
-  '&.cm-focused': { outline: 'none' },
+  // Draw inside the editor so the surrounding overflow container cannot clip it.
+  '&.cm-focused': { outline: '2px solid var(--color-accent)', outlineOffset: '-2px' },
   '.cm-scroller': {
     fontFamily: 'var(--font-mono)',
     fontVariantLigatures: 'none',

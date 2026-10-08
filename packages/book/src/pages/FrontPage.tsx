@@ -15,7 +15,7 @@ export function FrontPage() {
     <>
       <div className="flex flex-col gap-3 pt-6">
         <Eyebrow>An interactive book</Eyebrow>
-        <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[1.05] font-medium tracking-[-0.02em] text-pretty">
+        <h1 className="m-0 text-[clamp(2.25rem,1.5rem+3vw,4rem)] leading-[1.05] font-medium tracking-[-0.02em] text-balance">
           Structure and Interpretation of Computer Programs,{' '}
           <em className="text-ink-2 italic">rewritten in TypeScript</em>
         </h1>
@@ -26,13 +26,13 @@ export function FrontPage() {
         <div className="mt-3 flex flex-wrap gap-2.5">
           <Link
             to="/1"
-            className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-[18px] text-[15px] font-semibold text-paper no-underline hover:no-underline"
+            className="pressable inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-[18px] text-[15px] font-semibold text-paper no-underline hover:no-underline"
           >
             Start Chapter 1 <ChevronIcon />
           </Link>
           <Link
             to="/5/5.2"
-            className="inline-flex h-11 items-center gap-2 rounded-lg border border-line px-[18px] text-[15px] text-ink no-underline transition-colors hover:bg-paper-2 hover:no-underline"
+            className="pressable inline-flex h-11 items-center gap-2 rounded-lg border border-line px-[18px] text-[15px] text-ink no-underline transition-colors hover:bg-paper-2 hover:no-underline"
           >
             Jump to the register machine
           </Link>

@@ -9,7 +9,7 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 
 export function PageTitle({ children }: { children: ReactNode }) {
   return (
-    <h1 className="m-0 text-[clamp(32px,5vw,50px)] leading-[1.1] font-medium tracking-[-0.02em] text-pretty">
+    <h1 className="m-0 text-[clamp(2rem,1.5rem+2vw,3.125rem)] leading-[1.1] font-medium tracking-[-0.02em] text-balance">
       {children}
     </h1>
   );
