@@ -17,6 +17,8 @@ export function useTheme(): { mode: ThemeMode; cycle: () => void } {
 
   useEffect(() => {
     const root = document.documentElement;
+    // The boot script sets this before CSS loads; CSS owns it once React mounts.
+    root.style.removeProperty('color-scheme');
     if (mode === 'system') {
       root.removeAttribute('data-theme');
       removeStored(KEY);

@@ -90,7 +90,7 @@ export function Shell() {
         />
         <div className="flex min-h-0 flex-1">
           {wide && (
-            <aside className="sticky top-14 h-[calc(100vh-56px)] w-[272px] flex-none overflow-y-auto border-r border-line bg-paper px-3 pt-5 pb-10">
+            <aside className="sticky top-(--shell-header-height) h-[calc(100dvh-var(--shell-header-height))] w-[272px] flex-none overflow-y-auto overscroll-contain border-r border-line bg-paper px-3 pt-5 pb-10">
               <TocList current={current} />
             </aside>
           )}

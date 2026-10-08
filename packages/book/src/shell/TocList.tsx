@@ -25,7 +25,7 @@ function Row({ number, title, to, head = false, current, touch }: RowProps) {
     <Link
       to={to}
       aria-current={active ? 'page' : undefined}
-      className={`grid grid-cols-[40px_1fr] items-baseline gap-2 rounded-md text-left leading-[1.35] text-pretty no-underline transition-colors hover:bg-paper-2 hover:no-underline ${tone} ${weight} ${
+      className={`pressable grid grid-cols-[40px_1fr] items-baseline gap-2 rounded-md text-left leading-[1.35] text-pretty no-underline transition-colors hover:bg-paper-2 hover:no-underline ${tone} ${weight} ${
         head ? 'px-2 pt-3.5 pb-1.5 text-[13.5px]' : 'px-2 py-[7px] text-[13px]'
       } ${touch ? 'min-h-11 content-center' : ''}`}
     >

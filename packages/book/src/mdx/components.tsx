@@ -199,7 +199,7 @@ function Enables({ items }: EnablesProps) {
             <Link
               key={id}
               to={page.path}
-              className="rounded-full border border-line px-3 py-1.5 text-[14.5px] pointer-coarse:py-2.5"
+              className="pressable rounded-full border border-line px-3 py-1.5 text-[14.5px] pointer-coarse:py-2.5"
             >
               {id} {typeof item === 'string' ? page.title : item.label}
             </Link>

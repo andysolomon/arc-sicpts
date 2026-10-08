@@ -3,25 +3,25 @@
 @theme static {
   --color-*: initial;
 
-  /* light (default) */
-  --color-paper: #f6f1e8; /* page */
-  --color-paper-2: #efe8dc; /* panels, editor chrome */
-  --color-paper-3: #e6dfd1; /* pressed / hover on panels */
-  --color-ink: #201c17;
-  --color-ink-2: #625a4f; /* secondary text */
-  --color-ink-3: #685f54; /* labels and line numbers: at least 4.5:1 on every paper surface */
-  --color-line: #d9d0c1;
-  --color-accent: oklch(0.5 0.1 200); /* buttons, current-node highlight border */
-  --color-accent-ink: oklch(0.42 0.1 200); /* accent text, keywords, links */
-  --color-accent-soft: oklch(0.93 0.03 200); /* highlight fill */
-  --color-num: oklch(0.5 0.1 50); /* numeric literals / values */
-  --color-str: oklch(0.5 0.1 150); /* string literals */
-  --color-ok: oklch(0.5 0.1 150);
-  --color-ok-soft: oklch(0.93 0.04 150);
-  --color-warn: oklch(0.55 0.13 50);
-  --color-warn-soft: oklch(0.93 0.04 50);
-  --color-bad: oklch(0.55 0.14 25);
-  --color-bad-soft: oklch(0.93 0.04 25);
+  /* Each token follows color-scheme, including a manually selected theme. */
+  --color-paper: light-dark(#f6f1e8, #191613); /* page */
+  --color-paper-2: light-dark(#efe8dc, #211d19); /* panels, editor chrome */
+  --color-paper-3: light-dark(#e6dfd1, #2b2620); /* pressed / hover on panels */
+  --color-ink: light-dark(#201c17, #ece4d6);
+  --color-ink-2: light-dark(#625a4f, #a79e90); /* secondary text */
+  --color-ink-3: light-dark(#685f54, #a09688); /* labels and line numbers: 4.5:1 on all paper surfaces */
+  --color-line: light-dark(#d9d0c1, #352f28);
+  --color-accent: light-dark(oklch(0.5 0.1 200), oklch(0.74 0.09 200));
+  --color-accent-ink: light-dark(oklch(0.42 0.1 200), oklch(0.8 0.09 200));
+  --color-accent-soft: light-dark(oklch(0.93 0.03 200), oklch(0.3 0.04 200));
+  --color-num: light-dark(oklch(0.5 0.1 50), oklch(0.75 0.1 50));
+  --color-str: light-dark(oklch(0.5 0.1 150), oklch(0.75 0.1 150));
+  --color-ok: light-dark(oklch(0.5 0.1 150), oklch(0.74 0.1 150));
+  --color-ok-soft: light-dark(oklch(0.93 0.04 150), oklch(0.3 0.05 150));
+  --color-warn: light-dark(oklch(0.55 0.13 50), oklch(0.78 0.12 50));
+  --color-warn-soft: light-dark(oklch(0.93 0.04 50), oklch(0.3 0.05 50));
+  --color-bad: light-dark(oklch(0.55 0.14 25), oklch(0.74 0.13 25));
+  --color-bad-soft: light-dark(oklch(0.93 0.04 25), oklch(0.3 0.05 25));
 
   --font-serif: 'Spectral', Georgia, serif;
   --font-mono: 'Fira Code Variable', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -29,54 +29,34 @@
 
 @layer base {
   :root {
+    color-scheme: light dark;
+    --shell-header-height: 3.5rem;
+    --editor-font-size: 0.84375rem;
+  }
+
+  :root[data-theme='light'] {
     color-scheme: light;
   }
 
-  /* dark: follows the system unless light is forced, or forced with data-theme */
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light']) {
-      --color-paper: #191613;
-      --color-paper-2: #211d19;
-      --color-paper-3: #2b2620;
-      --color-ink: #ece4d6;
-      --color-ink-2: #a79e90;
-      --color-ink-3: #a09688;
-      --color-line: #352f28;
-      --color-accent: oklch(0.74 0.09 200);
-      --color-accent-ink: oklch(0.8 0.09 200);
-      --color-accent-soft: oklch(0.3 0.04 200);
-      --color-num: oklch(0.75 0.1 50);
-      --color-str: oklch(0.75 0.1 150);
-      --color-ok: oklch(0.74 0.1 150);
-      --color-ok-soft: oklch(0.3 0.05 150);
-      --color-warn: oklch(0.78 0.12 50);
-      --color-warn-soft: oklch(0.3 0.05 50);
-      --color-bad: oklch(0.74 0.13 25);
-      --color-bad-soft: oklch(0.3 0.05 25);
-      color-scheme: dark;
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+  }
+
+  @media (any-pointer: coarse) {
+    :root {
+      --editor-font-size: max(16px, 1rem);
     }
   }
 
-  :root[data-theme='dark'] {
-    --color-paper: #191613;
-    --color-paper-2: #211d19;
-    --color-paper-3: #2b2620;
-    --color-ink: #ece4d6;
-    --color-ink-2: #a79e90;
-    --color-ink-3: #a09688;
-    --color-line: #352f28;
-    --color-accent: oklch(0.74 0.09 200);
-    --color-accent-ink: oklch(0.8 0.09 200);
-    --color-accent-soft: oklch(0.3 0.04 200);
-    --color-num: oklch(0.75 0.1 50);
-    --color-str: oklch(0.75 0.1 150);
-    --color-ok: oklch(0.74 0.1 150);
-    --color-ok-soft: oklch(0.3 0.05 150);
-    --color-warn: oklch(0.78 0.12 50);
-    --color-warn-soft: oklch(0.3 0.05 50);
-    --color-bad: oklch(0.74 0.13 25);
-    --color-bad-soft: oklch(0.3 0.05 25);
-    color-scheme: dark;
+  html {
+    scroll-padding-block-start: calc(var(--shell-header-height) + 1rem);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
   }
 
   html,
@@ -92,8 +72,10 @@
     text-decoration: none;
   }
 
-  a:hover {
-    text-decoration: underline;
+  @media (hover: hover) and (pointer: fine) {
+    a:hover {
+      text-decoration: underline;
+    }
   }
 
   button {
@@ -103,6 +85,18 @@
   button:disabled {
     cursor: default;
     opacity: 0.55;
+  }
+
+  button,
+  a,
+  summary {
+    touch-action: manipulation;
+  }
+
+  button:not(:disabled):active,
+  a.pressable:active,
+  summary:active {
+    scale: 0.97;
   }
 
   pre,

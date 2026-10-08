@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Structure and Interpretation of Computer Programs, rewritten in TypeScript: an interactive book with live, inspectable code." />
     <title>SICP JS</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='6' fill='%23006f7d'/%3E%3Ctext x='14' y='19' text-anchor='middle' font-family='monospace' font-weight='600' font-size='14' fill='%23f6f1e8'%3E%CE%BB%3C/text%3E%3C/svg%3E" />
@@ -10,7 +11,10 @@
       // Apply a forced theme before first paint to avoid a flash.
       try {
         var theme = localStorage.getItem('sicp.theme');
-        if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme);
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.style.colorScheme = theme;
+        }
       } catch (e) {}
     </script>
   </head>

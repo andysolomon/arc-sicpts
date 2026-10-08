@@ -32,7 +32,7 @@ export function Mark() {
 export function Header(props: HeaderProps) {
   const { page, narrow, theme } = props;
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-paper/92 px-5 backdrop-blur-[10px]">
+    <header className="sticky top-0 z-20 flex h-(--shell-header-height) items-center gap-3 border-b border-line bg-paper/92 px-5 backdrop-blur-[10px]">
       {narrow && (
         <button
           ref={props.menuButtonRef}
@@ -45,7 +45,7 @@ export function Header(props: HeaderProps) {
           <MenuIcon />
         </button>
       )}
-      <Link to={FRONT_PATH} className="inline-flex items-center gap-2.5 text-ink no-underline hover:no-underline">
+      <Link to={FRONT_PATH} className="pressable inline-flex items-center gap-2.5 text-ink no-underline hover:no-underline">
         <Mark />
         <span className="text-[17px] font-semibold tracking-[-0.01em] whitespace-nowrap">SICP JS</span>
       </Link>

@@ -20,7 +20,7 @@ export function SectionLanding({ chapter, section }: { chapter: Chapter; section
             <li key={subsection.id} className="border-b border-line">
               <Link
                 to={pathOf(subsection.id)}
-                className="grid min-h-11 grid-cols-[56px_1fr_auto] items-baseline gap-4 px-2 py-4 text-ink no-underline transition-colors hover:bg-paper-2 hover:no-underline"
+                className="pressable grid min-h-11 grid-cols-[56px_1fr_auto] items-baseline gap-4 px-2 py-4 text-ink no-underline transition-colors hover:bg-paper-2 hover:no-underline"
               >
                 <span className="font-mono text-[13px] text-ink-3">{subsection.id}</span>
                 <span className="text-[19px] leading-[1.3] text-pretty">{subsection.title}</span>

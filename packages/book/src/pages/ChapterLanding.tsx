@@ -36,7 +36,7 @@ export function ChapterLanding({ chapter }: { chapter: Chapter }) {
             <li key={section.id} className="border-b border-line">
               <Link
                 to={pathOf(section.id)}
-                className="grid w-full grid-cols-[56px_1fr_auto] items-start gap-4 px-2 py-5 text-left text-ink no-underline transition-colors hover:bg-paper-2 hover:no-underline max-[520px]:grid-cols-[40px_1fr]"
+                className="pressable grid w-full grid-cols-[56px_1fr_auto] items-start gap-4 px-2 py-5 text-left text-ink no-underline transition-colors hover:bg-paper-2 hover:no-underline max-[520px]:grid-cols-[40px_1fr]"
               >
                 <span className="pt-1 font-mono text-[13px] text-ink-3">{section.id}</span>
                 <span className="flex min-w-0 flex-col gap-1.5">
