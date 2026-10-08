@@ -1,25 +1,48 @@
 import type { ProcessShapeSnapshot } from '@sicp/lab';
 import type { MDXComponents } from 'mdx/types';
-import { Children, useCallback, useState, type ReactNode } from 'react';
+import { Children, lazy, Suspense, useCallback, useState, type ComponentType, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { Animation, type AnimKind } from '../anim/Animation.tsx';
+import type { AnimKind } from '../anim/Animation.tsx';
 import { repoFile } from '../config.ts';
-import { BlackBoxDiagram } from '../diagrams/BlackBoxDiagram.tsx';
-import { diagrams as diagrams31 } from '../diagrams/chapter-3/section-3.1.tsx';
-import { diagrams as diagrams32 } from '../diagrams/chapter-3/section-3.2.tsx';
-import { diagrams as diagrams33 } from '../diagrams/chapter-3/section-3.3.tsx';
-import { diagrams as diagrams33Simulation } from '../diagrams/chapter-3/section-3.3-simulation.tsx';
-import { diagrams as diagrams34 } from '../diagrams/chapter-3/section-3.4.tsx';
-import { diagrams as diagrams35 } from '../diagrams/chapter-3/section-3.5.tsx';
-import { diagrams as diagrams35Paradigm } from '../diagrams/chapter-3/section-3.5-paradigm.tsx';
 import { Figure } from '../diagrams/Figure.tsx';
-import { LabArchitectureDiagram } from '../diagrams/LabArchitectureDiagram.tsx';
-import { LayersDiagram } from '../diagrams/LayersDiagram.tsx';
-import { SourceEditor } from '../editor/SourceEditor.tsx';
 import { NestedSquaresIcon } from '../shell/icons.tsx';
 import { pages } from '../toc.ts';
-import { ProcessShapeViz } from '../viz/ProcessShapeViz.tsx';
 import { Exercise, Solution } from './Exercise.tsx';
+
+/** Keep each editor, diagram and scene out of the initial reading shell. */
+function deferred<Props extends object>(load: () => Promise<{ default: ComponentType<Props> }>) {
+  const Component = lazy(load);
+  return function Deferred(props: Props) {
+    return (
+      <Suspense fallback={<div role="status" className="rounded-lg bg-paper-2 p-4 text-ink-3">Loading interactive panel…</div>}>
+        <Component {...props} />
+      </Suspense>
+    );
+  };
+}
+
+const BlackBoxDiagram = deferred(async () => ({ default: (await import('../diagrams/BlackBoxDiagram.tsx')).BlackBoxDiagram }));
+const LabArchitectureDiagram = deferred(async () => ({ default: (await import('../diagrams/LabArchitectureDiagram.tsx')).LabArchitectureDiagram }));
+const LayersDiagram = deferred(async () => ({ default: (await import('../diagrams/LayersDiagram.tsx')).LayersDiagram }));
+const SourceEditor = deferred(async () => ({ default: (await import('../editor/SourceEditor.tsx')).SourceEditor }));
+const ProcessShapeViz = deferred(async () => ({ default: (await import('../viz/ProcessShapeViz.tsx')).ProcessShapeViz }));
+const Animation = deferred(async () => ({ default: (await import('../anim/Animation.tsx')).Animation }));
+const EnvModelSimpleDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.2.tsx')).diagrams.EnvModelSimpleDiagram }));
+const BoxPointerDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.3.tsx')).diagrams.BoxPointerDiagram }));
+const PrimitiveGatesDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.3-simulation.tsx')).diagrams.PrimitiveGatesDiagram }));
+const HalfAdderDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.3-simulation.tsx')).diagrams.HalfAdderDiagram }));
+const FullAdderDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.3-simulation.tsx')).diagrams.FullAdderDiagram }));
+const RippleCarryAdderDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.3-simulation.tsx')).diagrams.RippleCarryAdderDiagram }));
+const CelsiusFahrenheitDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.3-simulation.tsx')).diagrams.CelsiusFahrenheitDiagram }));
+const TimingDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.4.tsx')).diagrams.TimingDiagram }));
+const SieveDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.5.tsx')).diagrams.SieveDiagram }));
+const PairsDecompositionDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.5-paradigm.tsx')).diagrams.PairsDecompositionDiagram }));
+const SignalIntegralDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.5-paradigm.tsx')).diagrams.SignalIntegralDiagram }));
+const SignalRcCircuitDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.5-paradigm.tsx')).diagrams.SignalRcCircuitDiagram }));
+const SignalSolveDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.5-paradigm.tsx')).diagrams.SignalSolveDiagram }));
+const SignalSecondOrderDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.5-paradigm.tsx')).diagrams.SignalSecondOrderDiagram }));
+const SignalRlcDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.5-paradigm.tsx')).diagrams.SignalRlcDiagram }));
+const ParadigmJointAccountDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.5-paradigm.tsx')).diagrams.ParadigmJointAccountDiagram }));
 
 /** Running text, capped at 68 characters per line. */
 function Prose({ children }: { children: ReactNode }) {
@@ -200,13 +223,23 @@ export const mdxComponents: MDXComponents = {
   LayersDiagram,
   BlackBoxDiagram,
   LabArchitectureDiagram,
-  ...diagrams31,
-  ...diagrams32,
-  ...diagrams33,
-  ...diagrams33Simulation,
-  ...diagrams34,
-  ...diagrams35,
-  ...diagrams35Paradigm,
+  EnvModelSimpleDiagram,
+  BoxPointerDiagram,
+  PrimitiveGatesDiagram,
+  HalfAdderDiagram,
+  FullAdderDiagram,
+  RippleCarryAdderDiagram,
+  CelsiusFahrenheitDiagram,
+  TimingDiagram,
+  SieveDiagram,
+  PairsDecompositionDiagram,
+  SignalIntegralDiagram,
+  SignalRcCircuitDiagram,
+  SignalSolveDiagram,
+  SignalSecondOrderDiagram,
+  SignalRlcDiagram,
+  ParadigmJointAccountDiagram,
+
   p: (props) => <p className="m-0" {...props} />,
   code: (props) => <code className="rounded bg-paper-2 px-[5px] py-px text-[0.88em]" {...props} />,
   pre: (props) => (

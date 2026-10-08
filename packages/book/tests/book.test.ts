@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { exerciseSections } from 'virtual:exercise-catalog';
 import { editorKey, shareUrl } from '../src/editor/persistence.ts';
 import { readExercise, recordExercise, sectionStatus } from '../src/progress.ts';
 import { search } from '../src/shell/searchIndex.ts';
@@ -45,13 +46,20 @@ describe('table of contents', () => {
   });
 });
 
-describe('search stub', () => {
+describe('manuscript search', () => {
   it('finds sections by number and by words in titles or summaries', () => {
     expect(search('1.2.1')[0]?.path).toBe('/1/1.2.1');
     expect(search('garbage collection')[0]?.title).toBe('Storage Allocation and Garbage Collection');
     expect(search('newton').map((p) => p.crumb)).toContain('1.1.7');
     expect(search('   ')).toEqual([]);
     expect(search('zzzz')).toEqual([]);
+  });
+
+  it('finds concepts in the prose and ranks exact exercise numbers first', () => {
+    expect(search('memoization').map((p) => p.crumb)).toContain('3.5.1');
+    expect(search('exercise 1.9')[0]?.crumb).toBe('1.2.1');
+    expect(search('2.52')[0]?.crumb).toBe('2.2.4');
+    expect(search('declarations', 200).map((p) => p.path)).toContain('/appendix/grammar');
   });
 });
 
@@ -80,13 +88,28 @@ describe('progress', () => {
     recordExercise('1.3', { passed: 2, total: 4 });
     expect(readExercise('1.3')).toEqual({ passed: 2, total: 4 });
     expect(sectionStatus(chapter, section)).toBe('in progress');
-    for (let n = 1; n <= 8; n++) recordExercise(`1.${n}`, { passed: 4, total: 4 });
+    for (let n = 1; n <= 8; n++) {
+      const id = `1.${n}`;
+      recordExercise(id, { passed: 4, total: 4, source: 'checked answer' });
+      window.localStorage.setItem(editorKey(exerciseSections[id]!, `ex-${id}`), 'checked answer');
+    }
     expect(sectionStatus(chapter, section)).toBe('complete');
+    window.localStorage.setItem(editorKey(exerciseSections['1.3']!, 'ex-1.3'), 'edited answer');
+    expect(sectionStatus(chapter, section)).toBe('in progress');
+    window.localStorage.setItem(editorKey(exerciseSections['1.3']!, 'ex-1.3'), 'checked answer');
+    expect(sectionStatus(chapter, section)).toBe('complete');
+    window.localStorage.removeItem(editorKey(exerciseSections['1.3']!, 'ex-1.3'));
+    expect(sectionStatus(chapter, section)).toBe('in progress');
     expect(sectionStatus(chapter, chapter.sections[1]!)).toBe('not started');
   });
 
   it('ignores stored values it does not understand', () => {
     window.localStorage.setItem('sicp.exercise.1.3', 'not json');
     expect(readExercise('1.3')).toBeNull();
+  });
+
+  it('keeps legacy results as history but requires another check for completion', () => {
+    for (let n = 1; n <= 8; n++) recordExercise(`1.${n}`, { passed: 4, total: 4 });
+    expect(sectionStatus(chapter, section)).toBe('in progress');
   });
 });

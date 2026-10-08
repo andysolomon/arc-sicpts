@@ -1,5 +1,5 @@
 import { MotionConfig } from 'motion/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { useMediaQuery } from '../hooks.ts';
 import { useTheme } from '../theme.ts';
@@ -7,9 +7,10 @@ import { findPage, neighbours, sidebarPath } from '../toc.ts';
 import { Drawer } from './Drawer.tsx';
 import { Header } from './Header.tsx';
 import { PrevNext } from './PrevNext.tsx';
-import { SearchDialog } from './SearchDialog.tsx';
 import { ShortcutSheet } from './ShortcutSheet.tsx';
 import { TocList } from './TocList.tsx';
+
+const SearchDialog = lazy(() => import('./SearchDialog.tsx').then((module) => ({ default: module.SearchDialog })));
 
 function isTyping(target: EventTarget | null): boolean {
   return (
@@ -105,7 +106,9 @@ export function Shell() {
             </div>
           </main>
         </div>
-        <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
+        {searchOpen && <Suspense fallback={<span role="status" className="sr-only">Loading search…</span>}>
+          <SearchDialog open onClose={() => setSearchOpen(false)} />
+        </Suspense>}
         <ShortcutSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
       </div>
     </MotionConfig>

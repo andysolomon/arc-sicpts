@@ -38,7 +38,15 @@ function cube_root(x) {
 
 and *Dg*(*x*) is the derivative of *g* evaluated at *x*. For many functions and good enough starting guesses, Newton's method converges very rapidly.
 
-Derivative, like average damping, transforms one function into another. The derivative of *x* ↦ *x*³ is the function *x* ↦ 3*x*². In general, if *g* is a function and *dx* a small number, then *Dg*(*x*) = (*g*(*x* + *dx*) − *g*(*x*)) / *dx*, and `deriv` is that formula with the function returned rather than applied. With it, Newton's method is a fixed-point search on `newton_transform(g)`.
+Derivative, like average damping, transforms one function into another. The derivative of *x* ↦ *x*³ is the function *x* ↦ 3*x*². For a differentiable function *g*, its derivative is the limit
+
+*Dg*(*x*) = lim(*dx* → 0) (*g*(*x* + *dx*) − *g*(*x*)) / *dx*.
+
+With a small, nonzero *dx*, the finite difference only approximates that limit:
+
+*Dg*(*x*) ≈ (*g*(*x* + *dx*) − *g*(*x*)) / *dx*.
+
+`deriv` returns a function that computes this numerical approximation. For *g*(*x*) = *x*³, the finite difference is 3*x*² + 3*x*·*dx* + *dx*², so it differs from the exact derivative whenever those extra terms do not vanish. Choosing a smaller *dx* reduces the approximation error at first, but very small differences also lose floating-point precision. With this approximation, Newton's method is a fixed-point search on `newton_transform(g)`.
 
 </Prose>
 

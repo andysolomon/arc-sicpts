@@ -52,7 +52,13 @@ export function usePersistentSource(
   const reset = useCallback(() => {
     setState(supplied);
     removeStored(key);
-  }, [key, supplied]);
+    const url = new URL(window.location.href);
+    if ((url.searchParams.get(EDITOR_PARAM) ?? FIRST_EDITOR) === editorId) {
+      url.searchParams.delete(CODE_PARAM);
+      url.searchParams.delete(EDITOR_PARAM);
+      window.history.replaceState(window.history.state, '', url);
+    }
+  }, [editorId, key, supplied]);
 
   return { source, setSource, reset };
 }

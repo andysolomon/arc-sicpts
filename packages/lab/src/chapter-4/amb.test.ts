@@ -147,7 +147,7 @@ describe('section 4.3.2: examples of nondeterministic programs', () => {
     expect(tracer.calls.filter((call) => call.args[1] === '0').length + 1).toBe(1471);
     expect(run(ambOfficePrelude, officeMoveProgram).steps).toBeLessThan(12_000_000);
     expect(text(ambOfficePrelude, 'amb_solutions("office_move();", 2);')).toBe(first.text);
-  });
+  }, 30_000); // Several complete searches; retain the step bound independently of host speed.
 
   it('declares office_move as the book writes it', () => {
     expect(ambOfficePrelude).toContain(JSON.stringify(ambOfficeMove).slice(1, -1));
