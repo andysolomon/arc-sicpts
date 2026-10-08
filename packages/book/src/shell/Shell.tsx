@@ -43,8 +43,8 @@ export function Shell() {
   }, [location.pathname]);
 
   useEffect(() => {
-    document.title = page === null ? 'SICP JS' : `${page.title} · SICP JS`;
-  }, [page]);
+    document.title = location.pathname === '/downloads' ? 'Download the book · SICP JS' : page === null ? 'SICP JS' : `${page.title} · SICP JS`;
+  }, [location.pathname, page]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {

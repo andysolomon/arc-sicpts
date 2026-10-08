@@ -7,3 +7,8 @@ playwright-report
 .agents
 .claude
 skills-lock.json
+
+packages/book/public/downloads/
+.audiobook/
+
+__pycache__/

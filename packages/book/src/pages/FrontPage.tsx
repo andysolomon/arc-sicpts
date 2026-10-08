@@ -37,6 +37,7 @@ export function FrontPage() {
             Jump to the register machine
           </Link>
         </div>
+        <Link to="/downloads" className="mt-2 text-base">Download PDF or EPUB · Read on Kindle · Audiobook →</Link>
       </div>
 
       <section aria-label="Before you begin" className="flex max-w-[68ch] flex-col gap-3 text-lg leading-[1.65]">
