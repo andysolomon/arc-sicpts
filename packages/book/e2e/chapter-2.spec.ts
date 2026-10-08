@@ -23,6 +23,7 @@ test('§2.2.2 draws shared structure as box-and-pointer diagrams', async ({ page
 
 test('§2.2.4 draws what the painter draws, under the editor and in the scene', async ({ page }) => {
   await page.goto('/2/2.2.4');
+  await expect(page.getByRole('textbox', { name: 'wave_frames.sicp, editable program' })).toBeVisible();
   await page.getByRole('button', { name: 'Run' }).first().click();
   const output = page.getByTestId('output').first();
   await expect(output).toHaveAttribute('data-status', 'done');
