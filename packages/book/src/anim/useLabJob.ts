@@ -1,3 +1,4 @@
+import { useEditionPending } from '../editions/context.ts';
 import type { JobHandle, JobParams, TerminalEvent } from '@sicp/lab';
 import { useEffect, useRef, useState } from 'react';
 import { labClient } from '../lab/client.ts';
@@ -14,6 +15,7 @@ export function useLabJob<T extends TerminalEvent['type']>(
 ): { result: Extract<TerminalEvent, { type: T }> | null; pending: boolean } {
   const [result, setResult] = useState<Extract<TerminalEvent, { type: T }> | null>(null);
   const [pending, setPending] = useState(params !== null);
+  useEditionPending(pending);
   const job = useRef<JobHandle | null>(null);
   const key = params === null ? null : JSON.stringify(params);
 

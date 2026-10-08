@@ -1,3 +1,4 @@
+import { useEditionPending } from '../editions/context.ts';
 import type { JobHandle, TerminalEvent } from '@sicp/lab';
 import { useEffect, useRef, useState } from 'react';
 import { labClient } from '../lab/client.ts';
@@ -25,6 +26,7 @@ export function useTrace(source: string, { maxRecords, budget, delayMs = 350, he
 } {
   const [trace, setTrace] = useState<Trace | null>(null);
   const [pending, setPending] = useState(true);
+  useEditionPending(pending);
   const job = useRef<JobHandle | null>(null);
 
   useEffect(() => {

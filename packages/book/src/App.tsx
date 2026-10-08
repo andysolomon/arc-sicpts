@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router';
 import { ChapterLanding } from './pages/ChapterLanding.tsx';
 import { FrontPage } from './pages/FrontPage.tsx';
@@ -6,6 +7,9 @@ import { SectionLanding } from './pages/SectionLanding.tsx';
 import { SectionPage } from './pages/SectionPage.tsx';
 import { Shell } from './shell/Shell.tsx';
 import { findPage, FRONT_PATH } from './toc.ts';
+
+const EditionPage = lazy(() => import('./editions/EditionPage.tsx').then((module) => ({ default: module.EditionPage })));
+const DownloadsPage = lazy(() => import('./pages/DownloadsPage.tsx').then((module) => ({ default: module.DownloadsPage })));
 
 /** Every page the table of contents knows, chosen by path. */
 function BookPage() {
@@ -55,7 +59,9 @@ function BookPage() {
 export function App() {
   return (
     <Routes>
+      <Route path="edition" element={<Suspense fallback={<p data-edition-loading>Loading edition…</p>}><EditionPage /></Suspense>} />
       <Route element={<Shell />}>
+        <Route path="downloads" element={<Suspense fallback={<p>Loading downloads…</p>}><DownloadsPage /></Suspense>} />
         <Route index element={<Navigate to={FRONT_PATH} replace />} />
         <Route path="front" element={<BookPage />} />
         <Route path="appendix/:slug" element={<BookPage />} />

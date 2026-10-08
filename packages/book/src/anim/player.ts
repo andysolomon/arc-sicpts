@@ -1,5 +1,6 @@
+import { EditionContext } from '../editions/context.ts';
 import { useReducedMotion } from 'motion/react';
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState, type RefObject } from 'react';
 
 /**
  * A scrubbable timeline over `count` keyframes. It starts playing by itself
@@ -36,6 +37,7 @@ export interface PlayerOptions {
 export const DEFAULT_MS_PER_STEP = 1100;
 
 export function usePlayer(count: number, { stage, msPerStep = DEFAULT_MS_PER_STEP, resetKey, autoplay = true }: PlayerOptions): Player {
+  const edition = useContext(EditionContext);
   const reduced = useReducedMotion() === true;
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -68,11 +70,11 @@ export function usePlayer(count: number, { stage, msPerStep = DEFAULT_MS_PER_STE
       setPlaying(false);
       return;
     }
-    if (autoplay && !reduced && !started.current && count > 1) {
+    if (edition === null && autoplay && !reduced && !started.current && count > 1) {
       started.current = true;
       setPlaying(true);
     }
-  }, [autoplay, count, reduced, visible]);
+  }, [autoplay, count, edition, reduced, visible]);
 
   useEffect(() => {
     if (!playing) return;
@@ -108,5 +110,5 @@ export function usePlayer(count: number, { stage, msPerStep = DEFAULT_MS_PER_STE
     setIndex((current) => Math.max(current - 1, 0));
   }, []);
 
-  return { index: Math.min(index, last), count, playing, atEnd: index >= last, play, pause, toggle, seek, next, prev };
+  return { index: edition === null ? Math.min(index, last) : last, count, playing: edition === null && playing, atEnd: edition !== null || index >= last, play, pause, toggle, seek, next, prev };
 }

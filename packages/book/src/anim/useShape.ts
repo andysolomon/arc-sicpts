@@ -1,3 +1,4 @@
+import { useEditionPending } from '../editions/context.ts';
 import type { JobHandle, ProcessShapeSnapshot } from '@sicp/lab';
 import { useEffect, useRef, useState } from 'react';
 import { labClient } from '../lab/client.ts';
@@ -19,6 +20,7 @@ export function useShape(source: string, { budget = 1_000_000, delayMs = 350 }: 
 } {
   const [shape, setShape] = useState<Shape | null>(null);
   const [pending, setPending] = useState(true);
+  useEditionPending(pending);
   const job = useRef<JobHandle | null>(null);
 
   useEffect(() => {

@@ -58,6 +58,9 @@ export function Header(props: HeaderProps) {
           </>
         )}
       </span>
+      <Link to="/downloads" aria-label="Download the book" title="Download the book" className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-line text-ink-2 pointer-coarse:size-11">
+        <svg aria-hidden viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M5 16v5h14v-5" /></svg>
+      </Link>
       <button
         type="button"
         onClick={props.onSearch}

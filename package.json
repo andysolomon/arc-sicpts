@@ -16,7 +16,9 @@
     "test": "npm run test --workspaces",
     "e2e": "npm run e2e -w @sicp/book",
     "sicp": "node packages/cli/src/main.ts",
-    "release": "semantic-release"
+    "release": "semantic-release",
+    "editions": "npm run editions -w @sicp/book",
+    "audiobook": "python packages/book/scripts/audiobook.py"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^7.0.0",

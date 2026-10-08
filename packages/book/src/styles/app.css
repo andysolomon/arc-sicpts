@@ -27,6 +27,30 @@
   --font-mono: 'Fira Code Variable', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* The export view uses manuscript defaults, never saved editor contents. */
+.edition-render {
+  width: 760px;
+  margin: 0 auto;
+  padding: 24px;
+  color-scheme: light;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.edition-render h1 { font-size: 30px; }
+.edition-render pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
+.edition-render .edition-listing-label { font-family: var(--font-mono); font-size: 12px; margin-bottom: 6px; }
+.edition-render .edition-example, .edition-render .edition-exercise { display: flex; flex-direction: column; gap: 14px; }
+.edition-render [data-testid='animation'] button,
+.edition-render [data-testid='animation'] input,
+.edition-render [data-testid='keyframe-counter'] { display: none; }
+.edition-render [data-testid='animation'] svg [style*='opacity: 0'],
+.edition-render figure svg [style*='opacity: 0'] { opacity: 1 !important; }
+@media print {
+  .edition-render aside { display: block !important; }
+}
+
 @layer base {
   :root {
     color-scheme: light dark;
