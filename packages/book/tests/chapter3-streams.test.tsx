@@ -1,6 +1,6 @@
 import { delayedPrimeProgram, implicitFibsProgram, memoizedStreamProgram, sieveProgram } from '@sicp/lab';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Animation } from '../src/anim/Animation.tsx';
 import { divisibilityTests, sieveCaption, sieveCascade } from '../src/anim/chapter-3/sieveCascade.ts';
 import { SieveScene } from '../src/anim/chapter-3/SieveScene.tsx';
@@ -8,6 +8,11 @@ import { forcingAt, forcingRuns, forcingSummary, forcingTotal } from '../src/ani
 import { StreamForcingScene } from '../src/anim/chapter-3/StreamForcingScene.tsx';
 import { SieveDiagram } from '../src/diagrams/chapter-3/SieveDiagram.tsx';
 import { traceOf } from './traceHelper.ts';
+
+// Registry tests verify routing to a scene; worker execution is covered separately.
+vi.mock('../src/lab/client.ts', () => ({
+  labClient: () => ({ submit: () => ({ id: 1, cancel() {}, finished: new Promise(() => {}) }) }),
+}));
 
 describe('stream forcing model', () => {
   it('reads labelled runs of printed numbers and ignores other lines', () => {
@@ -114,11 +119,11 @@ describe('stream scenes', () => {
     expect(screen.getByTestId('caption')).toHaveTextContent('Keep the filter');
   });
 
-  it('dispatches the stream kinds from the registry', () => {
+  it('dispatches the stream kinds from the registry', async () => {
     render(<Animation kind="stream-forcing" source="1;" />);
-    expect(screen.getByRole('region', { name: 'Forcing a stream, one tail at a time' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Forcing a stream, one tail at a time' })).toBeInTheDocument();
     render(<Animation kind="sieve" source="1;" />);
-    expect(screen.getByRole('region', { name: 'The sieve as a cascade of filters' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'The sieve as a cascade of filters' })).toBeInTheDocument();
   });
 
   it('draws figure 3.31', () => {

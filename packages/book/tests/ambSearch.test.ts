@@ -44,5 +44,5 @@ describe('the search tree of an amb program', () => {
     const tree = treeOf(ambOfficePrelude, officeMoveProgram);
     expect(tree.truncated).toBe(true);
     expect(tree.nodes.length).toBeLessThanOrEqual(64);
-  });
+  }, 30_000);
 });

@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('§4.4.1 runs a query and draws its stream of frames', async ({ page }) => {
   await page.goto('/4/4.4.1');
+  await expect(page.getByRole('textbox', { name: 'simple_query.sicp, editable program' })).toBeVisible();
   const editor = page.getByRole('button', { name: 'Run', exact: true }).first();
   await editor.click();
   await expect(page.getByTestId('output-value').first()).toHaveText('2');

@@ -1,6 +1,6 @@
 import { dampedProgram, factorialProgram, fibProgram, halfIntervalProgram, integralProgram, newtonProgram, oscillatingProgram } from '@sicp/lab';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Animation } from '../src/anim/Animation.tsx';
 import { CallsScene } from '../src/anim/scenes/CallsScene.tsx';
 import { CobwebScene } from '../src/anim/scenes/CobwebScene.tsx';
@@ -13,6 +13,11 @@ import { OrderScene } from '../src/anim/scenes/OrderScene.tsx';
 import { SubstitutionScene } from '../src/anim/scenes/SubstitutionScene.tsx';
 import { TreeScene } from '../src/anim/scenes/TreeScene.tsx';
 import { traceOf } from './traceHelper.ts';
+
+// Registry tests verify routing to a scene; worker execution is covered separately.
+vi.mock('../src/lab/client.ts', () => ({
+  labClient: () => ({ submit: () => ({ id: 1, cancel() {}, finished: new Promise(() => {}) }) }),
+}));
 
 describe('scenes', () => {
   it('shows the first rewrite with its transport and lights the redex', () => {
@@ -68,11 +73,11 @@ describe('scenes', () => {
     expect(screen.getByTestId('caption')).toHaveTextContent('Guess 1: 1.');
   });
 
-  it('dispatches each kind to a scene', () => {
+  it('dispatches each kind to a scene', async () => {
     render(<Animation kind="process" source={factorialProgram} />);
-    expect(screen.getByRole('region', { name: 'What the process leaves pending' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'What the process leaves pending' })).toBeInTheDocument();
     render(<Animation kind="order" source="1;" />);
-    expect(screen.getByRole('region', { name: 'Two evaluation orders' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Two evaluation orders' })).toBeInTheDocument();
   });
 
   it('marks repeated calls in a tree recursion and sums them up at the end', () => {

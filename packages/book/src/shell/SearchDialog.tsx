@@ -48,7 +48,7 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown') {
               event.preventDefault();
-              setSelected((i) => Math.min(i + 1, results.length - 1));
+              setSelected((i) => Math.max(0, Math.min(i + 1, results.length - 1)));
             } else if (event.key === 'ArrowUp') {
               event.preventDefault();
               setSelected((i) => Math.max(i - 1, 0));
@@ -81,7 +81,7 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
           )}
         </ul>
         <p className="m-0 border-t border-line px-4 py-2 font-mono text-[11px] text-ink-3">
-          ↑↓ select · enter open · esc close · searches titles and summaries
+          ↑↓ select · enter open · esc close · searches text and exercise numbers
         </p>
       </div>
     </Dialog>
