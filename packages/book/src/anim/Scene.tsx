@@ -62,7 +62,7 @@ export function SceneFrame({ title, provenance, player, caption, empty, children
         role="status"
         aria-live="polite"
         data-testid="caption"
-        className="min-h-[2.6em] text-[14.5px] leading-snug text-pretty text-ink-2 [&_code]:rounded [&_code]:bg-paper-2 [&_code]:px-1 [&_code]:py-px [&_code]:text-[0.9em] [&_code]:text-ink"
+        className="min-h-[2.6em] text-[14.5px] leading-snug text-ink-2 [&_code]:rounded [&_code]:bg-paper-2 [&_code]:px-1 [&_code]:py-px [&_code]:text-[0.9em] [&_code]:text-ink"
       >
         <motion.div
           key={step ?? player?.index ?? (typeof caption === 'string' ? caption : 0)}

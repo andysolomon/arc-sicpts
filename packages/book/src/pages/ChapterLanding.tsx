@@ -19,7 +19,7 @@ export function ChapterLanding({ chapter }: { chapter: Chapter }) {
     <>
       <div className="flex flex-col gap-2.5">
         <PageHeader eyebrow={`Chapter ${chapter.id}`} title={chapter.title} />
-        <p className="m-0 mt-1 max-w-[62ch] text-lg leading-[1.55] text-pretty text-ink-2">{chapter.blurb}</p>
+        <p className="m-0 mt-1 text-lg leading-[1.55] text-ink-2">{chapter.blurb}</p>
         <div className="mt-1.5 flex flex-wrap gap-[18px] font-mono text-xs text-ink-3">
           <span>{chapter.sections.length} sections</span>
           <span>{pageCount} pages</span>
@@ -40,8 +40,8 @@ export function ChapterLanding({ chapter }: { chapter: Chapter }) {
               >
                 <span className="pt-1 font-mono text-[13px] text-ink-3">{section.id}</span>
                 <span className="flex min-w-0 flex-col gap-1.5">
-                  <span className="text-[21px] leading-[1.3] font-medium text-pretty">{section.title}</span>
-                  <span className="text-[15px] leading-normal text-pretty text-ink-2">{section.blurb}</span>
+                  <span className="text-[21px] leading-[1.3] font-medium">{section.title}</span>
+                  <span className="text-[15px] leading-normal text-ink-2">{section.blurb}</span>
                   <span className="mt-1 flex flex-wrap gap-1.5">
                     {section.subsections.map((subsection) => (
                       <span

@@ -15,11 +15,11 @@ export function FrontPage() {
     <>
       <div className="flex flex-col gap-3 pt-6">
         <Eyebrow>An interactive book</Eyebrow>
-        <h1 className="m-0 text-[clamp(2.25rem,1.5rem+3vw,4rem)] leading-[1.05] font-medium tracking-[-0.02em] text-balance">
+        <h1 className="m-0 text-[clamp(2.25rem,1.5rem+3vw,4rem)] leading-[1.05] font-medium tracking-[-0.02em]">
           Structure and Interpretation of Computer Programs,{' '}
           <em className="text-ink-2 italic">an interactive Source edition</em>
         </h1>
-        <p className="m-0 mt-2 max-w-[60ch] text-xl leading-normal text-pretty text-ink-2">
+        <p className="m-0 mt-2 text-xl leading-normal text-ink-2">
           Every section’s explanation sits beside live, editable code and a view into the machinery that runs
           it: environments, streams, registers, the heap, instruction sequences.
         </p>
@@ -39,7 +39,7 @@ export function FrontPage() {
         </div>
       </div>
 
-      <section aria-label="Before you begin" className="flex max-w-[68ch] flex-col gap-3 text-lg leading-[1.65]">
+      <section aria-label="Before you begin" className="flex flex-col gap-3 text-lg leading-[1.65]">
         <h2 className="m-0 text-2xl font-medium">Before you begin</h2>
         <p className="m-0">
           This book is for readers learning how programs work. Familiarity with variables, functions,
@@ -86,7 +86,7 @@ export function FrontPage() {
 
       <section className="flex flex-col gap-3 rounded-[10px] bg-paper-2 px-6 py-[22px]">
         <h2 className="m-0 font-mono text-sm font-medium tracking-[0.06em] text-ink-2 uppercase">Attribution</h2>
-        <p className="m-0 text-base leading-[1.6] text-pretty">
+        <p className="m-0 text-base leading-[1.6]">
           This book follows the structure of{' '}
           <em>Structure and Interpretation of Computer Programs, JavaScript Edition</em> by Abelson, Sussman,
           Henz and Wrigstad (MIT Press), licensed CC BY-SA 4.0. The manuscript and teaching programs here

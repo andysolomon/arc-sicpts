@@ -148,7 +148,7 @@ export function ProcessShapeViz({ snapshot, runKey = 0, children }: ProcessShape
         </div>
       )}
       {children !== undefined && (
-        <div className="text-sm leading-normal text-pretty text-ink-2 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[0.9em]">
+        <div className="text-sm leading-normal text-ink-2 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[0.9em]">
           {children}
         </div>
       )}
