@@ -16,7 +16,7 @@ function BookPage() {
     return (
       <>
         <PageHeader eyebrow="404" title="No such page" />
-        <p className="m-0 max-w-[68ch] text-lg leading-[1.65]">
+        <p className="m-0 text-lg leading-[1.65]">
           Nothing in the book lives at <code>{pathname}</code>. The table of contents lists every section.
         </p>
       </>

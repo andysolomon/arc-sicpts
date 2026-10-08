@@ -96,7 +96,7 @@ export function ExercisePanel({ id, children, spec }: ExerciseProps & { spec: Ex
     >
       <div className="flex flex-wrap items-baseline gap-3 bg-paper px-[18px] py-4">
         <span className="font-mono text-xs text-accent-ink">Exercise {id}</span>
-        <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-3 text-[16.5px] leading-[1.55] text-pretty [&_code]:text-[0.9em]">
+        <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-3 text-[16.5px] leading-[1.55] [&_code]:text-[0.9em]">
           {statement}
         </div>
       </div>
@@ -152,7 +152,7 @@ export function ExercisePanel({ id, children, spec }: ExerciseProps & { spec: Ex
             transition={{ duration: duration(0.2), ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="flex flex-col gap-3 border-t border-line bg-accent-soft px-[18px] py-3.5 text-[15.5px] leading-[1.55] text-pretty [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[0.9em]">
+            <div className="flex flex-col gap-3 border-t border-line bg-accent-soft px-[18px] py-3.5 text-[15.5px] leading-[1.55] [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[0.9em]">
               {solution}
               <pre className="m-0 overflow-auto text-[13px] leading-[1.6]">
                 <code>{spec.solution}</code>

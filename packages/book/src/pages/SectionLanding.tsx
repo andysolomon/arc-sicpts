@@ -10,7 +10,7 @@ export function SectionLanding({ chapter, section }: { chapter: Chapter; section
     <>
       <div className="flex flex-col gap-2.5">
         <PageHeader eyebrow={`§ ${section.id} · ${chapter.title}`} title={section.title} />
-        <p className="m-0 mt-1 max-w-[62ch] text-lg leading-[1.55] text-pretty text-ink-2">{section.blurb}</p>
+        <p className="m-0 mt-1 text-lg leading-[1.55] text-ink-2">{section.blurb}</p>
       </div>
       <Introduction id={section.id} />
       <ol className="m-0 flex list-none flex-col border-t border-line p-0">
@@ -23,7 +23,7 @@ export function SectionLanding({ chapter, section }: { chapter: Chapter; section
                 className="pressable grid min-h-11 grid-cols-[56px_1fr_auto] items-baseline gap-4 px-2 py-4 text-ink no-underline transition-colors hover:bg-paper-2 hover:no-underline"
               >
                 <span className="font-mono text-[13px] text-ink-3">{subsection.id}</span>
-                <span className="text-[19px] leading-[1.3] text-pretty">{subsection.title}</span>
+                <span className="text-[19px] leading-[1.3]">{subsection.title}</span>
                 <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-3">
                   <span className={`size-2 rounded-full ${written ? 'bg-ok' : 'bg-line'}`} />
                   {written ? 'live' : 'planned'}

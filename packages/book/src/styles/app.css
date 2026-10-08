@@ -52,13 +52,6 @@
     scroll-padding-block-start: calc(var(--shell-header-height) + 1rem);
   }
 
-  h1,
-  h2,
-  h3,
-  h4 {
-    text-wrap: balance;
-  }
-
   html,
   body {
     background: var(--color-paper);

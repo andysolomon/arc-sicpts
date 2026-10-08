@@ -44,10 +44,10 @@ const SignalSecondOrderDiagram = deferred(async () => ({ default: (await import(
 const SignalRlcDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.5-paradigm.tsx')).diagrams.SignalRlcDiagram }));
 const ParadigmJointAccountDiagram = deferred(async () => ({ default: (await import('../diagrams/chapter-3/section-3.5-paradigm.tsx')).diagrams.ParadigmJointAccountDiagram }));
 
-/** Running text, capped at 68 characters per line. */
+/** Running text that fills its content container and wraps naturally. */
 function Prose({ children }: { children: ReactNode }) {
   return (
-    <div className="flex max-w-[68ch] flex-col gap-[18px] text-lg leading-[1.65] text-pretty">{children}</div>
+    <div className="flex flex-col gap-[18px] text-lg leading-[1.65]">{children}</div>
   );
 }
 
@@ -111,7 +111,7 @@ function Example({ index, file, source, mode = 'run', viz, anim, budget, prelude
     );
   const note =
     children === undefined ? null : (
-      <div className="text-sm leading-normal text-pretty text-ink-2 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[0.9em]">{children}</div>
+      <div className="text-sm leading-normal text-ink-2 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-[0.9em]">{children}</div>
     );
   if (anim === undefined) {
     return viz === undefined && note !== null ? (
@@ -145,7 +145,7 @@ function UnderTheHood({ file, children }: UnderTheHoodProps) {
       <NestedSquaresIcon />
       <div className="flex min-w-0 flex-col gap-1.5 text-[15px] leading-[1.55]">
         <span className="font-semibold">Under the hood</span>
-        <div className="text-pretty text-ink-2 [&_code]:text-[0.9em] [&_p]:m-0">{children}</div>
+        <div className="text-ink-2 [&_code]:text-[0.9em] [&_p]:m-0">{children}</div>
         <a href={repoFile(file)} className="text-sm break-all">
           {file} →
         </a>
