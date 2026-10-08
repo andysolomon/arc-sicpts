@@ -9,7 +9,7 @@
   --color-paper-3: #e6dfd1; /* pressed / hover on panels */
   --color-ink: #201c17;
   --color-ink-2: #625a4f; /* secondary text */
-  --color-ink-3: #8f867a; /* labels, line numbers */
+  --color-ink-3: #685f54; /* labels and line numbers: at least 4.5:1 on every paper surface */
   --color-line: #d9d0c1;
   --color-accent: oklch(0.5 0.1 200); /* buttons, current-node highlight border */
   --color-accent-ink: oklch(0.42 0.1 200); /* accent text, keywords, links */
@@ -40,7 +40,7 @@
       --color-paper-3: #2b2620;
       --color-ink: #ece4d6;
       --color-ink-2: #a79e90;
-      --color-ink-3: #766e62;
+      --color-ink-3: #a09688;
       --color-line: #352f28;
       --color-accent: oklch(0.74 0.09 200);
       --color-accent-ink: oklch(0.8 0.09 200);
@@ -63,7 +63,7 @@
     --color-paper-3: #2b2620;
     --color-ink: #ece4d6;
     --color-ink-2: #a79e90;
-    --color-ink-3: #766e62;
+    --color-ink-3: #a09688;
     --color-line: #352f28;
     --color-accent: oklch(0.74 0.09 200);
     --color-accent-ink: oklch(0.8 0.09 200);

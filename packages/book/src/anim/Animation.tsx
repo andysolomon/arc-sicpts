@@ -1,40 +1,34 @@
-import type { ReactNode } from 'react';
-import { scenes as scenes31 } from './chapter-3/section-3.1.tsx';
-import { scenes as scenes32 } from './chapter-3/section-3.2.tsx';
-import { scenes as scenes33 } from './chapter-3/section-3.3.tsx';
-import { scenes as scenes33Simulation } from './chapter-3/section-3.3-simulation.tsx';
-import { scenes as scenes34 } from './chapter-3/section-3.4.tsx';
-import { scenes as scenes35 } from './chapter-3/section-3.5.tsx';
-import { scenes as scenes35Paradigm } from './chapter-3/section-3.5-paradigm.tsx';
-import type { SceneRegistry } from './chapter-3/registry.ts';
-import { BranchesScene } from './scenes/BranchesScene.tsx';
-import { CallsScene } from './scenes/CallsScene.tsx';
-import { CobwebScene } from './scenes/CobwebScene.tsx';
-import { ComplexPlaneScene } from './scenes/ComplexPlaneScene.tsx';
-import { CompareScene } from './scenes/CompareScene.tsx';
-import { CompiledScene } from './scenes/CompiledScene.tsx';
-import { EnvironmentScene } from './scenes/EnvironmentScene.tsx';
-import { GrowthScene } from './scenes/GrowthScene.tsx';
-import { HalfIntervalScene } from './scenes/HalfIntervalScene.tsx';
-import { HuffmanScene } from './scenes/HuffmanScene.tsx';
-import { IntegralScene } from './scenes/IntegralScene.tsx';
-import { MachineScene } from './scenes/MachineScene.tsx';
-import { MemoryScene } from './scenes/MemoryScene.tsx';
-import { NewtonScene } from './scenes/NewtonScene.tsx';
-import { NewtonsMethodScene } from './scenes/NewtonsMethodScene.tsx';
-import { OperationTableScene } from './scenes/OperationTableScene.tsx';
-import { OrderScene } from './scenes/OrderScene.tsx';
-import { SeriesScene } from './scenes/SeriesScene.tsx';
-import { PairsScene } from './scenes/PairsScene.tsx';
-import { PictureScene } from './scenes/PictureScene.tsx';
-import { SubstitutionScene } from './scenes/SubstitutionScene.tsx';
-import { TreeScene } from './scenes/TreeScene.tsx';
+import { lazy, Suspense, type ComponentType, type ReactNode } from 'react';
+import type { SceneProps } from './chapter-3/registry.ts';
 import { useTrace } from './useTrace.ts';
-import { TaggedListScene } from './chapter4/TaggedListScene.tsx';
-import { EvalApplyScene } from './chapter4/EvalApplyScene.tsx';
-import { ThunkScene } from './chapter4/ThunkScene.tsx';
-import { AmbSearchScene } from './chapter4/AmbSearchScene.tsx';
-import { QueryScene } from './chapter4/QueryScene.tsx';
+
+const BranchesScene = lazy(() => import('./scenes/BranchesScene.tsx').then((module) => ({ default: module.BranchesScene })));
+const CallsScene = lazy(() => import('./scenes/CallsScene.tsx').then((module) => ({ default: module.CallsScene })));
+const CobwebScene = lazy(() => import('./scenes/CobwebScene.tsx').then((module) => ({ default: module.CobwebScene })));
+const ComplexPlaneScene = lazy(() => import('./scenes/ComplexPlaneScene.tsx').then((module) => ({ default: module.ComplexPlaneScene })));
+const CompareScene = lazy(() => import('./scenes/CompareScene.tsx').then((module) => ({ default: module.CompareScene })));
+const CompiledScene = lazy(() => import('./scenes/CompiledScene.tsx').then((module) => ({ default: module.CompiledScene })));
+const EnvironmentScene = lazy(() => import('./scenes/EnvironmentScene.tsx').then((module) => ({ default: module.EnvironmentScene })));
+const GrowthScene = lazy(() => import('./scenes/GrowthScene.tsx').then((module) => ({ default: module.GrowthScene })));
+const HalfIntervalScene = lazy(() => import('./scenes/HalfIntervalScene.tsx').then((module) => ({ default: module.HalfIntervalScene })));
+const HuffmanScene = lazy(() => import('./scenes/HuffmanScene.tsx').then((module) => ({ default: module.HuffmanScene })));
+const IntegralScene = lazy(() => import('./scenes/IntegralScene.tsx').then((module) => ({ default: module.IntegralScene })));
+const MachineScene = lazy(() => import('./scenes/MachineScene.tsx').then((module) => ({ default: module.MachineScene })));
+const MemoryScene = lazy(() => import('./scenes/MemoryScene.tsx').then((module) => ({ default: module.MemoryScene })));
+const NewtonScene = lazy(() => import('./scenes/NewtonScene.tsx').then((module) => ({ default: module.NewtonScene })));
+const NewtonsMethodScene = lazy(() => import('./scenes/NewtonsMethodScene.tsx').then((module) => ({ default: module.NewtonsMethodScene })));
+const OperationTableScene = lazy(() => import('./scenes/OperationTableScene.tsx').then((module) => ({ default: module.OperationTableScene })));
+const OrderScene = lazy(() => import('./scenes/OrderScene.tsx').then((module) => ({ default: module.OrderScene })));
+const SeriesScene = lazy(() => import('./scenes/SeriesScene.tsx').then((module) => ({ default: module.SeriesScene })));
+const PairsScene = lazy(() => import('./scenes/PairsScene.tsx').then((module) => ({ default: module.PairsScene })));
+const PictureScene = lazy(() => import('./scenes/PictureScene.tsx').then((module) => ({ default: module.PictureScene })));
+const SubstitutionScene = lazy(() => import('./scenes/SubstitutionScene.tsx').then((module) => ({ default: module.SubstitutionScene })));
+const TreeScene = lazy(() => import('./scenes/TreeScene.tsx').then((module) => ({ default: module.TreeScene })));
+const TaggedListScene = lazy(() => import('./chapter4/TaggedListScene.tsx').then((module) => ({ default: module.TaggedListScene })));
+const EvalApplyScene = lazy(() => import('./chapter4/EvalApplyScene.tsx').then((module) => ({ default: module.EvalApplyScene })));
+const ThunkScene = lazy(() => import('./chapter4/ThunkScene.tsx').then((module) => ({ default: module.ThunkScene })));
+const AmbSearchScene = lazy(() => import('./chapter4/AmbSearchScene.tsx').then((module) => ({ default: module.AmbSearchScene })));
+const QueryScene = lazy(() => import('./chapter4/QueryScene.tsx').then((module) => ({ default: module.QueryScene })));
 
 /**
  * The animations a section can place under an editor. Each one is drawn from
@@ -109,16 +103,32 @@ export type AnimKind =
   /** Chapter 3's own scenes, registered per section in `chapter-3/`. */
   | Chapter3Kind;
 
+type Chapter3Kind =
+  | keyof typeof import('./chapter-3/section-3.1.tsx').scenes
+  | keyof typeof import('./chapter-3/section-3.2.tsx').scenes
+  | keyof typeof import('./chapter-3/section-3.3-simulation.tsx').scenes
+  | keyof typeof import('./chapter-3/section-3.3.tsx').scenes
+  | keyof typeof import('./chapter-3/section-3.4.tsx').scenes
+  | keyof typeof import('./chapter-3/section-3.5-paradigm.tsx').scenes
+  | keyof typeof import('./chapter-3/section-3.5.tsx').scenes;
+
 const chapter3 = {
-  ...scenes31,
-  ...scenes32,
-  ...scenes33,
-  ...scenes33Simulation,
-  ...scenes34,
-  ...scenes35,
-  ...scenes35Paradigm,
-} satisfies SceneRegistry;
-type Chapter3Kind = keyof typeof chapter3;
+  'local-state': lazy(() => import('./chapter-3/section-3.1.tsx').then((module) => ({ default: module.scenes['local-state'] }))),
+  'circuit-timing': lazy(() => import('./chapter-3/section-3.3-simulation.tsx').then((module) => ({ default: module.scenes['circuit-timing'] }))),
+  'constraint-network': lazy(() => import('./chapter-3/section-3.3-simulation.tsx').then((module) => ({ default: module.scenes['constraint-network'] }))),
+  'box-pointer': lazy(() => import('./chapter-3/section-3.3.tsx').then((module) => ({ default: module.scenes['box-pointer'] }))),
+  'box-pointer-queue': lazy(() => import('./chapter-3/section-3.3.tsx').then((module) => ({ default: module.scenes['box-pointer-queue'] }))),
+  'box-pointer-table': lazy(() => import('./chapter-3/section-3.3.tsx').then((module) => ({ default: module.scenes['box-pointer-table'] }))),
+  'interleaving': lazy(() => import('./chapter-3/section-3.4.tsx').then((module) => ({ default: module.scenes['interleaving'] }))),
+  'outcomes': lazy(() => import('./chapter-3/section-3.4.tsx').then((module) => ({ default: module.scenes['outcomes'] }))),
+  'pairs-order': lazy(() => import('./chapter-3/section-3.5-paradigm.tsx').then((module) => ({ default: module.scenes['pairs-order'] }))),
+  'stream-forcing': lazy(() => import('./chapter-3/section-3.5.tsx').then((module) => ({ default: module.scenes['stream-forcing'] }))),
+  'sieve': lazy(() => import('./chapter-3/section-3.5.tsx').then((module) => ({ default: module.scenes['sieve'] }))),
+} satisfies Record<Chapter3Kind, ComponentType<SceneProps>>;
+
+function isChapter3Kind(kind: AnimKind): kind is Chapter3Kind {
+  return Object.hasOwn(chapter3, kind);
+}
 
 /** Running a program for its output alone can take many more steps than a full trace allows. */
 const SERIES_BUDGET = 1_000_000;
@@ -137,7 +147,15 @@ export interface AnimationProps {
   start?: number | undefined;
 }
 
-export function Animation({ kind, source, stepIndex, prelude, special, start }: AnimationProps): ReactNode {
+export function Animation(props: AnimationProps): ReactNode {
+  return (
+    <Suspense fallback={<div role="status" className="rounded-lg bg-paper-2 p-4 text-ink-3">Loading animation…</div>}>
+      <AnimationContent {...props} />
+    </Suspense>
+  );
+}
+
+function AnimationContent({ kind, source, stepIndex, prelude, special, start }: AnimationProps): ReactNode {
   switch (kind) {
     case 'machine':
       return <MachineScene source={source} prelude={prelude} />;
@@ -181,8 +199,10 @@ export function Animation({ kind, source, stepIndex, prelude, special, start }: 
         </div>
       );
     default: {
-      const scene = (chapter3 as SceneRegistry)[kind];
-      if (scene !== undefined) return scene({ source, stepIndex, prelude });
+      if (isChapter3Kind(kind)) {
+        const Scene = chapter3[kind];
+        return <Scene source={source} stepIndex={stepIndex} prelude={prelude} />;
+      }
       return <Traced kind={kind as TracedProps['kind']} source={source} stepIndex={stepIndex} prelude={prelude} />;
     }
   }

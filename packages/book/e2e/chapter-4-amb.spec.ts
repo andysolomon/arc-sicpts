@@ -22,6 +22,7 @@ test('§4.3.1 runs the book’s interaction with the driver loop', async ({ page
 
 test('§4.3.2 solves the office move', async ({ page }) => {
   await page.goto('/4/4.3.2');
+  await expect(page.getByRole('textbox', { name: 'office_move.sicp, editable program' })).toBeVisible();
   await page.getByRole('button', { name: 'Run', exact: true }).first().click();
   await expect(page.getByTestId('output').first()).toContainText('[["alyssa", [3, null]]', { timeout: 30_000 });
 });

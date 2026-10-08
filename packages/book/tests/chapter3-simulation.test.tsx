@@ -13,7 +13,7 @@ import {
   type LabEvent,
 } from '@sicp/lab';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Animation } from '../src/anim/Animation.tsx';
 import { probeEvents, timingCaption, timingRows } from '../src/anim/model/circuitTiming.ts';
 import { constraintCaption, constraintEvents, networkConnector, valuesAt } from '../src/anim/model/constraintProbes.ts';
@@ -21,6 +21,11 @@ import { CircuitTimingScene } from '../src/anim/scenes/CircuitTimingScene.tsx';
 import { ConstraintScene } from '../src/anim/scenes/ConstraintScene.tsx';
 import type { Trace } from '../src/anim/useTrace.ts';
 import { diagrams } from '../src/diagrams/chapter-3/section-3.3-simulation.tsx';
+
+// Registry tests verify routing to a scene; worker execution is covered separately.
+vi.mock('../src/lab/client.ts', () => ({
+  labClient: () => ({ submit: () => ({ id: 1, cancel() {}, finished: new Promise(() => {}) }) }),
+}));
 
 // jsdom has no IntersectionObserver; the figures fade in with motion's whileInView, which needs one.
 if (typeof globalThis.IntersectionObserver === 'undefined') {
@@ -139,9 +144,9 @@ describe('the circuit timing scene', () => {
     );
   });
 
-  it('is registered under its kind', () => {
+  it('is registered under its kind', async () => {
     render(<Animation kind="circuit-timing" source={halfAdderSimulationRun} prelude={circuitSimulatorDefinitions} />);
-    expect(screen.getByRole('region', { name: 'Signals over simulated time' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Signals over simulated time' })).toBeInTheDocument();
   });
 });
 

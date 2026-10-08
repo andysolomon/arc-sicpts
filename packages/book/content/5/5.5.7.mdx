@@ -9,21 +9,23 @@ import {
 
 <Prose>
 
-We have not yet explained how to load compiled code into the evaluator machine or how to run it. We will assume that the explicit-control-evaluator machine has been defined as in §5.4.4, with the additional operations for compiled functions listed in §5.5.2. We will implement a function `compile_and_go` that compiles a JavaScript program, loads the resulting object code into the evaluator machine, and causes the machine to run the code in the evaluator global environment, print the result, and enter the evaluator's driver loop. We will also modify the evaluator so that interpreted components can call compiled functions as well as interpreted ones. We can then put a compiled function into the machine and use the evaluator to call it:
+The explicit-control evaluator of §5.4.4 can run compiled code as well as interpreted code. We will add `compile_and_go`: it compiles a Source program, loads the instructions into the evaluator machine, and runs them in an environment that the evaluator can also use. First see the result, then follow the changes that make it possible.
 
-```js
-compile_and_go(parse(`
-function factorial(n) {
-    return n === 1
-           ? 1
-           : factorial(n - 1) * n;
-}
-                     `));
-// EC-evaluate value: undefined
+## Try compiled code
 
-factorial(5);
-// EC-evaluate value: 120
-```
+The editor has the compiler, evaluator, and `compile_and_go` loaded in its prelude. `set_inputs` queues the input we would type at the evaluator, `factorial(5);`. Running the compiled declaration prints `undefined`; the evaluator then calls that compiled function and prints 120, before stopping when the input queue is empty. Predict what changes when you replace 5 with 6, and inspect the animation's registers and stack.
+
+</Prose>
+
+<Example index={0} file="compile_and_go.sicp" source={interfacingCompileAndGoProgram} prelude={compileAndGoPrelude} anim="machine">
+
+The evaluator runs the compiled declaration first (total pushes = 0, maximum depth = 0, value `undefined`), then reads `factorial(5);` and interprets the call: `apply_dispatch` sees a compiled function and goes to `compiled_apply`, and from there the machine runs the compiled code of §5.5.5 until the value 120 comes back to `print_result`, after 36 pushes and a maximum depth of 14. Add `"factorial(10);"` to the inputs to see 71 pushes and depth 29.
+
+</Example>
+
+<Prose>
+
+## Transferring control to compiled functions
 
 To allow the evaluator to handle compiled functions (for example, to evaluate the call to `factorial` above), we need to change the code at `apply_dispatch` (§5.4.2) so that it recognizes compiled functions (as distinct from compound or primitive functions) and transfers control directly to the entry point of the compiled code. (Of course, compiled functions as well as interpreted functions are compound, that is, nonprimitive. For compatibility with the terminology used in the explicit-control evaluator, in this section we will use "compound" to mean interpreted, as opposed to compiled.)
 
@@ -44,6 +46,8 @@ To allow the evaluator to handle compiled functions (for example, to evaluate th
 ```
 
 At `compiled_apply`, as at `compound_apply`, we push a marker to the stack so that a return statement in the compiled function can revert the stack to this state. Note that there is no save of `continue` at `compiled_apply` before the marking of the stack, because the evaluator was arranged so that at `apply_dispatch`, the continuation would be at the top of the stack.
+
+## Starting the machine with compiled code
 
 To enable us to run some compiled code when we start the evaluator machine, we add a `branch` instruction at the beginning of the evaluator machine, which causes the machine to go to a new entry point if the `flag` register is set. (Now that the evaluator machine starts with a `branch`, we must always initialize the `flag` register before starting it: to start the machine at its ordinary read-evaluate-print loop, set `flag` to `false` first.)
 
@@ -83,6 +87,8 @@ function compile_and_go(program) {
 }
 ```
 
+## Printing instructions
+
 To look at compiled code in the notation used in this book, as earlier sections did, the compiler comes with `display_instructions`, which displays each instruction of a list as the text that constructs it:
 
 ```js
@@ -111,17 +117,9 @@ function display_instructions(instructions) {
 }
 ```
 
-If we have set up stack monitoring, as at the end of §5.4.4, we can examine the stack usage of compiled code. The editor below has the compiler, the evaluator of this section and `compile_and_go` loaded. There is no keyboard input to the evaluator here: `set_inputs` queues what we would type at it, `factorial(5);`, and the evaluator stops when the queue is empty.
+## Comparing stack use
 
-</Prose>
-
-<Example index={0} file="compile_and_go.sicp" source={interfacingCompileAndGoProgram} prelude={compileAndGoPrelude} anim="machine">
-
-The evaluator runs the compiled declaration first (total pushes = 0, maximum depth = 0, value `undefined`), then reads `factorial(5);` and interprets the call: `apply_dispatch` sees a compiled function and goes to `compiled_apply`, and from there the machine runs the compiled code of §5.5.5 until the value 120 comes back to `print_result`, after 36 pushes and a maximum depth of 14. Add `"factorial(10);"` to the inputs to see 71 pushes and depth 29.
-
-</Example>
-
-<Prose>
+With the stack monitoring of §5.4.4, we can measure how compilation changes both the number of pushes and the maximum stack depth. The first example above shows one compiled run; the next examples compare interpreted, compiled, and hand-designed machines across several input sizes.
 
 Compare this example with the evaluation of `factorial(5)` using the interpreted version of the same function, shown at the end of §5.4.4. The interpreted version required 145 pushes and a maximum stack depth of 28, as the Laboratory measures it. (The book prints 151 pushes; the Laboratory's `parse`, which follows js-slang exactly, gives 145.) This illustrates the optimization that results from our compilation strategy.
 

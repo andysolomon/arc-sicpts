@@ -166,9 +166,9 @@ describe('the §3.4 scenes', () => {
 
   it('runs a program once per seed in the Laboratory and draws the histogram', async () => {
     render(<OutcomesScene source={squareIncrementProgram} count={30} client={inProcessClient()} delayMs={0} />);
-    await waitFor(() => expect(screen.getAllByTestId('outcome-bar').length).toBeGreaterThan(0), { timeout: 5000 });
+    await waitFor(() => expect(screen.getByRole('slider')).toHaveAttribute('max', '29'), { timeout: 5000 });
     const slider = screen.getByRole('slider');
-    fireEvent.change(slider, { target: { value: '29' } });
+    fireEvent.input(slider, { target: { value: '29' } });
     const bars = screen.getAllByTestId('outcome-bar');
     const total = bars.reduce((sum, bar) => sum + Number(bar.dataset['count']), 0);
     expect(total).toBe(30);

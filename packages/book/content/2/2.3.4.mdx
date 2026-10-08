@@ -2,7 +2,7 @@ import { decodeProgram, leafSetProgram } from '@sicp/lab';
 
 <Prose>
 
-This section practises list structure and data abstraction on sets and trees. The application is representing data as sequences of ones and zeros, *bits*. The ASCII standard code, for example, encodes each character as seven bits, which distinguishes 2⁷ = 128 characters. In general, distinguishing *n* symbols takes log₂ *n* bits per symbol. If our messages use only the eight symbols A to H, three bits each will do:
+This section practises list structure and data abstraction on sets and trees. The application is representing data as sequences of ones and zeros, *bits*. The ASCII standard code, for example, encodes each character as seven bits, which distinguishes 2⁷ = 128 characters. In a binary fixed-length code, distinguishing *n* symbols requires at least ⌈log₂ *n*⌉ bits per symbol: round up to a whole number of bits. Five symbols, for example, need three bits, since two bits distinguish only four symbols. If our messages use only the eight symbols A to H, three bits each will do:
 
 | A | B | C | D | E | F | G | H |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -10,7 +10,7 @@ This section practises list structure and data abstraction on sets and trees. Th
 
 With this code the message BACADAEAFABBAAAGAH is the 54 bits `001000010000011000100000101000001001000000000110000111`.
 
-Codes like ASCII and this one are *fixed-length*: every symbol takes the same number of bits. A *variable-length* code can do better when some symbols are much more frequent than others, by giving them shorter codes. Morse code works this way: E, the most frequent letter, is a single dot. Here is a variable-length code for A to H:
+Codes like ASCII and this one are *fixed-length*: every symbol takes the same number of bits. A *variable-length* code can have a smaller average number of bits per symbol when some symbols are much more frequent than others, by giving them shorter codes. Individual codewords still have integer lengths, but their weighted average need not be an integer. Morse code works this way: E, the most frequent letter, is a single dot. Here is a variable-length code for A to H:
 
 | A | B | C | D | E | F | G | H |
 | --- | --- | --- | --- | --- | --- | --- | --- |

@@ -7,12 +7,17 @@ import {
   type LabEvent,
 } from '@sicp/lab';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Animation } from '../src/anim/Animation.tsx';
 import { boxPointerFrames, layoutBoxPointer, placePairs } from '../src/anim/model/boxPointer.ts';
 import { BoxPointerScene } from '../src/anim/scenes/BoxPointerScene.tsx';
 import type { Trace } from '../src/anim/useTrace.ts';
 import { BoxPointerDiagram, finalHeap } from '../src/diagrams/chapter-3/BoxPointerDiagram.tsx';
+
+// Registry tests verify routing to a scene; worker execution is covered separately.
+vi.mock('../src/lab/client.ts', () => ({
+  labClient: () => ({ submit: () => ({ id: 1, cancel() {}, finished: new Promise(() => {}) }) }),
+}));
 
 /** A trace with heap snapshots, exactly as the worker would post it. */
 function heapTraceOf(source: string): Trace {
@@ -127,9 +132,9 @@ describe('box-and-pointer scene', () => {
     expect(screen.getByText('Tracing…')).toBeInTheDocument();
   });
 
-  it('is registered as an animation kind', () => {
+  it('is registered as an animation kind', async () => {
     render(<Animation kind="box-pointer" source="const x = list(1);" />);
-    expect(screen.getByRole('region', { name: 'Box-and-pointer diagram' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Box-and-pointer diagram' })).toBeInTheDocument();
   });
 
   it('draws a still diagram of what a program leaves behind', () => {
