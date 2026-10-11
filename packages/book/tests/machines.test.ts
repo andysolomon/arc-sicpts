@@ -80,12 +80,14 @@ describe('register machine keyframes', () => {
 
 describe('the comparison of interpreted and compiled code', () => {
   it('reads the declarations and the sizes from the program', () => {
-    expect(comparePlan('function f(n) { return n; }\nf(2);\nf(5);\nconst x = 1;')).toEqual({
-      definition: 'function f(n) { return n; }\nconst x = 1;',
+    expect(comparePlan('const f = (n: number): number => n;\nf(2);\nf(5);\nconst x = 1;')).toEqual({
+      definition: 'const f = (n: number): number => n;\nconst x = 1;',
       call: 'f',
       ns: [2, 5],
     });
+    // A reader may still write a `function` declaration, and it is read the same way.
+    expect(comparePlan('function f(n) { return n; }\nf(3);')).toEqual({ definition: 'function f(n) { return n; }', call: 'f', ns: [3] });
     expect(comparePlan('f(2);')).toBeNull();
-    expect(comparePlan('function f(n) {')).toBeNull();
+    expect(comparePlan('const f = (n: number): number => {')).toBeNull();
   });
 });

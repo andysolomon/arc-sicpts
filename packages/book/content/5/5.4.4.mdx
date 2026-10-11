@@ -34,10 +34,10 @@ We store the current environment, initially the global environment, in the varia
 ```js
 let current_environment = the_global_environment;
 
-const get_current_environment = () =>
+const get_current_environment = (): Environment =>
     current_environment;
 
-const set_current_environment = (env) => {
+const set_current_environment = (env: Environment): void => {
     current_environment = env;
 };
 ```
@@ -104,7 +104,7 @@ The declaration takes 4 pushes and a maximum depth of 3. Computing 5! takes 145 
 
 <Prose>
 
-The statistics show how much stack a process needs over its whole life, but not how its needs change along the way. The animation below draws the depth of the stack instruction by instruction while the evaluator computes 4! twice: first with the iterative factorial of §1.2.1, whose recursive call `iter(counter * product, counter + 1)` is the expression of a return statement, then with the recursive one, whose recursive call is an argument of a pending multiplication.
+The statistics show how much stack a process needs over its whole life, but not how its needs change along the way. The animation below draws the depth of the stack instruction by instruction while the evaluator computes 4! twice: first with the iterative factorial of §1.2.1, whose recursive call `iter(counter * product, counter + 1)` is the value `iter` returns, then with the recursive one, whose recursive call is an argument of a pending multiplication.
 
 </Prose>
 
@@ -126,8 +126,8 @@ During the iterative computation the depth plot is a row of identical teeth: eac
 Use the monitored stack to explore the tail-recursive property of the evaluator (§5.4.2). Define the iterative `factorial` function of §1.2.1:
 
 ```js
-const factorial = (n) => {
-    const iter = (product, counter) =>
+const factorial = (n: number): number => {
+    const iter = (product: number, counter: number): number =>
         counter > n
                ? product
                : iter(counter * product,
@@ -152,7 +152,7 @@ Run it with some small values of *n*, by editing the inputs of the second Exampl
 For comparison with exercise 5.27, explore the behaviour of the following function for computing factorials recursively:
 
 ```js
-const factorial = (n) =>
+const factorial = (n: number): number =>
     n === 1
            ? 1
            : factorial(n - 1) * n;
@@ -195,7 +195,7 @@ Modify the definition of the evaluator by changing `ev_return` as described in �
 Monitor the stack operations in the tree-recursive Fibonacci computation:
 
 ```js
-const fib = (n) =>
+const fib = (n: number): number =>
     n < 2 ? n : fib(n - 1) + fib(n - 2);
 ```
 

@@ -7,7 +7,7 @@ We will often define a machine to include primitive operations that are actually
 Consider the GCD machine. The machine has an instruction that computes the remainder of the contents of registers `a` and `b` and assigns the result to register `t`. If we want to construct the GCD machine without using a primitive remainder operation, we must specify how to compute remainders in terms of simpler operations, such as subtraction. Indeed, we can write a JavaScript function that finds remainders in this way:
 
 ```js
-const remainder = (n, d) =>
+const remainder = (n: number, d: number): number =>
     n < d
            ? n
            : remainder(n - d, d);
@@ -41,12 +41,12 @@ The data paths have lost the `rem` trapezoid and gained a `-` operation, whose o
 Design a machine to compute square roots using Newton's method, as in §1.1.7:
 
 ```js
-const sqrt = (x) => {
-    const is_good_enough = (guess) =>
+const sqrt = (x: number): number => {
+    const is_good_enough = (guess: number): boolean =>
         math_abs(square(guess) - x) < 0.001;
-    const improve = (guess) =>
+    const improve = (guess: number): number =>
         average(guess, x / guess);
-    const sqrt_iter = (guess) =>
+    const sqrt_iter = (guess: number): number =>
         is_good_enough(guess)
                ? guess
                : sqrt_iter(improve(guess));

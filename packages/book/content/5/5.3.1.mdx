@@ -169,7 +169,7 @@ Implement register machines for the following functions, assuming that the list-
 Recursive `count_leaves`:
 
 ```js
-const count_leaves = (tree) =>
+const count_leaves = (tree: unknown): number =>
     is_null(tree)
            ? 0
            : ! is_pair(tree)
@@ -181,8 +181,8 @@ const count_leaves = (tree) =>
 Recursive `count_leaves` with explicit counter:
 
 ```js
-const count_leaves = (tree) => {
-    const count_iter = (tree, n) =>
+const count_leaves = (tree: unknown): number => {
+    const count_iter = (tree: unknown, n: number): number =>
         is_null(tree)
                ? n
                : ! is_pair(tree)

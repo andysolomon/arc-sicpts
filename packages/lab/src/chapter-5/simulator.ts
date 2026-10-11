@@ -7,7 +7,10 @@ import { onlyDeclarations, withoutDeclarations } from './pieces.ts';
  * own `make_machine` and runs machines on this simulator instead.
  */
 
-export const machineModelSource = `const make_machine = (register_names, ops, controller) => {
+export const machineModelSource = `type Controller = List<Instruction | string>; // labels and instructions
+type Operations = List<List<unknown>>;        // list(name, function) for each operation
+
+const make_machine = (register_names: List<string>, ops: Operations, controller: Controller): Machine => {
     const machine = make_new_machine();
     for_each(register_name =>
                machine("allocate_register")(register_name),
@@ -18,9 +21,9 @@ export const machineModelSource = `const make_machine = (register_names, ops, co
     return machine;
 };
 
-const make_register = (name) => {
-    let contents = "*unassigned*";
-    const dispatch = (message) =>
+const make_register = (name: string): Register => {
+    let contents: unknown = "*unassigned*";
+    const dispatch = (message: string): unknown =>
         message === "get"
                ? contents
                : message === "set"
@@ -29,26 +32,28 @@ const make_register = (name) => {
     return dispatch;
 };
 
-const get_contents = (register) =>
+const get_contents = (register: Register): unknown =>
     register("get");
 
-const set_contents = (register, value) =>
+const set_contents = (register: Register, value: unknown): unknown =>
     register("set")(value);
 
-const make_stack = () => {
-    let stack = null;
-    let frame = null;
+type Stack = (message: string) => unknown;
+
+const make_stack = (): Stack => {
+    let stack: List<unknown> = null;
+    let frame: List<Pair<List<unknown>, number>> = null;
     let number_pushes = 0;
     let max_depth = 0;
     let current_depth = 0;
-    const push = (x) => {
+    const push = (x: unknown): "done" => {
         stack = pair(x, stack);
         number_pushes = number_pushes + 1;
         current_depth = current_depth + 1;
         max_depth = math_max(current_depth, max_depth);
         return "done";
     };
-    const pop = () => {
+    const pop = (): unknown => {
         if (is_null(stack)) {
             error("empty stack -- pop");
         } else {
@@ -58,17 +63,17 @@ const make_stack = () => {
             return top;
         }
     };
-    const push_marker = () => {
+    const push_marker = (): "done" => {
         frame = pair(pair(stack, current_depth), frame);
         return "done";
     };
-    const pop_marker = () => {
+    const pop_marker = (): "done" => {
         stack = head(head(frame));
         current_depth = tail(head(frame));
         frame = tail(frame);
         return "done";
     };
-    const initialize = () => {
+    const initialize = (): "done" => {
         stack = null;
         frame = null;
         number_pushes = 0;
@@ -76,11 +81,11 @@ const make_stack = () => {
         current_depth = 0;
         return "done";
     };
-    const print_statistics = () => {
+    const print_statistics = (): void => {
         display("total pushes = " + stringify(number_pushes));
         display("maximum depth = " + stringify(max_depth));
     };
-    const dispatch = (message) =>
+    const dispatch = (message: string): unknown =>
         message === "push"
                ? push
                : message === "pop"
@@ -97,29 +102,29 @@ const make_stack = () => {
     return dispatch;
 };
 
-const pop = (stack) =>
+const pop = (stack: Stack): unknown =>
     stack("pop");
 
-const push = (stack, value) =>
+const push = (stack: Stack, value: unknown): unknown =>
     stack("push")(value);
 
-const push_marker = (stack) =>
+const push_marker = (stack: Stack): unknown =>
     stack("push_marker");
 
-const pop_marker = (stack) =>
+const pop_marker = (stack: Stack): unknown =>
     stack("pop_marker");
 
-const make_new_machine = () => {
+const make_new_machine = (): Machine => {
     const pc = make_register("pc");
     const flag = make_register("flag");
     const stack = make_stack();
-    let the_instruction_sequence = null;
+    let the_instruction_sequence: List<MachineInstruction> = null;
     let the_ops = list(list("initialize_stack",
                             () => stack("initialize")),
                        list("print_stack_statistics",
                             () => stack("print_statistics")));
     let register_table = list(list("pc", pc), list("flag", flag));
-    const allocate_register = (name) => {
+    const allocate_register = (name: string): "register allocated" => {
         if (is_undefined(assoc(name, register_table))) {
             register_table = pair(list(name, make_register(name)),
                                   register_table);
@@ -128,13 +133,13 @@ const make_new_machine = () => {
         }
         return "register allocated";
     };
-    const lookup_register = (name) => {
+    const lookup_register = (name: string): Register => {
         const val = assoc(name, register_table);
         return is_undefined(val)
                ? error(name, "unknown register")
                : head(tail(val));
     };
-    const execute = () => {
+    const execute = (): "done" => {
         const insts = get_contents(pc);
         if (is_null(insts)) {
             return "done";
@@ -143,8 +148,8 @@ const make_new_machine = () => {
             return execute();
         }
     };
-    const dispatch = (message) => {
-        const start = () => {
+    const dispatch = (message: string): unknown => {
+        const start = (): "done" => {
             set_contents(pc, the_instruction_sequence);
             return execute();
         };
@@ -167,29 +172,32 @@ const make_new_machine = () => {
     return dispatch;
 };
 
-const start = (machine) =>
+const start = (machine: Machine): unknown =>
     machine("start");
 
-const get_register_contents = (machine, register_name) =>
+const get_register_contents = (machine: Machine, register_name: string): unknown =>
     get_contents(get_register(machine, register_name));
 
-const set_register_contents = (machine, register_name, value) => {
+const set_register_contents = (machine: Machine, register_name: string, value: unknown): "done" => {
     set_contents(get_register(machine, register_name), value);
     return "done";
 };
 
-const get_register = (machine, reg_name) =>
+const get_register = (machine: Machine, reg_name: string): Register =>
     machine("get_register")(reg_name);
 `;
 
-export const assemblerSource = `const assemble = (controller, machine) =>
+export const assemblerSource = `const assemble = (controller: Controller, machine: Machine): List<MachineInstruction> =>
     extract_labels(controller,
                           (insts, labels) => {
                               update_insts(insts, labels, machine);
                               return insts;
                           });
 
-const extract_labels = (controller, receive) =>
+const extract_labels = <R>(
+    controller: Controller,
+    receive: (insts: List<MachineInstruction>, labels: List<LabelEntry>) => R
+): R =>
     is_null(controller)
            ? receive(null, null)
            : extract_labels(
@@ -206,7 +214,7 @@ const extract_labels = (controller, receive) =>
                                       labels);
                  });
 
-const update_insts = (insts, labels, machine) => {
+const update_insts = (insts: List<MachineInstruction>, labels: List<LabelEntry>, machine: Machine): true => {
     const pc = get_register(machine, "pc");
     const flag = get_register(machine, "flag");
     const stack = machine("stack");
@@ -220,23 +228,28 @@ const update_insts = (insts, labels, machine) => {
                     insts);
 };
 
-const make_inst = (inst_controller_instruction) =>
+type ExecutionFunction = () => void;
+type MachineInstruction = Pair<Instruction, ExecutionFunction | null>; // null until update_insts
+
+const make_inst = (inst_controller_instruction: Instruction): MachineInstruction =>
     pair(inst_controller_instruction, null);
 
-const inst_controller_instruction = (inst) =>
+const inst_controller_instruction = (inst: MachineInstruction): Instruction =>
     head(inst);
 
-const inst_execution_fun = (inst) =>
+const inst_execution_fun = (inst: MachineInstruction): ExecutionFunction | null =>
     tail(inst);
 
-const set_inst_execution_fun = (inst, fun) => {
+const set_inst_execution_fun = (inst: MachineInstruction, fun: ExecutionFunction): void => {
     set_tail(inst, fun);
 };
 
-const make_label_entry = (label_name, insts) =>
+type LabelEntry = Pair<string, List<MachineInstruction>>;
+
+const make_label_entry = (label_name: string, insts: List<MachineInstruction>): LabelEntry =>
     pair(label_name, insts);
 
-const lookup_label = (labels, label_name) => {
+const lookup_label = (labels: List<LabelEntry>, label_name: string): List<MachineInstruction> => {
     const val = assoc(label_name, labels);
     return is_undefined(val)
            ? error(label_name, "undefined label -- assemble")
@@ -244,8 +257,15 @@ const lookup_label = (labels, label_name) => {
 };
 `;
 
-export const executionSource = `const make_execution_function = (inst, labels, machine,
-                                 pc, flag, stack, ops) =>
+export const executionSource = `const make_execution_function = (
+    inst: Instruction,
+    labels: List<LabelEntry>,
+    machine: Machine,
+    pc: Register,
+    flag: Register,
+    stack: Stack,
+    ops: Operations
+): ExecutionFunction =>
     type(inst) === "assign"
            ? make_assign_ef(inst, machine, labels, ops, pc)
            : type(inst) === "test"
@@ -266,9 +286,15 @@ export const executionSource = `const make_execution_function = (inst, labels, m
            ? make_perform_ef(inst, machine, labels, ops, pc)
            : error(inst, "unknown instruction type -- assemble");
 
-const type = (instruction) => head(instruction);
+const type = (instruction: Instruction): string => head(instruction);
 
-const make_assign_ef = (inst, machine, labels, operations, pc) => {
+const make_assign_ef = (
+    inst: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    operations: Operations,
+    pc: Register
+): ExecutionFunction => {
     const target = get_register(machine, assign_reg_name(inst));
     const value_exp = assign_value_exp(inst);
     const value_fun =
@@ -281,18 +307,25 @@ const make_assign_ef = (inst, machine, labels, operations, pc) => {
            };
 };
 
-const assign = (register_name, source) =>
+const assign = (register_name: string, source: Instruction): Instruction =>
     list("assign", register_name, source);
-const assign_reg_name = (assign_instruction) =>
+const assign_reg_name = (assign_instruction: Instruction): string =>
     head(tail(assign_instruction));
-const assign_value_exp = (assign_instruction) =>
+const assign_value_exp = (assign_instruction: Instruction): Instruction =>
     head(tail(tail(assign_instruction)));
 
-const advance_pc = (pc) => {
+const advance_pc = (pc: Register): void => {
     set_contents(pc, tail(get_contents(pc)));
 };
 
-const make_test_ef = (inst, machine, labels, operations, flag, pc) => {
+const make_test_ef = (
+    inst: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    operations: Operations,
+    flag: Register,
+    pc: Register
+): ExecutionFunction => {
     const condition = test_condition(inst);
     if (is_operation_exp(condition)) {
         const condition_fun = make_operation_exp_ef(
@@ -307,11 +340,17 @@ const make_test_ef = (inst, machine, labels, operations, flag, pc) => {
     }
 };
 
-const test = (condition) => list("test", condition);
-const test_condition = (test_instruction) =>
+const test = (condition: Instruction): Instruction => list("test", condition);
+const test_condition = (test_instruction: Instruction): Instruction =>
     head(tail(test_instruction));
 
-const make_branch_ef = (inst, machine, labels, flag, pc) => {
+const make_branch_ef = (
+    inst: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    flag: Register,
+    pc: Register
+): ExecutionFunction => {
     const dest = branch_dest(inst);
     if (is_label_exp(dest)) {
         const insts = lookup_label(labels, label_exp_label(dest));
@@ -327,11 +366,16 @@ const make_branch_ef = (inst, machine, labels, flag, pc) => {
     }
 };
 
-const branch = (label) => list("branch", label);
-const branch_dest = (branch_instruction) =>
+const branch = (label: Instruction): Instruction => list("branch", label);
+const branch_dest = (branch_instruction: Instruction): Instruction =>
     head(tail(branch_instruction));
 
-const make_go_to_ef = (inst, machine, labels, pc) => {
+const make_go_to_ef = (
+    inst: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    pc: Register
+): ExecutionFunction => {
     const dest = go_to_dest(inst);
     if (is_label_exp(dest)) {
         const insts = lookup_label(labels, label_exp_label(dest));
@@ -344,11 +388,16 @@ const make_go_to_ef = (inst, machine, labels, pc) => {
     }
 };
 
-const go_to = (label) => list("go_to", label);
-const go_to_dest = (go_to_instruction) =>
+const go_to = (label: Instruction): Instruction => list("go_to", label);
+const go_to_dest = (go_to_instruction: Instruction): Instruction =>
     head(tail(go_to_instruction));
 
-const make_save_ef = (inst, machine, stack, pc) => {
+const make_save_ef = (
+    inst: Instruction,
+    machine: Machine,
+    stack: Stack,
+    pc: Register
+): ExecutionFunction => {
     const reg = get_register(machine, stack_inst_reg_name(inst));
     return () => {
                push(stack, get_contents(reg));
@@ -356,7 +405,12 @@ const make_save_ef = (inst, machine, stack, pc) => {
            };
 };
 
-const make_restore_ef = (inst, machine, stack, pc) => {
+const make_restore_ef = (
+    inst: Instruction,
+    machine: Machine,
+    stack: Stack,
+    pc: Register
+): ExecutionFunction => {
     const reg = get_register(machine, stack_inst_reg_name(inst));
     return () => {
                set_contents(reg, pop(stack));
@@ -364,27 +418,33 @@ const make_restore_ef = (inst, machine, stack, pc) => {
            };
 };
 
-const save = (reg) => list("save", reg);
-const restore = (reg) => list("restore", reg);
-const stack_inst_reg_name = (stack_instruction) =>
+const save = (reg: string): Instruction => list("save", reg);
+const restore = (reg: string): Instruction => list("restore", reg);
+const stack_inst_reg_name = (stack_instruction: Instruction): string =>
     head(tail(stack_instruction));
 
-const make_push_marker_to_stack_ef = (machine, stack, pc) =>
+const make_push_marker_to_stack_ef = (machine: Machine, stack: Stack, pc: Register): ExecutionFunction =>
     () => {
                push_marker(stack);
                advance_pc(pc);
            };
 
-const make_revert_stack_to_marker_ef = (machine, stack, pc) =>
+const make_revert_stack_to_marker_ef = (machine: Machine, stack: Stack, pc: Register): ExecutionFunction =>
     () => {
                pop_marker(stack);
                advance_pc(pc);
            };
 
-const push_marker_to_stack = () => list("push_marker_to_stack");
-const revert_stack_to_marker = () => list("revert_stack_to_marker");
+const push_marker_to_stack = (): Instruction => list("push_marker_to_stack");
+const revert_stack_to_marker = (): Instruction => list("revert_stack_to_marker");
 
-const make_perform_ef = (inst, machine, labels, operations, pc) => {
+const make_perform_ef = (
+    inst: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    operations: Operations,
+    pc: Register
+): ExecutionFunction => {
     const action = perform_action(inst);
     if (is_operation_exp(action)) {
         const action_fun = make_operation_exp_ef(action, machine,
@@ -398,11 +458,15 @@ const make_perform_ef = (inst, machine, labels, operations, pc) => {
     }
 };
 
-const perform = (action) => list("perform", action);
-const perform_action = (perform_instruction) =>
+const perform = (action: Instruction): Instruction => list("perform", action);
+const perform_action = (perform_instruction: Instruction): Instruction =>
     head(tail(perform_instruction));
 
-const make_primitive_exp_ef = (exp, machine, labels) => {
+const make_primitive_exp_ef = (
+    exp: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>
+): (() => unknown) => {
     if (is_constant_exp(exp)) {
         const c = constant_exp_value(exp);
         return () => c;
@@ -417,18 +481,23 @@ const make_primitive_exp_ef = (exp, machine, labels) => {
     }
 };
 
-const reg = (name) => list("reg", name);
-const is_register_exp = (exp) => is_tagged_list(exp, "reg");
-const register_exp_reg = (exp) => head(tail(exp));
-const constant = (value) => list("constant", value);
-const is_constant_exp = (exp) =>
+const reg = (name: string): Instruction => list("reg", name);
+const is_register_exp = (exp: Instruction): boolean => is_tagged_list(exp, "reg");
+const register_exp_reg = (exp: Instruction): string => head(tail(exp));
+const constant = (value: unknown): Instruction => list("constant", value);
+const is_constant_exp = (exp: Instruction): boolean =>
     is_tagged_list(exp, "constant");
-const constant_exp_value = (exp) => head(tail(exp));
-const label = (name) => list("label", name);
-const is_label_exp = (exp) => is_tagged_list(exp, "label");
-const label_exp_label = (exp) => head(tail(exp));
+const constant_exp_value = (exp: Instruction): unknown => head(tail(exp));
+const label = (name: string): Instruction => list("label", name);
+const is_label_exp = (exp: Instruction): boolean => is_tagged_list(exp, "label");
+const label_exp_label = (exp: Instruction): string => head(tail(exp));
 
-const make_operation_exp_ef = (exp, machine, labels, operations) => {
+const make_operation_exp_ef = (
+    exp: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    operations: Operations
+): (() => unknown) => {
     const op = lookup_prim(operation_exp_op(exp), operations);
     const afuns = map(e => make_primitive_exp_ef(e, machine, labels),
                       operation_exp_operands(exp));
@@ -436,13 +505,13 @@ const make_operation_exp_ef = (exp, machine, labels, operations) => {
                      op, map(f => f(), afuns));
 };
 
-const op = (name) => list("op", name);
-const is_operation_exp = (exp) =>
+const op = (name: string): Instruction => list("op", name);
+const is_operation_exp = (exp: Instruction): boolean =>
     is_pair(exp) && is_tagged_list(head(exp), "op");
-const operation_exp_op = (op_exp) => head(tail(head(op_exp)));
-const operation_exp_operands = (op_exp) => tail(op_exp);
+const operation_exp_op = (op_exp: Instruction): string => head(tail(head(op_exp)));
+const operation_exp_operands = (op_exp: Instruction): List<Instruction> => tail(op_exp);
 
-const lookup_prim = (symbol, operations) => {
+const lookup_prim = (symbol: string, operations: Operations): unknown => {
     const val = assoc(symbol, operations);
     return is_undefined(val)
            ? error(symbol, "unknown operation -- assemble")

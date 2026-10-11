@@ -2,15 +2,16 @@
  * Taking the book's programs apart by top-level declaration, so that an
  * exercise can hand the reader a few functions of the simulator or the
  * compiler and run the rest around the reader's versions (see the `context`
- * of a check). Declarations start at the beginning of a line.
+ * of a check). Declarations start at the beginning of a line. A `type` alias
+ * is a declaration of its own, so that removing the function after it keeps it.
  */
 
-const DECLARATION = /^(?:function\s+(\w+)\s*\(|const\s+(\w+)\b|let\s+(\w+)\b)/;
+const DECLARATION = /^(?:function\s+(\w+)\s*\(|const\s+(\w+)\b|let\s+(\w+)\b|type\s+(\w+)\s*[=<])/;
 
 function chunks(source: string): { name: string | null; text: string }[] {
-  return source.split(/\n(?=function\s|const\s|let\s)/).map((text) => {
+  return source.split(/\n(?=function\s|const\s|let\s|type\s+\w+\s*[=<])/).map((text) => {
     const match = DECLARATION.exec(text.trimStart());
-    return { name: match?.[1] ?? match?.[2] ?? match?.[3] ?? null, text };
+    return { name: match?.[1] ?? match?.[2] ?? match?.[3] ?? match?.[4] ?? null, text };
   });
 }
 

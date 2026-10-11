@@ -38,12 +38,12 @@ Upon returning from evaluating the function expression, we proceed to evaluate t
 The operations on argument lists are two small additions to the evaluator's data structures, and the loop needs one more syntax function, to test for the last argument expression:
 
 ```js
-const empty_arglist = () => null;
+const empty_arglist = (): List<unknown> => null;
 
-const adjoin_arg = (arg, arglist) =>
+const adjoin_arg = (arg: unknown, arglist: List<unknown>): List<unknown> =>
     append(arglist, list(arg));
 
-const is_last_argument_expression = (arg_expression) =>
+const is_last_argument_expression = (arg_expression: List<Component>): boolean =>
     is_null(tail(arg_expression));
 ```
 
@@ -164,7 +164,7 @@ If no return statement is encountered during evaluation of the function body, ev
 **Return statements and tail recursion.** In chapter 1 we said that the process described by a function such as
 
 ```js
-const sqrt_iter = (guess, x) =>
+const sqrt_iter = (guess: number, x: number): number =>
     is_good_enough(guess, x)
            ? guess
            : sqrt_iter(improve(guess, x), x);
@@ -174,7 +174,7 @@ is an iterative process. Even though the function is syntactically recursive (de
 
 The metacircular evaluator of chapter 4 isn't tail-recursive. It implements a return statement as a constructor of a return value object containing the value to be returned, and inspects the result of a function call to see whether it is such an object. Both the construction of the return value object and the eventual inspection of the result of the function call are deferred operations, which lead to an accumulation of information on the stack.
 
-Our explicit-control evaluator *is* tail-recursive, because it does not need to wrap up return values for inspection and thus avoids the buildup of stack from deferred operations. At `ev_return`, in order to evaluate the expression that computes the return value of a function, we transfer directly to `eval_dispatch` with nothing more on the stack than right before the function call. We accomplish this by undoing any saves to the stack by the function (which are useless because we are returning) using `revert_stack_to_marker`. Then, rather than arranging for `eval_dispatch` to come back here and *then* restoring `continue` from the stack and continuing at that entry point, we restore `continue` from the stack *before* going to `eval_dispatch` so that `eval_dispatch` will continue at that entry point after evaluating the expression. Thus, when we proceed to evaluate a return expression, the stack is the same as just before the call to the function whose return value we are about to compute. Hence, evaluating a return expression, even if it is a function call (as in `sqrt_iter`, where the conditional expression reduces to a call to `sqrt_iter`), will not cause any information to accumulate on the stack. (This is one variety of a well-known optimisation used by many compilers: a function that ends with a call can replace the call by a jump to the called function's entry point. Building the strategy into the interpreter provides the optimisation uniformly throughout the language.)
+Our explicit-control evaluator *is* tail-recursive, because it does not need to wrap up return values for inspection and thus avoids the buildup of stack from deferred operations. At `ev_return`, in order to evaluate the expression that computes the return value of a function, we transfer directly to `eval_dispatch` with nothing more on the stack than right before the function call. We accomplish this by undoing any saves to the stack by the function (which are useless because we are returning) using `revert_stack_to_marker`. Then, rather than arranging for `eval_dispatch` to come back here and *then* restoring `continue` from the stack and continuing at that entry point, we restore `continue` from the stack *before* going to `eval_dispatch` so that `eval_dispatch` will continue at that entry point after evaluating the expression. Thus, when we proceed to evaluate a return expression, the stack is the same as just before the call to the function whose return value we are about to compute. Hence, evaluating a return expression, even if it is a function call (as in `sqrt_iter`, where the conditional expression reduces to a call to `sqrt_iter`), will not cause any information to accumulate on the stack. (The body of `sqrt_iter` is a single expression, with no `return` written: `parse` represents the body of such a concise arrow function as a return statement, so it is evaluated at `ev_return` too.) (This is one variety of a well-known optimisation used by many compilers: a function that ends with a call can replace the call by a jump to the called function's entry point. Building the strategy into the interpreter provides the optimisation uniformly throughout the language.)
 
 If we did not think to take advantage of the fact that it is unnecessary to hold on to the useless information on the stack while evaluating a return expression, we might have taken the straightforward approach of evaluating the return expression, coming back to restore the stack, and finally continuing at the entry point that is waiting for the result of the function call:
 
@@ -194,7 +194,7 @@ This may seem like a minor change: the only difference is that we delay undoing 
 This difference can be significant. For example, with tail recursion, an infinite loop can be expressed using only the function-call and return mechanisms:
 
 ```js
-const count = (n) => {
+const count = (n: number): void => {
     display(n);
     return count(n + 1);
 };
@@ -202,7 +202,7 @@ const count = (n) => {
 
 Without tail recursion, such a function would eventually run out of stack space, and expressing a true iteration would require some control mechanism other than function call.
 
-Note that our JavaScript implementation requires the use of `return` in order to be tail-recursive. Because the undoing of the register saves takes place at `ev_return`, removing `return` from the `count` function above will cause it to eventually run out of stack space. This explains the use of `return` in the infinite driver loops of chapter 4.
+Note that our JavaScript implementation requires the use of `return`, written or implied by a concise arrow body, in order to be tail-recursive. Because the undoing of the register saves takes place at `ev_return`, removing `return` from the `count` function above will cause it to eventually run out of stack space. This explains the use of `return` in the infinite driver loops of chapter 4.
 
 </Prose>
 
@@ -224,7 +224,7 @@ The simulator keeps, beside the stack, a list of the stack heights at which `pus
 Explain how the stack builds up if `return` is removed from `count`:
 
 ```js
-const count = (n) => {
+const count = (n: number): void => {
     display(n);
     count(n + 1);
 };

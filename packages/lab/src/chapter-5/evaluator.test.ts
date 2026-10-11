@@ -6,25 +6,22 @@ import { instructionText } from '../machines/controller.ts';
 import { compileProgram, runCompiled } from './compiler.ts';
 import { ecevalControllerSource, ecevalControllerWithout, runEceval } from './eceval.ts';
 
-const recursiveFactorial = `function factorial(n) {
-    return n === 1
+const recursiveFactorial = `const factorial = (n: number): number =>
+    n === 1
            ? 1
-           : factorial(n - 1) * n;
-}`;
+           : factorial(n - 1) * n;`;
 
-const iterativeFactorial = `function factorial(n) {
-    function iter(product, counter) {
-        return counter > n
+const iterativeFactorial = `const factorial = (n: number): number => {
+    const iter = (product: number, counter: number): number =>
+        counter > n
                ? product
                : iter(counter * product,
                       counter + 1);
-    }
     return iter(1, 1);
-}`;
+};`;
 
-const fib = `function fib(n) {
-    return n < 2 ? n : fib(n - 1) + fib(n - 2);
-}`;
+const fib = `const fib = (n: number): number =>
+    n < 2 ? n : fib(n - 1) + fib(n - 2);`;
 
 const ns = [1, 2, 3, 4, 5, 6, 10];
 const stats = (definition: string, call: string) =>
@@ -48,6 +45,7 @@ describe('section 4.1.2: programs as tagged lists', () => {
 
 describe('section 5.4: the explicit-control evaluator', () => {
   it('evaluates declarations, blocks, assignments and conditionals', () => {
+    // abs stays a function declaration on purpose, to cover ev_function_declaration.
     const { results } = runEceval([
       'const x = 1; x + 2;',
       '{ let y = 2; y = y + 1; y; }',
@@ -115,6 +113,14 @@ describe('section 5.5: the compiler', () => {
     expect(code).toHaveLength(89);
   });
 
+  it('compiles a function declaration to the same code as the constant declaration of a lambda expression', () => {
+    // A function declaration on purpose: compile transforms it with function_decl_to_constant_decl.
+    const declared = `function factorial(n) {
+    return n === 1 ? 1 : factorial(n - 1) * n;
+}`;
+    expect(compileProgram(declared)).toEqual(compileProgram(recursiveFactorial));
+  });
+
   it('runs compiled factorial with the book’s figures: 36 pushes, depth 14 for 5!', () => {
     const { results, failure } = runCompiled(recursiveFactorial, ['factorial(5);', 'factorial(10);']);
     expect(failure).toBeNull();
@@ -126,7 +132,10 @@ describe('section 5.5: the compiler', () => {
   });
 
   it('lets interpreted code call compiled functions, but not yet the reverse (exercise 5.50)', () => {
-    const forward = runCompiled(`function twice(f, x) { return f(f(x)); }`, ['twice(math_abs, -5);', 'twice(x => x, 3);']);
+    const forward = runCompiled(`const twice = (f: (x: number) => number, x: number): number => f(f(x));`, [
+      'twice(math_abs, -5);',
+      'twice(x => x, 3);',
+    ]);
     expect(forward.results.map((r) => r.value)).toEqual(['undefined', '5']);
     expect(forward.failure).toMatch(/go_to\(reg\("val"\)\) needs a label/);
   });

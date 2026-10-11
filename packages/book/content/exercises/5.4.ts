@@ -12,15 +12,15 @@ import type { ExerciseSpec } from './spec.ts';
 
 /** Exercises of §5.4. */
 
-const recursiveFactorial = 'const factorial = (n) => n === 1 ? 1 : factorial(n - 1) * n;';
-const iterativeFactorial = `const factorial = (n) => {
-    const iter = (product, counter) =>
+const recursiveFactorial = 'const factorial = (n: number): number => n === 1 ? 1 : factorial(n - 1) * n;';
+const iterativeFactorial = `const factorial = (n: number): number => {
+    const iter = (product: number, counter: number): number =>
         counter > n ? product : iter(counter * product, counter + 1);
     return iter(1, 1);
 };`;
-const sign = 'const sign = (x) => { if (x < 0) { return -1; } else { } return 1; };';
-const noReturn = 'const g = (x) => { x + 1; };';
-const twice = 'const inc = (x) => x + 1; const twice = (x) => { const y = inc(x); return inc(y); };';
+const sign = 'const sign = (x: number): number => { if (x < 0) { return -1; } else { } return 1; };';
+const noReturn = 'const g = (x: number): void => { x + 1; };';
+const twice = 'const inc = (x: number): number => x + 1; const twice = (x: number): number => { const y = inc(x); return inc(y); };';
 
 /** The programs the checks give the evaluator. */
 const checkPrograms = `const check_recursive_factorial = ${quote(recursiveFactorial)};
@@ -38,9 +38,13 @@ const check_twice = ${quote(twice)};
  * replace the evaluator's own.
  */
 const checkRun = `${checkPrograms}
-const check_run = (fragment, operations, inputs) => {
+const check_run = (
+    fragment: List<Instruction | string>,
+    operations: List<unknown>,
+    inputs: List<string>
+): List<List<unknown>> => {
     let check_statistics = list(0, 0);
-    let check_printed = null;
+    let check_printed: List<List<unknown>> = null;
     const check_machine =
         make_machine(list("comp", "env", "val", "fun", "argl", "continue", "unev"),
                      append(operations,
@@ -59,10 +63,14 @@ const check_run = (fragment, operations, inputs) => {
     return reverse(check_printed);
 };
 
-const check_last = (fragment, operations, inputs) =>
+const check_last = (
+    fragment: List<Instruction | string>,
+    operations: List<unknown>,
+    inputs: List<string>
+): List<unknown> =>
     head(reverse(check_run(fragment, operations, inputs)));
 
-const check_uses = (fragment, instruction_name) =>
+const check_uses = (fragment: List<Instruction | string>, instruction_name: string): boolean =>
     !is_null(filter(item => is_pair(item) && head(item) === instruction_name,
                            fragment));
 `;
@@ -71,19 +79,19 @@ export const exercise_5_22: ExerciseSpec = {
   id: '5.22',
   starter: `// Two versions of count that stop at k. count(1, k) displays 1, 2, ..., k.
 //
-// function count(n, k) {                    function count(n, k) {
-//     display(n);                               display(n);
-//     return n === k ? n : count(n + 1, k);     n === k ? n : count(n + 1, k);
-// }                                         }
+// const count = (n: number, k: number): number => {   const count = (n: number, k: number): void => {
+//     display(n);                                         display(n);
+//     return n === k ? n : count(n + 1, k);               n === k ? n : count(n + 1, k);
+// };                                                  };
 //
 // The maximum stack depth the evaluator reaches in evaluating count(1, k),
 // as a function of k, for k >= 2:
 
-const depth_with_return = (k) => {
+const depth_with_return = (k: number): number => {
     // your answer
 };
 
-const depth_without_return = (k) => {
+const depth_without_return = (k: number): number => {
     // your answer
 };
 `,
@@ -95,10 +103,10 @@ const depth_without_return = (k) => {
     { name: 'without return, k = 7', kind: 'value', expr: 'depth_without_return(7)', expected: 16 },
     { name: 'without return, k = 25', kind: 'value', expr: 'depth_without_return(25)', expected: 34 },
   ],
-  solution: `const depth_with_return = (k) =>
+  solution: `const depth_with_return = (k: number): number =>
     10;
 
-const depth_without_return = (k) =>
+const depth_without_return = (k: number): number =>
     k + 9;
 `,
 };
@@ -109,12 +117,12 @@ export const exercise_5_23: ExerciseSpec = {
   id: '5.23',
   context: `${ecevalControllerWithout(markerBlocks)}
 ${checkRun}
-const check_value = (inputs) =>
+const check_value = (inputs: List<string>): unknown =>
     head(check_last(fragment,
                            append(eceval_operations, extra_operations),
                            inputs));
 
-const check_depth = (inputs) =>
+const check_depth = (inputs: List<string>): number =>
     list_ref(check_last(fragment,
                                append(eceval_operations, extra_operations),
                                inputs),
@@ -217,20 +225,23 @@ const markerFunctions = [
 ];
 
 /** Run a small controller on the reader's simulator and return the contents of a register. */
-const checkMarkers = `const check_marker_run = (controller, register_names) => {
+const checkMarkers = `const check_marker_run = (
+    controller: List<Instruction | string>,
+    register_names: List<string>
+): List<unknown> => {
     const machine = make_machine(list("a", "b", "c"), list(), controller);
     start(machine);
     return map(name => get_register_contents(machine, name), register_names);
 };
 
-const check_marker_statistics = (controller) => {
+const check_marker_statistics = (controller: List<Instruction | string>): void => {
     const machine = make_machine(list("a", "b", "c"), list(), controller);
     start(machine);
     machine("stack")("print_statistics");
 };
 
-const check_eceval = (inputs) => {
-    let check_value = null;
+const check_eceval = (inputs: List<string>): unknown => {
+    let check_value: unknown = null;
     const machine =
         make_machine(list("comp", "env", "val", "fun", "argl", "continue", "unev"),
                      pair(list("user_print", (prompt, value) => { check_value = value; }),
@@ -252,19 +263,19 @@ ${checkMarkers}`,
 // instructions, the stack operations push_marker and pop_marker, and
 // whatever state the stack needs to support them.
 
-const make_stack = () => {
-    let stack = null;
+const make_stack = (): Stack => {
+    let stack: List<unknown> = null;
     let number_pushes = 0;
     let max_depth = 0;
     let current_depth = 0;
-    const push = (x) => {
+    const push = (x: unknown): "done" => {
         stack = pair(x, stack);
         number_pushes = number_pushes + 1;
         current_depth = current_depth + 1;
         max_depth = math_max(current_depth, max_depth);
         return "done";
     };
-    const pop = () => {
+    const pop = (): unknown => {
         if (is_null(stack)) {
             error("empty stack -- pop");
         } else {
@@ -274,18 +285,18 @@ const make_stack = () => {
             return top;
         }
     };
-    const initialize = () => {
+    const initialize = (): "done" => {
         stack = null;
         number_pushes = 0;
         max_depth = 0;
         current_depth = 0;
         return "done";
     };
-    const print_statistics = () => {
+    const print_statistics = (): void => {
         display("total pushes = " + stringify(number_pushes));
         display("maximum depth = " + stringify(max_depth));
     };
-    const dispatch = (message) =>
+    const dispatch = (message: string): unknown =>
         message === "push"
                ? push
                : message === "pop"
@@ -298,16 +309,23 @@ const make_stack = () => {
     return dispatch;
 };
 
-const push_marker = (stack) => {
+const push_marker = (stack: Stack): unknown => {
     // your answer
 };
 
-const pop_marker = (stack) => {
+const pop_marker = (stack: Stack): unknown => {
     // your answer
 };
 
-const make_execution_function = (inst, labels, machine,
-                                 pc, flag, stack, ops) =>
+const make_execution_function = (
+    inst: Instruction,
+    labels: List<LabelEntry>,
+    machine: Machine,
+    pc: Register,
+    flag: Register,
+    stack: Stack,
+    ops: Operations
+): ExecutionFunction =>
     type(inst) === "assign"
            ? make_assign_ef(inst, machine, labels, ops, pc)
            : type(inst) === "test"
@@ -324,11 +342,11 @@ const make_execution_function = (inst, labels, machine,
            ? make_perform_ef(inst, machine, labels, ops, pc)
            : error(inst, "unknown instruction type -- assemble");
 
-const make_push_marker_to_stack_ef = (machine, stack, pc) => {
+const make_push_marker_to_stack_ef = (machine: Machine, stack: Stack, pc: Register): ExecutionFunction => {
     // your answer
 };
 
-const make_revert_stack_to_marker_ef = (machine, stack, pc) => {
+const make_revert_stack_to_marker_ef = (machine: Machine, stack: Stack, pc: Register): ExecutionFunction => {
     // your answer
 };
 `,
@@ -398,10 +416,10 @@ export const exercise_5_29: ExerciseSpec = {
   id: '5.29',
   context: `${ecevalControllerWithout(returnBlock)}
 ${checkRun}
-const check_value = (inputs) =>
+const check_value = (inputs: List<string>): unknown =>
     head(check_last(fragment, eceval_operations, inputs));
 
-const check_depth = (inputs) =>
+const check_depth = (inputs: List<string>): number =>
     list_ref(check_last(fragment, eceval_operations, inputs), 2);
 `,
   starter: `// Change ev_return so that it evaluates the return expression first and
@@ -454,12 +472,12 @@ export const exercise_5_27: ExerciseSpec = {
   starter: `// For the iterative factorial, evaluated by the monitored evaluator:
 
 // the maximum stack depth for factorial(n)
-const iterative_depth = (n) => {
+const iterative_depth = (n: number): number => {
     // your answer
 };
 
 // the total number of pushes for factorial(n), for n >= 1
-const iterative_pushes = (n) => {
+const iterative_pushes = (n: number): number => {
     // your answer
 };
 `,
@@ -470,10 +488,10 @@ const iterative_pushes = (n) => {
     { name: 'pushes for n = 5', kind: 'value', expr: 'iterative_pushes(5)', expected: 207 },
     { name: 'pushes for n = 20', kind: 'value', expr: 'iterative_pushes(20)', expected: 732 },
   ],
-  solution: `const iterative_depth = (n) =>
+  solution: `const iterative_depth = (n: number): number =>
     10;
 
-const iterative_pushes = (n) =>
+const iterative_pushes = (n: number): number =>
     35 * n + 32;
 `,
 };
@@ -483,11 +501,11 @@ export const exercise_5_28: ExerciseSpec = {
   starter: `// For the recursive factorial, evaluated by the monitored evaluator,
 // for n >= 1:
 
-const recursive_depth = (n) => {
+const recursive_depth = (n: number): number => {
     // your answer
 };
 
-const recursive_pushes = (n) => {
+const recursive_pushes = (n: number): number => {
     // your answer
 };
 `,
@@ -499,10 +517,10 @@ const recursive_pushes = (n) => {
     { name: 'pushes for n = 5', kind: 'value', expr: 'recursive_pushes(5)', expected: 145 },
     { name: 'pushes for n = 20', kind: 'value', expr: 'recursive_pushes(20)', expected: 625 },
   ],
-  solution: `const recursive_depth = (n) =>
+  solution: `const recursive_depth = (n: number): number =>
     5 * n + 3;
 
-const recursive_pushes = (n) =>
+const recursive_pushes = (n: number): number =>
     32 * n - 15;
 `,
 };
@@ -512,7 +530,7 @@ export const exercise_5_30: ExerciseSpec = {
   starter: `// For the tree-recursive fib, evaluated by the monitored evaluator:
 
 // the maximum stack depth for fib(n), for n >= 2
-const fib_depth = (n) => {
+const fib_depth = (n: number): number => {
     // your answer
 };
 
@@ -524,7 +542,7 @@ const a = 0;
 const b = 0;
 
 // the total number of pushes for fib(n), for n >= 0
-const fib_pushes = (n) => {
+const fib_pushes = (n: number): number => {
     // your answer
 };
 `,
@@ -537,7 +555,7 @@ const fib_pushes = (n) => {
     { name: 'pushes for n = 5', kind: 'value', expr: 'fib_pushes(5)', expected: 409 },
     { name: 'pushes for n = 12', kind: 'value', expr: 'fib_pushes(12)', expected: 13009 },
   ],
-  solution: `const fib_depth = (n) =>
+  solution: `const fib_depth = (n: number): number =>
     5 * n + 3;
 
 const k = 39;
@@ -545,7 +563,7 @@ const k = 39;
 const a = 56;
 const b = -39;
 
-const fib_pushes = (n) =>
+const fib_pushes = (n: number): number =>
     n < 2 ? 17 : fib_pushes(n - 1) + fib_pushes(n - 2) + k;
 `,
 };

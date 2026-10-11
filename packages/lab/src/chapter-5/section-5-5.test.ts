@@ -54,11 +54,10 @@ display_list(registers_modified(s));`,
   return { needs, modifies };
 }
 
-const recursiveFactorial = `function factorial(n) {
-    return n === 1
+const recursiveFactorial = `const factorial = (n: number): number =>
+    n === 1
            ? 1
-           : factorial(n - 1) * n;
-}`;
+           : factorial(n - 1) * n;`;
 
 describe('section 5.5: overview', () => {
   it('compiles math_max(96, 22) without saving anything the evaluator saves', () => {
@@ -118,7 +117,7 @@ const eceval_controller = eceval_controller_with(application_fragment);`;
   });
 
   it('looks names up directly: 109 pushes for factorial(5), 2 fewer per application', () => {
-    const { results } = runEceval([recursiveFactorial, 'factorial(5);', '(x => x + 1)(2);', 'function g() { return math_max; } g()(1, 7);'], {
+    const { results } = runEceval([recursiveFactorial, 'factorial(5);', '(x => x + 1)(2);', 'const g = (): ((x: number, y: number) => number) => math_max; g()(1, 7);'], {
       controller: controller(nameApplicationFragment),
     });
     expect(results.map((r) => r.value)).toEqual(['undefined', '120', '3', '7']);
@@ -214,9 +213,8 @@ describe('section 5.5.3: compiling applications', () => {
       ['"done"', 5 * 100 + 8, 3],
     ]);
     const nonTail = runCompiled(
-      `function count_down(n) {
-    return n === 0 ? 0 : 1 + count_down(n - 1);
-}`,
+      `const count_down = (n: number): number =>
+    n === 0 ? 0 : 1 + count_down(n - 1);`,
       ['count_down(10);', 'count_down(100);'],
     );
     expect(nonTail.results.slice(1).map((r) => r.maximumDepth)).toEqual([2 * 10 + 2, 2 * 100 + 2]);

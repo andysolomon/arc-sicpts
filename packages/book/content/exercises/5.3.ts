@@ -39,19 +39,19 @@ const y_pointer = "p3";
 };
 
 /** Runs a machine of exercise 5.20 on a tree, with statistics from a fresh stack. */
-const countLeavesChecks = `const check_count_leaves = (machine, tree) => {
+const countLeavesChecks = `const check_count_leaves = (machine: Machine, tree: unknown): unknown => {
     set_register_contents(machine, "tree", tree);
     machine("stack")("initialize");
     start(machine);
     return get_register_contents(machine, "val");
 };
 
-const check_pushes = (machine, tree) => {
+const check_pushes = (machine: Machine, tree: unknown): number => {
     check_count_leaves(machine, tree);
     return head(machine("stack")("statistics"));
 };
 
-const check_only_operations = (machine, allowed) => {
+const check_only_operations = (machine: Machine, allowed: List<string>): boolean => {
     const builtin = list("initialize_stack", "print_stack_statistics");
     return accumulate((op, ok) => ok &&
                                   (! is_null(member(head(op), allowed)) ||
@@ -198,7 +198,7 @@ const count_leaves_iter_machine =
 };
 
 /** Runs a machine of exercise 5.21 on x and y, and the checks of identity the exercise needs. */
-const appendChecks = `const check_run = (machine, x, y) => {
+const appendChecks = `const check_run = (machine: Machine, x: List<unknown>, y: List<unknown>): unknown => {
     set_register_contents(machine, "x", x);
     set_register_contents(machine, "y", y);
     machine("stack")("initialize");
@@ -206,12 +206,12 @@ const appendChecks = `const check_run = (machine, x, y) => {
     return get_register_contents(machine, "val");
 };
 
-const check_pushes = (machine, x, y) => {
+const check_pushes = (machine: Machine, x: List<unknown>, y: List<unknown>): number => {
     check_run(machine, x, y);
     return head(machine("stack")("statistics"));
 };
 
-const check_append_copies = (machine) => {
+const check_append_copies = (machine: Machine): boolean => {
     const x = list(1, 2);
     const y = list(3, 4);
     const result = check_run(machine, x, y);
@@ -222,7 +222,7 @@ const check_append_copies = (machine) => {
            tail(tail(result)) === y;
 };
 
-const check_append_splices = (machine) => {
+const check_append_splices = (machine: Machine): boolean => {
     const x = list(1, 2);
     const y = list(3, 4);
     const result = check_run(machine, x, y);
@@ -231,7 +231,7 @@ const check_append_splices = (machine) => {
            tail(tail(x)) === y;
 };
 
-const check_only_operations = (machine, allowed) => {
+const check_only_operations = (machine: Machine, allowed: List<string>): boolean => {
     const builtin = list("initialize_stack", "print_stack_statistics");
     return accumulate((op, ok) => ok &&
                                   (! is_null(member(head(op), allowed)) ||
@@ -248,11 +248,10 @@ export const exercise_5_21: ExerciseSpec = {
   starter: `// Both machines find their lists in registers x and y and leave the
 // result in val. Add any registers you need.
 
-// function append(x, y) {
-//     return is_null(x)
+// const append = <T>(x: List<T>, y: List<T>): List<T> =>
+//     is_null(x)
 //            ? y
 //            : pair(head(x), append(tail(x), y));
-// }
 const append_machine =
     make_machine(
         list("x", "y", "val", "continue"),
@@ -264,13 +263,12 @@ const append_machine =
           // your controller
           "append_done"));
 
-// function append_mutator(x, y) {
+// const append_mutator = <T>(x: List<T>, y: List<T>): List<T> => {
 //     set_tail(last_pair(x), y);
 //     return x;
-// }
-// function last_pair(x) {
-//     return is_null(tail(x)) ? x : last_pair(tail(x));
-// }
+// };
+// const last_pair = <T>(x: List<T>): List<T> =>
+//     is_null(tail(x)) ? x : last_pair(tail(x));
 const append_mutator_machine =
     make_machine(
         list("x", "y", "val"),

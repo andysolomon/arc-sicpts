@@ -68,10 +68,10 @@ The code at `external_entry` assumes that the machine is started with `val` cont
   go_to(reg("val")),
 ```
 
-Now we can use the following function to compile a function declaration, execute the compiled code, and run the read-evaluate-print loop so we can try the function. Because we want the compiled code to proceed to the location in `continue` with its result in `val`, we compile the program with a target of `val` and a linkage of `"return"`. In order to transform the object code produced by the compiler into executable instructions for the evaluator register machine, we use the function `assemble` from the register-machine simulator (§5.2.2). For the interpreted program to refer to the names that are declared at top level in the compiled program, we scan out the top-level names and extend the global environment by binding these names to `"*unassigned*"`, knowing that the compiled code will assign them the correct values. We then initialize the `val` register to point to the list of instructions, set the `flag` so that the evaluator will go to `external_entry`, and start the evaluator.
+Now we can use the following function to compile a program, such as the declaration of a function, execute the compiled code, and run the read-evaluate-print loop so we can try the function. Because we want the compiled code to proceed to the location in `continue` with its result in `val`, we compile the program with a target of `val` and a linkage of `"return"`. In order to transform the object code produced by the compiler into executable instructions for the evaluator register machine, we use the function `assemble` from the register-machine simulator (§5.2.2). For the interpreted program to refer to the names that are declared at top level in the compiled program, we scan out the top-level names and extend the global environment by binding these names to `"*unassigned*"`, knowing that the compiled code will assign them the correct values. We then initialize the `val` register to point to the list of instructions, set the `flag` so that the evaluator will go to `external_entry`, and start the evaluator.
 
 ```js
-const compile_and_go = (program) => {
+const compile_and_go = (program: Component): unknown => {
     const instrs = assemble(instructions(compile(program,
                                                  "val", "return")),
                             eceval);
@@ -92,7 +92,7 @@ const compile_and_go = (program) => {
 To look at compiled code in the notation used in this book, as earlier sections did, the compiler comes with `display_instructions`, which displays each instruction of a list as the text that constructs it:
 
 ```js
-const stringify_list = (xs) =>
+const stringify_list = (xs: List<unknown>): string =>
     is_null(member(head(xs),
                    list("assign", "perform", "op", "label", "branch",
                         "go_to", "save", "restore", "reg", "constant",
@@ -100,15 +100,15 @@ const stringify_list = (xs) =>
                         "revert_stack_to_marker")))
            ? "list(" + comma_separated(xs) + ")"
            : head(xs) + "(" + comma_separated(tail(xs)) + ")";
-const comma_separated = (elements) =>
+const comma_separated = (elements: List<unknown>): string =>
     accumulate((s, acc) => stringify_instruction(s) +
                                   (acc === "" ? "" : ", " + acc),
                       "", elements);
-const stringify_instruction = (x) =>
+const stringify_instruction = (x: unknown): string =>
     is_string(x) || is_number(x) || is_undefined(x) || is_null(x)
            ? stringify(x)
            : stringify_list(x);
-const display_instructions = (instructions) =>
+const display_instructions = (instructions: List<Instruction | string>): true =>
     for_each(i => { display(stringify_instruction(i) + ","); },
                     instructions);
 ```
@@ -174,7 +174,7 @@ Most of the difference is the general function-call protocol: every `*`, `-` and
 Carry out an analysis like the one in exercise 5.48 to determine the effectiveness of compiling the tree-recursive Fibonacci function
 
 ```js
-const fib = (n) =>
+const fib = (n: number): number =>
     n < 2 ? n : fib(n - 1) + fib(n - 2);
 ```
 
@@ -197,7 +197,7 @@ This section described how to modify the explicit-control evaluator so that inte
   …
 ```
 
-The rest of the compiler and an evaluator with this change are loaded around your function. To test your code, the checker compiles functions that call a function they are given and lets the evaluator declare that function: `function f(g, x) { return g(x) + 1; }` is compiled, `function g(x) { return x * 2; }` is typed at the evaluator, and `f(g, 5)` should be 11. (A function declared at the evaluator's prompt lives in a frame of its own, which the environment of a compiled function cannot see; hence passing `g` as an argument, or assigning it to a name the compiled program declared.) The checker covers calls with each target and linkage, and checks that compiled `factorial(5)` is still 120.
+The rest of the compiler and an evaluator with this change are loaded around your function. To test your code, the checker compiles functions that call a function they are given and lets the evaluator declare that function: `const f = (g: (x: number) => number, x: number): number => g(x) + 1;` is compiled, `const g = (x: number): number => x * 2;` is typed at the evaluator, and `f(g, 5)` should be 11. (A function declared at the evaluator's prompt lives in a frame of its own, which the environment of a compiled function cannot see; hence passing `g` as an argument, or assigning it to a name the compiled program declared.) The checker covers calls with each target and linkage, and checks that compiled `factorial(5)` is still 120.
 
 <Solution>
 

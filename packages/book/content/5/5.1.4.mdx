@@ -7,7 +7,7 @@ With the ideas illustrated so far, we can implement any iterative process by spe
 Implementing recursive processes, however, requires an additional mechanism. Consider the recursive method for computing factorials that we first examined in §1.2.1:
 
 ```js
-const factorial = (n) =>
+const factorial = (n: number): number =>
     n === 1
            ? 1
            : n * factorial(n - 1);
@@ -16,7 +16,7 @@ const factorial = (n) =>
 As we see from the function, computing *n*! requires computing (*n* − 1)!. Our GCD machine, modeled on the function
 
 ```js
-const gcd = (a, b) =>
+const gcd = (a: number, b: number): number =>
     b === 0 ? a : gcd(b, a % b);
 ```
 
@@ -51,7 +51,7 @@ Although in principle the factorial computation requires an infinite machine, th
 Let us examine a more complex recursive process, the tree-recursive computation of the Fibonacci numbers, which we introduced in §1.2.2:
 
 ```js
-const fib = (n) =>
+const fib = (n: number): number =>
     n === 0
            ? 0
            : n === 1
@@ -83,7 +83,7 @@ Specify register machines that implement each of the following functions.
 Recursive exponentiation:
 
 ```js
-const expt = (b, n) =>
+const expt = (b: number, n: number): number =>
     n === 0
            ? 1
            : b * expt(b, n - 1);
@@ -92,8 +92,8 @@ const expt = (b, n) =>
 Iterative exponentiation:
 
 ```js
-const expt = (b, n) => {
-    const expt_iter = (counter, product) =>
+const expt = (b: number, n: number): number => {
+    const expt_iter = (counter: number, product: number): number =>
         counter === 0
                ? product
                : expt_iter(counter - 1, b * product);

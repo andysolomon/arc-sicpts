@@ -5,7 +5,7 @@ import { gcdFunctionAndMachineProgram } from '@sicp/lab';
 To design a register machine, we must design its *data paths* (registers and operations) and the *controller* that sequences these operations. To illustrate the design of a simple register machine, let us examine Euclid's Algorithm, which computes the greatest common divisor (GCD) of two integers. As we saw in §1.2.5, Euclid's Algorithm can be carried out by an iterative process, as specified by the following function:
 
 ```js
-const gcd = (a, b) =>
+const gcd = (a: number, b: number): number =>
     b === 0 ? a : gcd(b, a % b);
 ```
 

@@ -339,7 +339,7 @@ export function ecevalControllerWithout(blocks: readonly string[], { compiled = 
     .map(([, text]) => text);
   const head = compiled ? [`branch(label("external_entry")),`] : [];
   const tail = compiled ? [ecevalExternalEntry] : [];
-  return `const eceval_controller_with = (fragment) =>
+  return `const eceval_controller_with = (fragment: List<Instruction | string>): List<Instruction | string> =>
     append(list(
 ${indent(indent([...head, ...kept, ...tail].join('\n').replace(/,\s*$/, '')))}
            ),

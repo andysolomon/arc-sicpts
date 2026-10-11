@@ -38,7 +38,7 @@ n === 0 ? 1 : n * 2;
 `;
 
 /** §5.5.2: a function whose body returns on every path, still followed by the appended return of undefined. */
-export const compiledFunctionProgram = `const abs = (x) => {
+export const compiledFunctionProgram = `const abs = (x: number): number => {
     if (x < 0) {
         return -x;
     } else {
@@ -57,8 +57,8 @@ export const funTargetProgram = `// The function expression f() is compiled with
 display_instructions(instructions(compile(parse("f()(x);"), "val", "next")));
 `;
 
-/** §5.5.3: a call in a return statement is compiled with linkage "return". */
-export const compiledTailCallProgram = `const count_down = (n) =>
+/** §5.5.3: a call in a return statement (here the body of a concise arrow function) is compiled with linkage "return". */
+export const compiledTailCallProgram = `const count_down = (n: number): "done" =>
     n === 0 ? "done" : count_down(n - 1);
 count_down(3);
 `;
@@ -145,7 +145,7 @@ export const nameApplicationFragment = `const application_fragment = list(
 `;
 
 /** Exercise 5.35: a version of append_return_undefined that adds a return only where a path lacks one. */
-export const smarterAppendReturnUndefined = `const always_returns = (stmt) =>
+export const smarterAppendReturnUndefined = `const always_returns = (stmt: Component): boolean =>
     is_return_statement(stmt)
            ? true
            : is_sequence(stmt)
@@ -158,7 +158,7 @@ export const smarterAppendReturnUndefined = `const always_returns = (stmt) =>
              always_returns(conditional_alternative(stmt))
            : false;
 
-const append_return_undefined = (body) =>
+const append_return_undefined = (body: Component): Component =>
     always_returns(body)
            ? body
            : list("sequence", list(body,

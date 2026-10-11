@@ -6,7 +6,7 @@ Now that we have seen all the elements of the compiler, let us examine an exampl
 
 ```js
 compile(parse(`
-const factorial = (n) =>
+const factorial = (n: number): number =>
     n === 1
            ? 1
            : factorial(n - 1) * n;
@@ -17,7 +17,7 @@ const factorial = (n) =>
 
 We have specified that the value of the declaration should be placed in the `val` register. We don't care what the compiled code does after executing the declaration, so our choice of `"next"` as the linkage descriptor is arbitrary.
 
-The function `compile` determines that it was given a function declaration, so it transforms it to a constant declaration and then calls `compile_declaration`. This compiles code to compute the value to be assigned (targeted to `val`), followed by code to install the declaration, followed by code to put the value of the declaration (which is the value `undefined`) into the target register, followed finally by the linkage code. The `env` register is preserved around the computation of the value, because it is needed in order to install the declaration. Because the linkage is `"next"`, there is no linkage code in this case. The skeleton of the compiled code is thus
+The function `compile` determines that it was given a constant declaration, so it calls `compile_declaration`. (Had we declared `factorial` with a function declaration, `compile` would first transform it into this constant declaration, and the compiled code would be the same.) This compiles code to compute the value to be assigned (targeted to `val`), followed by code to install the declaration, followed by code to put the value of the declaration (which is the value `undefined`) into the target register, followed finally by the linkage code. The `env` register is preserved around the computation of the value, because it is needed in order to install the declaration. Because the linkage is `"next"`, there is no linkage code in this case. The skeleton of the compiled code is thus
 
 ```js
 save env if modified by code to compute value
@@ -52,7 +52,7 @@ The expression that is compiled to produce the value for the name `factorial` is
   assign("val", constant(undefined))
 ```
 
-A function body is always compiled (by `compile_lambda_body`) with target `val` and linkage `"next"`. The body in this case consists of a single return statement. (Because of the `append_return_undefined` in `compile_lambda_body`, the body is actually a sequence of two return statements, but the dead-code check in `compile_sequence` stops after the first.)
+A function body is always compiled (by `compile_lambda_body`) with target `val` and linkage `"next"`. The body in this case is a single expression, which `parse` represents as a return statement, as if we had written the body as a block containing just that statement. (Because of the `append_return_undefined` in `compile_lambda_body`, the body is actually a sequence of two return statements, but the dead-code check in `compile_sequence` stops after the first.)
 
 ```js
 return n === 1
@@ -244,7 +244,7 @@ Both editors' programs are compiled in the Laboratory's worker by the Source com
 Consider the following declaration of a factorial function, which is slightly different from the one given above:
 
 ```js
-const factorial_alt = (n) =>
+const factorial_alt = (n: number): number =>
     n === 1
            ? 1
            : n * factorial_alt(n - 1);
@@ -263,8 +263,8 @@ Compile this function (the second editor above does) and compare the resulting c
 Compile the iterative factorial function
 
 ```js
-const factorial = (n) => {
-    const iter = (product, counter) =>
+const factorial = (n: number): number => {
+    const iter = (product: number, counter: number): number =>
         counter > n
                ? product
                : iter(product * counter, counter + 1);
@@ -366,10 +366,10 @@ Write the program as the string `program`. The checker compiles it with target `
 
 <Solution>
 
-**Solution.** The code declares `f` as a function of `x` whose body is a single return statement (the revert and restore at `entry1`). The returned value is an application of `+`, called with linkage `"return"` at the end. Its last argument is computed first: `+` applied to `2` and `x`, that is `x + 2`, and the result is the single argument of `g`. Then `env` is restored and `x` is looked up and put in front: the first argument of the outer `+` is `x`.
+**Solution.** The code declares `f` as a function of `x` whose body is a single return statement (the revert and restore at `entry1`), which is how `parse` represents the body of a concise arrow function. The returned value is an application of `+`, called with linkage `"return"` at the end. Its last argument is computed first: `+` applied to `2` and `x`, that is `x + 2`, and the result is the single argument of `g`. Then `env` is restored and `x` is looked up and put in front: the first argument of the outer `+` is `x`.
 
 ```js
-const f = (x) =>
+const f = (x: number): number =>
     x + g(x + 2);
 ```
 

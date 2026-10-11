@@ -12,22 +12,22 @@ import { onlyDeclarations, withoutDeclarations } from './pieces.ts';
 // §5.5.5 An Example of Compiled Code
 
 /** The declaration the book compiles in §5.5.5. */
-export const compiledCodeFactorialProgram = `const factorial = (n) =>
+export const compiledCodeFactorialProgram = `const factorial = (n: number): number =>
     n === 1
            ? 1
            : factorial(n - 1) * n;
 `;
 
 /** The declaration of exercise 5.36. */
-export const compiledCodeAlternativeProgram = `const factorial_alt = (n) =>
+export const compiledCodeAlternativeProgram = `const factorial_alt = (n: number): number =>
     n === 1
            ? 1
            : n * factorial_alt(n - 1);
 `;
 
 /** The iterative factorial of exercise 5.37. */
-export const compiledCodeIterativeProgram = `const factorial = (n) => {
-    const iter = (product, counter) =>
+export const compiledCodeIterativeProgram = `const factorial = (n: number): number => {
+    const iter = (product: number, counter: number): number =>
         counter > n
                ? product
                : iter(product * counter, counter + 1);
@@ -36,7 +36,7 @@ export const compiledCodeIterativeProgram = `const factorial = (n) => {
 `;
 
 /** The program the code of exercise 5.38 was compiled from. */
-export const compiledCodeMysteryProgram = `const f = (x) =>
+export const compiledCodeMysteryProgram = `const f = (x: number): number =>
     x + g(x + 2);`;
 
 /**
@@ -116,7 +116,7 @@ export const compiledCodeFigureText = compiledCodeFigure
   .join('');
 
 /** For exercise 5.38: compiling a program from a fresh label counter and comparing it with the figure. */
-export const compiledCodeCompareHelpers = `const check_code_text = (program) => {
+export const compiledCodeCompareHelpers = `const check_code_text = (program: string): string => {
     label_counter = 0;
     return accumulate((instruction, rest) =>
                           stringify_instruction(instruction) + "\\n" + rest,
@@ -130,12 +130,12 @@ export const compiledCodeFigurePrelude = `${compilerSource}
 ${compiledCodeCompareHelpers}
 const check_figure = ${quote(compiledCodeFigureText)};
 
-const check_same_code = (program) =>
+const check_same_code = (program: string): boolean =>
     check_code_text(program) === check_figure;
 `;
 
 /** Counting instructions of a kind (`"save"`, `"restore"`) in compiled code. */
-export const compiledCodeCountHelpers = `const check_count = (kind, program) =>
+export const compiledCodeCountHelpers = `const check_count = (kind: string, program: string): number =>
     length(filter(instruction => is_pair(instruction) &&
                                         head(instruction) === kind,
                          instructions(compile(parse(program),
@@ -146,7 +146,7 @@ export const compiledCodeCountHelpers = `const check_count = (kind, program) =>
  * Running a program with \`compile_and_go\` on the inputs, and returning what
  * the evaluator last printed (the value left in \`val\`).
  */
-export const compileAndGoHelpers = `const check_compile_and_go = (program, inputs) => {
+export const compileAndGoHelpers = `const check_compile_and_go = (program: string, inputs: List<string>): unknown => {
     set_inputs(inputs);
     compile_and_go(parse(program));
     return get_register_contents(eceval, "val");
@@ -188,7 +188,7 @@ const eceval =
 `;
 
 /** Which names compiled code looks up with `lookup_symbol_value`. */
-export const lookupHelpers = `const check_looks_up = (symbol, program) => {
+export const lookupHelpers = `const check_looks_up = (symbol: string, program: string): boolean => {
     label_counter = 0;
     return ! is_null(filter(instruction =>
                                 is_pair(instruction) &&
@@ -237,7 +237,10 @@ export const lexicalAddressingFramesProgram = `((x, y) =>
 `;
 
 /** The runtime environment at the point where `x * y * z` is evaluated, and the cost of looking `x` up in it. */
-export const lexicalAddressingSearchProgram = `const env =
+export const lexicalAddressingSearchProgram = `type Frame = Pair<List<string>, List<unknown>>; // symbols and values (§4.1.3)
+type Environment = List<Frame>;
+
+const env =
     extend_environment(list("y", "z"), list(6, 10),
         extend_environment(list("a", "b", "c", "d", "e"),
                            list(1, 2, 3, 4, 5),
@@ -245,8 +248,8 @@ export const lexicalAddressingSearchProgram = `const env =
                                the_global_environment)));
 
 // How many symbols lookup_symbol_value compares before it finds one.
-const comparisons = (symbol, env) => {
-    const scan = (symbols, count, env) =>
+const comparisons = (symbol: string, env: Environment): number => {
+    const scan = (symbols: List<string>, count: number, env: Environment): number =>
         is_null(symbols)
                ? scan(frame_symbols(first_frame(enclosing_environment(env))),
                       count, enclosing_environment(env))
@@ -261,14 +264,17 @@ comparisons("x", env);
 `;
 
 /** Exercise 5.42: a runtime environment with an unassigned name in it. */
-export const lexicalAddressEnvironment = `const check_environment = () =>
+export const lexicalAddressEnvironment = `type Frame = Pair<List<string>, List<unknown>>;
+type Environment = List<Frame>;
+
+const check_environment = (): Environment =>
     extend_environment(list("y", "z"), list(6, 10),
                extend_environment(list("a", "b", "c", "d", "e"),
                                   list(1, 2, 3, 4, "*unassigned*"),
                    extend_environment(list("x", "y"), list(3, 4),
                                       the_global_environment)));
 
-const check_assign_then_lookup = (address, value) => {
+const check_assign_then_lookup = (address: LexicalAddress, value: unknown): unknown => {
     const env = check_environment();
     lexical_address_assign(address, value, env);
     return lexical_address_lookup(address, env);
@@ -280,13 +286,13 @@ const check_assign_then_lookup = (address, value) => {
 /** The book's first use of `compile_and_go`, followed by a call typed at the evaluator. */
 export const interfacingCompileAndGoProgram = `set_inputs(list("factorial(5);"));
 compile_and_go(parse(\`
-const factorial = (n) =>
+const factorial = (n: number): number =>
     n === 1
            ? 1
            : factorial(n - 1) * n;\`));
 `;
 
-export const interfacingCompareProgram = `const factorial = (n) =>
+export const interfacingCompareProgram = `const factorial = (n: number): number =>
     n === 1
            ? 1
            : factorial(n - 1) * n;
@@ -306,7 +312,7 @@ const factorial_machine =
                       list("-", (a, b) => a - b)),
                  controller_sequence(factorial_recursive_controller));
 
-const special_statistics = (n) => {
+const special_statistics = (n: number): List<number> => {
     factorial_machine("stack")("initialize");
     set_register_contents(factorial_machine, "n", n);
     start(factorial_machine);
@@ -316,7 +322,7 @@ const special_statistics = (n) => {
 };
 `;
 
-export const interfacingFibCompareProgram = `const fib = (n) =>
+export const interfacingFibCompareProgram = `const fib = (n: number): number =>
     n < 2 ? n : fib(n - 1) + fib(n - 2);
 fib(2);
 fib(4);
@@ -334,7 +340,7 @@ const fib_machine =
                       list("+", (a, b) => a + b)),
                  controller_sequence(fib_recursive_controller));
 
-const special_statistics = (n) => {
+const special_statistics = (n: number): List<number> => {
     fib_machine("stack")("initialize");
     set_register_contents(fib_machine, "n", n);
     start(fib_machine);

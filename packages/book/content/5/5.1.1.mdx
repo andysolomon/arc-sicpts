@@ -63,9 +63,9 @@ To obtain this form of description, we replace the arbitrary button and operatio
 `controller` merely tags the instruction sequence, and `controller_sequence` takes the tag off again:
 
 ```js
-const controller = (sequence) =>
+const controller = (sequence: List<Instruction | string>): Instruction =>
     list("controller", sequence);
-const controller_sequence = (controller) =>
+const controller_sequence = (controller: Instruction): List<Instruction | string> =>
     head(tail(controller));
 ```
 
@@ -110,8 +110,8 @@ A page cannot stop and wait for typing, so this book queues the inputs in advanc
 The section introduction asks for this machine before the language exists, as diagrams; exercise 5.2 asks for it in the register-machine language, which is how you write it here, so this exercise answers both. Design a register machine to compute factorials using the iterative algorithm specified by the following function:
 
 ```js
-const factorial = (n) => {
-    const iter = (product, counter) =>
+const factorial = (n: number): number => {
+    const iter = (product: number, counter: number): number =>
         counter > n
                ? product
                : iter(counter * product,

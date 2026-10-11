@@ -12,6 +12,15 @@ import type { ExerciseSpec } from './spec.ts';
 const controllerList = (declaration: string): string =>
   declaration.slice(declaration.indexOf('list('), declaration.lastIndexOf(')')).trim();
 
+/** `text` with `from` replaced by `to`. Throws when `from` is not there, so a solution cannot silently miss its edit. */
+const replacing = (text: string, from: string, to: string): string => {
+  if (!text.includes(from)) throw new Error(`exercises of §5.2: no ${JSON.stringify(from.trim().split('\n')[0])} to replace`);
+  return text.replace(from, () => to);
+};
+
+/** `text` without each of `parts`, which must all be there. */
+const removing = (text: string, ...parts: string[]): string => parts.reduce((rest, part) => replacing(rest, part, ''), text);
+
 const fibList = controllerList(fibController);
 const factorialList = controllerList(factorialController);
 
@@ -36,10 +45,10 @@ const factorialOps = `list(list("=", (a, b) => a === b),
 
 /** Make and run the GCD machine with whatever `make_machine` is in scope. */
 const checkGcd = `
-const check_gcd_machine = () =>
+const check_gcd_machine = (): Machine =>
     make_machine(list("a", "b", "t"), ${gcdOps}, ${gcdList});
 
-const check_gcd = (a, b) => {
+const check_gcd = (a: number, b: number): unknown => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", a);
     set_register_contents(m, "b", b);
@@ -49,10 +58,10 @@ const check_gcd = (a, b) => {
 `;
 
 const checkFib = `
-const check_fib_controller = () =>
+const check_fib_controller = (): Controller =>
     ${fibList};
 
-const check_fib = (n) => {
+const check_fib = (n: number): unknown => {
     const m = make_machine(list("n", "val", "continue"), ${fibOps},
                            check_fib_controller());
     set_register_contents(m, "n", n);
@@ -62,7 +71,7 @@ const check_fib = (n) => {
 `;
 
 const checkFactorial = `
-const check_factorial = (n) => {
+const check_factorial = (n: number): unknown => {
     const m = make_machine(list("n", "val", "continue"), ${factorialOps},
                            ${factorialList});
     set_register_contents(m, "n", n);
@@ -81,14 +90,14 @@ export const exercise_5_7: ExerciseSpec = {
   id: '5.7',
   prelude: simulatorSource,
   context: `
-const check_expt = (machine, b, n) => {
+const check_expt = (machine: Machine, b: number, n: number): unknown => {
     set_register_contents(machine, "b", b);
     set_register_contents(machine, "n", n);
     start(machine);
     return get_register_contents(machine, "val");
 };
 
-const check_expt_stack = (machine, b, n) => {
+const check_expt_stack = (machine: Machine, b: number, n: number): void => {
     machine("stack")("initialize");
     check_expt(machine, b, n);
     machine("stack")("print_statistics");
@@ -192,7 +201,7 @@ export const exercise_5_8: ExerciseSpec = {
   id: '5.8',
   context: `${simulatorWithout(['extract_labels'])}
 ${checkGcd}
-const check_two_labels = () => {
+const check_two_labels = (): unknown => {
     const m = make_machine(list("a"), list(), list(
         go_to(label("second")),
       "first",
@@ -219,7 +228,10 @@ ${simulatorFunctions(['extract_labels'])}
   budget: BUDGET,
   solution: `const a_at_there = 3;
 
-const extract_labels = (controller, receive) =>
+const extract_labels = <R>(
+    controller: Controller,
+    receive: (insts: List<MachineInstruction>, labels: List<LabelEntry>) => R
+): R =>
     is_null(controller)
            ? receive(null, null)
            : extract_labels(
@@ -265,7 +277,12 @@ ${simulatorFunctions(['make_operation_exp_ef'])}
     { name: 'labels can still be assigned to registers', kind: 'value', expr: 'check_factorial(5)', expected: 120 },
   ],
   budget: BUDGET,
-  solution: `const make_operation_exp_ef = (exp, machine, labels, operations) => {
+  solution: `const make_operation_exp_ef = (
+    exp: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    operations: Operations
+): (() => unknown) => {
     const op = lookup_prim(operation_exp_op(exp), operations);
     const afuns = map(e => is_label_exp(e)
                            ? error(e, "label as an operand -- assemble")
@@ -277,16 +294,18 @@ ${simulatorFunctions(['make_operation_exp_ef'])}
 `,
 };
 
-const fibShort = fibList
-  .replace(
+const fibShort = replacing(
+  replacing(
+    fibList,
     `          assign("n", reg("val")),      // n now contains Fib(n - 2)
           restore("val"),               // val now contains Fib(n - 1)
 `,
     `          restore("n"),                 // n now contains Fib(n - 1)
 `,
-  )
-  .replace('// Fib(n - 1) + Fib(n - 2)', '// Fib(n - 2) + Fib(n - 1)');
-if (fibShort === fibList) throw new Error('exercise 5.10: the Fibonacci controller changed');
+  ),
+  '// Fib(n - 1) + Fib(n - 2)',
+  '// Fib(n - 2) + Fib(n - 1)',
+);
 
 export const exercise_5_10: ExerciseSpec = {
   id: '5.10',
@@ -294,20 +313,24 @@ export const exercise_5_10: ExerciseSpec = {
   // runs part (a) whatever the reader does to save and restore in part (b).
   prelude: 'const check_lab_make_machine = make_machine;',
   context: `${simulatorWithout(['make_save_ef', 'make_restore_ef'])}
-const check_instructions = (controller) =>
+const check_instructions = (controller: Controller): number =>
     length(filter(x => !is_string(x), controller));
 
-const check_fib_with = (make, controller, n) => {
+const check_fib_with = (
+    make: (register_names: List<string>, ops: Operations, controller: Controller) => Machine,
+    controller: Controller,
+    n: number
+): unknown => {
     const m = make(list("n", "val", "continue"), ${fibOps}, controller);
     set_register_contents(m, "n", n);
     start(m);
     return get_register_contents(m, "val");
 };
 
-const check_fib_short = (n) =>
+const check_fib_short = (n: number): unknown =>
     check_fib_with(check_lab_make_machine, fib_controller_short, n);
 
-const check_stack_machine = (controller) => {
+const check_stack_machine = (controller: Controller): unknown => {
     const m = make_machine(list("x", "y"), list(), controller);
     start(m);
     return get_register_contents(m, "y");
@@ -351,7 +374,12 @@ ${simulatorFunctions(['make_save_ef', 'make_restore_ef'])}
   solution: `const fib_controller_short =
     ${fibShort};
 
-const make_save_ef = (inst, machine, stack, pc) => {
+const make_save_ef = (
+    inst: Instruction,
+    machine: Machine,
+    stack: Stack,
+    pc: Register
+): ExecutionFunction => {
     const name = stack_inst_reg_name(inst);
     const reg = get_register(machine, name);
     return () => {
@@ -360,7 +388,12 @@ const make_save_ef = (inst, machine, stack, pc) => {
            };
 };
 
-const make_restore_ef = (inst, machine, stack, pc) => {
+const make_restore_ef = (
+    inst: Instruction,
+    machine: Machine,
+    stack: Stack,
+    pc: Register
+): ExecutionFunction => {
     const name = stack_inst_reg_name(inst);
     const reg = get_register(machine, name);
     return () => {
@@ -382,43 +415,43 @@ export const exercise_5_11: ExerciseSpec = {
   context: `${simulatorWithout(['assemble', 'make_new_machine'])}
 ${checkFib}
 ${checkGcd}
-const check_has = (x, xs) =>
+const check_has = (x: unknown, xs: List<unknown>): boolean =>
     !is_null(xs) && (equal(x, head(xs)) || check_has(x, tail(xs)));
 
-const check_same_set = (xs, ys) =>
+const check_same_set = (xs: List<unknown>, ys: List<unknown>): boolean =>
     length(xs) === length(ys)
            && accumulate((x, so_far) => so_far && check_has(x, ys), true, xs)
            && accumulate((y, so_far) => so_far && check_has(y, xs), true, ys);
 
-const check_distinct = (xs) =>
+const check_distinct = <T>(xs: List<T>): List<T> =>
     is_null(xs)
            ? null
            : pair(head(xs),
                   check_distinct(filter(y => !equal(y, head(xs)), tail(xs))));
 
-const check_type_changes = (insts) =>
+const check_type_changes = (insts: List<Instruction>): number =>
     is_null(insts) || is_null(tail(insts))
            ? 0
            : (head(head(insts)) === head(head(tail(insts))) ? 0 : 1)
              + check_type_changes(tail(insts));
 
-const check_fib_machine = () =>
+const check_fib_machine = (): Machine =>
     make_machine(list("n", "val", "continue"), ${fibOps},
                         check_fib_controller());
 
-const check_instructions = () =>
+const check_instructions = (): boolean =>
     check_same_set(
                check_fib_machine()("instructions"),
                check_distinct(filter(x => !is_string(x),
                                      check_fib_controller())));
 
-const check_sorted = () => {
+const check_sorted = (): boolean => {
     const insts = check_fib_machine()("instructions");
     return check_type_changes(insts)
            === length(check_distinct(map(head, insts))) - 1;
 };
 
-const check_sources = (name, expected) =>
+const check_sources = (name: string, expected: List<Instruction>): boolean =>
     check_same_set(check_fib_machine()("sources")(name), expected);
 `,
   starter: `// Keep in the machine model, and answer these messages with:
@@ -466,7 +499,7 @@ ${simulatorFunctions(['assemble', 'make_new_machine'])}
     { name: 'the Fibonacci machine still runs', kind: 'value', expr: 'check_fib(7)', expected: 13 },
   ],
   budget: BUDGET,
-  solution: `const assemble = (controller, machine) =>
+  solution: `const assemble = (controller: Controller, machine: Machine): List<MachineInstruction> =>
     extract_labels(controller,
                           (insts, labels) => {
                               update_insts(insts, labels, machine);
@@ -477,13 +510,15 @@ ${simulatorFunctions(['assemble', 'make_new_machine'])}
                           });
 
 // The list without repeated elements, in order of first appearance.
-const distinct = (xs) =>
+const distinct = <T>(xs: List<T>): List<T> =>
     is_null(xs)
            ? null
            : pair(head(xs),
                   distinct(filter(y => !equal(y, head(xs)), tail(xs))));
 
-const data_paths = (instructions) => {
+type DataPaths = List<unknown>; // list(instructions, entry registers, stack registers, sources)
+
+const data_paths = (instructions: List<Instruction>): DataPaths => {
     const unique = distinct(instructions);
     const types = distinct(map(type, unique));
     const sorted = accumulate(append, null,
@@ -509,18 +544,18 @@ const data_paths = (instructions) => {
     return list(sorted, entry_registers, stack_registers, sources);
 };
 
-const make_new_machine = () => {
+const make_new_machine = (): Machine => {
     const pc = make_register("pc");
     const flag = make_register("flag");
     const stack = make_stack();
-    let the_instruction_sequence = null;
-    let the_data_paths = list(null, null, null, null);
+    let the_instruction_sequence: List<MachineInstruction> = null;
+    let the_data_paths: DataPaths = list(null, null, null, null);
     let the_ops = list(list("initialize_stack",
                             () => stack("initialize")),
                        list("print_stack_statistics",
                             () => stack("print_statistics")));
     let register_table = list(list("pc", pc), list("flag", flag));
-    const allocate_register = (name) => {
+    const allocate_register = (name: string): "register allocated" => {
         if (is_undefined(assoc(name, register_table))) {
             register_table = pair(list(name, make_register(name)),
                                   register_table);
@@ -529,17 +564,17 @@ const make_new_machine = () => {
         }
         return "register allocated";
     };
-    const lookup_register = (name) => {
+    const lookup_register = (name: string): Register => {
         const val = assoc(name, register_table);
         return is_undefined(val)
                ? error(name, "unknown register")
                : head(tail(val));
     };
-    const sources = (name) => {
+    const sources = (name: string): List<Instruction> => {
         const entry = assoc(name, list_ref(the_data_paths, 3));
         return is_undefined(entry) ? null : tail(entry);
     };
-    const execute = () => {
+    const execute = (): "done" => {
         const insts = get_contents(pc);
         if (is_null(insts)) {
             return "done";
@@ -548,8 +583,8 @@ const make_new_machine = () => {
             return execute();
         }
     };
-    const dispatch = (message) => {
-        const start = () => {
+    const dispatch = (message: string): unknown => {
+        const start = (): "done" => {
             set_contents(pc, the_instruction_sequence);
             return execute();
         };
@@ -587,7 +622,7 @@ const make_new_machine = () => {
 export const exercise_5_12: ExerciseSpec = {
   id: '5.12',
   context: `${simulatorWithout(['make_machine', 'make_new_machine'])}
-const check_gcd = (a, b) => {
+const check_gcd = (a: number, b: number): unknown => {
     const m = make_machine(${gcdOps}, ${gcdList});
     set_register_contents(m, "a", a);
     set_register_contents(m, "b", b);
@@ -595,7 +630,7 @@ const check_gcd = (a, b) => {
     return get_register_contents(m, "a");
 };
 
-const check_factorial = (n) => {
+const check_factorial = (n: number): unknown => {
     const m = make_machine(${factorialOps}, ${factorialList});
     set_register_contents(m, "n", n);
     start(m);
@@ -611,7 +646,7 @@ ${simulatorFunctions(['make_machine', 'make_new_machine'])}
     { name: 'the factorial machine, without a list of registers', kind: 'value', expr: 'check_factorial(6)', expected: 720 },
   ],
   budget: BUDGET,
-  solution: `const make_machine = (ops, controller) => {
+  solution: `const make_machine = (ops: Operations, controller: Controller): Machine => {
     const machine = make_new_machine();
     machine("install_operations")(ops);
     machine("install_instruction_sequence")
@@ -619,17 +654,17 @@ ${simulatorFunctions(['make_machine', 'make_new_machine'])}
     return machine;
 };
 
-const make_new_machine = () => {
+const make_new_machine = (): Machine => {
     const pc = make_register("pc");
     const flag = make_register("flag");
     const stack = make_stack();
-    let the_instruction_sequence = null;
+    let the_instruction_sequence: List<MachineInstruction> = null;
     let the_ops = list(list("initialize_stack",
                             () => stack("initialize")),
                        list("print_stack_statistics",
                             () => stack("print_statistics")));
     let register_table = list(list("pc", pc), list("flag", flag));
-    const allocate_register = (name) => {
+    const allocate_register = (name: string): "register allocated" => {
         if (is_undefined(assoc(name, register_table))) {
             register_table = pair(list(name, make_register(name)),
                                   register_table);
@@ -640,7 +675,7 @@ const make_new_machine = () => {
     };
     // A register is allocated the first time it is looked up, which
     // is when the assembler first meets it in the controller.
-    const lookup_register = (name) => {
+    const lookup_register = (name: string): Register => {
         const val = assoc(name, register_table);
         if (is_undefined(val)) {
             allocate_register(name);
@@ -649,7 +684,7 @@ const make_new_machine = () => {
             return head(tail(val));
         }
     };
-    const execute = () => {
+    const execute = (): "done" => {
         const insts = get_contents(pc);
         if (is_null(insts)) {
             return "done";
@@ -658,8 +693,8 @@ const make_new_machine = () => {
             return execute();
         }
     };
-    const dispatch = (message) => {
-        const start = () => {
+    const dispatch = (message: string): unknown => {
+        const start = (): "done" => {
             set_contents(pc, the_instruction_sequence);
             return execute();
         };
@@ -738,10 +773,10 @@ export const exercise_5_13: ExerciseSpec = {
   id: '5.13',
   starter: `${readingFactorial}
 // From the statistics, formulas in n for n > 1.
-const factorial_pushes = (n) =>
+const factorial_pushes = (n: number): number =>
     0;
 
-const factorial_depth = (n) =>
+const factorial_depth = (n: number): number =>
     0;
 `,
   tests: [
@@ -753,20 +788,20 @@ const factorial_depth = (n) =>
     { name: 'maximum depth for 50', kind: 'value', expr: 'factorial_depth(50)', expected: 98 },
   ],
   solution: `${readingFactorial}
-const factorial_pushes = (n) =>
+const factorial_pushes = (n: number): number =>
     2 * (n - 1);
 
-const factorial_depth = (n) =>
+const factorial_depth = (n: number): number =>
     2 * (n - 1);
 `,
 };
 
 /** The basic machine with instruction counting (5.14) and tracing (5.15). */
-const countingTracingMachine = `const make_new_machine = () => {
+const countingTracingMachine = `const make_new_machine = (): Machine => {
     const pc = make_register("pc");
     const flag = make_register("flag");
     const stack = make_stack();
-    let the_instruction_sequence = null;
+    let the_instruction_sequence: List<MachineInstruction> = null;
     let instruction_count = 0;
     let tracing = false;
     let the_ops = list(list("initialize_stack",
@@ -774,7 +809,7 @@ const countingTracingMachine = `const make_new_machine = () => {
                        list("print_stack_statistics",
                             () => stack("print_statistics")));
     let register_table = list(list("pc", pc), list("flag", flag));
-    const allocate_register = (name) => {
+    const allocate_register = (name: string): "register allocated" => {
         if (is_undefined(assoc(name, register_table))) {
             register_table = pair(list(name, make_register(name)),
                                   register_table);
@@ -783,13 +818,13 @@ const countingTracingMachine = `const make_new_machine = () => {
         }
         return "register allocated";
     };
-    const lookup_register = (name) => {
+    const lookup_register = (name: string): Register => {
         const val = assoc(name, register_table);
         return is_undefined(val)
                ? error(name, "unknown register")
                : head(tail(val));
     };
-    const execute = () => {
+    const execute = (): "done" => {
         const insts = get_contents(pc);
         if (is_null(insts)) {
             return "done";
@@ -803,17 +838,17 @@ const countingTracingMachine = `const make_new_machine = () => {
             return execute();
         }
     };
-    const read_instruction_count = () => {
+    const read_instruction_count = (): number => {
         const count = instruction_count;
         instruction_count = 0;
         return count;
     };
-    const trace = (on) => {
+    const trace = (on: boolean): "done" => {
         tracing = on;
         return "done";
     };
-    const dispatch = (message) => {
-        const start = () => {
+    const dispatch = (message: string): unknown => {
+        const start = (): "done" => {
             set_contents(pc, the_instruction_sequence);
             return execute();
         };
@@ -847,7 +882,7 @@ export const exercise_5_14: ExerciseSpec = {
   id: '5.14',
   context: `${simulatorWithout(['make_new_machine'])}
 ${checkGcd}
-const check_count_gcd = (a, b) => {
+const check_count_gcd = (a: number, b: number): unknown => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", a);
     set_register_contents(m, "b", b);
@@ -855,7 +890,7 @@ const check_count_gcd = (a, b) => {
     return m("instruction_count");
 };
 
-const check_count_reset = () => {
+const check_count_reset = (): List<unknown> => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
@@ -868,7 +903,7 @@ const check_count_reset = () => {
     return list(first, after_reading, m("instruction_count"));
 };
 
-const check_count_factorial = (n) => {
+const check_count_factorial = (n: number): unknown => {
     const m = make_machine(list("n", "val", "continue"), ${factorialOps},
                            ${factorialList});
     set_register_contents(m, "n", n);
@@ -886,38 +921,31 @@ ${simulatorFunctions(['make_new_machine'])}
     { name: 'factorial of 4', kind: 'value', expr: 'check_count_factorial(4)', expected: 38 },
   ],
   budget: BUDGET,
-  solution: countingTracingMachine
-    .replace('    let tracing = false;\n', '')
-    .replace(
-      `            if (tracing) {
+  solution: removing(
+    countingTracingMachine,
+    '    let tracing = false;\n',
+    `            if (tracing) {
                 display(inst_controller_instruction(inst));
             } else {}
 `,
-      '',
-    )
-    .replace(
-      `    const trace = (on) => {
+    `    const trace = (on: boolean): "done" => {
         tracing = on;
         return "done";
     };
 `,
-      '',
-    )
-    .replace(
-      `               : message === "trace_on"
+    `               : message === "trace_on"
                ? trace(true)
                : message === "trace_off"
                ? trace(false)
 `,
-      '',
-    ),
+  ),
 };
 
 export const exercise_5_15: ExerciseSpec = {
   id: '5.15',
   context: `${simulatorWithout(['make_new_machine'])}
 ${checkGcd}
-const check_traced_gcd = (a, b, on) => {
+const check_traced_gcd = (a: number, b: number, on: boolean): unknown => {
     const m = check_gcd_machine();
     m(on ? "trace_on" : "trace_off");
     set_register_contents(m, "a", a);
@@ -926,7 +954,7 @@ const check_traced_gcd = (a, b, on) => {
     return get_register_contents(m, "a");
 };
 
-const check_trace_on_then_off = () => {
+const check_trace_on_then_off = (): void => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
@@ -955,33 +983,37 @@ ${simulatorFunctions(['make_new_machine'])}
     { name: 'the machine still computes', kind: 'value', expr: 'check_traced_gcd(48, 18, true)', expected: 6 },
   ],
   budget: BUDGET,
-  solution: countingTracingMachine
-    .replace('    let instruction_count = 0;\n', '')
-    .replace('            instruction_count = instruction_count + 1;\n', '')
-    .replace(
-      `    const read_instruction_count = () => {
+  solution: removing(
+    countingTracingMachine,
+    '    let instruction_count = 0;\n',
+    '            instruction_count = instruction_count + 1;\n',
+    `    const read_instruction_count = (): number => {
         const count = instruction_count;
         instruction_count = 0;
         return count;
     };
 `,
-      '',
-    )
-    .replace(
-      `               : message === "instruction_count"
+    `               : message === "instruction_count"
                ? read_instruction_count()
 `,
-      '',
-    ),
+  ),
 };
 
-const instructionFunctions = ['extract_labels', 'make_inst', 'inst_controller_instruction', 'inst_execution_fun', 'set_inst_execution_fun'];
+/** What builds and takes apart a machine instruction, including its type, which the exercise changes. */
+const instructionParts = [
+  'extract_labels',
+  'MachineInstruction',
+  'make_inst',
+  'inst_controller_instruction',
+  'inst_execution_fun',
+  'set_inst_execution_fun',
+];
 
 export const exercise_5_16: ExerciseSpec = {
   id: '5.16',
-  context: `${simulatorWithout([...instructionFunctions, 'make_new_machine'])}
+  context: `${simulatorWithout([...instructionParts, 'make_new_machine'])}
 ${checkGcd}
-const check_traced_gcd = () => {
+const check_traced_gcd = (): unknown => {
     const m = check_gcd_machine();
     m("trace_on");
     set_register_contents(m, "a", 206);
@@ -990,7 +1022,7 @@ const check_traced_gcd = () => {
     return m("instruction_count");
 };
 
-const check_two_labels = () => {
+const check_two_labels = (): void => {
     const m = make_machine(list("a"), list(), list(
         go_to(label("first")),
       "first",
@@ -1004,7 +1036,7 @@ const check_two_labels = () => {
 // When tracing, print the labels just before an instruction ahead of it,
 // without changing what the instruction count counts.
 ${countingTracingMachine}
-${simulatorFunctions(instructionFunctions)}
+${simulatorFunctions(instructionParts)}
 `,
   tests: [
     {
@@ -1025,7 +1057,8 @@ ${simulatorFunctions(instructionFunctions)}
     { name: 'the GCD machine still computes', kind: 'value', expr: 'check_gcd(48, 18)', expected: 6 },
   ],
   budget: BUDGET,
-  solution: countingTracingMachine.replace(
+  solution: replacing(
+    countingTracingMachine,
     `            if (tracing) {
                 display(inst_controller_instruction(inst));`,
     `            if (tracing) {
@@ -1033,7 +1066,10 @@ ${simulatorFunctions(instructionFunctions)}
                 display(inst_controller_instruction(inst));`,
   ) +
     `
-const extract_labels = (controller, receive) =>
+const extract_labels = <R>(
+    controller: Controller,
+    receive: (insts: List<MachineInstruction>, labels: List<LabelEntry>) => R
+): R =>
     is_null(controller)
            ? receive(null, null)
            : extract_labels(
@@ -1057,23 +1093,25 @@ const extract_labels = (controller, receive) =>
 
 // An instruction is now a controller instruction, the labels just
 // before it, and its execution function.
-const make_inst = (inst_controller_instruction) =>
+type MachineInstruction = Pair<Instruction, Pair<List<string>, ExecutionFunction | null>>;
+
+const make_inst = (inst_controller_instruction: Instruction): MachineInstruction =>
     pair(inst_controller_instruction, pair(null, null));
 
-const inst_controller_instruction = (inst) =>
+const inst_controller_instruction = (inst: MachineInstruction): Instruction =>
     head(inst);
 
-const inst_labels = (inst) =>
+const inst_labels = (inst: MachineInstruction): List<string> =>
     head(tail(inst));
 
-const add_inst_label = (inst, label_name) => {
+const add_inst_label = (inst: MachineInstruction, label_name: string): void => {
     set_head(tail(inst), pair(label_name, inst_labels(inst)));
 };
 
-const inst_execution_fun = (inst) =>
+const inst_execution_fun = (inst: MachineInstruction): ExecutionFunction | null =>
     tail(tail(inst));
 
-const set_inst_execution_fun = (inst, fun) => {
+const set_inst_execution_fun = (inst: MachineInstruction, fun: ExecutionFunction): void => {
     set_tail(tail(inst), fun);
 };
 `,
@@ -1083,7 +1121,7 @@ export const exercise_5_17: ExerciseSpec = {
   id: '5.17',
   context: `${simulatorWithout(['make_register', 'make_new_machine'])}
 ${checkGcd}
-const check_traced_register = (name) => {
+const check_traced_register = (name: string): void => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
@@ -1091,7 +1129,7 @@ const check_traced_register = (name) => {
     start(m);
 };
 
-const check_trace_on_then_off = () => {
+const check_trace_on_then_off = (): void => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
@@ -1130,21 +1168,21 @@ ${simulatorFunctions(['make_register', 'make_new_machine'])}
     { name: 'the GCD machine still computes', kind: 'value', expr: 'check_gcd(206, 40)', expected: 2 },
   ],
   budget: BUDGET,
-  solution: `const make_register = (name) => {
-    let contents = "*unassigned*";
+  solution: `const make_register = (name: string): Register => {
+    let contents: unknown = "*unassigned*";
     let tracing = false;
-    const set = (value) => {
+    const set = (value: unknown): void => {
         if (tracing) {
             display(name + ": " + stringify(contents) +
                     " -> " + stringify(value));
         } else {}
         contents = value;
     };
-    const trace = (on) => {
+    const trace = (on: boolean): "done" => {
         tracing = on;
         return "done";
     };
-    const dispatch = (message) =>
+    const dispatch = (message: string): unknown =>
         message === "get"
                ? contents
                : message === "set"
@@ -1156,7 +1194,8 @@ ${simulatorFunctions(['make_register', 'make_new_machine'])}
                : error(message, "unknown request -- make_register");
     return dispatch;
 };
-${simulatorFunctions(['make_new_machine']).replace(
+${replacing(
+  simulatorFunctions(['make_new_machine']),
   `               : message === "operations"
                ? the_ops
 `,
@@ -1175,12 +1214,12 @@ export const exercise_5_18: ExerciseSpec = {
   id: '5.18',
   context: `${simulatorWithout(['assemble', 'make_new_machine'])}
 ${checkGcd}
-const check_gcd_registers = (m) =>
+const check_gcd_registers = (m: Machine): List<unknown> =>
     list(get_register_contents(m, "a"),
                 get_register_contents(m, "b"),
                 get_register_contents(m, "t"));
 
-const check_started = (a, b) => {
+const check_started = (a: number, b: number): Machine => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", a);
     set_register_contents(m, "b", b);
@@ -1189,23 +1228,23 @@ const check_started = (a, b) => {
     return m;
 };
 
-const check_at_breakpoint = () =>
+const check_at_breakpoint = (): List<unknown> =>
     check_gcd_registers(check_started(206, 40));
 
-const check_proceed = () => {
+const check_proceed = (): List<unknown> => {
     const m = check_started(206, 40);
     proceed_machine(m);
     return check_gcd_registers(m);
 };
 
-const check_cancel = () => {
+const check_cancel = (): unknown => {
     const m = check_started(206, 40);
     cancel_breakpoint(m, "test_b", 4);
     proceed_machine(m);
     return get_register_contents(m, "a");
 };
 
-const check_cancel_all = () => {
+const check_cancel_all = (): unknown => {
     const m = check_started(206, 40);
     set_breakpoint(m, "test_b", 1);
     cancel_all_breakpoints(m);
@@ -1213,7 +1252,7 @@ const check_cancel_all = () => {
     return get_register_contents(m, "a");
 };
 
-const check_change_state = () => {
+const check_change_state = (): unknown => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
@@ -1230,19 +1269,19 @@ const check_change_state = () => {
 // nth instruction after label, printing the label and n.
 ${simulatorFunctions(['assemble', 'make_new_machine'])}
 
-const set_breakpoint = (machine, label, n) => {
+const set_breakpoint = (machine: Machine, label: string, n: number): unknown => {
     // your answer
 };
 
-const proceed_machine = (machine) => {
+const proceed_machine = (machine: Machine): unknown => {
     // your answer
 };
 
-const cancel_breakpoint = (machine, label, n) => {
+const cancel_breakpoint = (machine: Machine, label: string, n: number): unknown => {
     // your answer
 };
 
-const cancel_all_breakpoints = (machine) => {
+const cancel_all_breakpoints = (machine: Machine): unknown => {
     // your answer
 };
 `,
@@ -1256,7 +1295,7 @@ const cancel_all_breakpoints = (machine) => {
     { name: 'without breakpoints the machine runs to the end', kind: 'value', expr: 'check_gcd(206, 40)', expected: 2 },
   ],
   budget: BUDGET,
-  solution: `const assemble = (controller, machine) =>
+  solution: `const assemble = (controller: Controller, machine: Machine): List<MachineInstruction> =>
     extract_labels(controller,
                           (insts, labels) => {
                               update_insts(insts, labels, machine);
@@ -1264,20 +1303,20 @@ const cancel_all_breakpoints = (machine) => {
                               return insts;
                           });
 
-const make_new_machine = () => {
+const make_new_machine = (): Machine => {
     const pc = make_register("pc");
     const flag = make_register("flag");
     const stack = make_stack();
-    let the_instruction_sequence = null;
-    let the_labels = null;
+    let the_instruction_sequence: List<MachineInstruction> = null;
+    let the_labels: List<LabelEntry> = null;
     // Each breakpoint: list(instruction, label, n).
-    let breakpoints = null;
+    let breakpoints: List<List<unknown>> = null;
     let the_ops = list(list("initialize_stack",
                             () => stack("initialize")),
                        list("print_stack_statistics",
                             () => stack("print_statistics")));
     let register_table = list(list("pc", pc), list("flag", flag));
-    const allocate_register = (name) => {
+    const allocate_register = (name: string): "register allocated" => {
         if (is_undefined(assoc(name, register_table))) {
             register_table = pair(list(name, make_register(name)),
                                   register_table);
@@ -1286,18 +1325,18 @@ const make_new_machine = () => {
         }
         return "register allocated";
     };
-    const lookup_register = (name) => {
+    const lookup_register = (name: string): Register => {
         const val = assoc(name, register_table);
         return is_undefined(val)
                ? error(name, "unknown register")
                : head(tail(val));
     };
-    const breakpoint_at = (inst) => {
+    const breakpoint_at = (inst: MachineInstruction): List<unknown> => {
         const found = filter(b => head(b) === inst, breakpoints);
         return is_null(found) ? null : head(found);
     };
     // When resuming, the instruction at the breakpoint runs first.
-    const execute = (resuming) => {
+    const execute = (resuming: boolean): "done" | "stopped" => {
         const insts = get_contents(pc);
         if (is_null(insts)) {
             return "done";
@@ -1314,23 +1353,23 @@ const make_new_machine = () => {
             }
         }
     };
-    const set_breakpoint = (label_name, n) => {
+    const set_breakpoint = (label_name: string, n: number): "done" => {
         const inst = list_ref(lookup_label(the_labels, label_name), n - 1);
         breakpoints = pair(list(inst, label_name, n), breakpoints);
         return "done";
     };
-    const cancel_breakpoint = (label_name, n) => {
+    const cancel_breakpoint = (label_name: string, n: number): "done" => {
         breakpoints = filter(b => !(list_ref(b, 1) === label_name &&
                                     list_ref(b, 2) === n),
                              breakpoints);
         return "done";
     };
-    const cancel_all_breakpoints = () => {
+    const cancel_all_breakpoints = (): "done" => {
         breakpoints = null;
         return "done";
     };
-    const dispatch = (message) => {
-        const start = () => {
+    const dispatch = (message: string): unknown => {
+        const start = (): "done" => {
             set_contents(pc, the_instruction_sequence);
             return execute(false);
         };
@@ -1363,16 +1402,16 @@ const make_new_machine = () => {
     return dispatch;
 };
 
-const set_breakpoint = (machine, label, n) =>
+const set_breakpoint = (machine: Machine, label: string, n: number): unknown =>
     machine("set_breakpoint")(label, n);
 
-const proceed_machine = (machine) =>
+const proceed_machine = (machine: Machine): unknown =>
     machine("proceed");
 
-const cancel_breakpoint = (machine, label, n) =>
+const cancel_breakpoint = (machine: Machine, label: string, n: number): unknown =>
     machine("cancel_breakpoint")(label, n);
 
-const cancel_all_breakpoints = (machine) =>
+const cancel_all_breakpoints = (machine: Machine): unknown =>
     machine("cancel_all_breakpoints");
 `,
 };

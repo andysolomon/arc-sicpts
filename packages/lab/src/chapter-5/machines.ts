@@ -254,7 +254,7 @@ const factorial_machine =
              list("-", (a, b) => a - b)),
         controller_sequence(factorial_recursive_controller));
 
-const factorial_statistics = (n) => {
+const factorial_statistics = (n: number): void => {
     factorial_machine("stack")("initialize");
     set_register_contents(factorial_machine, "n", n);
     start(factorial_machine);

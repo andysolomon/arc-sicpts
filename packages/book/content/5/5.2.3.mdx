@@ -5,8 +5,15 @@ import { assemblyTimeErrorProgram, executionFunctionProgram, simulatorSource } f
 The assembler calls `make_execution_function` to generate the execution function for a controller instruction. Like the `analyze` function in the evaluator of §4.1.7, this dispatches on the type of instruction to generate the appropriate execution function. The details of these execution functions determine the meaning of the individual instructions in the register-machine language.
 
 ```js
-const make_execution_function = (inst, labels, machine,
-                                 pc, flag, stack, ops) =>
+const make_execution_function = (
+    inst: Instruction,
+    labels: List<LabelEntry>,
+    machine: Machine,
+    pc: Register,
+    flag: Register,
+    stack: Stack,
+    ops: Operations
+): ExecutionFunction =>
     type(inst) === "assign"
            ? make_assign_ef(inst, machine, labels, ops, pc)
            : type(inst) === "test"
@@ -31,7 +38,7 @@ const make_execution_function = (inst, labels, machine,
 The elements of the controller sequence received by `make_machine` and passed to `assemble` are strings (for labels) and tagged lists (for instructions). The tag in an instruction is a string that identifies the instruction type, such as `"go_to"`, and the remaining elements of the list contain the arguments, such as the destination of the `go_to`. The dispatch in `make_execution_function` uses
 
 ```js
-const type = (instruction) => head(instruction);
+const type = (instruction: Instruction): string => head(instruction);
 ```
 
 The tagged lists are constructed when the `list` expression that is the third argument to `make_machine` is evaluated. Each argument to that `list` is either a string (which evaluates to itself) or a call to a constructor for an instruction tagged list. For example, `assign("b", reg("t"))` calls the constructor `assign` with arguments `"b"` and the result of calling the constructor `reg` with the argument `"t"`. The constructors and their arguments determine the syntax of the individual instructions in the register-machine language. The instruction constructors and selectors are shown below, along with the execution-function generators that use the selectors.
@@ -41,7 +48,13 @@ The tagged lists are constructed when the `list` expression that is the third ar
 `make_assign_ef` makes execution functions for `assign` instructions:
 
 ```js
-const make_assign_ef = (inst, machine, labels, operations, pc) => {
+const make_assign_ef = (
+    inst: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    operations: Operations,
+    pc: Register
+): ExecutionFunction => {
     const target = get_register(machine, assign_reg_name(inst));
     const value_exp = assign_value_exp(inst);
     const value_fun =
@@ -58,11 +71,11 @@ const make_assign_ef = (inst, machine, labels, operations, pc) => {
 The function `assign` constructs `assign` instructions. The selectors `assign_reg_name` and `assign_value_exp` extract the register name and value expression from an `assign` instruction.
 
 ```js
-const assign = (register_name, source) =>
+const assign = (register_name: string, source: Instruction): Instruction =>
     list("assign", register_name, source);
-const assign_reg_name = (assign_instruction) =>
+const assign_reg_name = (assign_instruction: Instruction): string =>
     head(tail(assign_instruction));
-const assign_value_exp = (assign_instruction) =>
+const assign_value_exp = (assign_instruction: Instruction): Instruction =>
     head(tail(tail(assign_instruction)));
 ```
 
@@ -71,7 +84,7 @@ const assign_value_exp = (assign_instruction) =>
 The result returned by `make_assign_ef` is the execution function for the `assign` instruction. When this function is called (by the machine model's `execute` function), it sets the contents of the target register to the result obtained by executing `value_fun`. Then it advances the `pc` to the next instruction by running the function
 
 ```js
-const advance_pc = (pc) => {
+const advance_pc = (pc: Register): void => {
     set_contents(pc, tail(get_contents(pc)));
 };
 ```
@@ -93,7 +106,14 @@ An execution function made and called by hand. The machine has no controller (`n
 `make_test_ef` handles `test` instructions in a similar way. It extracts the expression that specifies the condition to be tested and generates an execution function for it. At simulation time, the function for the condition is called, the result is assigned to the `flag` register, and the `pc` is advanced:
 
 ```js
-const make_test_ef = (inst, machine, labels, operations, flag, pc) => {
+const make_test_ef = (
+    inst: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    operations: Operations,
+    flag: Register,
+    pc: Register
+): ExecutionFunction => {
     const condition = test_condition(inst);
     if (is_operation_exp(condition)) {
         const condition_fun = make_operation_exp_ef(
@@ -108,16 +128,22 @@ const make_test_ef = (inst, machine, labels, operations, flag, pc) => {
     }
 };
 
-const test = (condition) => list("test", condition);
+const test = (condition: Instruction): Instruction => list("test", condition);
 
-const test_condition = (test_instruction) =>
+const test_condition = (test_instruction: Instruction): Instruction =>
     head(tail(test_instruction));
 ```
 
 The execution function for a `branch` instruction checks the contents of the `flag` register and either sets the contents of the `pc` to the branch destination (if the branch is taken) or else just advances the `pc` (if the branch is not taken). Notice that the indicated destination in a `branch` instruction must be a label, and `make_branch_ef` enforces this. Notice also that the label is looked up at assembly time, not each time the `branch` instruction is simulated.
 
 ```js
-const make_branch_ef = (inst, machine, labels, flag, pc) => {
+const make_branch_ef = (
+    inst: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    flag: Register,
+    pc: Register
+): ExecutionFunction => {
     const dest = branch_dest(inst);
     if (is_label_exp(dest)) {
         const insts = lookup_label(labels, label_exp_label(dest));
@@ -133,16 +159,21 @@ const make_branch_ef = (inst, machine, labels, flag, pc) => {
     }
 };
 
-const branch = (label) => list("branch", label);
+const branch = (label: Instruction): Instruction => list("branch", label);
 
-const branch_dest = (branch_instruction) =>
+const branch_dest = (branch_instruction: Instruction): Instruction =>
     head(tail(branch_instruction));
 ```
 
 A `go_to` instruction is similar to a branch, except that the destination may be specified either as a label or as a register, and there is no condition to check: the `pc` is always set to the new destination.
 
 ```js
-const make_go_to_ef = (inst, machine, labels, pc) => {
+const make_go_to_ef = (
+    inst: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    pc: Register
+): ExecutionFunction => {
     const dest = go_to_dest(inst);
     if (is_label_exp(dest)) {
         const insts = lookup_label(labels, label_exp_label(dest));
@@ -155,9 +186,9 @@ const make_go_to_ef = (inst, machine, labels, pc) => {
     }
 };
 
-const go_to = (label) => list("go_to", label);
+const go_to = (label: Instruction): Instruction => list("go_to", label);
 
-const go_to_dest = (go_to_instruction) =>
+const go_to_dest = (go_to_instruction: Instruction): Instruction =>
     head(tail(go_to_instruction));
 ```
 
@@ -166,14 +197,24 @@ const go_to_dest = (go_to_instruction) =>
 The stack instructions `save` and `restore` simply use the stack with the designated register and advance the `pc`:
 
 ```js
-const make_save_ef = (inst, machine, stack, pc) => {
+const make_save_ef = (
+    inst: Instruction,
+    machine: Machine,
+    stack: Stack,
+    pc: Register
+): ExecutionFunction => {
     const reg = get_register(machine, stack_inst_reg_name(inst));
     return () => {
                push(stack, get_contents(reg));
                advance_pc(pc);
            };
 };
-const make_restore_ef = (inst, machine, stack, pc) => {
+const make_restore_ef = (
+    inst: Instruction,
+    machine: Machine,
+    stack: Stack,
+    pc: Register
+): ExecutionFunction => {
     const reg = get_register(machine, stack_inst_reg_name(inst));
     return () => {
                set_contents(reg, pop(stack));
@@ -181,36 +222,42 @@ const make_restore_ef = (inst, machine, stack, pc) => {
            };
 };
 
-const save = (reg) => list("save", reg);
+const save = (reg: string): Instruction => list("save", reg);
 
-const restore = (reg) => list("restore", reg);
+const restore = (reg: string): Instruction => list("restore", reg);
 
-const stack_inst_reg_name = (stack_instruction) =>
+const stack_inst_reg_name = (stack_instruction: Instruction): string =>
     head(tail(stack_instruction));
 ```
 
 The two marker instructions that §5.4 needs send the stack its `push_marker` and `pop_marker` requests (§5.2.1). `revert_stack_to_marker` throws away everything pushed since the most recent `push_marker_to_stack`.
 
 ```js
-const make_push_marker_to_stack_ef = (machine, stack, pc) =>
+const make_push_marker_to_stack_ef = (machine: Machine, stack: Stack, pc: Register): ExecutionFunction =>
     () => {
                push_marker(stack);
                advance_pc(pc);
            };
-const make_revert_stack_to_marker_ef = (machine, stack, pc) =>
+const make_revert_stack_to_marker_ef = (machine: Machine, stack: Stack, pc: Register): ExecutionFunction =>
     () => {
                pop_marker(stack);
                advance_pc(pc);
            };
 
-const push_marker_to_stack = () => list("push_marker_to_stack");
-const revert_stack_to_marker = () => list("revert_stack_to_marker");
+const push_marker_to_stack = (): Instruction => list("push_marker_to_stack");
+const revert_stack_to_marker = (): Instruction => list("revert_stack_to_marker");
 ```
 
 The final instruction type, handled by `make_perform_ef`, generates an execution function for the action to be performed. At simulation time, the action function is executed and the `pc` advanced.
 
 ```js
-const make_perform_ef = (inst, machine, labels, operations, pc) => {
+const make_perform_ef = (
+    inst: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    operations: Operations,
+    pc: Register
+): ExecutionFunction => {
     const action = perform_action(inst);
     if (is_operation_exp(action)) {
         const action_fun = make_operation_exp_ef(action, machine,
@@ -224,9 +271,9 @@ const make_perform_ef = (inst, machine, labels, operations, pc) => {
     }
 };
 
-const perform = (action) => list("perform", action);
+const perform = (action: Instruction): Instruction => list("perform", action);
 
-const perform_action = (perform_instruction) =>
+const perform_action = (perform_instruction: Instruction): Instruction =>
     head(tail(perform_instruction));
 ```
 
@@ -235,7 +282,11 @@ const perform_action = (perform_instruction) =>
 The value of a `reg`, `label` or `constant` expression may be needed for assignment to a register (`make_assign_ef`, above) or for input to an operation (`make_operation_exp_ef`, below). The following function generates execution functions to produce values for these expressions during the simulation:
 
 ```js
-const make_primitive_exp_ef = (exp, machine, labels) => {
+const make_primitive_exp_ef = (
+    exp: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>
+): (() => unknown) => {
     if (is_constant_exp(exp)) {
         const c = constant_exp_value(exp);
         return () => c;
@@ -254,30 +305,35 @@ const make_primitive_exp_ef = (exp, machine, labels) => {
 The syntax of `reg`, `label` and `constant` expressions is determined by the following constructors, along with corresponding predicates and selectors. `is_tagged_list` is the function of §4.1.2.
 
 ```js
-const reg = (name) => list("reg", name);
+const reg = (name: string): Instruction => list("reg", name);
 
-const is_register_exp = (exp) => is_tagged_list(exp, "reg");
+const is_register_exp = (exp: Instruction): boolean => is_tagged_list(exp, "reg");
 
-const register_exp_reg = (exp) => head(tail(exp));
+const register_exp_reg = (exp: Instruction): string => head(tail(exp));
 
-const constant = (value) => list("constant", value);
+const constant = (value: unknown): Instruction => list("constant", value);
 
-const is_constant_exp = (exp) =>
+const is_constant_exp = (exp: Instruction): boolean =>
     is_tagged_list(exp, "constant");
 
-const constant_exp_value = (exp) => head(tail(exp));
+const constant_exp_value = (exp: Instruction): unknown => head(tail(exp));
 
-const label = (name) => list("label", name);
+const label = (name: string): Instruction => list("label", name);
 
-const is_label_exp = (exp) => is_tagged_list(exp, "label");
+const is_label_exp = (exp: Instruction): boolean => is_tagged_list(exp, "label");
 
-const label_exp_label = (exp) => head(tail(exp));
+const label_exp_label = (exp: Instruction): string => head(tail(exp));
 ```
 
 The instructions `assign`, `perform` and `test` may include the application of a machine operation (specified by an `op` expression) to some operands (specified by `reg` and `constant` expressions). The following function produces an execution function for an operation expression, a list containing the operation and operand expressions from the instruction:
 
 ```js
-const make_operation_exp_ef = (exp, machine, labels, operations) => {
+const make_operation_exp_ef = (
+    exp: Instruction,
+    machine: Machine,
+    labels: List<LabelEntry>,
+    operations: Operations
+): (() => unknown) => {
     const op = lookup_prim(operation_exp_op(exp), operations);
     const afuns = map(e => make_primitive_exp_ef(e, machine, labels),
                       operation_exp_operands(exp));
@@ -289,14 +345,14 @@ const make_operation_exp_ef = (exp, machine, labels, operations) => {
 The syntax of operation expressions is determined by
 
 ```js
-const op = (name) => list("op", name);
+const op = (name: string): Instruction => list("op", name);
 
-const is_operation_exp = (exp) =>
+const is_operation_exp = (exp: Instruction): boolean =>
     is_pair(exp) && is_tagged_list(head(exp), "op");
 
-const operation_exp_op = (op_exp) => head(tail(head(op_exp)));
+const operation_exp_op = (op_exp: Instruction): string => head(tail(head(op_exp)));
 
-const operation_exp_operands = (op_exp) => tail(op_exp);
+const operation_exp_operands = (op_exp: Instruction): List<Instruction> => tail(op_exp);
 ```
 
 Observe that the treatment of operation expressions is very much like the treatment of function applications by `analyze_application` in the evaluator of §4.1.7, in that we generate an execution function for each operand. At simulation time, we call the operand functions and apply the JavaScript function that simulates the operation to the resulting values. We use `apply_in_underlying_javascript`, as `apply_primitive_function` did in §4.1.4, to apply `op` to all the elements of the argument list as if they were separate arguments. Without it, `op` would be restricted to be a function of one argument.
@@ -304,7 +360,7 @@ Observe that the treatment of operation expressions is very much like the treatm
 The simulation function is found by looking up the operation name in the operation table for the machine:
 
 ```js
-const lookup_prim = (symbol, operations) => {
+const lookup_prim = (symbol: string, operations: Operations): unknown => {
     const val = assoc(symbol, operations);
     return is_undefined(val)
            ? error(symbol, "unknown operation -- assemble")

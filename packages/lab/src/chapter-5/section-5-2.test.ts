@@ -27,9 +27,9 @@ describe('section 5.2: the examples on the simulator written in Source', () => {
     const lab = run(gcdMachineProgram);
     expect(source.value).toBe('2');
     expect(lab.value).toBe('2');
-    // §5.2 says the simulation is slow: the editor shows roughly 11 000 steps against 500.
-    expect(source.steps).toBeGreaterThan(10_000);
-    expect(source.steps).toBeLessThan(12_000);
+    // §5.2 says the simulation is slow: the editor shows roughly 10 000 steps against 500.
+    expect(source.steps).toBeGreaterThan(9_000);
+    expect(source.steps).toBeLessThan(11_000);
     expect(lab.steps).toBeLessThan(500);
   });
 

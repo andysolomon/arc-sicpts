@@ -8,7 +8,12 @@ import { ecevalCompiledControllerSource, ecevalMachineSource, quote, readResults
  * one subsection; `compilerSource` is all of it, ready to be a prelude.
  */
 
-export const compileDispatch = `const compile = (component, target, linkage) =>
+export const compileDispatch = `type Component = List<unknown>;           // a tagged list made by parse (§4.1.2)
+type Target = string;                      // the register that gets the value
+type Linkage = "next" | "return" | string; // or a label to go to
+type InstructionSequence = List<unknown>;  // list(needs, modifies, instructions)
+
+const compile = (component: Component, target: Target, linkage: Linkage): InstructionSequence =>
     is_literal(component)
            ? compile_literal(component, target, linkage)
            : is_name(component)
@@ -38,11 +43,15 @@ export const compileDispatch = `const compile = (component, target, linkage) =>
            ? compile_assignment(component, target, linkage)
            : error(component, "unknown component type -- compile");
 
-const make_instruction_sequence = (needs, modifies, instructions) =>
+const make_instruction_sequence = (
+    needs: List<string>,
+    modifies: List<string>,
+    instructions: List<Instruction | string>
+): InstructionSequence =>
     list(needs, modifies, instructions);
 `;
 
-export const compileLinkage = `const compile_linkage = (linkage) =>
+export const compileLinkage = `const compile_linkage = (linkage: Linkage): InstructionSequence =>
     linkage === "return"
            ? make_instruction_sequence(list("continue"), null,
                                        list(go_to(reg("continue"))))
@@ -51,20 +60,20 @@ export const compileLinkage = `const compile_linkage = (linkage) =>
            : make_instruction_sequence(null, null,
                                        list(go_to(label(linkage))));
 
-const end_with_linkage = (linkage, instruction_sequence) =>
+const end_with_linkage = (linkage: Linkage, instruction_sequence: InstructionSequence): InstructionSequence =>
     preserving(list("continue"),
                       instruction_sequence,
                       compile_linkage(linkage));
 `;
 
-export const compileSimple = `const compile_literal = (component, target, linkage) => {
+export const compileSimple = `const compile_literal = (component: Component, target: Target, linkage: Linkage): InstructionSequence => {
     const literal = literal_value(component);
     return end_with_linkage(linkage,
                make_instruction_sequence(null, list(target),
                    list(assign(target, constant(literal)))));
 };
 
-const compile_name = (component, target, linkage) => {
+const compile_name = (component: Component, target: Target, linkage: Linkage): InstructionSequence => {
     const symbol = symbol_of_name(component);
     return end_with_linkage(linkage,
                make_instruction_sequence(list("env"), list(target),
@@ -74,14 +83,14 @@ const compile_name = (component, target, linkage) => {
                                     reg("env"))))));
 };
 
-const compile_assignment = (component, target, linkage) =>
+const compile_assignment = (component: Component, target: Target, linkage: Linkage): InstructionSequence =>
     compile_assignment_declaration(
                assignment_symbol(component),
                assignment_value_expression(component),
                reg("val"),
                target, linkage);
 
-const compile_declaration = (component, target, linkage) =>
+const compile_declaration = (component: Component, target: Target, linkage: Linkage): InstructionSequence =>
     compile_assignment_declaration(
                declaration_symbol(component),
                declaration_value_expression(component),
@@ -89,8 +98,12 @@ const compile_declaration = (component, target, linkage) =>
                target, linkage);
 
 const compile_assignment_declaration = (
-             symbol, value_expression, final_value,
-             target, linkage) => {
+    symbol: string,
+    value_expression: Component,
+    final_value: Instruction,
+    target: Target,
+    linkage: Linkage
+): InstructionSequence => {
     const get_value_code = compile(value_expression, "val", "next");
     return end_with_linkage(linkage,
                preserving(list("env"),
@@ -107,16 +120,16 @@ const compile_assignment_declaration = (
 
 export const compileLabels = `let label_counter = 0;
 
-const new_label_number = () => {
+const new_label_number = (): number => {
     label_counter = label_counter + 1;
     return label_counter;
 };
 
-const make_label = (string) =>
+const make_label = (string: string): string =>
     string + stringify(new_label_number());
 `;
 
-export const compileConditional = `const compile_conditional = (component, target, linkage) => {
+export const compileConditional = `const compile_conditional = (component: Component, target: Target, linkage: Linkage): InstructionSequence => {
     const t_branch = make_label("true_branch");
     const f_branch = make_label("false_branch");
     const after_cond = make_label("after_cond");
@@ -142,7 +155,7 @@ export const compileConditional = `const compile_conditional = (component, targe
 };
 `;
 
-export const compileSequence = `const compile_sequence = (seq, target, linkage) =>
+export const compileSequence = `const compile_sequence = (seq: List<Component>, target: Target, linkage: Linkage): InstructionSequence =>
     is_empty_sequence(seq)
            ? compile_literal(make_literal(undefined), target, linkage)
            : is_last_statement(seq) ||
@@ -153,7 +166,7 @@ export const compileSequence = `const compile_sequence = (seq, target, linkage) 
                  compile_sequence(rest_statements(seq),
                                   target, linkage));
 
-const compile_block = (stmt, target, linkage) => {
+const compile_block = (stmt: Component, target: Target, linkage: Linkage): InstructionSequence => {
     const body = block_body(stmt);
     const locals = scan_out_declarations(body);
     const unassigneds = list_of_unassigned(locals);
@@ -167,7 +180,7 @@ const compile_block = (stmt, target, linkage) => {
 };
 `;
 
-export const compileLambda = `const compile_lambda_expression = (exp, target, linkage) => {
+export const compileLambda = `const compile_lambda_expression = (exp: Component, target: Target, linkage: Linkage): InstructionSequence => {
     const fun_entry = make_label("entry");
     const after_lambda = make_label("after_lambda");
     const lambda_linkage =
@@ -185,7 +198,7 @@ export const compileLambda = `const compile_lambda_expression = (exp, target, li
                after_lambda);
 };
 
-const compile_lambda_body = (exp, fun_entry) => {
+const compile_lambda_body = (exp: Component, fun_entry: string): InstructionSequence => {
     const params  = lambda_parameter_symbols(exp);
     return append_instruction_sequences(
         make_instruction_sequence(list("env", "fun", "argl"),
@@ -203,13 +216,13 @@ const compile_lambda_body = (exp, fun_entry) => {
                 "val", "next"));
 };
 
-const append_return_undefined = (body) =>
+const append_return_undefined = (body: Component): Component =>
     list("sequence", list(body,
                                  list("return_statement",
                                       list("literal", undefined))));
 `;
 
-export const compileApplication = `const compile_application = (exp, target, linkage) => {
+export const compileApplication = `const compile_application = (exp: Component, target: Target, linkage: Linkage): InstructionSequence => {
     const fun_code = compile(function_expression(exp), "fun", "next");
     const argument_codes = map(arg => compile(arg, "val", "next"),
                                arg_expressions(exp));
@@ -220,7 +233,7 @@ export const compileApplication = `const compile_application = (exp, target, lin
                           compile_function_call(target, linkage)));
 };
 
-const construct_arglist = (arg_codes) => {
+const construct_arglist = (arg_codes: List<InstructionSequence>): InstructionSequence => {
     if (is_null(arg_codes)) {
         return make_instruction_sequence(null, list("argl"),
                    list(assign("argl", constant(null))));
@@ -240,7 +253,7 @@ const construct_arglist = (arg_codes) => {
     }
 };
 
-const code_to_get_rest_args = (arg_codes) => {
+const code_to_get_rest_args = (arg_codes: List<InstructionSequence>): InstructionSequence => {
     const code_for_next_arg =
         preserving(list("argl"),
             head(arg_codes),
@@ -254,7 +267,7 @@ const code_to_get_rest_args = (arg_codes) => {
                         code_to_get_rest_args(tail(arg_codes)));
 };
 
-const compile_function_call = (target, linkage) => {
+const compile_function_call = (target: Target, linkage: Linkage): InstructionSequence => {
     const primitive_branch = make_label("primitive_branch");
     const compiled_branch = make_label("compiled_branch");
     const after_call = make_label("after_call");
@@ -282,7 +295,7 @@ const compile_function_call = (target, linkage) => {
 
 const all_regs = list("env", "fun", "val", "argl", "continue");
 
-const compile_fun_appl = (target, linkage) => {
+const compile_fun_appl = (target: Target, linkage: Linkage): InstructionSequence => {
     const fun_return = make_label("fun_return");
     return target === "val" && linkage !== "return"
            ? make_instruction_sequence(list("fun"), all_regs,
@@ -315,7 +328,7 @@ const compile_fun_appl = (target, linkage) => {
              error(target, "return linkage, target not val -- compile");
 };
 
-const compile_return_statement = (stmt, target, linkage) =>
+const compile_return_statement = (stmt: Component, target: Target, linkage: Linkage): InstructionSequence =>
     append_instruction_sequences(
                make_instruction_sequence(null, list("continue"),
                    list(revert_stack_to_marker(),
@@ -323,19 +336,22 @@ const compile_return_statement = (stmt, target, linkage) =>
                compile(return_expression(stmt), "val", "return"));
 `;
 
-export const compileCombining = `const registers_needed = (s) =>
+export const compileCombining = `const registers_needed = (s: InstructionSequence | string): List<string> =>
     is_string(s) ? null : head(s);
-const registers_modified = (s) =>
+const registers_modified = (s: InstructionSequence | string): List<string> =>
     is_string(s) ? null : head(tail(s));
-const instructions = (s) =>
+const instructions = (s: InstructionSequence | string): List<Instruction | string> =>
     is_string(s) ? list(s) : head(tail(tail(s)));
 
-const needs_register = (seq, reg) =>
+const needs_register = (seq: InstructionSequence, reg: string): boolean =>
     ! is_null(member(reg, registers_needed(seq)));
-const modifies_register = (seq, reg) =>
+const modifies_register = (seq: InstructionSequence, reg: string): boolean =>
     ! is_null(member(reg, registers_modified(seq)));
 
-const append_instruction_sequences = (seq1, seq2) =>
+const append_instruction_sequences = (
+    seq1: InstructionSequence | string,
+    seq2: InstructionSequence | string
+): InstructionSequence =>
     make_instruction_sequence(
                list_union(registers_needed(seq1),
                           list_difference(registers_needed(seq2),
@@ -344,20 +360,24 @@ const append_instruction_sequences = (seq1, seq2) =>
                           registers_modified(seq2)),
                append(instructions(seq1), instructions(seq2)));
 
-const list_union = (s1, s2) =>
+const list_union = <T>(s1: List<T>, s2: List<T>): List<T> =>
     is_null(s1)
            ? s2
            : is_null(member(head(s1), s2))
            ? pair(head(s1), list_union(tail(s1), s2))
            : list_union(tail(s1), s2);
-const list_difference = (s1, s2) =>
+const list_difference = <T>(s1: List<T>, s2: List<T>): List<T> =>
     is_null(s1)
            ? null
            : is_null(member(head(s1), s2))
            ? pair(head(s1), list_difference(tail(s1), s2))
            : list_difference(tail(s1), s2);
 
-const preserving = (regs, seq1, seq2) => {
+const preserving = (
+    regs: List<string>,
+    seq1: InstructionSequence,
+    seq2: InstructionSequence
+): InstructionSequence => {
     if (is_null(regs)) {
         return append_instruction_sequences(seq1, seq2);
     } else {
@@ -378,13 +398,19 @@ const preserving = (regs, seq1, seq2) => {
     }
 };
 
-const tack_on_instruction_sequence = (seq, body_seq) =>
+const tack_on_instruction_sequence = (
+    seq: InstructionSequence,
+    body_seq: InstructionSequence
+): InstructionSequence =>
     make_instruction_sequence(
                registers_needed(seq),
                registers_modified(seq),
                append(instructions(seq), instructions(body_seq)));
 
-const parallel_instruction_sequences = (seq1, seq2) =>
+const parallel_instruction_sequences = (
+    seq1: InstructionSequence,
+    seq2: InstructionSequence
+): InstructionSequence =>
     make_instruction_sequence(
                list_union(registers_needed(seq1),
                           registers_needed(seq2)),
@@ -394,7 +420,7 @@ const parallel_instruction_sequences = (seq1, seq2) =>
 `;
 
 /** Printing instruction sequences in the notation of the book (§5.5.7). */
-export const displayInstructionsSource = `const stringify_list = (xs) =>
+export const displayInstructionsSource = `const stringify_list = (xs: List<unknown>): string =>
     is_null(member(head(xs),
                    list("assign", "perform", "op", "label", "branch",
                         "go_to", "save", "restore", "reg", "constant",
@@ -402,15 +428,15 @@ export const displayInstructionsSource = `const stringify_list = (xs) =>
                         "revert_stack_to_marker")))
            ? "list(" + comma_separated(xs) + ")"
            : head(xs) + "(" + comma_separated(tail(xs)) + ")";
-const comma_separated = (elements) =>
+const comma_separated = (elements: List<unknown>): string =>
     accumulate((s, acc) => stringify_instruction(s) +
                                   (acc === "" ? "" : ", " + acc),
                       "", elements);
-const stringify_instruction = (x) =>
+const stringify_instruction = (x: unknown): string =>
     is_string(x) || is_number(x) || is_undefined(x) || is_null(x)
            ? stringify(x)
            : stringify_list(x);
-const display_instructions = (instructions) =>
+const display_instructions = (instructions: List<Instruction | string>): true =>
     for_each(i => { display(stringify_instruction(i) + ","); },
                     instructions);
 `;
@@ -429,7 +455,7 @@ export const compilerSource = [
   displayInstructionsSource,
 ].join('\n');
 
-export const compileAndGoSource = `const compile_and_go = (program) => {
+export const compileAndGoSource = `const compile_and_go = (program: Component): unknown => {
     const instrs = assemble(instructions(compile(program,
                                                  "val", "return")),
                             eceval);
