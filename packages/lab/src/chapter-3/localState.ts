@@ -5,7 +5,7 @@
 /** A withdrawal that remembers the balance in a name the whole program shares. */
 export const withdrawProgram = `let balance = 100;
 
-const withdraw = (amount) => {
+const withdraw = (amount: number): number | string => {
   if (balance >= amount) {
     balance = balance - amount;
     return balance;
@@ -21,7 +21,7 @@ withdraw(15);
 `;
 
 /** The same withdrawal with `balance` made internal to it. */
-export const newWithdrawProgram = `const make_withdraw_balance_100 = () => {
+export const newWithdrawProgram = `const make_withdraw_balance_100 = (): ((amount: number) => number | string) => {
   let balance = 100;
   return amount => {
     if (balance >= amount) {
@@ -41,7 +41,7 @@ display(new_withdraw(60));
 new_withdraw(15);
 `;
 
-export const makeWithdrawDefinition = `const make_withdraw = (balance) =>
+export const makeWithdrawDefinition = `const make_withdraw = (balance: number): ((amount: number) => number | string) =>
   amount => {
     if (balance >= amount) {
       balance = balance - amount;
@@ -63,8 +63,11 @@ display(W2(40));
 W1(40);
 `;
 
-export const makeAccountDefinition = `const make_account = (balance) => {
-  const withdraw = (amount) => {
+export const makeAccountDefinition = `type Transaction = (amount: number) => number | string;
+type Account = (m: "withdraw" | "deposit") => Transaction;
+
+const make_account = (balance: number): Account => {
+  const withdraw = (amount: number): number | string => {
     if (balance >= amount) {
       balance = balance - amount;
       return balance;
@@ -72,11 +75,11 @@ export const makeAccountDefinition = `const make_account = (balance) => {
       return "Insufficient funds";
     }
   };
-  const deposit = (amount) => {
+  const deposit = (amount: number): number => {
     balance = balance + amount;
     return balance;
   };
-  const dispatch = (m) =>
+  const dispatch = (m: "withdraw" | "deposit"): Transaction =>
     m === "withdraw"
       ? withdraw
       : m === "deposit"
@@ -103,7 +106,7 @@ acc("withdraw")(60);
  * Every product stays below 2⁵³, so the arithmetic is exact, and the same
  * `random_init` always gives the same sequence.
  */
-export const randUpdateDefinitions = `const rand_update = (x) =>
+export const randUpdateDefinitions = `const rand_update = (x: number): number =>
   (48271 * x) % 2147483647;
 
 const random_init = 2026;
@@ -126,12 +129,12 @@ display(rand());
 rand();
 `;
 
-export const gcdForRandomDefinition = `const gcd = (a, b) =>
+export const gcdForRandomDefinition = `const gcd = (a: number, b: number): number =>
   b === 0 ? a : gcd(b, a % b);
 `;
 
-export const monteCarloDefinition = `const monte_carlo = (trials, experiment) => {
-  const iter = (trials_remaining, trials_passed) =>
+export const monteCarloDefinition = `const monte_carlo = (trials: number, experiment: () => boolean): number => {
+  const iter = (trials_remaining: number, trials_passed: number): number =>
     trials_remaining === 0
       ? trials_passed / trials
       : experiment()
@@ -146,10 +149,10 @@ export const monteCarloProgram = `${randUpdateDefinitions}
 ${randDefinition}
 ${gcdForRandomDefinition}
 ${monteCarloDefinition}
-const cesaro_test = () =>
+const cesaro_test = (): boolean =>
   gcd(rand(), rand()) === 1;
 
-const estimate_pi = (trials) =>
+const estimate_pi = (trials: number): number =>
   math_sqrt(6 / monte_carlo(trials, cesaro_test));
 
 estimate_pi(1000);
@@ -162,12 +165,12 @@ estimate_pi(1000);
 export const monteCarloSeriesProgram = `${randUpdateDefinitions}
 ${randDefinition}
 ${gcdForRandomDefinition}
-const cesaro_test = () =>
+const cesaro_test = (): boolean =>
   gcd(rand(), rand()) === 1;
 
 // monte_carlo, reporting the estimate of π every 25 trials.
-const monte_carlo_reporting = (trials, experiment) => {
-  const iter = (done, passed) => {
+const monte_carlo_reporting = (trials: number, experiment: () => boolean): number => {
+  const iter = (done: number, passed: number): number => {
     if (done > 0 && done % 25 === 0) {
       display(math_sqrt(6 / (passed / done)));
     } else {}
@@ -181,7 +184,7 @@ const monte_carlo_reporting = (trials, experiment) => {
   return iter(0, 0);
 };
 
-const show_pi = (n) => {
+const show_pi = (n: number): number => {
   if (n > 0) {
     display(math_PI);
     return show_pi(n - 1);
@@ -199,8 +202,8 @@ estimate;
 /** The same estimate with no assignment: the generator's state is threaded through by hand. */
 export const randomGcdTestProgram = `${randUpdateDefinitions}
 ${gcdForRandomDefinition}
-const random_gcd_test = (trials, initial_x) => {
-  const iter = (trials_remaining, trials_passed, x) => {
+const random_gcd_test = (trials: number, initial_x: number): number => {
+  const iter = (trials_remaining: number, trials_passed: number, x: number): number => {
     const x1 = rand_update(x);
     const x2 = rand_update(x1);
     return trials_remaining === 0
@@ -212,7 +215,7 @@ const random_gcd_test = (trials, initial_x) => {
   return iter(trials, 0, initial_x);
 };
 
-const estimate_pi = (trials) =>
+const estimate_pi = (trials: number): number =>
   math_sqrt(6 / random_gcd_test(trials, random_init));
 
 estimate_pi(1000);
@@ -221,13 +224,13 @@ estimate_pi(1000);
 // §3.1.3 The costs of introducing assignment
 
 /** A withdrawal with no check, beside the same thing written without assignment. */
-export const simplifiedWithdrawProgram = `const make_simplified_withdraw = (balance) =>
+export const simplifiedWithdrawProgram = `const make_simplified_withdraw = (balance: number): ((amount: number) => number) =>
   amount => {
     balance = balance - amount;
     return balance;
   };
 
-const make_decrementer = (balance) =>
+const make_decrementer = (balance: number): ((amount: number) => number) =>
   amount => balance - amount;
 
 const W = make_simplified_withdraw(25);
@@ -260,10 +263,10 @@ peter_acc("withdraw")(30);
 `;
 
 /** Factorial in imperative style, with the two assignments in the right order and in the wrong one. */
-export const imperativeFactorialProgram = `const factorial = (n) => {
+export const imperativeFactorialProgram = `const factorial = (n: number): number => {
   let product = 1;
   let counter = 1;
-  const iter = () => {
+  const iter = (): number => {
     if (counter > n) {
       return product;
     } else {
@@ -275,10 +278,10 @@ export const imperativeFactorialProgram = `const factorial = (n) => {
   return iter();
 };
 
-const factorial_swapped = (n) => {
+const factorial_swapped = (n: number): number => {
   let product = 1;
   let counter = 1;
-  const iter = () => {
+  const iter = (): number => {
     if (counter > n) {
       return product;
     } else {

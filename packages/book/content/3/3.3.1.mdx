@@ -128,11 +128,11 @@ The box-and-pointer pictures come from the Laboratory's heap inspector. After ea
 Here is `append` again, next to `append_mutator`, which joins its two lists by changing the last pair of the first, using the helper `last_pair`:
 
 ```js
-const append_mutator = (x, y) => {
+const append_mutator = <T>(x: List<T>, y: List<T>): List<T> => {
   set_tail(last_pair(x), y);
   return x;
 };
-const last_pair = (x) =>
+const last_pair = <T>(x: List<T>): List<T> =>
   is_null(tail(x)) ? x : last_pair(tail(x));
 ```
 
@@ -161,8 +161,8 @@ Write `make_cycle`, which takes a list and makes the tail of its last pair point
 This function is useful, if obscure:
 
 ```js
-const mystery = (x) => {
-  const loop = (x, y) => {
+const mystery = <T>(x: List<T>): List<T> => {
+  const loop = (x: List<T>, y: List<T>): List<T> => {
     if (is_null(x)) {
       return y;
     } else {
@@ -181,7 +181,7 @@ const mystery = (x) => {
 
 **Solution.** `mystery` reverses a list in place: at each step it turns one pair's tail around to point at the pairs already reversed, so no new pair is made. `w` is `list("d", "c", "b", "a")`. `v` still names the pair holding `"a"`, but that pair is now the *last* of the reversed list, its tail `null`, so `v` prints as `list("a")`.
 
-<BoxPointerDiagram source={'function mystery(x) {\n  function loop(x, y) {\n    if (is_null(x)) {\n      return y;\n    } else {\n      const temp = tail(x);\n      set_tail(x, y);\n      return loop(temp, x);\n    }\n  }\n  return loop(x, null);\n}\nconst v = list("a", "b", "c", "d");\nconst w = mystery(v);'} title="v and w after mystery" caption="Four pairs, all of them v's original pairs; v now names the last." />
+<BoxPointerDiagram source={'const mystery = <T>(x: List<T>): List<T> => {\n  const loop = (x: List<T>, y: List<T>): List<T> => {\n    if (is_null(x)) {\n      return y;\n    } else {\n      const temp = tail(x);\n      set_tail(x, y);\n      return loop(temp, x);\n    }\n  };\n  return loop(x, null);\n};\nconst v = list("a", "b", "c", "d");\nconst w = mystery(v);'} title="v and w after mystery" caption="Four pairs, all of them v's original pairs; v now names the last." />
 
 </Solution>
 </Exercise>
@@ -200,7 +200,7 @@ Draw box-and-pointer diagrams that explain what `set_to_wow` does to `z1` and to
 Ben Bitdiddle counts the pairs in a structure like this:
 
 ```js
-const count_pairs = (x) =>
+const count_pairs = (x: unknown): number =>
   ! is_pair(x)
          ? 0
          : count_pairs(head(x)) + count_pairs(tail(x)) + 1;

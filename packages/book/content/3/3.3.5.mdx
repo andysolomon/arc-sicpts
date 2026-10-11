@@ -21,7 +21,7 @@ The network computes like this. When a connector is given a value, by the user o
 **Using the constraint system.** We build the network by making connectors with `make_connector` and attaching constraints to them, packaged as a function in the usual way:
 
 ```js
-const celsius_fahrenheit_converter = (c, f) => {
+const celsius_fahrenheit_converter = (c: Connector, f: Connector): "ok" => {
   const u = make_connector();
   const v = make_connector();
   const w = make_connector();
@@ -76,8 +76,10 @@ Connectors talk to their constraints through two functions: `inform_about_value(
 The adder is a function `me` that answers those two messages. When told of a new value, it looks for two connectors with values and sets the third from them; for that it names itself, `me`, as the informant. When told that a value was lost, it asks all three connectors to forget the values that *it* set (the other values are not its to retract), and then checks whether it can still derive something from what is left:
 
 ```js
-const adder = (a1, a2, sum) => {
-  const process_new_value = () => {
+type Constraint = (request: "I have a value." | "I lost my value.") => void;
+
+const adder = (a1: Connector, a2: Connector, sum: Connector): Constraint => {
+  const process_new_value = (): void => {
     if (has_value(a1) && has_value(a2)) {
       set_value(sum, get_value(a1) + get_value(a2), me);
     } else if (has_value(a1) && has_value(sum)) {
@@ -86,13 +88,13 @@ const adder = (a1, a2, sum) => {
       set_value(a1, get_value(sum) - get_value(a2), me);
     } else {}
   };
-  const process_forget_value = () => {
+  const process_forget_value = (): void => {
     forget_value(sum, me);
     forget_value(a1, me);
     forget_value(a2, me);
     process_new_value();
   };
-  const me = (request) => {
+  const me = (request: "I have a value." | "I lost my value."): void => {
     if (request === "I have a value.") {
       process_new_value();
     } else if (request === "I lost my value.") {
@@ -113,11 +115,15 @@ The multiplier has the same shape, with one extra rule. If either factor is 0, t
 **Representing connectors.** A connector is an object with three pieces of local state: its `value`, the `informant` that set it (`false` when it has no value), and the list of `constraints` it takes part in.
 
 ```js
-const make_connector = () => {
-  let value = false;
-  let informant = false;
-  let constraints = null;
-  const set_my_value = (newval, setter) => {
+type Connector = (request: string) => unknown;
+// Whoever sets a connector's value: a constraint, or a name such as "user".
+type Informant = Constraint | string;
+
+const make_connector = (): Connector => {
+  let value: number | false = false;
+  let informant: Informant | false = false;
+  let constraints: List<Constraint> = null;
+  const set_my_value = (newval: number, setter: Informant): "done" | "ignored" => {
     if (!has_value(me)) {
       value = newval;
       informant = setter;
@@ -128,7 +134,7 @@ const make_connector = () => {
       return "ignored";
     }
   };
-  const forget_my_value = (retractor) => {
+  const forget_my_value = (retractor: Informant): "done" | "ignored" => {
     if (retractor === informant) {
       informant = false;
       return for_each_except(retractor, inform_about_no_value, constraints);
@@ -136,7 +142,7 @@ const make_connector = () => {
       return "ignored";
     }
   };
-  const connect = (new_constraint) => {
+  const connect = (new_constraint: Constraint): "done" => {
     if (is_null(member(new_constraint, constraints))) {
       constraints = pair(new_constraint, constraints);
     } else {}
@@ -145,7 +151,7 @@ const make_connector = () => {
     } else {}
     return "done";
   };
-  const me = (request) => {
+  const me = (request: string): unknown => {
     if (request === "has_value") {
       return informant !== false;
     } else if (request === "value") {
@@ -198,7 +204,7 @@ Using the primitive constraints `adder`, `multiplier` and `constant`, declare a 
 Louis Reasoner wants a squarer, a constraint with two terminals such that the value of connector `b` is the square of the value of `a`. He proposes
 
 ```js
-const squarer = (a, b) =>
+const squarer = (a: Connector, b: Connector): Constraint =>
   multiplier(a, a, b);
 ```
 
@@ -243,14 +249,14 @@ At some point during the evaluation of `set_value`, the expression `for_each_exc
 The converter is clumsy to write in the style of a network. With an *expression-oriented* style it can be written as
 
 ```js
-const celsius_fahrenheit_converter = (x) =>
+const celsius_fahrenheit_converter = (x: Connector): Connector =>
   c_plus(c_times(c_divide(cv(9), cv(5)), x), cv(32));
 ```
 
 Here `c_plus`, `c_times` and so on are the constraint versions of the arithmetic operations. `c_plus` takes two connectors and returns a new connector constrained by an adder to be their sum:
 
 ```js
-const c_plus = (x, y) => {
+const c_plus = (x: Connector, y: Connector): Connector => {
   const z = make_connector();
   adder(x, y, z);
   return z;

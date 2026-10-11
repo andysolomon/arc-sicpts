@@ -5,7 +5,7 @@ import { envModelMakeWithdrawProgram, envModelTwoWithdrawsProgram } from '@sicp/
 Now for the reason we built the environment model: objects with local state. Take the withdrawal processor of §3.1.1. `make_withdraw` takes a starting balance and returns a function that withdraws from it:
 
 ```js
-const make_withdraw = (balance) =>
+const make_withdraw = (balance: number): ((amount: number) => number | string) =>
   amount => {
            if (balance >= amount) {
              balance = balance - amount;
@@ -18,9 +18,9 @@ const make_withdraw = (balance) =>
 
 We will follow `const W1 = make_withdraw(100);` and then `W1(50);`.
 
-Declaring `make_withdraw` is nothing new: the program frame gets a function object whose environment is the program environment. The only unusual thing about it is that its body returns a lambda expression.
+Declaring `make_withdraw` is nothing new: the program frame gets a function object whose environment is the program environment. The only unusual thing about it is that its body is itself a lambda expression.
 
-The interesting step is the call `make_withdraw(100)`. As always, it creates a frame, E1, binding the parameter `balance` to 100 and extending the program environment. In E1 the body is evaluated, and the body is `return` of a lambda expression. Evaluating that lambda expression makes a new function object, whose code is the lambda's and whose environment is *E1*, because E1 is where it was evaluated. That object is the value of the call, and the declaration binds it to `W1` in the program frame, where the declaration itself was evaluated. Step through it below and look at the row for `W1`: its environment bubble points at E1, the frame holding `balance`.
+The interesting step is the call `make_withdraw(100)`. As always, it creates a frame, E1, binding the parameter `balance` to 100 and extending the program environment. In E1 the body is evaluated, and the body is a lambda expression. Evaluating that lambda expression makes a new function object, whose code is the lambda's and whose environment is *E1*, because E1 is where it was evaluated. That object is the value of the call, and the declaration binds it to `W1` in the program frame, where the declaration itself was evaluated. Step through it below and look at the row for `W1`: its environment bubble points at E1, the frame holding `balance`.
 
 </Prose>
 
@@ -66,7 +66,7 @@ A function value in the Laboratory is `{ tag: 'closure', lambda, env }` (`evalua
 In `make_withdraw`, the local variable `balance` is the function's parameter. It can also be created separately, by applying a lambda expression immediately, which §1.3.2 showed is how a local name can be made without a declaration:
 
 ```js
-const make_withdraw = (initial_amount) =>
+const make_withdraw = (initial_amount: number): ((amount: number) => number | string) =>
   (balance =>
             amount => {
               if (balance >= amount) {

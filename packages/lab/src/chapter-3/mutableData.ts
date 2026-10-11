@@ -21,10 +21,10 @@ display_list(x);
 /** `pair` in terms of the two mutators and a supply of fresh pairs. */
 export const mutableGetNewPairProgram = `// A stand-in for the memory manager of section 5.3.1:
 // all it has to do is hand out a pair no one else is using.
-const get_new_pair = () =>
+const get_new_pair = (): Pair<unknown, unknown> =>
   list(undefined);
 
-const pair = (x, y) => {
+const pair = <H, T>(x: H, y: T): Pair<H, T> => {
   const fresh = get_new_pair();
   set_head(fresh, x);
   set_tail(fresh, y);
@@ -35,16 +35,16 @@ const p = pair(1, pair(2, null));
 display_list(p);
 `;
 
-export const mutableLastPairDefinition = `const last_pair = (x) =>
+export const mutableLastPairDefinition = `const last_pair = <T>(x: List<T>): List<T> =>
   is_null(tail(x)) ? x : last_pair(tail(x));
 `;
 
-export const mutableAppendDefinitions = `const append = (x, y) =>
+export const mutableAppendDefinitions = `const append = <T>(x: List<T>, y: List<T>): List<T> =>
   is_null(x)
          ? y
          : pair(head(x), append(tail(x), y));
 
-const append_mutator = (x, y) => {
+const append_mutator = <T>(x: List<T>, y: List<T>): List<T> => {
   set_tail(last_pair(x), y);
   return x;
 };
@@ -60,7 +60,7 @@ display_list(z);
 tail(x);
 `;
 
-export const mutableSetToWowDefinition = `const set_to_wow = (x) => {
+export const mutableSetToWowDefinition = `const set_to_wow = (x: Pair<List<string>, List<string>>): Pair<List<string>, List<string>> => {
   set_head(head(x), "wow");
   return x;
 };
@@ -89,11 +89,13 @@ equal(head(z2), tail(z2));
 `;
 
 /** Pairs as functions: mutation is assignment to a name in the frame of a call to `pair`. */
-export const mutableFunctionalPairDefinitions = `const pair = (x, y) => {
-  const set_x = (v) => {
+export const mutableFunctionalPairDefinitions = `type FunctionalPair = (m: "head" | "tail" | "set_head" | "set_tail") => unknown;
+
+const pair = (x: unknown, y: unknown): FunctionalPair => {
+  const set_x = (v: unknown): void => {
     x = v;
   };
-  const set_y = (v) => {
+  const set_y = (v: unknown): void => {
     y = v;
   };
   return m => m === "head"
@@ -107,18 +109,18 @@ export const mutableFunctionalPairDefinitions = `const pair = (x, y) => {
               : error(m, "undefined operation -- pair");
 };
 
-const head = (z) =>
+const head = (z: FunctionalPair): unknown =>
   z("head");
 
-const tail = (z) =>
+const tail = (z: FunctionalPair): unknown =>
   z("tail");
 
-const set_head = (z, new_value) => {
+const set_head = (z: FunctionalPair, new_value: unknown): FunctionalPair => {
   z("set_head")(new_value);
   return z;
 };
 
-const set_tail = (z, new_value) => {
+const set_tail = (z: FunctionalPair, new_value: unknown): FunctionalPair => {
   z("set_tail")(new_value);
   return z;
 };
@@ -133,32 +135,34 @@ tail(p);
 // §3.3.2 Representing queues
 
 export const queueDefinitions = `// A queue is a pair of pointers into an ordinary list.
-const front_ptr = (queue) =>
+type Queue<T> = Pair<List<T>, List<T>>;
+
+const front_ptr = <T>(queue: Queue<T>): List<T> =>
   head(queue);
 
-const rear_ptr = (queue) =>
+const rear_ptr = <T>(queue: Queue<T>): List<T> =>
   tail(queue);
 
-const set_front_ptr = (queue, item) => {
+const set_front_ptr = <T>(queue: Queue<T>, item: List<T>): void => {
   set_head(queue, item);
 };
 
-const set_rear_ptr = (queue, item) => {
+const set_rear_ptr = <T>(queue: Queue<T>, item: List<T>): void => {
   set_tail(queue, item);
 };
 
-const is_empty_queue = (queue) =>
+const is_empty_queue = <T>(queue: Queue<T>): boolean =>
   is_null(front_ptr(queue));
 
-const make_queue = () =>
+const make_queue = <T>(): Queue<T> =>
   pair(null, null);
 
-const front_queue = (queue) =>
+const front_queue = <T>(queue: Queue<T>): T =>
   is_empty_queue(queue)
          ? error(queue, "front_queue called with an empty queue")
          : head(front_ptr(queue));
 
-const insert_queue = (queue, item) => {
+const insert_queue = <T>(queue: Queue<T>, item: T): Queue<T> => {
   const new_pair = pair(item, null);
   if (is_empty_queue(queue)) {
     set_front_ptr(queue, new_pair);
@@ -170,7 +174,7 @@ const insert_queue = (queue, item) => {
   return queue;
 };
 
-const delete_queue = (queue) => {
+const delete_queue = <T>(queue: Queue<T>): Queue<T> => {
   if (is_empty_queue(queue)) {
     error(queue, "delete_queue called with an empty queue");
   } else {
@@ -202,21 +206,23 @@ display_list(delete_queue(q1));
 
 // §3.3.3 Representing tables
 
-export const tableDefinitions = `const assoc = (key, records) =>
+export const tableDefinitions = `type Table = List<unknown>;
+
+const assoc = (key: unknown, records: List<unknown>): Pair<unknown, unknown> | undefined =>
   is_null(records)
          ? undefined
          : equal(key, head(head(records)))
          ? head(records)
          : assoc(key, tail(records));
 
-const lookup = (key, table) => {
+const lookup = (key: unknown, table: Table): unknown => {
   const record = assoc(key, tail(table));
   return is_undefined(record)
          ? undefined
          : tail(record);
 };
 
-const insert = (key, value, table) => {
+const insert = (key: unknown, value: unknown, table: Table): "ok" => {
   const record = assoc(key, tail(table));
   if (is_undefined(record)) {
     set_tail(table, pair(pair(key, value), tail(table)));
@@ -226,7 +232,7 @@ const insert = (key, value, table) => {
   return "ok";
 };
 
-const make_table = () =>
+const make_table = (): Table =>
   list("*table*");
 `;
 
@@ -240,14 +246,16 @@ insert("a", 10, table);
 lookup("b", table);
 `;
 
-export const table2DDefinitions = `const assoc = (key, records) =>
+export const table2DDefinitions = `type Table = List<unknown>;
+
+const assoc = (key: unknown, records: List<unknown>): Pair<unknown, unknown> | undefined =>
   is_null(records)
          ? undefined
          : equal(key, head(head(records)))
          ? head(records)
          : assoc(key, tail(records));
 
-const lookup = (key_1, key_2, table) => {
+const lookup = (key_1: unknown, key_2: unknown, table: Table): unknown => {
   const subtable = assoc(key_1, tail(table));
   if (is_undefined(subtable)) {
     return undefined;
@@ -259,7 +267,7 @@ const lookup = (key_1, key_2, table) => {
   }
 };
 
-const insert = (key_1, key_2, value, table) => {
+const insert = (key_1: unknown, key_2: unknown, value: unknown, table: Table): "ok" => {
   const subtable = assoc(key_1, tail(table));
   if (is_undefined(subtable)) {
     set_tail(table, pair(list(key_1, pair(key_2, value)), tail(table)));
@@ -274,7 +282,7 @@ const insert = (key_1, key_2, value, table) => {
   return "ok";
 };
 
-const make_table = () =>
+const make_table = (): Table =>
   list("*table*");
 `;
 
@@ -290,15 +298,17 @@ lookup("math", "-", table);
 `;
 
 /** A table that is a function with local state, and `get` and `put` made from one. */
-export const tableLocalDefinitions = `const make_table = () => {
+export const tableLocalDefinitions = `type LocalTable = (m: "lookup" | "insert") => unknown;
+
+const make_table = (): LocalTable => {
   const local_table = list("*table*");
-  const assoc = (key, records) =>
+  const assoc = (key: unknown, records: List<unknown>): Pair<unknown, unknown> | undefined =>
     is_null(records)
            ? undefined
            : equal(key, head(head(records)))
            ? head(records)
            : assoc(key, tail(records));
-  const lookup = (key_1, key_2) => {
+  const lookup = (key_1: unknown, key_2: unknown): unknown => {
     const subtable = assoc(key_1, tail(local_table));
     if (is_undefined(subtable)) {
       return undefined;
@@ -309,7 +319,7 @@ export const tableLocalDefinitions = `const make_table = () => {
              : tail(record);
     }
   };
-  const insert = (key_1, key_2, value) => {
+  const insert = (key_1: unknown, key_2: unknown, value: unknown): "ok" => {
     const subtable = assoc(key_1, tail(local_table));
     if (is_undefined(subtable)) {
       set_tail(local_table,
@@ -324,7 +334,7 @@ export const tableLocalDefinitions = `const make_table = () => {
     }
     return "ok";
   };
-  const dispatch = (m) =>
+  const dispatch = (m: "lookup" | "insert"): unknown =>
     m === "lookup"
            ? lookup
            : m === "insert"

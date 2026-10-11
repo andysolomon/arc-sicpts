@@ -6,7 +6,7 @@ Section 1.1.5 used the substitution model to show that `f(5)` is 136, given thre
 
 Declaring the three functions puts three function objects in the program frame. Each pairs its own code with a pointer to the program environment, because that is where each declaration was evaluated. Nothing else happens until `f(5)`.
 
-The call to `f` creates a frame binding `a` to 5, which extends the program environment (the environment `f` points to). Call it E1. In E1 we evaluate the body of `f`, `return sum_of_squares(a + 1, a * 2);`. Finding `sum_of_squares` takes one step outward: E1 binds only `a`, so the search continues into the program frame, which has it. The arguments `a + 1` and `a * 2` are combinations of primitives, and come to 6 and 10.
+The call to `f` creates a frame binding `a` to 5, which extends the program environment (the environment `f` points to). Call it E1. In E1 we evaluate the body of `f`, `sum_of_squares(a + 1, a * 2)`. Finding `sum_of_squares` takes one step outward: E1 binds only `a`, so the search continues into the program frame, which has it. The arguments `a + 1` and `a * 2` are combinations of primitives, and come to 6 and 10.
 
 Applying `sum_of_squares` to 6 and 10 creates E2, binding `x` to 6 and `y` to 10. Its body evaluates `square(x)`: `square` is found in the program frame, `x` in E2, so `square` is applied to 6 and creates E3, with `x` bound to 6. Then `square(y)` creates E4, with `x` bound to 10. Each body `x * x` is evaluated in its own frame.
 
@@ -24,7 +24,7 @@ The point to take away is that every call of `square` gets a fresh frame with it
 
 The values flow back the way the calls went in: the two squares are added in E2, and that sum becomes the value of `f(5)`. The environment model is silent on how returned values travel from call to call, and on what happens to a frame once its call is over. Both questions are real, and Chapter 5 answers them with an explicit stack.
 
-One detail of the animation goes beyond the model. `return sum_of_squares(...)` is the last thing `f` does, so the Laboratory lets the new frame take the place of `f`'s instead of keeping `f`'s frame waiting for nothing. That is the tail-call behaviour that made iterative processes run in constant space in §1.2.1. The environment model itself cannot show that, because it says nothing about which frames are still needed; Exercise 3.9 shows the difference it makes.
+One detail of the animation goes beyond the model. `sum_of_squares(...)` is the last thing `f` does, so the Laboratory lets the new frame take the place of `f`'s instead of keeping `f`'s frame waiting for nothing. That is the tail-call behaviour that made iterative processes run in constant space in §1.2.1. The environment model itself cannot show that, because it says nothing about which frames are still needed; Exercise 3.9 shows the difference it makes.
 
 </Prose>
 

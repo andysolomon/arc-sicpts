@@ -43,7 +43,7 @@ and_gate(d, e, s);
 Rather than wiring it by hand each time, we can name the pattern. `half_adder(a, b, s, c)` creates the two internal wires and attaches the four gates:
 
 ```js
-const half_adder = (a, b, s, c) => {
+const half_adder = (a: Wire, b: Wire, s: Wire, c: Wire): "ok" => {
   const d = make_wire();
   const e = make_wire();
   or_gate(a, b, d);
@@ -57,7 +57,7 @@ const half_adder = (a, b, s, c) => {
 The half-adder is then a part like any other. A *full-adder*, the building block of binary addition, adds two bits and a carry coming in from the next lower position, and is made of two half-adders and an or-gate:
 
 ```js
-const full_adder = (a, b, c_in, sum, c_out) => {
+const full_adder = (a: Wire, b: Wire, c_in: Wire, sum: Wire, c_out: Wire): "ok" => {
   const s = make_wire();
   const c1 = make_wire();
   const c2 = make_wire();
@@ -81,8 +81,8 @@ This is exactly the structure of a language as §1.1 described it. The primitive
 With these, an inverter attaches an action to its input. The action computes the new output from the current input and schedules the output change `inverter_delay` later:
 
 ```js
-const inverter = (input, output) => {
-  const invert_input = () => {
+const inverter = (input: Wire, output: Wire): "ok" => {
+  const invert_input = (): void => {
     const new_value = logical_not(get_signal(input));
     after_delay(inverter_delay, () => set_signal(output, new_value));
   };
@@ -90,7 +90,7 @@ const inverter = (input, output) => {
   return "ok";
 };
 
-const logical_not = (s) =>
+const logical_not = (s: number): number =>
   s === 0
     ? 1
     : s === 1
@@ -101,8 +101,8 @@ const logical_not = (s) =>
 The and-gate is the same idea with two inputs, and it attaches its action to both, since a change at either can change the output:
 
 ```js
-const and_gate = (a1, a2, output) => {
-  const and_action_function = () => {
+const and_gate = (a1: Wire, a2: Wire, output: Wire): "ok" => {
+  const and_action_function = (): void => {
     const new_value = logical_and(get_signal(a1), get_signal(a2));
     after_delay(and_gate_delay, () => set_signal(output, new_value));
   };
@@ -117,10 +117,13 @@ const and_gate = (a1, a2, output) => {
 **Representing wires.** A wire is an object with two pieces of local state: its signal, which starts at 0, and the list of action functions to run when the signal changes. As with the bank accounts of §3.1.1, it is written in message-passing style, as a function `dispatch` that answers requests by name:
 
 ```js
-const make_wire = () => {
+type Wire = (m: string) => unknown;
+type Action = () => void;
+
+const make_wire = (): Wire => {
   let signal_value = 0;
-  let action_functions = null;
-  const set_my_signal = (new_value) => {
+  let action_functions: List<Action> = null;
+  const set_my_signal = (new_value: number): "done" => {
     if (signal_value !== new_value) {
       signal_value = new_value;
       return call_each(action_functions);
@@ -128,11 +131,11 @@ const make_wire = () => {
       return "done";
     }
   };
-  const accept_action_function = (fun) => {
+  const accept_action_function = (fun: Action): void => {
     action_functions = pair(fun, action_functions);
     fun();
   };
-  const dispatch = (m) =>
+  const dispatch = (m: string): unknown =>
     m === "get_signal"
       ? signal_value
       : m === "set_signal"
@@ -144,7 +147,7 @@ const make_wire = () => {
 };
 ```
 
-`call_each` applies every function in a list in turn, and `get_signal`, `set_signal` and `add_action` simply send the matching message to the wire. Note that `accept_action_function` runs a new action at once as well as storing it. Exercise 3.31 asks why.
+The type `Wire` says only that a wire takes a message: what comes back depends on the message, a number for `"get_signal"` and a function for the other two, so it is `unknown`. `call_each` applies every function in a list in turn, and `get_signal`, `set_signal` and `add_action` simply send the matching message to the wire. Note that `accept_action_function` runs a new action at once as well as storing it. Exercise 3.31 asks why.
 
 Wires are where the need for mutable state shows most clearly. A wire joins several boxes: when one box sets it, every box attached to it must see the new value. A wire is shared, it changes over time, and everyone who holds it sees the change, which is just what an object with local state provides. It would be awkward to model with pure functions.
 
@@ -160,11 +163,11 @@ Wires are where the need for mutable state shows most clearly. A wire joins seve
 The simulation uses one agenda, `the_agenda`. `after_delay` puts an action on it at the current time plus the delay, and `propagate` runs the simulation: it keeps taking the first action off the agenda and running it until the agenda is empty. Actions usually schedule new actions, so the agenda can stay busy for a while.
 
 ```js
-const after_delay = (delay, action) => {
+const after_delay = (delay: number, action: Action): void => {
   add_to_agenda(delay + current_time(the_agenda), action, the_agenda);
 };
 
-const propagate = () => {
+const propagate = (): "done" => {
   if (is_empty_agenda(the_agenda)) {
     return "done";
   } else {
@@ -181,7 +184,7 @@ const propagate = () => {
 **A sample simulation.** To watch a circuit, we attach a *probe* to a wire. A probe is an action that prints the wire's name, the current time and the wire's new signal:
 
 ```js
-const probe = (name, wire) => {
+const probe = (name: string, wire: Wire): void => {
   add_action(wire, () => display(name + " " + stringify(current_time(the_agenda)) +
                                  ", new value = " + stringify(get_signal(wire))));
 };
@@ -226,13 +229,15 @@ At time 21, `sum` drops to 0 and comes back to 1 at the very same moment: two ac
 **Implementing the agenda.** The agenda is a list of *time segments*. Each segment pairs a time with a queue (§3.3.2) of the actions due at that time:
 
 ```js
-const make_time_segment = (time, queue) =>
+type TimeSegment = Pair<number, Queue<Action>>;
+
+const make_time_segment = (time: number, queue: Queue<Action>): TimeSegment =>
   pair(time, queue);
 
-const segment_time = (s) =>
+const segment_time = (s: TimeSegment): number =>
   head(s);
 
-const segment_queue = (s) =>
+const segment_queue = (s: TimeSegment): Queue<Action> =>
   tail(s);
 ```
 
@@ -241,15 +246,17 @@ The segments are kept in order of increasing time. The agenda itself is a headed
 To add an action, `add_to_agenda` walks along the segments. If there is already a segment for the action's time, the action joins that segment's queue. Otherwise, a new segment is created and spliced in before the first segment with a later time, or at the end. Because the agenda has a header, inserting at the front is just a change to the header's tail:
 
 ```js
-const add_to_agenda = (time, action, agenda) => {
-  const belongs_before = (segs) =>
+type Agenda = Pair<number, List<TimeSegment>>;
+
+const add_to_agenda = (time: number, action: Action, agenda: Agenda): void => {
+  const belongs_before = (segs: List<TimeSegment>): boolean =>
     is_null(segs) || time < segment_time(head(segs));
-  const make_new_time_segment = (time, action) => {
+  const make_new_time_segment = (time: number, action: Action): TimeSegment => {
     const q = make_queue();
     insert_queue(q, action);
     return make_time_segment(time, q);
   };
-  const add_to_segments = (segs) => {
+  const add_to_segments = (segs: List<TimeSegment>): void => {
     if (segment_time(head(segs)) === time) {
       insert_queue(segment_queue(head(segs)), action);
     } else {
