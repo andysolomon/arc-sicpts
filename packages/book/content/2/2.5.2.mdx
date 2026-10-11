@@ -80,9 +80,9 @@ The coercion table is a second list, like the operation table, keyed by two type
 Louis Reasoner has noticed that `apply_generic` may try to coerce the arguments to each other's type even if they already have the same type. Therefore, he reasons, we need to put functions in the coercion table to "coerce" arguments of each type to their own type. In addition to `javascript_number_to_complex`, he would do:
 
 ```js
-const javascript_number_to_javascript_number = (n) => n;
+const javascript_number_to_javascript_number = (n: Tagged<number>): Tagged<number> => n;
 
-const complex_to_complex = (n) => n;
+const complex_to_complex = (n: Tagged<Complex>): Tagged<Complex> => n;
 
 put_coercion("javascript_number", "javascript_number",
              javascript_number_to_javascript_number);

@@ -9,18 +9,20 @@ The system has several abstraction barriers. To someone using "numbers" there is
 We would like a generic addition `add` that acts like `+` on ordinary numbers, like `add_rat` on rational numbers and like `add_complex` on complex numbers. We get it by the strategy of §2.4.3: attach a type tag to each kind of number, and have the generic function dispatch to the right package according to the types of its arguments.
 
 ```js
-const add = (x, y) => apply_generic("add", list(x, y));
+const add = (x: unknown, y: unknown): unknown => apply_generic("add", list(x, y));
 
-const sub = (x, y) => apply_generic("sub", list(x, y));
+const sub = (x: unknown, y: unknown): unknown => apply_generic("sub", list(x, y));
 
-const mul = (x, y) => apply_generic("mul", list(x, y));
+const mul = (x: unknown, y: unknown): unknown => apply_generic("mul", list(x, y));
 
-const div = (x, y) => apply_generic("div", list(x, y));
+const div = (x: unknown, y: unknown): unknown => apply_generic("div", list(x, y));
 ```
+
+The arguments and the result have the type `unknown` because `add` does not know what kind of number it is given; only the table does.
 
 The first package handles *ordinary* numbers, the primitive numbers of the language, tagged with the string `"javascript_number"`. Its operations are the primitive arithmetic operations, so there is nothing new to define for the untagged numbers. Since each operation takes two arguments, each is installed in the table under the list `list("javascript_number", "javascript_number")`. Users of the package make tagged ordinary numbers with `make_javascript_number`.
 
-The Laboratory has no operation table built in, so the program below declares one, together with everything else §2.4 provided: `put` and `get` keep a list of entries in a `let` and compare types with `equal`; `attach_tag`, `type_tag` and `contents` are those of §2.4.2; and `apply_generic` is that of §2.4.3. Source has no way to spread a list into arguments, so `apply` takes the list apart by hand.
+The Laboratory has no operation table built in, so the program below declares one, together with everything else §2.4 provided: `put` and `get` keep a list of entries in a `let` and compare types with `equal`; `attach_tag`, `type_tag` and `contents` are those of §2.4.2; `apply_generic` is that of §2.4.3; and `apply` takes the list of arguments apart by hand.
 
 </Prose>
 
@@ -94,7 +96,7 @@ The internal functions in the `javascript_number` package are essentially nothin
 
 <Solution>
 
-**Solution.** `type_tag` answers `"javascript_number"` for anything `is_number` accepts, and the head of the pair otherwise; `contents` returns a number itself; and `attach_tag` leaves a number alone when the tag is `"javascript_number"`. Nothing else changes: the package's `tag` is still called, it just no longer builds a pair, so `add(3, 4)` is the plain number 7. The exercises that follow use the system in this form.
+**Solution.** `type_tag` answers `"javascript_number"` for anything `is_number` accepts, and the head of the pair otherwise; `contents` returns a number itself; and `attach_tag` leaves a number alone when the tag is `"javascript_number"`. The type `Tagged<T>` widens to `T | Pair<string, T>` to say so. Nothing else changes: the package's `tag` is still called, it just no longer builds a pair, so `add(3, 4)` is the plain number 7. The exercises that follow use the system in this form.
 
 </Solution>
 </Exercise>

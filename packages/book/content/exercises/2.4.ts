@@ -5,16 +5,20 @@ import { close, type ExerciseSpec } from './spec.ts';
 
 /** §2.3.2's variables and simplifying constructors, and a way to evaluate an expression at a point. */
 const derivSupport = `${operationTableDefinitions}
-const is_variable = (x) =>
+// An expression is a number, a variable, or a list of an operator and its operands.
+type Expression = number | string | ExpressionList;
+type ExpressionList = null | [Expression, ExpressionList];
+
+const is_variable = (x: Expression): boolean =>
   is_string(x);
 
-const is_same_variable = (v1, v2) =>
+const is_same_variable = (v1: Expression, v2: Expression): boolean =>
   is_variable(v1) && is_variable(v2) && v1 === v2;
 
-const number_equal = (exp, num) =>
+const number_equal = (exp: Expression, num: number): boolean =>
   is_number(exp) && exp === num;
 
-const make_sum = (a1, a2) =>
+const make_sum = (a1: Expression, a2: Expression): Expression =>
   number_equal(a1, 0)
     ? a2
     : number_equal(a2, 0)
@@ -23,7 +27,7 @@ const make_sum = (a1, a2) =>
     ? a1 + a2
     : list("+", a1, a2);
 
-const make_product = (m1, m2) =>
+const make_product = (m1: Expression, m2: Expression): Expression =>
   number_equal(m1, 0) || number_equal(m2, 0)
     ? 0
     : number_equal(m1, 1)
@@ -35,8 +39,8 @@ const make_product = (m1, m2) =>
     : list("*", m1, m2);
 
 // The value of an expression in x and y at the given point; the checker's own tool.
-const value_at = (exp, x, y) => {
-  const arg = (n) =>
+const value_at = (exp: Expression, x: number, y: number): number => {
+  const arg = (n: number): number =>
     value_at(list_ref(exp, n), x, y);
   return is_number(exp)
     ? exp
@@ -54,19 +58,19 @@ const value_at = (exp, x, y) => {
 };
 `;
 
-const derivDispatch = `const deriv = (exp, variable) =>
+const derivDispatch = `const deriv = (exp: Expression, variable: string): Expression =>
   is_number(exp)
     ? 0
     : is_variable(exp)
     ? is_same_variable(exp, variable) ? 1 : 0
     : get("deriv", operator(exp))(operands(exp), variable);
 
-const operator = (exp) => head(exp);
+const operator = (exp: Expression): string => head(exp);
 
-const operands = (exp) => tail(exp);
+const operands = (exp: Expression): List<Expression> => tail(exp);
 `;
 
-const derivSwapped = `const deriv_swapped = (exp, variable) =>
+const derivSwapped = `const deriv_swapped = (exp: Expression, variable: string): Expression =>
   is_number(exp)
     ? 0
     : is_variable(exp)
@@ -95,7 +99,7 @@ const why = "";
 
 // (b) Install the rules for sums, list("+", u, v), and products,
 // list("*", u, v). A rule receives the operands and the variable.
-const install_sum_and_product = () => {
+const install_sum_and_product = (): "done" => {
   // your answer
 };
 
@@ -103,7 +107,7 @@ const install_sum_and_product = () => {
 // number: the derivative of u to the n is n times u to the n - 1 times
 // the derivative of u. Anything to the power 0 is 1, and to the power 1
 // is itself.
-const install_exponentiation = () => {
+const install_exponentiation = (): "done" => {
   // your answer
 };
 
@@ -114,7 +118,7 @@ install_exponentiation();
 // as deriv_swapped does. Make it work by installing the same rules
 // under swapped keys, without rewriting them.
 ${derivSwapped}
-const install_swapped = () => {
+const install_swapped = (): "done" => {
   // your answer
 };
 
@@ -154,38 +158,38 @@ install_swapped();
   solution: `${derivDispatch}
 const why = "a number or a variable has no operator to dispatch on";
 
-const deriv_sum = (operands, variable) =>
+const deriv_sum = (operands: List<Expression>, variable: string): Expression =>
   make_sum(deriv(head(operands), variable),
-                  deriv(head(tail(operands)), variable));
+           deriv(head(tail(operands)), variable));
 
-const deriv_product = (operands, variable) => {
+const deriv_product = (operands: List<Expression>, variable: string): Expression => {
   const u = head(operands);
   const v = head(tail(operands));
   return make_sum(make_product(u, deriv(v, variable)),
                   make_product(deriv(u, variable), v));
 };
 
-const install_sum_and_product = () => {
+const install_sum_and_product = (): "done" => {
   put("deriv", "+", deriv_sum);
   put("deriv", "*", deriv_product);
   return "done";
 };
 
-const make_exp = (base, exponent) =>
+const make_exp = (base: Expression, exponent: number): Expression =>
   number_equal(exponent, 0)
     ? 1
     : number_equal(exponent, 1)
     ? base
     : list("**", base, exponent);
 
-const deriv_exponentiation = (operands, variable) => {
+const deriv_exponentiation = (operands: List<Expression>, variable: string): Expression => {
   const u = head(operands);
   const n = head(tail(operands));
   return make_product(make_product(n, make_exp(u, n - 1)),
                       deriv(u, variable));
 };
 
-const install_exponentiation = () => {
+const install_exponentiation = (): "done" => {
   put("deriv", "**", deriv_exponentiation);
   return "done";
 };
@@ -194,7 +198,7 @@ install_sum_and_product();
 install_exponentiation();
 
 ${derivSwapped}
-const install_swapped = () => {
+const install_swapped = (): "done" => {
   put("+", "deriv", deriv_sum);
   put("*", "deriv", deriv_product);
   put("**", "deriv", deriv_exponentiation);
@@ -209,19 +213,21 @@ install_swapped();
 const divisionSupport = `${operationTableDefinitions}
 ${typeTagDefinitions}
 // London: a list of records, each list(name, address, salary).
+type LondonRecord = List<string | number>;
+
 const london_records = list(
   list("Ben Bitdiddle", "Slumerville", 60000),
   list("Alyssa P. Hacker", "Cambridge", 40000),
   list("Louis Reasoner", "Slumerville", 30000));
 
-const install_london_package = () => {
-  const get_record = (name, file) =>
+const install_london_package = (): "done" => {
+  const get_record = (name: string, file: List<LondonRecord>): LondonRecord | null =>
     is_null(file)
       ? null
       : head(head(file)) === name
       ? head(file)
       : get_record(name, tail(file));
-  const get_salary = (record) =>
+  const get_salary = (record: LondonRecord): number =>
     head(tail(tail(record)));
   put("get_record", list("london"), get_record);
   put("get_salary", list("london"), get_salary);
@@ -230,7 +236,10 @@ const install_london_package = () => {
 
 // Tokyo: a binary tree ordered by name, each node list(record, left, right),
 // and each record a list of pairs keyed "name", "address" and "salary".
-const tokyo_record = (name, address, salary) =>
+type TokyoRecord = List<Pair<string, string | number>>;
+type TokyoTree = null | [TokyoRecord | TokyoTree, TokyoTree];
+
+const tokyo_record = (name: string, address: string, salary: number): TokyoRecord =>
   list(pair("name", name), pair("address", address), pair("salary", salary));
 
 const tokyo_records = list(
@@ -238,10 +247,10 @@ const tokyo_records = list(
   list(tokyo_record("Cy D. Fect", "Cambridge", 35000), null, null),
   list(tokyo_record("Lem E. Tweakit", "Boston", 25000), null, null));
 
-const install_tokyo_package = () => {
-  const lookup = (key, record) =>
+const install_tokyo_package = (): "done" => {
+  const lookup = (key: string, record: TokyoRecord): string | number =>
     head(head(record)) === key ? tail(head(record)) : lookup(key, tail(record));
-  const get_record = (name, tree) => {
+  const get_record = (name: string, tree: TokyoTree): TokyoRecord | null => {
     if (is_null(tree)) {
       return null;
     } else {
@@ -286,24 +295,24 @@ export const exercise_2_74: ExerciseSpec = {
 const london_file = london_records;  // your answer
 const tokyo_file = tokyo_records;    // your answer
 
-const get_record = (name, file) => {
+const get_record = (name: string, file: Tagged<unknown>): Tagged<unknown> | null => {
   // your answer
 };
 
 // (b) The salary in a record that get_record returned, from any division.
-const get_salary = (record) => {
+const get_salary = (record: Tagged<unknown>): number => {
   // your answer
 };
 
 // (c) Search a list of division files; return the record, or null.
-const find_employee_record = (name, files) => {
+const find_employee_record = (name: string, files: List<Tagged<unknown>>): Tagged<unknown> | null => {
   // your answer
 };
 
 // (d) Insatiable takes over a company in Lagos. Its file, lagos_records,
 // is a list of pairs, each pair(name, pair(salary, address)). Bring it
 // into the system without changing anything above.
-const install_lagos_package = () => {
+const install_lagos_package = (): "done" => {
   // your answer
 };
 
@@ -351,16 +360,16 @@ const lagos_file = lagos_records;    // your answer
   solution: `const london_file = attach_tag("london", london_records);
 const tokyo_file = attach_tag("tokyo", tokyo_records);
 
-const get_record = (name, file) => {
+const get_record = (name: string, file: Tagged<unknown>): Tagged<unknown> | null => {
   const division = type_tag(file);
   const record = get("get_record", list(division))(name, contents(file));
   return is_null(record) ? null : attach_tag(division, record);
 };
 
-const get_salary = (record) =>
+const get_salary = (record: Tagged<unknown>): number =>
   get("get_salary", list(type_tag(record)))(contents(record));
 
-const find_employee_record = (name, files) => {
+const find_employee_record = (name: string, files: List<Tagged<unknown>>): Tagged<unknown> | null => {
   if (is_null(files)) {
     return null;
   } else {
@@ -371,8 +380,11 @@ const find_employee_record = (name, files) => {
   }
 };
 
-const install_lagos_package = () => {
-  const get_record = (name, file) =>
+// Lagos keeps each record as pair(salary, address), filed under the name.
+type LagosRecord = Pair<number, string>;
+
+const install_lagos_package = (): "done" => {
+  const get_record = (name: string, file: List<Pair<string, LagosRecord>>): LagosRecord | null =>
     is_null(file)
       ? null
       : head(head(file)) === name
@@ -389,11 +401,14 @@ const lagos_file = attach_tag("lagos", lagos_records);
 };
 
 /** Message-passing complex numbers from rectangular parts, and the generic selectors. */
-const messagePassingSupport = `const square = (x) =>
+const messagePassingSupport = `// A complex number is a function that answers the name of an operation.
+type Complex = (op: string) => number;
+
+const square = (x: number): number =>
   x * x;
 
-const make_from_real_imag = (x, y) => {
-  const dispatch = (op) =>
+const make_from_real_imag = (x: number, y: number): Complex => {
+  const dispatch = (op: string): number =>
     op === "real_part"
       ? x
       : op === "imag_part"
@@ -406,15 +421,15 @@ const make_from_real_imag = (x, y) => {
   return dispatch;
 };
 
-const apply_generic = (op, arg) => head(arg)(op);
+const apply_generic = (op: string, arg: List<Complex>): number => head(arg)(op);
 
-const real_part = (z) => apply_generic("real_part", list(z));
+const real_part = (z: Complex): number => apply_generic("real_part", list(z));
 
-const imag_part = (z) => apply_generic("imag_part", list(z));
+const imag_part = (z: Complex): number => apply_generic("imag_part", list(z));
 
-const magnitude = (z) => apply_generic("magnitude", list(z));
+const magnitude = (z: Complex): number => apply_generic("magnitude", list(z));
 
-const angle = (z) => apply_generic("angle", list(z));
+const angle = (z: Complex): number => apply_generic("angle", list(z));
 `;
 
 export const exercise_2_75: ExerciseSpec = {
@@ -423,7 +438,7 @@ export const exercise_2_75: ExerciseSpec = {
   starter: `// square, the message-passing make_from_real_imag, apply_generic, and the
 // selectors real_part, imag_part, magnitude and angle are provided.
 
-const make_from_mag_ang = (r, a) => {
+const make_from_mag_ang = (r: number, a: number): Complex => {
   // your answer
 };
 `,
@@ -444,8 +459,8 @@ const make_from_mag_ang = (r, a) => {
       expected: true,
     },
   ],
-  solution: `const make_from_mag_ang = (r, a) => {
-  const dispatch = (op) =>
+  solution: `const make_from_mag_ang = (r: number, a: number): Complex => {
+  const dispatch = (op: string): number =>
     op === "real_part"
       ? r * math_cos(a)
       : op === "imag_part"
@@ -472,7 +487,7 @@ export const exercise_2_76: ExerciseSpec = {
 //   "every type"               each type's code gains a case
 // Take a data-directed package's internal functions to be local to its
 // installation function, as Ben's and Alyssa's are.
-const edits = (strategy, addition) => {
+const edits = (strategy: string, addition: string): string => {
   // your answer
   return "";
 };
@@ -514,7 +529,7 @@ const for_new_operations = "";  // your answer
       expected: true,
     },
   ],
-  solution: `const edits = (strategy, addition) =>
+  solution: `const edits = (strategy: string, addition: string): string =>
   strategy === "explicit dispatch"
     ? (addition === "new type" ? "every generic operation" : "nothing")
     : addition === "new type"

@@ -9,15 +9,18 @@
 
 /** `put` and `get`: the operation-and-type table of §2.4.3, as a list. */
 export const operationTableDefinitions = `// The operation-and-type table: a list of entries list(op, type, item),
-// newest first, so a later put shadows an earlier one.
-let operation_table = null;
+// newest first, so a later put shadows an earlier one. Each item is a
+// function of the arguments of its operation.
+type Operation = (...args: List<unknown>) => unknown;
 
-const put = (op, type, item) => {
+let operation_table: List<List<unknown>> = null;
+
+const put = (op: string, type: string | List<string>, item: Operation): void => {
   operation_table = pair(list(op, type, item), operation_table);
 };
 
-const get = (op, type) => {
-  const lookup = (entries) => {
+const get = (op: string, type: string | List<string>): Operation | undefined => {
+  const lookup = (entries: List<List<unknown>>): Operation | undefined => {
     if (is_null(entries)) {
       return undefined;
     } else {
@@ -32,34 +35,40 @@ const get = (op, type) => {
 `;
 
 /** Type tags as in §2.4.2: every datum is a pair of its tag and its contents. */
-export const typeTagDefinitions = `const attach_tag = (type_tag, contents) =>
+export const typeTagDefinitions = `// A datum of type T, with its type tag attached.
+type Tagged<T> = Pair<string, T>;
+
+const attach_tag = <T>(type_tag: string, contents: T): Tagged<T> =>
   pair(type_tag, contents);
 
-const type_tag = (datum) =>
+const type_tag = (datum: Tagged<unknown>): string =>
   is_pair(datum)
     ? head(datum)
     : error(datum, "bad tagged datum -- type_tag");
 
-const contents = (datum) =>
+const contents = <T>(datum: Tagged<T>): T =>
   is_pair(datum)
     ? tail(datum)
     : error(datum, "bad tagged datum -- contents");
 `;
 
 /** Exercise 2.78: ordinary numbers are their own "javascript_number" datum, untagged. */
-export const plainNumberTagDefinitions = `const attach_tag = (type_tag, contents) =>
+export const plainNumberTagDefinitions = `// A datum of type T, with its type tag attached; a number is its own datum.
+type Tagged<T> = T | Pair<string, T>;
+
+const attach_tag = <T>(type_tag: string, contents: T): Tagged<T> =>
   type_tag === "javascript_number"
     ? contents
     : pair(type_tag, contents);
 
-const type_tag = (datum) =>
+const type_tag = (datum: Tagged<unknown>): string =>
   is_number(datum)
     ? "javascript_number"
     : is_pair(datum)
     ? head(datum)
     : error(datum, "bad tagged datum -- type_tag");
 
-const contents = (datum) =>
+const contents = <T>(datum: Tagged<T>): T =>
   is_number(datum)
     ? datum
     : is_pair(datum)
@@ -68,8 +77,8 @@ const contents = (datum) =>
 `;
 
 /** `apply` for the one, two or three arguments the generic operations take. */
-export const applyDefinition = `// Source has no spread syntax, so apply takes the arguments apart by hand.
-const apply = (fun, args) =>
+export const applyDefinition = `// apply takes the list of arguments apart by hand: one, two or three of them.
+const apply = (fun: Operation, args: List<unknown>): unknown =>
   is_null(tail(args))
     ? fun(head(args))
     : is_null(tail(tail(args)))
@@ -78,7 +87,7 @@ const apply = (fun, args) =>
 `;
 
 /** `apply_generic` of §2.4.3: dispatch on the list of type tags, no coercion. */
-export const applyGenericDefinition = `const apply_generic = (op, args) => {
+export const applyGenericDefinition = `const apply_generic = (op: string, args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   return ! is_undefined(fun)
@@ -88,18 +97,18 @@ export const applyGenericDefinition = `const apply_generic = (op, args) => {
 `;
 
 /** The four generic arithmetic operations of §2.5.1. */
-export const genericOperationDefinitions = `const add = (x, y) => apply_generic("add", list(x, y));
+export const genericOperationDefinitions = `const add = (x: unknown, y: unknown): unknown => apply_generic("add", list(x, y));
 
-const sub = (x, y) => apply_generic("sub", list(x, y));
+const sub = (x: unknown, y: unknown): unknown => apply_generic("sub", list(x, y));
 
-const mul = (x, y) => apply_generic("mul", list(x, y));
+const mul = (x: unknown, y: unknown): unknown => apply_generic("mul", list(x, y));
 
-const div = (x, y) => apply_generic("div", list(x, y));
+const div = (x: unknown, y: unknown): unknown => apply_generic("div", list(x, y));
 `;
 
 /** The ordinary-number package of §2.5.1. */
-export const javascriptNumberPackage = `const install_javascript_number_package = () => {
-  const tag = (x) =>
+export const javascriptNumberPackage = `const install_javascript_number_package = (): "done" => {
+  const tag = (x: number): Tagged<number> =>
     attach_tag("javascript_number", x);
   put("add", list("javascript_number", "javascript_number"),
       (x, y) => tag(x + y));
@@ -114,36 +123,38 @@ export const javascriptNumberPackage = `const install_javascript_number_package 
   return "done";
 };
 
-const make_javascript_number = (n) =>
+const make_javascript_number = (n: number): Tagged<number> =>
   get("make", "javascript_number")(n);
 `;
 
 /** The rational-number package of §2.5.1, with §2.1.1's functions inside it. */
-export const rationalPackage = `const gcd = (a, b) =>
+export const rationalPackage = `const gcd = (a: number, b: number): number =>
   b === 0 ? a : gcd(b, a % b);
 
-const install_rational_package = () => {
+type Rational = Pair<number, number>;
+
+const install_rational_package = (): "done" => {
   // internal functions
-  const numer = (x) => head(x);
-  const denom = (x) => tail(x);
-  const make_rat = (n, d) => {
+  const numer = (x: Rational): number => head(x);
+  const denom = (x: Rational): number => tail(x);
+  const make_rat = (n: number, d: number): Rational => {
     const g = gcd(n, d);
     return pair(n / g, d / g);
   };
-  const add_rat = (x, y) =>
+  const add_rat = (x: Rational, y: Rational): Rational =>
     make_rat(numer(x) * denom(y) + numer(y) * denom(x),
-                    denom(x) * denom(y));
-  const sub_rat = (x, y) =>
+             denom(x) * denom(y));
+  const sub_rat = (x: Rational, y: Rational): Rational =>
     make_rat(numer(x) * denom(y) - numer(y) * denom(x),
-                    denom(x) * denom(y));
-  const mul_rat = (x, y) =>
+             denom(x) * denom(y));
+  const mul_rat = (x: Rational, y: Rational): Rational =>
     make_rat(numer(x) * numer(y),
-                    denom(x) * denom(y));
-  const div_rat = (x, y) =>
+             denom(x) * denom(y));
+  const div_rat = (x: Rational, y: Rational): Rational =>
     make_rat(numer(x) * denom(y),
-                    denom(x) * numer(y));
+             denom(x) * numer(y));
   // interface to rest of the system
-  const tag = (x) =>
+  const tag = (x: Rational): Tagged<Rational> =>
     attach_tag("rational", x);
   put("add", list("rational", "rational"),
       (x, y) => tag(add_rat(x, y)));
@@ -158,27 +169,34 @@ const install_rational_package = () => {
   return "done";
 };
 
-const make_rational = (n, d) =>
+const make_rational = (n: number, d: number): Tagged<Rational> =>
   get("make", "rational")(n, d);
 `;
 
+/** The two representations of §2.4.2, and a complex number as either one, tagged. */
+export const complexTypeDefinitions = `type Rectangular = Pair<number, number>; // real part and imaginary part
+type Polar = Pair<number, number>;       // magnitude and angle
+type Complex = Tagged<Rectangular | Polar>;
+`;
+
 /** The rectangular and polar packages of §2.4.3, and the generic selectors over them. */
-export const complexRepresentationPackages = `const square = (x) =>
+export const complexRepresentationPackages = `${complexTypeDefinitions}
+const square = (x: number): number =>
   x * x;
 
-const install_rectangular_package = () => {
+const install_rectangular_package = (): "done" => {
   // internal functions
-  const real_part = (z) => head(z);
-  const imag_part = (z) => tail(z);
-  const make_from_real_imag = (x, y) => pair(x, y);
-  const magnitude = (z) =>
+  const real_part = (z: Rectangular): number => head(z);
+  const imag_part = (z: Rectangular): number => tail(z);
+  const make_from_real_imag = (x: number, y: number): Rectangular => pair(x, y);
+  const magnitude = (z: Rectangular): number =>
     math_sqrt(square(real_part(z)) + square(imag_part(z)));
-  const angle = (z) =>
+  const angle = (z: Rectangular): number =>
     math_atan2(imag_part(z), real_part(z));
-  const make_from_mag_ang = (r, a) =>
+  const make_from_mag_ang = (r: number, a: number): Rectangular =>
     pair(r * math_cos(a), r * math_sin(a));
   // interface to the rest of the system
-  const tag = (x) => attach_tag("rectangular", x);
+  const tag = (x: Rectangular): Complex => attach_tag("rectangular", x);
   put("real_part", list("rectangular"), real_part);
   put("imag_part", list("rectangular"), imag_part);
   put("magnitude", list("rectangular"), magnitude);
@@ -190,19 +208,19 @@ const install_rectangular_package = () => {
   return "done";
 };
 
-const install_polar_package = () => {
+const install_polar_package = (): "done" => {
   // internal functions
-  const magnitude = (z) => head(z);
-  const angle = (z) => tail(z);
-  const make_from_mag_ang = (r, a) => pair(r, a);
-  const real_part = (z) =>
+  const magnitude = (z: Polar): number => head(z);
+  const angle = (z: Polar): number => tail(z);
+  const make_from_mag_ang = (r: number, a: number): Polar => pair(r, a);
+  const real_part = (z: Polar): number =>
     magnitude(z) * math_cos(angle(z));
-  const imag_part = (z) =>
+  const imag_part = (z: Polar): number =>
     magnitude(z) * math_sin(angle(z));
-  const make_from_real_imag = (x, y) =>
+  const make_from_real_imag = (x: number, y: number): Polar =>
     pair(math_sqrt(square(x) + square(y)), math_atan2(y, x));
   // interface to the rest of the system
-  const tag = (x) => attach_tag("polar", x);
+  const tag = (x: Polar): Complex => attach_tag("polar", x);
   put("real_part", list("polar"), real_part);
   put("imag_part", list("polar"), imag_part);
   put("magnitude", list("polar"), magnitude);
@@ -214,37 +232,37 @@ const install_polar_package = () => {
   return "done";
 };
 
-const real_part = (z) => apply_generic("real_part", list(z));
+const real_part = (z: Complex): number => apply_generic("real_part", list(z));
 
-const imag_part = (z) => apply_generic("imag_part", list(z));
+const imag_part = (z: Complex): number => apply_generic("imag_part", list(z));
 
-const magnitude = (z) => apply_generic("magnitude", list(z));
+const magnitude = (z: Complex): number => apply_generic("magnitude", list(z));
 
-const angle = (z) => apply_generic("angle", list(z));
+const angle = (z: Complex): number => apply_generic("angle", list(z));
 `;
 
 /** The complex-number package of §2.5.1, built on the rectangular and polar packages. */
-export const complexPackage = `const install_complex_package = () => {
+export const complexPackage = `const install_complex_package = (): "done" => {
   // imported functions from rectangular and polar packages
-  const make_from_real_imag = (x, y) =>
+  const make_from_real_imag = (x: number, y: number): Complex =>
     get("make_from_real_imag", "rectangular")(x, y);
-  const make_from_mag_ang = (r, a) =>
+  const make_from_mag_ang = (r: number, a: number): Complex =>
     get("make_from_mag_ang", "polar")(r, a);
   // internal functions
-  const add_complex = (z1, z2) =>
+  const add_complex = (z1: Complex, z2: Complex): Complex =>
     make_from_real_imag(real_part(z1) + real_part(z2),
-                               imag_part(z1) + imag_part(z2));
-  const sub_complex = (z1, z2) =>
+                        imag_part(z1) + imag_part(z2));
+  const sub_complex = (z1: Complex, z2: Complex): Complex =>
     make_from_real_imag(real_part(z1) - real_part(z2),
-                               imag_part(z1) - imag_part(z2));
-  const mul_complex = (z1, z2) =>
+                        imag_part(z1) - imag_part(z2));
+  const mul_complex = (z1: Complex, z2: Complex): Complex =>
     make_from_mag_ang(magnitude(z1) * magnitude(z2),
-                             angle(z1) + angle(z2));
-  const div_complex = (z1, z2) =>
+                      angle(z1) + angle(z2));
+  const div_complex = (z1: Complex, z2: Complex): Complex =>
     make_from_mag_ang(magnitude(z1) / magnitude(z2),
-                             angle(z1) - angle(z2));
+                      angle(z1) - angle(z2));
   // interface to rest of the system
-  const tag = (z) => attach_tag("complex", z);
+  const tag = (z: Complex): Tagged<Complex> => attach_tag("complex", z);
   put("add", list("complex", "complex"),
       (z1, z2) => tag(add_complex(z1, z2)));
   put("sub", list("complex", "complex"),
@@ -260,10 +278,10 @@ export const complexPackage = `const install_complex_package = () => {
   return "done";
 };
 
-const make_complex_from_real_imag = (x, y) =>
+const make_complex_from_real_imag = (x: number, y: number): Tagged<Complex> =>
   get("make_from_real_imag", "complex")(x, y);
 
-const make_complex_from_mag_ang = (r, a) =>
+const make_complex_from_mag_ang = (r: number, a: number): Tagged<Complex> =>
   get("make_from_mag_ang", "complex")(r, a);
 `;
 
@@ -359,7 +377,7 @@ product;
 // §2.5.2 examples
 
 /** One cross-type operation, installed by hand; the prelude is `genericArithmeticDefinitions`. */
-export const crossTypeProgram = `const add_complex_to_javascript_num = (z, x) =>
+export const crossTypeProgram = `const add_complex_to_javascript_num = (z: Complex, x: number): Tagged<Complex> =>
   make_complex_from_real_imag(real_part(z) + x, imag_part(z));
 
 put("add", list("complex", "javascript_number"),
@@ -371,14 +389,17 @@ sum;
 `;
 
 /** `put_coercion` and `get_coercion`: a second table, keyed by two types. */
-export const coercionTableDefinitions = `let coercion_table = null;
+export const coercionTableDefinitions = `// A coercion turns a datum of one type into the same value as another type.
+type Coercion = (datum: unknown) => unknown;
 
-const put_coercion = (type1, type2, coercion) => {
+let coercion_table: List<List<unknown>> = null;
+
+const put_coercion = (type1: string, type2: string, coercion: Coercion): void => {
   coercion_table = pair(list(type1, type2, coercion), coercion_table);
 };
 
-const get_coercion = (type1, type2) => {
-  const lookup = (entries) => {
+const get_coercion = (type1: string, type2: string): Coercion | undefined => {
+  const lookup = (entries: List<List<unknown>>): Coercion | undefined => {
     if (is_null(entries)) {
       return undefined;
     } else {
@@ -393,7 +414,7 @@ const get_coercion = (type1, type2) => {
 `;
 
 /** `apply_generic` of §2.5.2: when no method fits, coerce one argument to the other's type. */
-export const applyGenericWithCoercion = `const apply_generic = (op, args) => {
+export const applyGenericWithCoercion = `const apply_generic = (op: string, args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   if (! is_undefined(fun)) {
@@ -420,7 +441,7 @@ export const applyGenericWithCoercion = `const apply_generic = (op, args) => {
 
 /** Coercion in the system of §2.5.1; the prelude is `genericArithmeticDefinitions`. */
 export const coercionProgram = `${coercionTableDefinitions}
-const javascript_number_to_complex = (n) =>
+const javascript_number_to_complex = (n: Tagged<number>): Tagged<Complex> =>
   make_complex_from_real_imag(contents(n), 0);
 
 put_coercion("javascript_number", "complex",
@@ -428,7 +449,7 @@ put_coercion("javascript_number", "complex",
 
 ${applyGenericWithCoercion}
 // add again, so that it calls this apply_generic
-const add = (x, y) => apply_generic("add", list(x, y));
+const add = (x: unknown, y: unknown): unknown => apply_generic("add", list(x, y));
 
 const z = make_complex_from_real_imag(3, 4);
 add(make_javascript_number(5), z);
