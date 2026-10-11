@@ -19,17 +19,14 @@ Return to the fixed-point example of §1.3.3. The square-root search converged o
 Using `average_damp`, the square-root function of §1.3.3 becomes
 
 ```js
-function sqrt(x) {
-  return fixed_point(average_damp(y => x / y), 1);
-}
+const sqrt = (x: number): number => fixed_point(average_damp(y => x / y), 1);
 ```
 
 This formulation makes three ideas explicit: fixed-point search, average damping, and the function *y* ↦ *x* / *y*. It computes the same thing as §1.1.7, but expressing the process in terms of these abstractions makes the method plainer, and each idea is reusable. The cube root of *x* is a fixed point of *y* ↦ *x* / *y*², so
 
 ```js
-function cube_root(x) {
-  return fixed_point(average_damp(y => x / square(y)), 1);
-}
+const cube_root = (x: number): number =>
+  fixed_point(average_damp(y => x / square(y)), 1);
 ```
 
 **Newton's method.** When §1.1.7 introduced the square-root function, it mentioned that this was a special case of Newton's method. If *x* ↦ *g*(*x*) is a differentiable function, then a solution of *g*(*x*) = 0 is a fixed point of *x* ↦ *f*(*x*), where
@@ -102,7 +99,7 @@ Declare a function `cubic` that can be used together with `newtons_method` in ex
 </Exercise>
 <Exercise id="1.41">
 
-Declare a function `double` that takes a function of one argument as argument and returns a function that applies the original function twice. If `inc` adds 1 to its argument, then `double(inc)` adds 2. What value is returned by `double(double(double))(inc)(5)`? Predict it before you run it.
+Declare a function `double` that takes a function of one argument as argument and returns a function that applies the original function twice. If `inc` adds 1 to its argument, then `double(inc)` adds 2. What value is returned by `double(double(double))(inc)(5)`? Predict it before you run it. The starter's `<T>` makes `double` *generic*: `T` stands for any type, so the annotations allow `double` to take a function on numbers or, as `double(double)` needs, a function on functions.
 
 <Solution>
 

@@ -1,4 +1,4 @@
-import { parse, toTaggedList, type Expression, type Node, type Statement } from '@sicp/lab';
+import { argumentExpression, parse, toTaggedList, type Expression, type Node, type Statement } from '@sicp/lab';
 import { useMemo, useRef } from 'react';
 import { monoWidth, tidy, type Placed, type TreeInput } from '../model/layout.ts';
 import { componentTree, listNotation, SYNTAX, type ComponentNode, type Read } from '../model/taggedList.ts';
@@ -46,7 +46,7 @@ export function parsedText(source: string): string | null {
         return;
       }
       visit(node.fun);
-      node.args.forEach(visit);
+      node.args.forEach((arg) => visit(argumentExpression(arg)));
       return;
     }
     for (const child of Object.values(node)) {

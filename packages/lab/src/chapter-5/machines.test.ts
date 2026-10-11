@@ -76,8 +76,10 @@ describe('section 5.2: the simulator written in Source', () => {
   it('can be taken apart, so a reader can supply some of its functions', () => {
     const names = ['extract_labels'];
     const context = simulatorWithout(names);
-    expect(context).not.toMatch(/function extract_labels\(/);
-    expect(simulatorFunctions(names)).toMatch(/^function extract_labels\(controller, receive\)/);
+    expect(context).not.toMatch(/^const extract_labels\b/m);
+    // The type aliases are declarations of their own, so the context keeps them.
+    expect(context).toMatch(/^type LabelEntry = /m);
+    expect(simulatorFunctions(names)).toMatch(/^const extract_labels = <R>\(\n {4}controller: Controller,/);
     const reassembled = run(gcdMachineProgram, { context: `${context}\n${simulatorFunctions(names)}` });
     expect(reassembled.value).toBe('2');
   });

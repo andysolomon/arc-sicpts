@@ -7,36 +7,35 @@ In §4.1.7 we modified our original metacircular interpreter to separate analysi
 The function `compile` is the top-level dispatch in the compiler. It corresponds to the `evaluate` function of §4.1.1, the `analyze` function of §4.1.7, and the `eval_dispatch` entry point of the explicit-control evaluator in §5.4.1. The compiler, like the interpreters, uses the component-syntax functions defined in §4.1.2. (Our compiler is a JavaScript program, and the syntax functions it uses are the actual JavaScript functions used with the metacircular evaluator. For the explicit-control evaluator, in contrast, we assumed that equivalent syntax operations were available as operations for the register machine.) The function `compile` performs a case analysis on the syntactic type of the component to be compiled. For each type of component, it dispatches to a specialised *code generator*:
 
 ```js
-function compile(component, target, linkage) {
-    return is_literal(component)
-           ? compile_literal(component, target, linkage)
-           : is_name(component)
-           ? compile_name(component, target, linkage)
-           : is_application(component)
-           ? compile_application(component, target, linkage)
-           : is_operator_combination(component)
-           ? compile(operator_combination_to_application(component),
-                     target, linkage)
-           : is_conditional(component)
-           ? compile_conditional(component, target, linkage)
-           : is_lambda_expression(component)
-           ? compile_lambda_expression(component, target, linkage)
-           : is_sequence(component)
-           ? compile_sequence(sequence_statements(component),
-                              target, linkage)
-           : is_block(component)
-           ? compile_block(component, target, linkage)
-           : is_return_statement(component)
-           ? compile_return_statement(component, target, linkage)
-           : is_function_declaration(component)
-           ? compile(function_decl_to_constant_decl(component),
-                     target, linkage)
-           : is_declaration(component)
-           ? compile_declaration(component, target, linkage)
-           : is_assignment(component)
-           ? compile_assignment(component, target, linkage)
-           : error(component, "unknown component type -- compile");
-}
+const compile = (component: Component, target: Target, linkage: Linkage): InstructionSequence =>
+    is_literal(component)
+    ? compile_literal(component, target, linkage)
+    : is_name(component)
+    ? compile_name(component, target, linkage)
+    : is_application(component)
+    ? compile_application(component, target, linkage)
+    : is_operator_combination(component)
+    ? compile(operator_combination_to_application(component),
+              target, linkage)
+    : is_conditional(component)
+    ? compile_conditional(component, target, linkage)
+    : is_lambda_expression(component)
+    ? compile_lambda_expression(component, target, linkage)
+    : is_sequence(component)
+    ? compile_sequence(sequence_statements(component),
+                       target, linkage)
+    : is_block(component)
+    ? compile_block(component, target, linkage)
+    : is_return_statement(component)
+    ? compile_return_statement(component, target, linkage)
+    : is_function_declaration(component)
+    ? compile(function_decl_to_constant_decl(component),
+              target, linkage)
+    : is_declaration(component)
+    ? compile_declaration(component, target, linkage)
+    : is_assignment(component)
+    ? compile_assignment(component, target, linkage)
+    : error(component, "unknown component type -- compile");
 ```
 
 ## Targets and linkages
@@ -46,6 +45,13 @@ The function `compile` and the code generators that it calls take two arguments 
 - proceed to the next instruction in sequence (this is specified by the linkage descriptor `"next"`),
 - jump to the current value of the `continue` register as part of returning from a function call (this is specified by the linkage descriptor `"return"`), or
 - jump to a named entry point (this is specified by using the designated label as the linkage descriptor).
+
+In the code, a target is the name of a register, and a linkage descriptor is a string:
+
+```js
+type Target = string;                      // the register that gets the value
+type Linkage = "next" | "return" | string; // or a label to go to
+```
 
 For example, compiling the literal `5` with a target of the `val` register and a linkage of `"next"` should produce the instruction
 
@@ -115,9 +121,13 @@ An instruction sequence will contain three pieces of information:
 We will represent an instruction sequence as a list of its three parts. The constructor for instruction sequences is thus
 
 ```js
-function make_instruction_sequence(needs, modifies, instructions) {
-    return list(needs, modifies, instructions);
-}
+type InstructionSequence = List<unknown>; // list(needs, modifies, instructions)
+
+const make_instruction_sequence = (
+    needs: List<string>,
+    modifies: List<string>,
+    instructions: List<Instruction | string>
+): InstructionSequence => list(needs, modifies, instructions);
 ```
 
 For example, the two-instruction sequence that looks up the value of the symbol `"x"` in the current environment, assigns the result to `val`, and then proceeds to the continuation, requires registers `env` and `continue` to have been initialised, and modifies register `val`. This sequence would therefore be constructed as
@@ -142,7 +152,7 @@ The whole compiler is loaded behind this editor. Compiling the name `x` with tar
 
 <UnderTheHood file="packages/lab/src/chapter-5/compiler.ts">
 
-`compileDispatch` in `chapter-5/compiler.ts` is `compile` and `make_instruction_sequence` as printed above, and `compilerSource` is the whole compiler, which these editors load as a prelude. The test `chapter-5/section-5-5.test.ts` asserts that the lookup of `x` with linkage `"return"` needs `env` and `continue` and modifies `val`, that the only saves in the two-statement program are one `save("env")` and the `save("continue")` in the compiled branch of each of its two calls, and that with `5;` as its second statement the `save("env")` is gone.
+`compileDispatch` in `chapter-5/compiler.ts` is `compile` and `make_instruction_sequence` as printed above, with the type names they use (`Component` is the tagged-list representation of §4.1.2), and `compilerSource` is the whole compiler, which these editors load as a prelude. The test `chapter-5/section-5-5.test.ts` asserts that the lookup of `x` with linkage `"return"` needs `env` and `continue` and modifies `val`, that the only saves in the two-statement program are one `save("env")` and the `save("continue")` in the compiled branch of each of its two calls, and that with `5;` as its second statement the `save("env")` is gone.
 
 </UnderTheHood>
 

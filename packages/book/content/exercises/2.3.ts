@@ -16,6 +16,16 @@ import type { ExerciseSpec } from './spec.ts';
 
 /** Exercises of §2.3. */
 
+/**
+ * `text` with its one occurrence of `from` replaced by `to`. A change to the
+ * shared program text that `from` quotes is an error here, instead of a
+ * replacement that silently stops happening.
+ */
+const replaced = (text: string, from: string, to: string): string => {
+  if (!text.includes(from)) throw new Error(`not in the program text: ${from}`);
+  return text.replace(from, to);
+};
+
 /* §2.3.1 Strings */
 
 export const exercise_2_53: ExerciseSpec = {
@@ -91,9 +101,9 @@ const boxed_3 = '[["y1", ["y2", null]], null]';
 export const exercise_2_54: ExerciseSpec = {
   id: '2.54',
   starter: `// Your equal replaces the library's.
-function equal(a, b) {
+const equal = (a: unknown, b: unknown): boolean => {
   // your answer
-}
+};
 `,
   tests: [
     {
@@ -121,11 +131,10 @@ function equal(a, b) {
       expected: true,
     },
   ],
-  solution: `function equal(a, b) {
-  return is_pair(a)
+  solution: `const equal = (a: unknown, b: unknown): boolean =>
+  is_pair(a)
     ? is_pair(b) && equal(head(a), head(b)) && equal(tail(a), tail(b))
     : a === b;
-}
 `,
 };
 
@@ -154,9 +163,9 @@ const right_length = 0;
 /* §2.3.2 Symbolic differentiation */
 
 /** The value of a prefix expression for given values of "x" and "y"; sums and products may have any number of terms. */
-const prefixValueAt = `function value_at(exp, x, y) {
-  function value(e) {
-    return is_number(e)
+const prefixValueAt = `const value_at = (exp: Expression, x: number, y: number): number => {
+  const value = (e: Expression): number =>
+    is_number(e)
       ? e
       : e === "x"
         ? x
@@ -169,36 +178,36 @@ const prefixValueAt = `function value_at(exp, x, y) {
               : head(e) === "**"
                 ? math_pow(value(head(tail(e))), value(head(tail(tail(e)))))
                 : error(e, "unknown expression -- value_at");
-  }
   return value(exp);
-}
+};
 `;
 
 /** The value of an infix expression, with * binding more tightly than +. */
-const infixValueAt = `function value_at(exp, x, y) {
-  function value(e) {
-    return is_number(e)
+const infixValueAt = `const value_at = (exp: Expression, x: number, y: number): number => {
+  const value = (e: Expression): number =>
+    is_number(e)
       ? e
       : e === "x"
         ? x
         : e === "y"
           ? y
           : terms(tail(e), value(head(e)), 0);
-  }
   // product: the product being built; total: the sum of the finished products
-  function terms(rest, product, total) {
-    return is_null(rest)
+  const terms = (rest: List<Expression>, product: number, total: number): number =>
+    is_null(rest)
       ? total + product
       : head(rest) === "*"
         ? terms(tail(tail(rest)), product * value(head(tail(rest))), total)
         : terms(tail(tail(rest)), value(head(tail(rest))), total + product);
-  }
   return value(exp);
-}
+};
 `;
 
-const derivWithExp = `function deriv(exp, variable) {
-  return is_number(exp)
+const derivWithExp = `type Expression = number | string | ExpressionList;
+type ExpressionList = null | [Expression, ExpressionList];
+
+const deriv = (exp: Expression, variable: string): Expression =>
+  is_number(exp)
     ? 0
     : is_variable(exp)
       ? is_same_variable(exp, variable) ? 1 : 0
@@ -215,7 +224,6 @@ const derivWithExp = `function deriv(exp, variable) {
                                         make_exp(base(exp), exponent(exp) - 1)),
                            deriv(base(exp), variable))
             : error(exp, "unknown expression type -- deriv");
-}
 `;
 
 export const exercise_2_56: ExerciseSpec = {
@@ -230,17 +238,17 @@ ${prefixValueAt}`,
 
 ${derivDefinition}
 // your answer: a clause in deriv for exponentiation, and these four
-function is_exp(x) {
-}
+const is_exp = (x: Expression): boolean => {
+};
 
-function base(e) {
-}
+const base = (e: Expression): Expression => {
+};
 
-function exponent(e) {
-}
+const exponent = (e: Expression): number => {
+};
 
-function make_exp(b, e) {
-}
+const make_exp = (b: Expression, e: number): Expression => {
+};
 `,
   tests: [
     { name: 'powers 0 and 1 are built in', kind: 'value', expr: 'make_exp("x", 0) === 1 && make_exp("x", 1) === "x"', expected: true },
@@ -256,25 +264,18 @@ function make_exp(b, e) {
     { name: 'a power of another variable', kind: 'value', expr: 'deriv(list("**", "y", 5), "x")', expected: 0 },
   ],
   solution: `${derivWithExp}
-function is_exp(x) {
-  return is_pair(x) && head(x) === "**";
-}
+const is_exp = (x: Expression): boolean => is_pair(x) && head(x) === "**";
 
-function base(e) {
-  return head(tail(e));
-}
+const base = (e: Expression): Expression => head(tail(e));
 
-function exponent(e) {
-  return head(tail(tail(e)));
-}
+const exponent = (e: Expression): number => head(tail(tail(e)));
 
-function make_exp(b, e) {
-  return number_equal(e, 0)
+const make_exp = (b: Expression, e: number): Expression =>
+  number_equal(e, 0)
     ? 1
     : number_equal(e, 1)
       ? b
       : list("**", b, e);
-}
 `,
 };
 
@@ -301,22 +302,18 @@ ${simplifyingConstructorDefinitions}`,
     { name: 'two terms still work', kind: 'value', expr: 'deriv(list("*", "x", "y"), "x")', expected: 'y' },
   ],
   solution: `${derivDefinition}
-${derivSelectorDefinitions.replace(
-  `function augend(s) {
-  return head(tail(tail(s)));
-}`,
-  `// The sum of the rest of the terms.
-function augend(s) {
-  return accumulate(make_sum, 0, tail(tail(s)));
-}`,
-).replace(
-  `function multiplicand(s) {
-  return head(tail(tail(s)));
-}`,
+${replaced(
+  replaced(
+    derivSelectorDefinitions,
+    `const augend = (s: Expression): Expression => head(tail(tail(s)));`,
+    `// The sum of the rest of the terms.
+const augend = (s: Expression): Expression =>
+  accumulate(make_sum, 0, tail(tail(s)));`,
+  ),
+  `const multiplicand = (s: Expression): Expression => head(tail(tail(s)));`,
   `// The product of the rest of the factors.
-function multiplicand(s) {
-  return accumulate(make_product, 1, tail(tail(s)));
-}`,
+const multiplicand = (s: Expression): Expression =>
+  accumulate(make_product, 1, tail(tail(s)));`,
 )}
 ${simplifyingConstructorDefinitions}`,
 };
@@ -351,67 +348,51 @@ ${simplifyingConstructorDefinitions}`,
     { name: '(b) a longer product', kind: 'value', expr: 'value_at(deriv(list("x", "*", "y", "*", "x", "+", "y"), "x"), 3, 2)', expected: 12 },
   ],
   solution: `${derivDefinition}
-function is_variable(x) {
-  return is_string(x);
-}
+const is_variable = (x: Expression): boolean => is_string(x);
 
-function is_same_variable(v1, v2) {
-  return is_variable(v1) && is_variable(v2) && v1 === v2;
-}
+const is_same_variable = (v1: Expression, v2: Expression): boolean =>
+  is_variable(v1) && is_variable(v2) && v1 === v2;
 
 // The items of an expression before the first occurrence of op.
-function before(op, items) {
-  return head(items) === op
+const before = (op: string, items: List<Expression>): List<Expression> =>
+  head(items) === op
     ? null
     : pair(head(items), before(op, tail(items)));
-}
 
 // A list of one item stands for that item.
-function unwrap(items) {
-  return is_null(tail(items)) ? head(items) : items;
-}
+const unwrap = (items: List<Expression>): Expression =>
+  is_null(tail(items)) ? head(items) : items;
 
 // A sum when + appears at the top level: * binds more tightly.
-function is_sum(x) {
-  return is_pair(x) && !is_null(member("+", x));
-}
+const is_sum = (x: Expression): boolean =>
+  is_pair(x) && !is_null(member("+", x));
 
-function addend(s) {
-  return unwrap(before("+", s));
-}
+const addend = (s: Expression): Expression => unwrap(before("+", s));
 
-function augend(s) {
-  return unwrap(tail(member("+", s)));
-}
+const augend = (s: Expression): Expression => unwrap(tail(member("+", s)));
 
-function is_product(x) {
-  return is_pair(x) && !is_sum(x) && !is_null(member("*", x));
-}
+const is_product = (x: Expression): boolean =>
+  is_pair(x) && !is_sum(x) && !is_null(member("*", x));
 
-function multiplier(p) {
-  return unwrap(before("*", p));
-}
+const multiplier = (p: Expression): Expression => unwrap(before("*", p));
 
-function multiplicand(p) {
-  return unwrap(tail(member("*", p)));
-}
+const multiplicand = (p: Expression): Expression =>
+  unwrap(tail(member("*", p)));
 
-function number_equal(exp, num) {
-  return is_number(exp) && exp === num;
-}
+const number_equal = (exp: Expression, num: number): boolean =>
+  is_number(exp) && exp === num;
 
-function make_sum(a1, a2) {
-  return number_equal(a1, 0)
+const make_sum = (a1: Expression, a2: Expression): Expression =>
+  number_equal(a1, 0)
     ? a2
     : number_equal(a2, 0)
       ? a1
       : is_number(a1) && is_number(a2)
         ? a1 + a2
         : list(a1, "+", a2);
-}
 
-function make_product(m1, m2) {
-  return number_equal(m1, 0) || number_equal(m2, 0)
+const make_product = (m1: Expression, m2: Expression): Expression =>
+  number_equal(m1, 0) || number_equal(m2, 0)
     ? 0
     : number_equal(m1, 1)
       ? m2
@@ -420,37 +401,34 @@ function make_product(m1, m2) {
         : is_number(m1) && is_number(m2)
           ? m1 * m2
           : list(m1, "*", m2);
-}
 `,
 };
 
 /* §2.3.3 Sets */
 
 /** Membership by `equal`, for checking answers without trusting the submission's own. */
-const appearsIn = `function appears_in(x, xs) {
-  return !is_null(xs) && (equal(x, head(xs)) || appears_in(x, tail(xs)));
-}
+const appearsIn = `const appears_in = <T>(x: T, xs: List<T>): boolean =>
+  !is_null(xs) && (equal(x, head(xs)) || appears_in(x, tail(xs)));
 `;
 
 export const exercise_2_59: ExerciseSpec = {
   id: '2.59',
   prelude: `${unorderedSetDefinitions}
 // True when s has no duplicates and the same elements as t.
-function is_same_set(s, t) {
-  function no_duplicates(s) {
-    return is_null(s) || (!is_element_of_set(head(s), tail(s)) && no_duplicates(tail(s)));
-  }
+const is_same_set = <T>(s: Set<T>, t: Set<T>): boolean => {
+  const no_duplicates = (s: Set<T>): boolean =>
+    is_null(s) || (!is_element_of_set(head(s), tail(s)) && no_duplicates(tail(s)));
   return no_duplicates(s)
     && length(s) === length(t)
     && accumulate((x, so_far) => so_far && is_element_of_set(x, t), true, s);
-}
+};
 `,
   starter: `// is_element_of_set, adjoin_set and intersection_set of the
-// unordered representation are provided.
+// unordered representation are provided, with the type Set<T> = List<T>.
 
-function union_set(set1, set2) {
+const union_set = <T>(set1: Set<T>, set2: Set<T>): Set<T> => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'overlapping sets', kind: 'value', expr: 'is_same_set(union_set(list(1, 2, 3), list(3, 4, 2)), list(1, 2, 3, 4))', expected: true },
@@ -468,11 +446,10 @@ function union_set(set1, set2) {
       expected: true,
     },
   ],
-  solution: `function union_set(set1, set2) {
-  return is_null(set1)
+  solution: `const union_set = <T>(set1: Set<T>, set2: Set<T>): Set<T> =>
+  is_null(set1)
     ? set2
     : union_set(tail(set1), adjoin_set(head(set1), set2));
-}
 `,
 };
 
@@ -481,22 +458,23 @@ export const exercise_2_60: ExerciseSpec = {
   prelude: appearsIn,
   starter: `// A set is now a list that may hold duplicates:
 // list(2, 3, 2, 1, 3, 2, 2) is the set {1, 2, 3}.
+type Set<T> = List<T>;
 
-function is_element_of_set(x, set) {
+const is_element_of_set = <T>(x: T, set: Set<T>): boolean => {
   // your answer
-}
+};
 
-function adjoin_set(x, set) {
+const adjoin_set = <T>(x: T, set: Set<T>): Set<T> => {
   // your answer
-}
+};
 
-function union_set(set1, set2) {
+const union_set = <T>(set1: Set<T>, set2: Set<T>): Set<T> => {
   // your answer
-}
+};
 
-function intersection_set(set1, set2) {
+const intersection_set = <T>(set1: Set<T>, set2: Set<T>): Set<T> => {
   // your answer
-}
+};
 `,
   tests: [
     {
@@ -527,39 +505,37 @@ function intersection_set(set1, set2) {
     },
     { name: 'union does not go element by element', kind: 'calls', call: 'union_set(enum_list(1, 50), enum_list(1, 50))', fn: 'union_set', atMost: 1 },
   ],
-  solution: `function is_element_of_set(x, set) {
-  return is_null(set)
+  solution: `type Set<T> = List<T>;
+
+const is_element_of_set = <T>(x: T, set: Set<T>): boolean =>
+  is_null(set)
     ? false
     : equal(x, head(set))
       ? true
       : is_element_of_set(x, tail(set));
-}
 
-function adjoin_set(x, set) {
-  return pair(x, set);
-}
+const adjoin_set = <T>(x: T, set: Set<T>): Set<T> => pair(x, set);
 
-function union_set(set1, set2) {
-  return append(set1, set2);
-}
+const union_set = <T>(set1: Set<T>, set2: Set<T>): Set<T> => append(set1, set2);
 
-function intersection_set(set1, set2) {
-  return is_null(set1) || is_null(set2)
+const intersection_set = <T>(set1: Set<T>, set2: Set<T>): Set<T> =>
+  is_null(set1) || is_null(set2)
     ? null
     : is_element_of_set(head(set1), set2)
       ? pair(head(set1), intersection_set(tail(set1), set2))
       : intersection_set(tail(set1), set2);
-}
 `,
 };
 
 export const exercise_2_61: ExerciseSpec = {
   id: '2.61',
   starter: `// Sets of numbers, as lists in increasing order.
+type Set<T> = List<T>;
+
 // Stop as soon as you reach the place where x belongs.
-function adjoin_set(x, set) {
+const adjoin_set = (x: number, set: Set<number>): Set<number> => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'in the middle', kind: 'value', expr: 'equal(adjoin_set(5, list(1, 3, 6, 10)), list(1, 3, 5, 6, 10))', expected: true },
@@ -573,19 +549,22 @@ function adjoin_set(x, set) {
     { name: 'the empty set', kind: 'value', expr: 'equal(adjoin_set(7, null), list(7))', expected: true },
     { name: 'stops where x belongs', kind: 'calls', call: 'adjoin_set(4.5, enum_list(1, 1000))', fn: 'adjoin_set', atMost: 5 },
   ],
-  solution: `function adjoin_set(x, set) {
-  return is_null(set)
+  solution: `type Set<T> = List<T>;
+
+const adjoin_set = (x: number, set: Set<number>): Set<number> =>
+  is_null(set)
     ? list(x)
     : x === head(set)
       ? set
       : x < head(set)
         ? pair(x, set)
         : pair(head(set), adjoin_set(x, tail(set)));
-}
 `,
 };
 
-const orderedUnion = `function union_set(set1, set2) {
+const orderedUnion = `type Set<T> = List<T>;
+
+const union_set = (set1: Set<number>, set2: Set<number>): Set<number> => {
   if (is_null(set1)) {
     return set2;
   } else if (is_null(set2)) {
@@ -599,15 +578,17 @@ const orderedUnion = `function union_set(set1, set2) {
         ? pair(x1, union_set(tail(set1), set2))
         : pair(x2, union_set(set1, tail(set2)));
   }
-}
+};
 `;
 
 export const exercise_2_62: ExerciseSpec = {
   id: '2.62',
   starter: `// Sets of numbers, as lists in increasing order.
-function union_set(set1, set2) {
+type Set<T> = List<T>;
+
+const union_set = (set1: Set<number>, set2: Set<number>): Set<number> => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'overlapping sets', kind: 'value', expr: 'equal(union_set(list(1, 3, 5), list(2, 3, 4, 6)), list(1, 2, 3, 4, 5, 6))', expected: true },
@@ -629,11 +610,10 @@ function union_set(set1, set2) {
   solution: orderedUnion,
 };
 
-const listToTreeDefinitions = `function list_to_tree(elements) {
-  return head(partial_tree(elements, length(elements)));
-}
+const listToTreeDefinitions = `const list_to_tree = <T>(elements: List<T>): Tree<T> =>
+  head(partial_tree(elements, length(elements)));
 
-function partial_tree(elts, n) {
+const partial_tree = <T>(elts: List<T>, n: number): Pair<Tree<T>, List<T>> => {
   if (n === 0) {
     return pair(null, elts);
   } else {
@@ -649,27 +629,25 @@ function partial_tree(elts, n) {
     return pair(make_tree(this_entry, left_tree, right_tree),
                 remaining_elts);
   }
-}
+};
 `;
 
-const treeToListDefinitions = `function tree_to_list_1(tree) {
-  return is_null(tree)
+const treeToListDefinitions = `const tree_to_list_1 = <T>(tree: Tree<T>): List<T> =>
+  is_null(tree)
     ? null
     : append(tree_to_list_1(left_branch(tree)),
              pair(entry(tree),
                   tree_to_list_1(right_branch(tree))));
-}
 
-function tree_to_list_2(tree) {
-  function copy_to_list(tree, result_list) {
-    return is_null(tree)
+const tree_to_list_2 = <T>(tree: Tree<T>): List<T> => {
+  const copy_to_list = (tree: Tree<T>, result_list: List<T>): List<T> =>
+    is_null(tree)
       ? result_list
       : copy_to_list(left_branch(tree),
                      pair(entry(tree),
                           copy_to_list(right_branch(tree), result_list)));
-  }
   return copy_to_list(tree, null);
-}
+};
 `;
 
 export const exercise_2_63: ExerciseSpec = {
@@ -677,8 +655,9 @@ export const exercise_2_63: ExerciseSpec = {
   prelude: `${treeDefinitions}
 ${figureTreesDefinitions}
 ${listToTreeDefinitions}`,
-  starter: `// make_tree and its selectors are provided, and so are tree_a, tree_b and
-// tree_c, the three trees of figure 2.16, and list_to_tree of exercise 2.64.
+  starter: `// The type Tree<T>, make_tree and its selectors are provided, and so are
+// tree_a, tree_b and tree_c, the three trees of figure 2.16, and list_to_tree
+// of exercise 2.64.
 
 ${treeToListDefinitions}
 // Do the two functions give the same list for every tree? true or false.
@@ -691,9 +670,9 @@ const grows_more_slowly = null;
 // How many times is append applied, counting its own recursive applications,
 // when tree_to_list_1(tree) is evaluated? Work it out from the shape of the
 // tree, without calling tree_to_list_1.
-function append_calls(tree) {
+const append_calls = <T>(tree: Tree<T>): number => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'same results', kind: 'value', expr: 'same_results', expected: true },
@@ -707,26 +686,24 @@ function append_calls(tree) {
 const same_results = true;
 const grows_more_slowly = "tree_to_list_2";
 
-function size(tree) {
-  return is_null(tree)
+const size = <T>(tree: Tree<T>): number =>
+  is_null(tree)
     ? 0
     : 1 + size(left_branch(tree)) + size(right_branch(tree));
-}
 
 // Each node appends its left subtree's list: one application per element, and one for null.
-function append_calls(tree) {
-  return is_null(tree)
+const append_calls = <T>(tree: Tree<T>): number =>
+  is_null(tree)
     ? 0
     : size(left_branch(tree)) + 1
       + append_calls(left_branch(tree)) + append_calls(right_branch(tree));
-}
 `,
 };
 
 export const exercise_2_64: ExerciseSpec = {
   id: '2.64',
   prelude: treeDefinitions,
-  starter: `// make_tree and its selectors are provided.
+  starter: `// The type Tree<T>, make_tree and its selectors are provided.
 
 ${listToTreeDefinitions}
 // The tree that list_to_tree(list(1, 3, 5, 7, 9, 11)) produces,
@@ -735,9 +712,9 @@ const drawn = null;
 
 // How many times is partial_tree applied when list_to_tree converts a list
 // of n elements? A formula in n.
-function partial_tree_calls(n) {
+const partial_tree_calls = (n: number): number => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'the tree for list(1, 3, 5, 7, 9, 11)', kind: 'value', expr: 'equal(drawn, list_to_tree(list(1, 3, 5, 7, 9, 11)))', expected: true },
@@ -752,9 +729,7 @@ const drawn = make_tree(5,
                                      make_tree(11, null, null)));
 
 // Each application with n > 0 makes two more, on n - 1 elements between them.
-function partial_tree_calls(n) {
-  return 2 * n + 1;
-}
+const partial_tree_calls = (n: number): number => 2 * n + 1;
 `,
 };
 
@@ -762,34 +737,32 @@ export const exercise_2_65: ExerciseSpec = {
   id: '2.65',
   prelude: `${treeDefinitions}
 ${listToTreeDefinitions}
-function tree_to_list(tree) {
-  function copy_to_list(tree, result_list) {
-    return is_null(tree)
+const tree_to_list = <T>(tree: Tree<T>): List<T> => {
+  const copy_to_list = (tree: Tree<T>, result_list: List<T>): List<T> =>
+    is_null(tree)
       ? result_list
       : copy_to_list(left_branch(tree),
                      pair(entry(tree),
                           copy_to_list(right_branch(tree), result_list)));
-  }
   return copy_to_list(tree, null);
-}
+};
 
-function depth(tree) {
-  return is_null(tree)
+const depth = <T>(tree: Tree<T>): number =>
+  is_null(tree)
     ? 0
     : 1 + math_max(depth(left_branch(tree)), depth(right_branch(tree)));
-}
 `,
-  starter: `// Provided: make_tree and its selectors, tree_to_list (the Θ(n)
-// tree_to_list_2 of exercise 2.63), list_to_tree (exercise 2.64), and
-// depth(tree), the number of levels in a tree.
+  starter: `// Provided: the type Tree<T>, make_tree and its selectors, tree_to_list
+// (the Θ(n) tree_to_list_2 of exercise 2.63), list_to_tree (exercise 2.64),
+// and depth(tree), the number of levels in a tree.
 
-function union_set(set1, set2) {
+const union_set = (set1: Tree<number>, set2: Tree<number>): Tree<number> => {
   // your answer
-}
+};
 
-function intersection_set(set1, set2) {
+const intersection_set = (set1: Tree<number>, set2: Tree<number>): Tree<number> => {
   // your answer
-}
+};
 `,
   tests: [
     {
@@ -824,7 +797,7 @@ function intersection_set(set1, set2) {
     },
   ],
   budget: 1_000_000,
-  solution: `function union_list(set1, set2) {
+  solution: `const union_list = (set1: List<number>, set2: List<number>): List<number> => {
   if (is_null(set1)) {
     return set2;
   } else if (is_null(set2)) {
@@ -838,9 +811,9 @@ function intersection_set(set1, set2) {
         ? pair(x1, union_list(tail(set1), set2))
         : pair(x2, union_list(set1, tail(set2)));
   }
-}
+};
 
-function intersection_list(set1, set2) {
+const intersection_list = (set1: List<number>, set2: List<number>): List<number> => {
   if (is_null(set1) || is_null(set2)) {
     return null;
   } else {
@@ -852,15 +825,13 @@ function intersection_list(set1, set2) {
         ? intersection_list(tail(set1), set2)
         : intersection_list(set1, tail(set2));
   }
-}
+};
 
-function union_set(set1, set2) {
-  return list_to_tree(union_list(tree_to_list(set1), tree_to_list(set2)));
-}
+const union_set = (set1: Tree<number>, set2: Tree<number>): Tree<number> =>
+  list_to_tree(union_list(tree_to_list(set1), tree_to_list(set2)));
 
-function intersection_set(set1, set2) {
-  return list_to_tree(intersection_list(tree_to_list(set1), tree_to_list(set2)));
-}
+const intersection_set = (set1: Tree<number>, set2: Tree<number>): Tree<number> =>
+  list_to_tree(intersection_list(tree_to_list(set1), tree_to_list(set2)));
 `,
 };
 
@@ -868,28 +839,24 @@ export const exercise_2_66: ExerciseSpec = {
   id: '2.66',
   prelude: `${treeDefinitions}
 ${listToTreeDefinitions}
-function make_record(key, data) {
-  return pair(key, data);
-}
+type Record = Pair<number, unknown>;
 
-function key(record) {
-  return head(record);
-}
+const make_record = (key: number, data: unknown): Record => pair(key, data);
 
-function data(record) {
-  return tail(record);
-}
+const key = (record: Record): number => head(record);
+
+const data = (record: Record): unknown => tail(record);
 
 // 1000 records with keys 0, 3, 6, ..., 2997, as a balanced tree.
 const staff = list_to_tree(build_list(i => make_record(3 * i, i), 1000));
 `,
-  starter: `// Provided: make_record(key, data) and the selectors key and data; make_tree
-// and its selectors; list_to_tree; and staff, a tree of 1000 records with
-// keys 0, 3, 6, ..., 2997, ordered by key.
+  starter: `// Provided: the type Record, make_record(key, data) and the selectors key and
+// data; the type Tree<T>, make_tree and its selectors; list_to_tree; and staff,
+// a tree of 1000 records with keys 0, 3, 6, ..., 2997, ordered by key.
 
-function lookup(given_key, set_of_records) {
+const lookup = (given_key: number, set_of_records: Tree<Record>): Record | false => {
   // your answer
-}
+};
 `,
   tests: [
     {
@@ -902,7 +869,7 @@ function lookup(given_key, set_of_records) {
     { name: 'missing keys', kind: 'value', expr: 'lookup(43, staff) === false && lookup(1, null) === false', expected: true },
     { name: 'one path down the tree', kind: 'calls', call: 'lookup(2997, staff)', fn: 'lookup', atMost: 11 },
   ],
-  solution: `function lookup(given_key, set_of_records) {
+  solution: `const lookup = (given_key: number, set_of_records: Tree<Record>): Record | false => {
   if (is_null(set_of_records)) {
     return false;
   } else {
@@ -913,7 +880,7 @@ function lookup(given_key, set_of_records) {
         ? lookup(given_key, left_branch(set_of_records))
         : lookup(given_key, right_branch(set_of_records));
   }
-}
+};
 `,
 };
 
@@ -943,12 +910,11 @@ const decoded = list("A", "D", "A", "B", "B", "C", "A");
 `,
 };
 
-const encodeFunction = `function encode(message, tree) {
-  return is_null(message)
+const encodeFunction = `const encode = (message: List<string>, tree: HuffmanTree): List<number> =>
+  is_null(message)
     ? null
     : append(encode_symbol(head(message), tree),
              encode(tail(message), tree));
-}
 `;
 
 export const exercise_2_68: ExerciseSpec = {
@@ -956,15 +922,15 @@ export const exercise_2_68: ExerciseSpec = {
   prelude: `${huffmanTreeDefinitions}
 ${decodeDefinitions}
 ${sampleTreeDefinitions}
-${figureHuffmanTreeDefinition.replace('const tree', 'const figure_tree')}`,
+${replaced(figureHuffmanTreeDefinition, 'const tree = ', 'const figure_tree = ')}`,
   starter: `// Provided: the representation of Huffman trees, decode, sample_tree and
 // sample_message of exercise 2.67, and figure_tree, the tree of figure 2.18.
 
 ${encodeFunction}
 // The list of bits for one symbol; an error if the symbol is not in the tree.
-function encode_symbol(symbol, tree) {
+const encode_symbol = (symbol: string, tree: HuffmanTree): List<number> => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'one symbol', kind: 'value', expr: 'equal(encode_symbol("D", sample_tree), list(1, 1, 0))', expected: true },
@@ -989,13 +955,12 @@ ${encodeDefinitions}`,
   starter: `// Provided: the representation of Huffman trees, adjoin_set (ordered by
 // weight), make_leaf_set, encode and decode.
 
-function generate_huffman_tree(pairs) {
-  return successive_merge(make_leaf_set(pairs));
-}
+const generate_huffman_tree = (pairs: List<List<string | number>>): HuffmanTree =>
+  successive_merge(make_leaf_set(pairs));
 
-function successive_merge(set) {
+const successive_merge = (set: List<HuffmanTree>): HuffmanTree => {
   // your answer
-}
+};
 `,
   tests: [
     {
@@ -1018,18 +983,16 @@ function successive_merge(set) {
     },
     { name: 'one symbol is a leaf', kind: 'value', expr: 'is_leaf(generate_huffman_tree(list(list("A", 3))))', expected: true },
   ],
-  solution: `function generate_huffman_tree(pairs) {
-  return successive_merge(make_leaf_set(pairs));
-}
+  solution: `const generate_huffman_tree = (pairs: List<List<string | number>>): HuffmanTree =>
+  successive_merge(make_leaf_set(pairs));
 
 // The set is ordered by weight, so the two lightest come first; the merged
 // tree goes back in its place by weight.
-function successive_merge(set) {
-  return is_null(tail(set))
+const successive_merge = (set: List<HuffmanTree>): HuffmanTree =>
+  is_null(tail(set))
     ? head(set)
     : successive_merge(adjoin_set(make_code_tree(head(set), head(tail(set))),
                                   tail(tail(set))));
-}
 `,
 };
 
@@ -1082,9 +1045,8 @@ const fixed_bits = 3 * length(song);
 };
 
 const powersOfTwo = `// The pairs list(list("s0", 1), list("s1", 2), ..., list("s<n-1>", 2^(n-1))).
-function powers_of_two(n) {
-  return build_list(i => list("s" + stringify(i), math_pow(2, i)), n);
-}
+const powers_of_two = (n: number): List<List<string | number>> =>
+  build_list(i => list("s" + stringify(i), math_pow(2, i)), n);
 `;
 
 export const exercise_2_71: ExerciseSpec = {
@@ -1097,14 +1059,14 @@ ${powersOfTwo}`,
 // Look at generate_huffman_tree(powers_of_two(5)) and the tree for 10.
 
 // For any n >= 2: how many bits encode the most frequent symbol?
-function most_frequent_bits(n) {
+const most_frequent_bits = (n: number): number => {
   // your answer
-}
+};
 
 // And the least frequent?
-function least_frequent_bits(n) {
+const least_frequent_bits = (n: number): number => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'most frequent, n = 5', kind: 'value', expr: 'most_frequent_bits(5)', expected: 1 },
@@ -1117,13 +1079,9 @@ function least_frequent_bits(n) {
       expected: true,
     },
   ],
-  solution: `function most_frequent_bits(n) {
-  return 1;
-}
+  solution: `const most_frequent_bits = (n: number): number => 1;
 
-function least_frequent_bits(n) {
-  return n - 1;
-}
+const least_frequent_bits = (n: number): number => n - 1;
 `,
 };
 
@@ -1138,13 +1096,13 @@ ${powersOfTwo}`,
 ${encodeDefinitions}
 // In generate_huffman_tree(powers_of_two(n)), how many times is contains
 // applied to encode the most frequent symbol? The least frequent? Formulas in n.
-function searches_for_most_frequent(n) {
+const searches_for_most_frequent = (n: number): number => {
   // your answer
-}
+};
 
-function searches_for_least_frequent(n) {
+const searches_for_least_frequent = (n: number): number => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'most frequent, n = 5', kind: 'value', expr: 'searches_for_most_frequent(5)', expected: 6 },
@@ -1155,14 +1113,10 @@ function searches_for_least_frequent(n) {
   solution: `${encodeDefinitions}
 // At the root, the search of the left branch's n - 1 symbols fails (n
 // applications), then the right branch, a single leaf, matches (one more).
-function searches_for_most_frequent(n) {
-  return n + 1;
-}
+const searches_for_most_frequent = (n: number): number => n + 1;
 
 // The least frequent symbol is first in every left branch's list, so each of
 // the n - 1 nodes on the way down costs one application.
-function searches_for_least_frequent(n) {
-  return n - 1;
-}
+const searches_for_least_frequent = (n: number): number => n - 1;
 `,
 };

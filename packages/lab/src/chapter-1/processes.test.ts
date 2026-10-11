@@ -53,8 +53,8 @@ describe('section 1.2.1: linear recursion and iteration', () => {
 
   it('does not mistake a helper call for recursion', () => {
     const { snapshot } = processShape(`
-      function square(x) { return x * x; }
-      function sum_of_squares(a, b) { return square(a) + square(b); }
+      const square = (x: number): number => x * x;
+      const sum_of_squares = (a: number, b: number): number => square(a) + square(b);
       sum_of_squares(3, 4);`);
     expect(snapshot.runs[0]).toMatchObject({ kind: 'iterative', maxDepth: 2, calls: 3 });
   });

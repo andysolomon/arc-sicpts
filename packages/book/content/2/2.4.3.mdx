@@ -8,7 +8,7 @@ Underneath both weaknesses is the same fact: the technique is not *additive*. Wh
 
 What we need is a way to modularise the design further, and *data-directed programming* provides it. Whenever we deal with a set of generic operations common to a set of types, we are in effect dealing with a two-dimensional table: the operations on one axis, the types on the other, and in each entry the function that implements that operation for that type. In §2.4.2 this table was spread out among the clauses of the generic functions. Data-directed programming works with the table directly. The interface becomes a single function that looks up the operation name and the argument type in the table and applies what it finds. To add a representation, we change no existing function; we only add entries to the table.
 
-Assume two functions for manipulating the table. `put(op, type, item)` installs `item` in the table, indexed by `op` and `type`, and `get(op, type)` returns the item found under `op` and `type`, or `undefined` if there is none. Source has no such table built in. Section 3.3.3 shows how to build tables properly, with mutable data; for now a list of entries in a `let` will do, searched with `equal` so that a type can itself be a list.
+Assume two functions for manipulating the table. `put(op, type, item)` installs `item` in the table, indexed by `op` and `type`, and `get(op, type)` returns the item found under `op` and `type`, or `undefined` if there is none. Source has no such table built in. Section 3.3.3 shows how to build tables properly, with mutable data; for now a list of entries in a `let` will do, searched with `equal` so that a type can itself be a list. The items are functions of the type `Operation`, which takes any number of arguments, collected in a list, and returns anything.
 
 </Prose>
 
@@ -22,27 +22,27 @@ The table is drawn from the trace: every `put` fills a cell under its operation 
 
 Here is how Ben uses the table. He writes his functions just as he did in §2.4.1, before there were tags or other representations, and collects them into a *package*: a function that declares them internally and then interfaces them to the rest of the system by adding entries to the table. Calling `install_rectangular_package` installs his `real_part` under the operation `"real_part"` and the type `list("rectangular")`, and similarly for the other selectors. The type is a list, rather than the string `"rectangular"`, to allow for operations with several arguments, not all of the same type. The interface also defines the constructors that the outside world will use. They are Ben's internal constructors with a tag attached, and they are installed under a plain string, since a constructor always makes an object of one particular type.
 
-Because his function declarations are internal to the installation function, Ben need not worry about name conflicts. Alyssa's package is analogous, and even though both still use the same names, such as `real_part`, the declarations are internal to different functions (see §1.1.8), so there is no conflict.
+Because his functions are declared inside the installation function, Ben need not worry about name conflicts. Alyssa's package is analogous, and even though both still use the same names, such as `real_part`, the declarations are internal to different functions (see §1.1.8), so there is no conflict.
 
 The complex-arithmetic selectors reach the table through one general function, `apply_generic`, which looks in the table under the name of the operation and the types of the arguments, and applies the function it finds to the contents of the arguments:
 
 ```js
-function apply_generic(op, args) {
+const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   return ! is_undefined(fun)
-    ? apply(fun, map(contents, args))
+    ? fun(...map(contents, args))
     : error(list(op, type_tags), "no method for these types -- apply_generic");
-}
+};
 ```
 
-The book's JavaScript calls a function on a list of arguments with `apply_in_underlying_javascript`. Source cannot spread a list into arguments, so `apply` here takes the list apart by hand for one, two or three arguments, which is all the generic operations of this chapter need. The generic selectors are now one line each, and they do not change at all when a representation is added: `real_part(z)` is `apply_generic("real_part", list(z))`. The constructors are extracted from the table too, rectangular from real and imaginary parts and polar from magnitude and angle, as before.
+`apply_generic` takes any number of arguments after the operation's name: the rest parameter `...args` collects them into a list, which is what the type tags are read from. To call the function it finds, it spreads the list of contents back into arguments, `fun(...map(contents, args))`, so an operation of one argument, two or more is dispatched the same way. The book's JavaScript, whose Source had neither rest nor spread, passes the arguments as a list and calls the function with `apply_in_underlying_javascript`. The generic selectors are now one line each, and they do not change at all when a representation is added: `real_part(z)` is `apply_generic("real_part", z)`. The constructors are extracted from the table too, rectangular from real and imaginary parts and polar from magnitude and angle, as before.
 
 </Prose>
 
 <Example index={1} file="data_directed.sicp" source={dataDirectedProgram} prelude={dataDirectedPrelude} anim="operation-table">
 
-`put` and `get`, `attach_tag`, `type_tag` and `contents`, and `apply` are predefined; the rest is shown. The two installations fill the table one column at a time, Ben's and then Alyssa's, figure 2.22 assembled by the program itself. Then every lookup lights its cell: the two constructors, `magnitude` for the rectangular `z1`, and `real_part` for the polar `z2`. Neither `apply_generic` nor the selectors mention a type; a third package would add a column and change nothing else.
+`put` and `get`, `attach_tag`, `type_tag` and `contents` are predefined; the rest is shown. The two installations fill the table one column at a time, Ben's and then Alyssa's, figure 2.22 assembled by the program itself. Then every lookup lights its cell: the two constructors, `magnitude` for the rectangular `z1`, and `real_part` for the polar `z2`. Neither `apply_generic` nor the selectors mention a type; a third package would add a column and change nothing else.
 
 </Example>
 
@@ -50,7 +50,7 @@ The book's JavaScript calls a function on a list of arguments with `apply_in_und
 
 **Message passing.** The key idea of data-directed programming is to deal explicitly with the operation-and-type table. The style of §2.4.2 organised the dispatch so that each operation takes care of its own dispatching. In effect it decomposes the table into rows, each generic function representing one row.
 
-An alternative is to decompose the table into columns: instead of intelligent operations that dispatch on data types, work with intelligent data objects that dispatch on operation names. A rectangular number can be represented as a function that takes the name of the required operation and performs it. `apply_generic` then simply feeds the operation's name to the data object and lets the object do the work.
+An alternative is to decompose the table into columns: instead of intelligent operations that dispatch on data types, work with intelligent data objects that dispatch on operation names. A rectangular number can be represented as a function that takes the name of the required operation and performs it, so the type `Complex` is now `(op: string) => number`. `apply_generic` then simply feeds the operation's name to the data object and lets the object do the work.
 
 </Prose>
 
@@ -68,7 +68,7 @@ This style of programming is called *message passing*: a data object is an entit
 
 <UnderTheHood file="packages/lab/src/chapter-2/multipleRepresentations.ts">
 
-The table, the tags and `apply` are Source declarations shared with §2.5, in `chapter-2/genericArithmetic.ts`. The table scene, `anim/scenes/OperationTableScene.tsx`, reads the calls of `put` and `get` out of the trace with their arguments, and the values `get` returned. The test `chapter-2/multipleRepresentations.test.ts` asserts that the two packages make 12 calls of `put`, that the data-directed program then calls `get` exactly four times, with the keys the animation lights, that `real_part` of a `"cartesian"` datum stops with "no method for these types", and that the message-passing `z` is a function whose real part is 3.
+The table and the tags are Source declarations shared with §2.5, in `chapter-2/genericArithmetic.ts`. The table scene, `anim/scenes/OperationTableScene.tsx`, reads the calls of `put` and `get` out of the trace with their arguments, and the values `get` returned. The test `chapter-2/multipleRepresentations.test.ts` asserts that the two packages make 12 calls of `put`, that the data-directed program then calls `get` exactly four times, with the keys the animation lights, that `real_part` of a `"cartesian"` datum stops with "no method for these types", and that the message-passing `z` is a function whose real part is 3.
 
 </UnderTheHood>
 
@@ -78,13 +78,12 @@ The table, the tags and `apply` are Source declarations shared with §2.5, in `c
 Section 2.3.2 described a program that performs symbolic differentiation. We can regard it as dispatching on the type of the expression to be differentiated, where the "type tag" is the algebraic operator, such as `"+"`, and the operation is `deriv`. In data-directed style, the basic derivative function becomes
 
 ```js
-function deriv(exp, variable) {
-  return is_number(exp)
+const deriv = (exp: Expression, variable: string): Expression =>
+  is_number(exp)
     ? 0
     : is_variable(exp)
     ? is_same_variable(exp, variable) ? 1 : 0
     : get("deriv", operator(exp))(operands(exp), variable);
-}
 ```
 
 with `operator(exp)` the head of the expression and `operands(exp)` its tail.

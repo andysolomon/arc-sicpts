@@ -14,14 +14,13 @@ We will not develop a complete algebraic-manipulation system; such systems are e
 
 Already we skirt thorny issues. Is the first polynomial the same as 5*y*² + 3*y* + 7? Yes, if a polynomial is a mathematical function; no, if it is a syntactic form. The second is algebraically equivalent to a polynomial in *y* whose coefficients are polynomials in *x*: should the system recognize that? We finesse these questions by deciding that a "polynomial" is a particular syntactic form, not its mathematical meaning. We consider only addition and multiplication, and we insist that two polynomials to be combined have the same indeterminate.
 
-We follow the discipline of data abstraction. A *poly* consists of a variable and a collection of terms, with selectors `variable` and `term_list` and a constructor `make_poly`. A variable is a string, so `is_same_variable` of §2.3.2 compares variables. Then
+We follow the discipline of data abstraction. A *poly* consists of a variable and a collection of terms, with selectors `variable` and `term_list` and a constructor `make_poly`. A variable is a string, so `is_same_variable` of §2.3.2 compares variables. The type `Poly` is `Pair<string, TermList>`; what a `TermList` is waits until we choose its representation. Then
 
 ```js
-function add_poly(p1, p2) {
-  return is_same_variable(variable(p1), variable(p2))
+const add_poly = (p1: Poly, p2: Poly): Poly =>
+  is_same_variable(variable(p1), variable(p2))
     ? make_poly(variable(p1), add_terms(term_list(p1), term_list(p2)))
     : error("polys not in same var -- add_poly", list(p1, p2));
-}
 ```
 
 and `mul_poly` is the same with `mul_terms`. To join the generic arithmetic system, polys get the type tag `"polynomial"`, and an installation function puts the tagged operations in the operation table, just as the packages of §2.5.1 do.
@@ -87,26 +86,26 @@ Step through the diagrams. A costs six pairs dense and fifteen sparse, since eac
 Most polynomial manipulations are performed on sparse polynomials, so we use the second method: a term list is a list of terms, highest order first.
 
 ```js
-function adjoin_term(term, term_list) {
-  return is_equal_to_zero(coeff(term))
+type Term = List<unknown>;
+type TermList = List<Term>;
+const adjoin_term = (term: Term, term_list: TermList): TermList =>
+  is_equal_to_zero(coeff(term))
     ? term_list
     : pair(term, term_list);
-}
 const the_empty_termlist = null;
-function first_term(term_list) { return head(term_list); }
-function rest_terms(term_list) { return tail(term_list); }
-function is_empty_termlist(term_list) { return is_null(term_list); }
-function make_term(order, coeff) { return list(order, coeff); }
-function order(term) { return head(term); }
-function coeff(term) { return head(tail(term)); }
+const first_term = (term_list: TermList): Term => head(term_list);
+const rest_terms = (term_list: TermList): TermList => tail(term_list);
+const is_empty_termlist = (term_list: TermList): boolean => is_null(term_list);
+const make_term = (order: number, coeff: unknown): Term => list(order, coeff);
+const order = (term: Term): number => head(term);
+const coeff = (term: Term): unknown => head(tail(term));
 ```
 
-`adjoin_term` simply puts the new term at the front. That is safe as long as callers such as `add_terms` always adjoin a term of higher order than any already in the list, which they do. Users of the package create tagged polynomials with
+A coefficient can be any kind of number the generic system knows, so a `Term` is a `List<unknown>`. `adjoin_term` simply puts the new term at the front. That is safe as long as callers such as `add_terms` always adjoin a term of higher order than any already in the list, which they do. Users of the package create tagged polynomials with
 
 ```js
-function make_polynomial(variable, terms) {
-  return get("make", "polynomial")(variable, terms);
-}
+const make_polynomial = (variable: string, terms: TermList): Tagged<Poly> =>
+  get("make", "polynomial")(variable, terms);
 ```
 
 **Hierarchies of types in symbolic algebra.** Our polynomial system shows how objects of one type (polynomials) may be complex objects with parts of many different types. That poses no real difficulty for generic operations: we install operations for the parts, and data-directed programming handles even the "recursive data abstraction" in which parts of a polynomial are themselves polynomials.
@@ -134,19 +133,16 @@ Here the sum has been simplified by removing common factors; ordinary cross-mult
 We can reduce polynomial fractions the way we reduced integer ones: divide numerator and denominator by their greatest common divisor. The notion makes sense for polynomials, and Euclid's algorithm works for them essentially unchanged, because polynomials, like integers, admit a division with a remainder smaller than the divisor (in degree, for polynomials). The integer version is
 
 ```js
-function gcd(a, b) {
-  return b === 0 ? a : gcd(b, a % b);
-}
+const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
 ```
 
 and the obvious modification works on term lists:
 
 ```js
-function gcd_terms(a, b) {
-  return is_empty_termlist(b)
+const gcd_terms = (a: TermList, b: TermList): TermList =>
+  is_empty_termlist(b)
     ? a
     : gcd_terms(b, remainder_terms(a, b));
-}
 ```
 
 where `remainder_terms` picks out the remainder of the term-list division `div_terms` of Exercise 2.91.
@@ -310,10 +306,10 @@ Implement the algorithm above as a function `reduce_terms` that takes two term l
 Then define a function analogous to `reduce_terms` that does what the original `make_rat` did for integers:
 
 ```js
-function reduce_integers(n, d) {
+const reduce_integers = (n: number, d: number): List<number> => {
   const g = gcd(n, d);
   return list(n / g, d / g);
-}
+};
 ```
 
 and define `reduce` as a generic operation that calls `apply_generic` to dispatch either to `reduce_poly` (for `polynomial` arguments) or to `reduce_integers` (for `javascript_number` arguments). You can now make the rational-arithmetic package reduce fractions to lowest terms by having `make_rat` call `reduce` before combining the given numerator and denominator into a rational number. The system now handles rational expressions in either integers or polynomials. To test your program, try the example at the beginning of this extended exercise:

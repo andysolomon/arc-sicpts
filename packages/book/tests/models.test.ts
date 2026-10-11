@@ -9,17 +9,14 @@ import { blackBoxes } from '../src/diagrams/BlackBoxDiagram.tsx';
 import { layers } from '../src/diagrams/LayersDiagram.tsx';
 import { traceOf } from './traceHelper.ts';
 
-const compound = `function square(x) {
-  return x * x;
-}
+const compound = `const square = (x: number): number =>
+  x * x;
 
-function sum_of_squares(x, y) {
-  return square(x) + square(y);
-}
+const sum_of_squares = (x: number, y: number): number =>
+  square(x) + square(y);
 
-function f(a) {
-  return sum_of_squares(a + 1, a * 2);
-}
+const f = (a: number): number =>
+  sum_of_squares(a + 1, a * 2);
 
 f(5);
 `;
@@ -68,7 +65,7 @@ describe('expression trees', () => {
 
 describe('environment frames', () => {
   it('reserves declared names, makes a frame per call and resolves lookups outward', () => {
-    const source = 'const x = 100;\nfunction square(x) { return x * x; }\nsquare(3);\nx;\n';
+    const source = 'const x = 100;\nconst square = (x: number): number => x * x;\nsquare(3);\nx;\n';
     const states = environmentStates(source, traceOf(source));
     expect(states[0]?.frames[0]?.bindings).toEqual([
       { name: 'x', value: null },
@@ -97,7 +94,7 @@ describe('environment frames', () => {
   });
 
   it('finds free names one frame out under block structure', () => {
-    const source = 'function sqrt(x) {\n  function improve(guess) { return (guess + x / guess) / 2; }\n  return improve(1);\n}\nsqrt(144);\n';
+    const source = 'const sqrt = (x: number): number => {\n  const improve = (guess: number): number => (guess + x / guess) / 2;\n  return improve(1);\n};\nsqrt(144);\n';
     const states = environmentStates(source, traceOf(source));
     const free = states.find((s) => s.lookup?.symbol === 'x');
     expect(free?.lookup?.found).toBe('E1');
@@ -135,7 +132,7 @@ describe('call tree', () => {
 });
 
 describe('decision trees', () => {
-  const source = `function abs(x) {\n  return x >= 0 ? x : -x;\n}\nfunction is_between(x, low, high) {\n  return x >= low && x <= high;\n}\nabs(-12);\nis_between(5, 1, 10);\n`;
+  const source = `const abs = (x: number): number =>\n  x >= 0 ? x : -x;\nconst is_between = (x: number, low: number, high: number): boolean =>\n  x >= low && x <= high;\nabs(-12);\nis_between(5, 1, 10);\n`;
 
   it('draws conditionals as questions and lights the branch taken', () => {
     const functions = functionBranches(source);
@@ -156,7 +153,7 @@ describe('decision trees', () => {
 
 describe("Newton's method", () => {
   it('reads the radicand from the program and the guesses from what it printed', () => {
-    const source = `function sqrt_iter(guess, x) {\n  display(guess);\n  return math_abs(guess * guess - x) < 0.001 ? guess : sqrt_iter((guess + x / guess) / 2, x);\n}\nsqrt_iter(1, 2);\n`;
+    const source = `const sqrt_iter = (guess: number, x: number): number => {\n  display(guess);\n  return math_abs(guess * guess - x) < 0.001 ? guess : sqrt_iter((guess + x / guess) / 2, x);\n};\nsqrt_iter(1, 2);\n`;
     const model = newtonModel(source, traceOf(source));
     expect(model.x).toBe(2);
     expect(model.inferred).toBe(false);
@@ -173,7 +170,7 @@ describe('diagrams', () => {
   });
 
   it('finds the helpers inside a block-structured function and their free names', () => {
-    const source = `function sqrt(x) {\n  function is_good_enough(guess) { return math_abs(guess * guess - x) < 0.001; }\n  function improve(guess) { return (guess + x / guess) / 2; }\n  function sqrt_iter(guess) { return is_good_enough(guess) ? guess : sqrt_iter(improve(guess)); }\n  return sqrt_iter(1);\n}\n`;
+    const source = `const sqrt = (x: number): number => {\n  const is_good_enough = (guess: number): boolean => math_abs(guess * guess - x) < 0.001;\n  const improve = (guess: number): number => (guess + x / guess) / 2;\n  const sqrt_iter = (guess: number): number => is_good_enough(guess) ? guess : sqrt_iter(improve(guess));\n  return sqrt_iter(1);\n};\n`;
     const [sqrt] = blackBoxes(source);
     expect(sqrt?.params).toEqual(['x']);
     expect(sqrt?.inner.map((inner) => [inner.name, inner.free])).toEqual([

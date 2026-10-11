@@ -67,7 +67,7 @@ test('exercise 3.46 accepts a test_and_set that two threads can both win', async
   await editor.click();
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type(
-    'function non_atomic_test_and_set(cell) { if (head(cell)) { return true; } else { set_head(cell, true); return false; } }',
+    'const non_atomic_test_and_set = (cell: List<boolean>): boolean => { if (head(cell)) { return true; } else { set_head(cell, true); return false; } };',
   );
   await exercise.getByRole('button', { name: 'Check' }).click();
   await expect(status).toHaveText('2 / 2 hidden tests pass');

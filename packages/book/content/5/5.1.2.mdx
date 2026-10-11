@@ -7,11 +7,10 @@ We will often define a machine to include primitive operations that are actually
 Consider the GCD machine. The machine has an instruction that computes the remainder of the contents of registers `a` and `b` and assigns the result to register `t`. If we want to construct the GCD machine without using a primitive remainder operation, we must specify how to compute remainders in terms of simpler operations, such as subtraction. Indeed, we can write a JavaScript function that finds remainders in this way:
 
 ```js
-function remainder(n, d) {
-    return n < d
-           ? n
-           : remainder(n - d, d);
-}
+const remainder = (n: number, d: number): number =>
+    n < d
+    ? n
+    : remainder(n - d, d);
 ```
 
 We can thus replace the remainder operation in the GCD machine's data paths with a subtraction operation and a comparison test. The instruction
@@ -42,20 +41,16 @@ The data paths have lost the `rem` trapezoid and gained a `-` operation, whose o
 Design a machine to compute square roots using Newton's method, as in §1.1.7:
 
 ```js
-function sqrt(x) {
-    function is_good_enough(guess) {
-        return math_abs(square(guess) - x) < 0.001;
-    }
-    function improve(guess) {
-        return average(guess, x / guess);
-    }
-    function sqrt_iter(guess) {
-        return is_good_enough(guess)
-               ? guess
-               : sqrt_iter(improve(guess));
-    }
+const sqrt = (x: number): number => {
+    const is_good_enough = (guess: number): boolean =>
+        math_abs(square(guess) - x) < 0.001;
+    const improve = (guess: number): number => average(guess, x / guess);
+    const sqrt_iter = (guess: number): number =>
+        is_good_enough(guess)
+        ? guess
+        : sqrt_iter(improve(guess));
     return sqrt_iter(1);
-}
+};
 ```
 
 Begin by assuming that `good_enough` and `improve` operations are available as primitives: complete `sqrt_machine_1`, whose operations are given. Then show how to expand these in terms of arithmetic operations: complete `sqrt_machine_2`, adding the registers and operations it needs. Both machines take *x* in register `x` and leave the root in register `guess`. The checker runs each on a few numbers and compares with the true root to within 0.001; it checks that the first machine uses `good_enough` and `improve` and that the second uses only arithmetic and comparison operations, named after the JavaScript operators (`+`, `-`, `*`, `/`, `<` and so on; `abs` is allowed too). The book also asks for data-path diagrams: paste a machine into the editor above, with its inputs and `start`, and the animation draws them.

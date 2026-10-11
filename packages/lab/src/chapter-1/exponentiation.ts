@@ -3,27 +3,21 @@
  * recursion to successive squaring.
  */
 
-export const exptDefinitions = `function expt(b, n) {
-  return n === 0
+export const exptDefinitions = `const expt = (b: number, n: number): number =>
+  n === 0
     ? 1
     : b * expt(b, n - 1);
-}
 
-function is_even(n) {
-  return n % 2 === 0;
-}
+const is_even = (n: number): boolean => n % 2 === 0;
 
-function square(x) {
-  return x * x;
-}
+const square = (x: number): number => x * x;
 
-function fast_expt(b, n) {
-  return n === 0
+const fast_expt = (b: number, n: number): number =>
+  n === 0
     ? 1
     : is_even(n)
       ? square(fast_expt(b, n / 2))
       : b * fast_expt(b, n - 1);
-}
 `;
 
 /** Both functions at doubling sizes: one call more each time, against twice as many. */
@@ -38,21 +32,16 @@ fast_expt(2, 32);
 fast_expt(2, 64);
 `;
 
-export const fastExptProgram = `function is_even(n) {
-  return n % 2 === 0;
-}
+export const fastExptProgram = `const is_even = (n: number): boolean => n % 2 === 0;
 
-function square(x) {
-  return x * x;
-}
+const square = (x: number): number => x * x;
 
-function fast_expt(b, n) {
-  return n === 0
+const fast_expt = (b: number, n: number): number =>
+  n === 0
     ? 1
     : is_even(n)
       ? square(fast_expt(b, n / 2))
       : b * fast_expt(b, n - 1);
-}
 
 fast_expt(2, 10);
 `;

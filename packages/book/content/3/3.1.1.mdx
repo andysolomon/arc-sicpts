@@ -48,7 +48,7 @@ Each card is one object: the name the program gives it, the call that made it, a
 
 <Prose>
 
-An account needs deposits as well as withdrawals. The two operations must share one balance, so both should be declared inside the function that holds it. `make_account` declares `withdraw` and `deposit` next to each other, and returns a third function, `dispatch`, that takes a *message* naming an operation and returns the right one. This is the message-passing style of §2.4.3, now carrying state. `acc("withdraw")` is the withdrawal operation of the account `acc`, and applying it to 50 performs the withdrawal.
+An account needs deposits as well as withdrawals. The two operations must share one balance, so both should be declared inside the function that holds it. `make_account` declares `withdraw` and `deposit` next to each other, and returns a third function, `dispatch`, that takes a *message* naming an operation and returns the right one. This is the message-passing style of §2.4.3, now carrying state. `acc("withdraw")` is the withdrawal operation of the account `acc`, and applying it to 50 performs the withdrawal. The two types at the top of the program say the same in brief: an `Account` takes `"withdraw"` or `"deposit"` and returns a `Transaction`, which takes an amount and returns the new balance or a refusal.
 
 </Prose>
 

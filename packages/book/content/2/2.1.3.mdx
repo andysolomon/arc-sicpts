@@ -16,7 +16,7 @@ This point of view defines not only "high-level" data objects such as rational n
 
 <Example index={0} file="functional_pairs.sicp" source={functionalPairProgram} anim="frames">
 
-`pair(1, 2)` returns a function, `dispatch`, and its frame stays behind holding `x` and `y`, exactly as `average_damp` kept its `f` in §1.3.4. `head(x)` applies that function to 0, and the lookup of `x` inside `dispatch` finds 1 in the frame of `pair(1, 2)`. `tail(x)` asks for 1 and gets 2. Declaring `pair`, `head` and `tail` in the program hides the primitives of the same names.
+`pair(1, 2)` returns a function, `dispatch`, and its frame stays behind holding `x` and `y`, exactly as `average_damp` kept its `f` in §1.3.4. `head(x)` applies that function to 0, and the lookup of `x` inside `dispatch` finds 1 in the frame of `pair(1, 2)`. `tail(x)` asks for 1 and gets 2. Declaring `pair`, `head` and `tail` in the program hides the primitives of the same names, and declaring `Pair` hides the library's type: a pair is now a function from a number to one of its parts.
 
 </Example>
 

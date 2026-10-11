@@ -5,17 +5,15 @@ import { close, type ExerciseSpec } from './spec.ts';
 
 export const exercise_1_9: ExerciseSpec = {
   id: '1.9',
-  prelude: `function inc(x) { return x + 1; }
-function dec(x) { return x - 1; }`,
-  starter: `function plus_a(a, b) {
-  return a === 0 ? b : inc(plus_a(dec(a), b));
-}
-function plus_b(a, b) {
-  return a === 0 ? b : plus_b(dec(a), inc(b));
-}
-function classify(f) {
+  prelude: `const inc = (x: number): number => x + 1;
+const dec = (x: number): number => x - 1;`,
+  starter: `const plus_a = (a: number, b: number): number =>
+  a === 0 ? b : inc(plus_a(dec(a), b));
+const plus_b = (a: number, b: number): number =>
+  a === 0 ? b : plus_b(dec(a), inc(b));
+const classify = (f: (a: number, b: number) => number): "recursive" | "iterative" => {
   // your answer: return "recursive" or "iterative"
-}
+};
 `,
   tests: [
     { name: 'plus_a still adds', kind: 'value', expr: 'plus_a(4, 5)', expected: 9 },
@@ -23,29 +21,25 @@ function classify(f) {
     { name: 'plus_a is classified as measured', kind: 'shape', expr: 'classify(plus_a)', call: 'plus_a(4, 5)' },
     { name: 'plus_b is classified as measured', kind: 'shape', expr: 'classify(plus_b)', call: 'plus_b(4, 5)' },
   ],
-  solution: `function plus_a(a, b) {
-  return a === 0 ? b : inc(plus_a(dec(a), b));
-}
-function plus_b(a, b) {
-  return a === 0 ? b : plus_b(dec(a), inc(b));
-}
-function classify(f) {
-  return f === plus_a ? "recursive" : "iterative";
-}
+  solution: `const plus_a = (a: number, b: number): number =>
+  a === 0 ? b : inc(plus_a(dec(a), b));
+const plus_b = (a: number, b: number): number =>
+  a === 0 ? b : plus_b(dec(a), inc(b));
+const classify = (f: (a: number, b: number) => number): "recursive" | "iterative" =>
+  f === plus_a ? "recursive" : "iterative";
 `,
 };
 
 export const exercise_1_10: ExerciseSpec = {
   id: '1.10',
-  starter: `function A(x, y) {
-  return y === 0
+  starter: `const A = (x: number, y: number): number =>
+  y === 0
     ? 0
     : x === 0
       ? 2 * y
       : y === 1
         ? 2
         : A(x - 1, A(x, y - 1));
-}
 
 // Work these out by hand, then replace each 0.
 const a_1_10 = 0;
@@ -54,9 +48,7 @@ const a_3_3 = 0;
 
 // g(n) computes A(1, n) for positive n. Give it a closed form:
 // an expression in n that does not call A.
-function g(n) {
-  return 0;
-}
+const g = (n: number): number => 0;
 `,
   tests: [
     { name: 'A(1, 10)', kind: 'value', expr: 'a_1_10', expected: 1024 },
@@ -64,23 +56,20 @@ function g(n) {
     { name: 'A(3, 3)', kind: 'value', expr: 'a_3_3', expected: 65536 },
     { name: 'closed form of A(1, n)', kind: 'value', expr: 'g(1) === 2 && g(7) === 128 && g(12) === A(1, 12)', expected: true },
   ],
-  solution: `function A(x, y) {
-  return y === 0
+  solution: `const A = (x: number, y: number): number =>
+  y === 0
     ? 0
     : x === 0
       ? 2 * y
       : y === 1
         ? 2
         : A(x - 1, A(x, y - 1));
-}
 
 const a_1_10 = 1024;
 const a_2_4 = 65536;
 const a_3_3 = 65536;
 
-function g(n) {
-  return math_pow(2, n);
-}
+const g = (n: number): number => math_pow(2, n);
 `,
 };
 
@@ -89,13 +78,13 @@ export const exercise_1_11: ExerciseSpec = {
   id: '1.11',
   starter: `// f(n) = n if n < 3, and f(n - 1) + 2 f(n - 2) + 3 f(n - 3) otherwise.
 
-function f_recursive(n) {
+const f_recursive = (n: number): number => {
   // your answer: a recursive process
-}
+};
 
-function f_iterative(n) {
+const f_iterative = (n: number): number => {
   // your answer: an iterative process
-}
+};
 `,
   tests: [
     { name: 'small values, recursively', kind: 'value', expr: 'f_recursive(0) + f_recursive(2) + f_recursive(5)', expected: 27 },
@@ -105,22 +94,18 @@ function f_iterative(n) {
     { name: 'f_recursive is recursive', kind: 'shape', expr: '"recursive"', call: 'f_recursive(6)' },
     { name: 'f_iterative is iterative', kind: 'shape', expr: '"iterative"', call: 'f_iterative(6)' },
   ],
-  solution: `function f_recursive(n) {
-  return n < 3
+  solution: `const f_recursive = (n: number): number =>
+  n < 3
     ? n
     : f_recursive(n - 1) + 2 * f_recursive(n - 2) + 3 * f_recursive(n - 3);
-}
 
 // a, b and c hold f(k), f(k - 1) and f(k - 2); count steps k up to n.
-function f_iter(a, b, c, count) {
-  return count === 0
+const f_iter = (a: number, b: number, c: number, count: number): number =>
+  count === 0
     ? a
     : f_iter(a + 2 * b + 3 * c, a, b, count - 1);
-}
 
-function f_iterative(n) {
-  return n < 3 ? n : f_iter(2, 1, 0, n - 2);
-}
+const f_iterative = (n: number): number => n < 3 ? n : f_iter(2, 1, 0, n - 2);
 `,
 };
 
@@ -128,9 +113,9 @@ export const exercise_1_12: ExerciseSpec = {
   id: '1.12',
   starter: `// The element in row \`row\` and position \`col\` of Pascal's triangle,
 // both counted from 0.
-function pascal(row, col) {
+const pascal = (row: number, col: number): number => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'the apex', kind: 'value', expr: 'pascal(0, 0)', expected: 1 },
@@ -138,11 +123,10 @@ function pascal(row, col) {
     { name: 'row 4', kind: 'value', expr: 'pascal(4, 1) * 100 + pascal(4, 2) * 10 + pascal(4, 3)', expected: 464 },
     { name: 'row 10', kind: 'value', expr: 'pascal(10, 5)', expected: 252 },
   ],
-  solution: `function pascal(row, col) {
-  return col === 0 || col === row
+  solution: `const pascal = (row: number, col: number): number =>
+  col === 0 || col === row
     ? 1
     : pascal(row - 1, col - 1) + pascal(row - 1, col);
-}
 `,
 };
 
@@ -151,9 +135,9 @@ export const exercise_1_14: ExerciseSpec = {
   starter: `${countChangeDefinitions}
 // How many times is cc applied when evaluating cc(amount, kinds_of_coins)?
 // Follow the shape of cc, counting instead of adding up ways.
-function cc_calls(amount, kinds_of_coins) {
+const cc_calls = (amount: number, kinds_of_coins: number): number => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'a leaf is one call', kind: 'value', expr: 'cc_calls(0, 5) + cc_calls(-4, 2) + cc_calls(3, 0)', expected: 3 },
@@ -163,13 +147,12 @@ function cc_calls(amount, kinds_of_coins) {
   ],
   budget: 1_000_000,
   solution: `${countChangeDefinitions}
-function cc_calls(amount, kinds_of_coins) {
-  return amount === 0 || amount < 0 || kinds_of_coins === 0
+const cc_calls = (amount: number, kinds_of_coins: number): number =>
+  amount === 0 || amount < 0 || kinds_of_coins === 0
     ? 1
     : 1 +
       cc_calls(amount, kinds_of_coins - 1) +
       cc_calls(amount - first_denomination(kinds_of_coins), kinds_of_coins);
-}
 `,
 };
 
@@ -177,9 +160,9 @@ export const exercise_1_15: ExerciseSpec = {
   id: '1.15',
   starter: `${sineDefinitions}
 // How many times is p applied when evaluating sine(angle)?
-function p_count(angle) {
+const p_count = (angle: number): number => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'sine(12.15)', kind: 'value', expr: 'p_count(12.15)', expected: 5 },
@@ -188,34 +171,27 @@ function p_count(angle) {
     { name: 'a million times larger, only 12 more', kind: 'value', expr: 'p_count(12150000) - p_count(12.15)', expected: 12 },
   ],
   solution: `${sineDefinitions}
-function p_count(angle) {
-  return !(math_abs(angle) > 0.1)
+const p_count = (angle: number): number =>
+  !(math_abs(angle) > 0.1)
     ? 0
     : 1 + p_count(angle / 3);
-}
 `,
 };
 
-const evenAndSquare = `function is_even(n) {
-  return n % 2 === 0;
-}
+const evenAndSquare = `const is_even = (n: number): boolean => n % 2 === 0;
 
-function square(x) {
-  return x * x;
-}
+const square = (x: number): number => x * x;
 `;
 
 export const exercise_1_16: ExerciseSpec = {
   id: '1.16',
   starter: `${evenAndSquare}
 // Keep a * b^n unchanged from one step to the next; when n reaches 0, a is the answer.
-function fast_expt_iter(a, b, n) {
+const fast_expt_iter = (a: number, b: number, n: number): number => {
   // your answer
-}
+};
 
-function fast_expt(b, n) {
-  return fast_expt_iter(1, b, n);
-}
+const fast_expt = (b: number, n: number): number => fast_expt_iter(1, b, n);
 `,
   tests: [
     { name: '2 to the 10th', kind: 'value', expr: 'fast_expt(2, 10)', expected: 1024 },
@@ -224,31 +200,22 @@ function fast_expt(b, n) {
     { name: 'a logarithmic number of steps', kind: 'calls', call: 'fast_expt(1.000001, 1000000)', fn: 'fast_expt_iter', atMost: 42 },
   ],
   solution: `${evenAndSquare}
-function fast_expt_iter(a, b, n) {
-  return n === 0
+const fast_expt_iter = (a: number, b: number, n: number): number =>
+  n === 0
     ? a
     : is_even(n)
       ? fast_expt_iter(a, square(b), n / 2)
       : fast_expt_iter(a * b, b, n - 1);
-}
 
-function fast_expt(b, n) {
-  return fast_expt_iter(1, b, n);
-}
+const fast_expt = (b: number, n: number): number => fast_expt_iter(1, b, n);
 `,
 };
 
-const doubleAndHalve = `function is_even(n) {
-  return n % 2 === 0;
-}
+const doubleAndHalve = `const is_even = (n: number): boolean => n % 2 === 0;
 
-function double(x) {
-  return x + x;
-}
+const double = (x: number): number => x + x;
 
-function halve(x) {
-  return x / 2;
-}
+const halve = (x: number): number => x / 2;
 `;
 
 export const exercise_1_17: ExerciseSpec = {
@@ -256,17 +223,16 @@ export const exercise_1_17: ExerciseSpec = {
   prelude: doubleAndHalve,
   starter: `// is_even, double and halve are provided.
 
-function times(a, b) {
-  return b === 0
+const times = (a: number, b: number): number =>
+  b === 0
     ? 0
     : a + times(a, b - 1);
-}
 
 // The product of a and b in a logarithmic number of steps,
 // using only +, double and halve.
-function fast_times(a, b) {
+const fast_times = (a: number, b: number): number => {
   // your answer
-}
+};
 `,
   tests: [
     { name: '3 times 7', kind: 'value', expr: 'fast_times(3, 7)', expected: 21 },
@@ -274,19 +240,17 @@ function fast_times(a, b) {
     { name: 'a large b', kind: 'value', expr: 'fast_times(3, 1000000)', expected: 3000000 },
     { name: 'a logarithmic number of steps', kind: 'calls', call: 'fast_times(3, 1000000)', fn: 'fast_times', atMost: 42 },
   ],
-  solution: `function times(a, b) {
-  return b === 0
+  solution: `const times = (a: number, b: number): number =>
+  b === 0
     ? 0
     : a + times(a, b - 1);
-}
 
-function fast_times(a, b) {
-  return b === 0
+const fast_times = (a: number, b: number): number =>
+  b === 0
     ? 0
     : is_even(b)
       ? double(fast_times(a, halve(b)))
       : a + fast_times(a, b - 1);
-}
 `,
 };
 
@@ -296,13 +260,11 @@ export const exercise_1_18: ExerciseSpec = {
   starter: `// is_even, double and halve are provided.
 
 // Keep acc + a * b unchanged from one step to the next.
-function fast_times_iter(acc, a, b) {
+const fast_times_iter = (acc: number, a: number, b: number): number => {
   // your answer
-}
+};
 
-function fast_times(a, b) {
-  return fast_times_iter(0, a, b);
-}
+const fast_times = (a: number, b: number): number => fast_times_iter(0, a, b);
 `,
   tests: [
     { name: '3 times 7', kind: 'value', expr: 'fast_times(3, 7)', expected: 21 },
@@ -310,46 +272,38 @@ function fast_times(a, b) {
     { name: 'an iterative process', kind: 'shape', expr: '"iterative"', call: 'fast_times(5, 37)' },
     { name: 'a logarithmic number of steps', kind: 'calls', call: 'fast_times(3, 1000000)', fn: 'fast_times_iter', atMost: 42 },
   ],
-  solution: `function fast_times_iter(acc, a, b) {
-  return b === 0
+  solution: `const fast_times_iter = (acc: number, a: number, b: number): number =>
+  b === 0
     ? acc
     : is_even(b)
       ? fast_times_iter(acc, double(a), halve(b))
       : fast_times_iter(acc + a, a, b - 1);
-}
 
-function fast_times(a, b) {
-  return fast_times_iter(0, a, b);
-}
+const fast_times = (a: number, b: number): number => fast_times_iter(0, a, b);
 `,
 };
 
 export const exercise_1_19: ExerciseSpec = {
   id: '1.19',
-  starter: `function is_even(n) {
-  return n % 2 === 0;
-}
+  starter: `const is_even = (n: number): boolean => n % 2 === 0;
 
 // Applying T(p, q) twice is the same as applying T(p_prime, q_prime) once.
-function p_prime(p, q) {
+const p_prime = (p: number, q: number): number => {
   return 0; // your answer
-}
+};
 
-function q_prime(p, q) {
+const q_prime = (p: number, q: number): number => {
   return 0; // your answer
-}
+};
 
-function fib_iter(a, b, p, q, count) {
-  return count === 0
+const fib_iter = (a: number, b: number, p: number, q: number, count: number): number =>
+  count === 0
     ? b
     : is_even(count)
       ? fib_iter(a, b, p_prime(p, q), q_prime(p, q), count / 2)
       : fib_iter(b * q + a * q + a * p, b * p + a * q, p, q, count - 1);
-}
 
-function fib(n) {
-  return fib_iter(1, 0, 0, 1, n);
-}
+const fib = (n: number): number => fib_iter(1, 0, 0, 1, n);
 `,
   tests: [
     { name: 'fib(10)', kind: 'value', expr: 'fib(10)', expected: 55 },
@@ -357,29 +311,20 @@ function fib(n) {
     { name: 'fib(70)', kind: 'value', expr: 'fib(70)', expected: 190392490709135 },
     { name: 'fib(1000) in a logarithmic number of steps', kind: 'calls', call: 'fib(1000)', fn: 'fib_iter', atMost: 24 },
   ],
-  solution: `function is_even(n) {
-  return n % 2 === 0;
-}
+  solution: `const is_even = (n: number): boolean => n % 2 === 0;
 
-function p_prime(p, q) {
-  return p * p + q * q;
-}
+const p_prime = (p: number, q: number): number => p * p + q * q;
 
-function q_prime(p, q) {
-  return 2 * p * q + q * q;
-}
+const q_prime = (p: number, q: number): number => 2 * p * q + q * q;
 
-function fib_iter(a, b, p, q, count) {
-  return count === 0
+const fib_iter = (a: number, b: number, p: number, q: number, count: number): number =>
+  count === 0
     ? b
     : is_even(count)
       ? fib_iter(a, b, p_prime(p, q), q_prime(p, q), count / 2)
       : fib_iter(b * q + a * q + a * p, b * p + a * q, p, q, count - 1);
-}
 
-function fib(n) {
-  return fib_iter(1, 0, 0, 1, n);
-}
+const fib = (n: number): number => fib_iter(1, 0, 0, 1, n);
 `,
 };
 
@@ -421,7 +366,7 @@ const d_19999 = smallest_divisor(19999);
 export const exercise_1_22: ExerciseSpec = {
   id: '1.22',
   starter: `${smallestDivisorDefinitions}
-function timed_prime_test(n) {
+const timed_prime_test = (n: number): boolean => {
   const start = get_time();
   const prime = is_prime(n);
   if (prime) {
@@ -429,13 +374,13 @@ function timed_prime_test(n) {
     display(get_time() - start);
   }
   return prime;
-}
+};
 
 // A list of the first \`count\` primes larger than \`start\`,
 // testing consecutive odd numbers with timed_prime_test.
-function search_for_primes(start, count) {
+const search_for_primes = (start: number, count: number): List<number> => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'above 1000', kind: 'value', expr: 'stringify(search_for_primes(1000, 3))', expected: '[1009, [1013, [1019, null]]]' },
@@ -445,7 +390,7 @@ function search_for_primes(start, count) {
   ],
   budget: 1_000_000,
   solution: `${smallestDivisorDefinitions}
-function timed_prime_test(n) {
+const timed_prime_test = (n: number): boolean => {
   const start = get_time();
   const prime = is_prime(n);
   if (prime) {
@@ -453,19 +398,17 @@ function timed_prime_test(n) {
     display(get_time() - start);
   }
   return prime;
-}
+};
 
-function search_from(candidate, count) {
-  return count === 0
+const search_from = (candidate: number, count: number): List<number> =>
+  count === 0
     ? null
     : timed_prime_test(candidate)
       ? pair(candidate, search_from(candidate + 2, count - 1))
       : search_from(candidate + 2, count);
-}
 
-function search_for_primes(start, count) {
-  return search_from(start % 2 === 0 ? start + 1 : start + 2, count);
-}
+const search_for_primes = (start: number, count: number): List<number> =>
+  search_from(start % 2 === 0 ? start + 1 : start + 2, count);
 `,
 };
 
@@ -480,49 +423,37 @@ export const exercise_1_23: ExerciseSpec = {
     { name: 'still recognises primes', kind: 'value', expr: 'is_prime(199) && is_prime(1009) && !is_prime(1001)', expected: true },
     { name: 'half as many divisors tried', kind: 'calls', call: 'smallest_divisor(1009)', fn: 'find_divisor', atMost: 17 },
   ],
-  solution: `function square(x) {
-  return x * x;
-}
+  solution: `const square = (x: number): number => x * x;
 
-function smallest_divisor(n) {
-  return find_divisor(n, 2);
-}
+const smallest_divisor = (n: number): number => find_divisor(n, 2);
 
-function next(test_divisor) {
-  return test_divisor === 2 ? 3 : test_divisor + 2;
-}
+const next = (test_divisor: number): number =>
+  test_divisor === 2 ? 3 : test_divisor + 2;
 
-function find_divisor(n, test_divisor) {
-  return square(test_divisor) > n
+const find_divisor = (n: number, test_divisor: number): number =>
+  square(test_divisor) > n
     ? n
     : divides(test_divisor, n)
       ? test_divisor
       : find_divisor(n, next(test_divisor));
-}
 
-function divides(a, b) {
-  return b % a === 0;
-}
+const divides = (a: number, b: number): boolean => b % a === 0;
 
-function is_prime(n) {
-  return n === smallest_divisor(n);
-}
+const is_prime = (n: number): boolean => n === smallest_divisor(n);
 `,
 };
 
 export const exercise_1_27: ExerciseSpec = {
   id: '1.27',
-  prelude: `function square(x) {
-  return x * x;
-}
+  prelude: `const square = (x: number): number => x * x;
 
 ${fermatDefinitions}`,
   starter: `// expmod and square are provided.
 
 // True when a^n is congruent to a modulo n for every a < n.
-function fools_fermat(n) {
+const fools_fermat = (n: number): boolean => {
   // your answer
-}
+};
 `,
   tests: [
     { name: '561 passes every test', kind: 'value', expr: 'fools_fermat(561)', expected: true },
@@ -532,48 +463,40 @@ function fools_fermat(n) {
     { name: 'an ordinary composite does not', kind: 'value', expr: 'fools_fermat(15) || fools_fermat(1001)', expected: false },
   ],
   budget: 2_000_000,
-  solution: `function fools_fermat(n) {
-  function from(a) {
-    return a === n
+  solution: `const fools_fermat = (n: number): boolean => {
+  const from = (a: number): boolean =>
+    a === n
       ? true
       : expmod(a, n, n) === a && from(a + 1);
-  }
   return from(1);
-}
+};
 `,
 };
 
 export const exercise_1_28: ExerciseSpec = {
   id: '1.28',
-  prelude: `function square(x) {
-  return x * x;
-}
+  prelude: `const square = (x: number): number => x * x;
 
-function is_even(n) {
-  return n % 2 === 0;
-}`,
+const is_even = (n: number): boolean => n % 2 === 0;`,
   starter: `// square and is_even are provided.
 
 // Like expmod, but returns 0 as soon as it finds a nontrivial
 // square root of 1 modulo m.
-function mr_expmod(base, exp, m) {
+const mr_expmod = (base: number, exp: number, m: number): number => {
   // your answer
-}
+};
 
-function miller_rabin_test(n) {
-  function try_it(a) {
-    return mr_expmod(a, n - 1, n) === 1;
-  }
+const miller_rabin_test = (n: number): boolean => {
+  const try_it = (a: number): boolean => mr_expmod(a, n - 1, n) === 1;
   return try_it(1 + math_floor(math_random() * (n - 1)));
-}
+};
 
-function fast_is_prime(n, times) {
-  return times === 0
+const fast_is_prime = (n: number, times: number): boolean =>
+  times === 0
     ? true
     : miller_rabin_test(n)
       ? fast_is_prime(n, times - 1)
       : false;
-}
 `,
   tests: [
     { name: 'primes pass', kind: 'value', expr: 'fast_is_prime(1009, 20) && fast_is_prime(7919, 20)', expected: true },
@@ -581,7 +504,7 @@ function fast_is_prime(n, times) {
     { name: '561 is caught', kind: 'value', expr: 'fast_is_prime(561, 20)', expected: false },
     { name: '1105, 1729 and 2465 are caught', kind: 'value', expr: 'fast_is_prime(1105, 20) || fast_is_prime(1729, 20) || fast_is_prime(2465, 20)', expected: false },
   ],
-  solution: `function mr_expmod(base, exp, m) {
+  solution: `const mr_expmod = (base: number, exp: number, m: number): number => {
   if (exp === 0) {
     return 1;
   } else if (is_even(exp)) {
@@ -592,21 +515,18 @@ function fast_is_prime(n, times) {
   } else {
     return (base * mr_expmod(base, exp - 1, m)) % m;
   }
-}
+};
 
-function miller_rabin_test(n) {
-  function try_it(a) {
-    return mr_expmod(a, n - 1, n) === 1;
-  }
+const miller_rabin_test = (n: number): boolean => {
+  const try_it = (a: number): boolean => mr_expmod(a, n - 1, n) === 1;
   return try_it(1 + math_floor(math_random() * (n - 1)));
-}
+};
 
-function fast_is_prime(n, times) {
-  return times === 0
+const fast_is_prime = (n: number, times: number): boolean =>
+  times === 0
     ? true
     : miller_rabin_test(n)
       ? fast_is_prime(n, times - 1)
       : false;
-}
 `,
 };

@@ -9,25 +9,20 @@ import { close, type ExerciseSpec } from './spec.ts';
  */
 
 /** Exercise 2.87: a polynomial is zero when every coefficient is zero. */
-const zeroPolynomial = `function is_zero_terms(L) {
-  return is_empty_termlist(L) ||
-         (is_equal_to_zero(coeff(first_term(L))) &&
-          is_zero_terms(rest_terms(L)));
-}
+const zeroPolynomial = `const is_zero_terms = (L: TermList): boolean =>
+  is_empty_termlist(L) ||
+  (is_equal_to_zero(coeff(first_term(L))) &&
+   is_zero_terms(rest_terms(L)));
 
-function is_zero_poly(p) {
-  return is_zero_terms(term_list(p));
-}
+const is_zero_poly = (p: Poly): boolean => is_zero_terms(term_list(p));
 
 put("is_equal_to_zero", list("polynomial"), is_zero_poly);
 `;
 
 /** Exercise 2.88: generic negation, and subtraction as adding the negation. */
-const polynomialSubtraction = `function negate(x) {
-  return apply_generic("negate", list(x));
-}
+const polynomialSubtraction = `const negate = (x: unknown): unknown => apply_generic("negate", x);
 
-function negate_terms(L) {
+const negate_terms = (L: TermList): TermList => {
   if (is_empty_termlist(L)) {
     return the_empty_termlist;
   } else {
@@ -35,15 +30,12 @@ function negate_terms(L) {
     return adjoin_term(make_term(order(t), negate(coeff(t))),
                        negate_terms(rest_terms(L)));
   }
-}
+};
 
-function negate_poly(p) {
-  return make_poly(variable(p), negate_terms(term_list(p)));
-}
+const negate_poly = (p: Poly): Poly =>
+  make_poly(variable(p), negate_terms(term_list(p)));
 
-function sub_poly(p1, p2) {
-  return add_poly(p1, negate_poly(p2));
-}
+const sub_poly = (p1: Poly, p2: Poly): Poly => add_poly(p1, negate_poly(p2));
 
 put("negate", list("javascript_number"), x => -x);
 put("negate", list("polynomial"),
@@ -53,7 +45,7 @@ put("sub", list("polynomial", "polynomial"),
 `;
 
 /** Exercise 2.91: long division of term lists. */
-const polynomialDivision = `function div_terms(L1, L2) {
+const polynomialDivision = `const div_terms = (L1: TermList, L2: TermList): List<TermList> => {
   if (is_empty_termlist(L1)) {
     return list(the_empty_termlist, the_empty_termlist);
   } else {
@@ -73,9 +65,9 @@ const polynomialDivision = `function div_terms(L1, L2) {
                   head(tail(rest_of_result)));
     }
   }
-}
+};
 
-function div_poly(p1, p2) {
+const div_poly = (p1: Poly, p2: Poly): List<Poly> => {
   if (is_same_variable(variable(p1), variable(p2))) {
     const result = div_terms(term_list(p1), term_list(p2));
     return list(make_poly(variable(p1), head(result)),
@@ -83,48 +75,44 @@ function div_poly(p1, p2) {
   } else {
     return error("polys not in same var -- div_poly", list(p1, p2));
   }
-}
+};
 `;
 
 /** Exercise 2.94: the remainder of a division, and Euclid's algorithm on term lists. */
-const remainderTerms = `function remainder_terms(a, b) {
-  return head(tail(div_terms(a, b)));
-}
+const remainderTerms = `const remainder_terms = (a: TermList, b: TermList): TermList =>
+  head(tail(div_terms(a, b)));
 `;
 
-const euclidGcdTerms = `function gcd_terms(a, b) {
-  return is_empty_termlist(b)
+const euclidGcdTerms = `const gcd_terms = (a: TermList, b: TermList): TermList =>
+  is_empty_termlist(b)
     ? a
     : gcd_terms(b, remainder_terms(a, b));
-}
 `;
 
 /** Exercise 2.94: the generic operation, for numbers. */
-const genericGcd = `function greatest_common_divisor(a, b) {
-  return apply_generic("greatest_common_divisor", list(a, b));
-}
+const genericGcd = `const greatest_common_divisor = (a: unknown, b: unknown): unknown =>
+  apply_generic("greatest_common_divisor", a, b);
 
 put("greatest_common_divisor", list("javascript_number", "javascript_number"),
     gcd);
 `;
 
 /** Exercise 2.96: pseudoremainders, and the integer content divided out. */
-const pseudoGcdTerms = `function pseudoremainder_terms(a, b) {
+const pseudoGcdTerms = `const pseudoremainder_terms = (a: TermList, b: TermList): TermList => {
   const o1 = order(first_term(a));
   const o2 = order(first_term(b));
   const c = coeff(first_term(b));
   const factor = make_term(0, math_pow(c, 1 + o1 - o2));
   return remainder_terms(mul_term_by_all_terms(factor, a), b);
-}
+};
 
 // The integer gcd of all the coefficients of L.
-function coefficient_gcd(L) {
-  return is_empty_termlist(L)
+const coefficient_gcd = (L: TermList): number =>
+  is_empty_termlist(L)
     ? 0
     : gcd(math_abs(coeff(first_term(L))), coefficient_gcd(rest_terms(L)));
-}
 
-function divide_coefficients(L, k) {
+const divide_coefficients = (L: TermList, k: number): TermList => {
   if (is_empty_termlist(L)) {
     return the_empty_termlist;
   } else {
@@ -132,53 +120,47 @@ function divide_coefficients(L, k) {
     return adjoin_term(make_term(order(t), coeff(t) / k),
                        divide_coefficients(rest_terms(L), k));
   }
-}
+};
 
-function gcd_terms(a, b) {
-  function euclid(a, b) {
-    return is_empty_termlist(b)
+const gcd_terms = (a: TermList, b: TermList): TermList => {
+  const euclid = (a: TermList, b: TermList): TermList =>
+    is_empty_termlist(b)
       ? a
       : euclid(b, pseudoremainder_terms(a, b));
-  }
   const g = euclid(a, b);
   return divide_coefficients(g, coefficient_gcd(g));
-}
+};
 `;
 
 /** The gcd_poly and its installation, repeated so that they use a new gcd_terms. */
-const gcdPolyInstallation = `function gcd_poly(p1, p2) {
-  return is_same_variable(variable(p1), variable(p2))
+const gcdPolyInstallation = `const gcd_poly = (p1: Poly, p2: Poly): Poly =>
+  is_same_variable(variable(p1), variable(p2))
     ? make_poly(variable(p1), gcd_terms(term_list(p1), term_list(p2)))
     : error("polys not in same var -- gcd_poly", list(p1, p2));
-}
 
 put("greatest_common_divisor", list("polynomial", "polynomial"),
     (p1, p2) => attach_tag("polynomial", gcd_poly(p1, p2)));
 `;
 
 /** The rational package of §2.5.1, on integers. */
-const integerRationalPackage = `function install_rational_package() {
-  function numer(x) { return head(x); }
-  function denom(x) { return tail(x); }
-  function make_rat(n, d) {
+const integerRationalPackage = `const install_rational_package = (): "done" => {
+  const numer = (x: Rational): number => head(x);
+  const denom = (x: Rational): number => tail(x);
+  const make_rat = (n: number, d: number): Rational => {
     const g = gcd(n, d);
     return pair(n / g, d / g);
-  }
-  function add_rat(x, y) {
-    return make_rat(numer(x) * denom(y) + numer(y) * denom(x),
-                    denom(x) * denom(y));
-  }
-  function sub_rat(x, y) {
-    return make_rat(numer(x) * denom(y) - numer(y) * denom(x),
-                    denom(x) * denom(y));
-  }
-  function mul_rat(x, y) {
-    return make_rat(numer(x) * numer(y), denom(x) * denom(y));
-  }
-  function div_rat(x, y) {
-    return make_rat(numer(x) * denom(y), denom(x) * numer(y));
-  }
-  function tag(x) { return attach_tag("rational", x); }
+  };
+  const add_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(numer(x) * denom(y) + numer(y) * denom(x),
+             denom(x) * denom(y));
+  const sub_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(numer(x) * denom(y) - numer(y) * denom(x),
+             denom(x) * denom(y));
+  const mul_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(numer(x) * numer(y), denom(x) * denom(y));
+  const div_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(numer(x) * denom(y), denom(x) * numer(y));
+  const tag = (x: Rational): Tagged<Rational> => attach_tag("rational", x);
   const rr = list("rational", "rational");
   put("add", rr, (x, y) => tag(add_rat(x, y)));
   put("sub", rr, (x, y) => tag(sub_rat(x, y)));
@@ -187,33 +169,32 @@ const integerRationalPackage = `function install_rational_package() {
   put("is_equal_to_zero", list("rational"), x => numer(x) === 0);
   put("make", "rational", (n, d) => tag(make_rat(n, d)));
   return "done";
-}
+};
 
 install_rational_package();
 `;
 
 /** The rational package on generic operations; `makeRat` is the body of make_rat. */
-const genericRationalPackage = (makeRat: string): string => `function install_rational_package() {
-  function numer(x) { return head(x); }
-  function denom(x) { return tail(x); }
-  function make_rat(n, d) {
+const genericRationalPackage = (makeRat: string): string => `// The numerator and denominator may now be numbers of any type.
+type Rational = Pair<unknown, unknown>;
+
+const install_rational_package = (): "done" => {
+  const numer = (x: Rational): unknown => head(x);
+  const denom = (x: Rational): unknown => tail(x);
+  const make_rat = (n: unknown, d: unknown): Rational => {
 ${makeRat}
-  }
-  function add_rat(x, y) {
-    return make_rat(add(mul(numer(x), denom(y)), mul(numer(y), denom(x))),
-                    mul(denom(x), denom(y)));
-  }
-  function sub_rat(x, y) {
-    return make_rat(sub(mul(numer(x), denom(y)), mul(numer(y), denom(x))),
-                    mul(denom(x), denom(y)));
-  }
-  function mul_rat(x, y) {
-    return make_rat(mul(numer(x), numer(y)), mul(denom(x), denom(y)));
-  }
-  function div_rat(x, y) {
-    return make_rat(mul(numer(x), denom(y)), mul(denom(x), numer(y)));
-  }
-  function tag(x) { return attach_tag("rational", x); }
+  };
+  const add_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(add(mul(numer(x), denom(y)), mul(numer(y), denom(x))),
+             mul(denom(x), denom(y)));
+  const sub_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(sub(mul(numer(x), denom(y)), mul(numer(y), denom(x))),
+             mul(denom(x), denom(y)));
+  const mul_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(mul(numer(x), numer(y)), mul(denom(x), denom(y)));
+  const div_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(mul(numer(x), denom(y)), mul(denom(x), numer(y)));
+  const tag = (x: Rational): Tagged<Rational> => attach_tag("rational", x);
   const rr = list("rational", "rational");
   put("add", rr, (x, y) => tag(add_rat(x, y)));
   put("sub", rr, (x, y) => tag(sub_rat(x, y)));
@@ -222,7 +203,7 @@ ${makeRat}
   put("is_equal_to_zero", list("rational"), x => is_equal_to_zero(numer(x)));
   put("make", "rational", (n, d) => tag(make_rat(n, d)));
   return "done";
-}
+};
 
 install_rational_package();
 `;
@@ -256,9 +237,9 @@ export const exercise_2_87: ExerciseSpec = {
 // is_empty_termlist and the rest) are declared at the top level.
 // A polynomial is zero when every one of its coefficients is zero.
 
-function is_zero_poly(p) {
+const is_zero_poly = (p: Poly): boolean => {
   // your answer: p is a poly without its tag
-}
+};
 
 put("is_equal_to_zero", list("polynomial"), is_zero_poly);
 `,
@@ -278,15 +259,12 @@ put("is_equal_to_zero", list("polynomial"), is_zero_poly);
       expected: 'list("polynomial", "x", list(0, 3))',
     },
   ],
-  solution: `function is_zero_terms(L) {
-  return is_empty_termlist(L) ||
-         (is_equal_to_zero(coeff(first_term(L))) &&
-          is_zero_terms(rest_terms(L)));
-}
+  solution: `const is_zero_terms = (L: TermList): boolean =>
+  is_empty_termlist(L) ||
+  (is_equal_to_zero(coeff(first_term(L))) &&
+   is_zero_terms(rest_terms(L)));
 
-function is_zero_poly(p) {
-  return is_zero_terms(term_list(p));
-}
+const is_zero_poly = (p: Poly): boolean => is_zero_terms(term_list(p));
 
 put("is_equal_to_zero", list("polynomial"), is_zero_poly);
 `,
@@ -299,9 +277,7 @@ export const exercise_2_88: ExerciseSpec = {
 // package of this section with its functions at the top level, and
 // is_equal_to_zero for polynomials (Exercise 2.87).
 
-function negate(x) {
-  return apply_generic("negate", list(x));
-}
+const negate = (x: unknown): unknown => apply_generic("negate", x);
 
 // your answer: install negate for javascript_number and polynomial,
 // and sub for two polynomials
@@ -343,28 +319,31 @@ export const exercise_2_89: ExerciseSpec = {
 // x⁵ + 2x⁴ + 3x² − 2x − 5 is list(1, 2, 0, 3, -2, -5). Terms are still
 // made with make_term, and the polynomial package below is unchanged.
 
+type Term = List<unknown>;      // list(order, coeff), as before
+type TermList = List<unknown>;  // the coefficients, highest order first
+
 const the_empty_termlist = null;
 
-function is_empty_termlist(term_list) { return is_null(term_list); }
+const is_empty_termlist = (term_list: TermList): boolean => is_null(term_list);
 
-function make_term(order, coeff) { return list(order, coeff); }
+const make_term = (order: number, coeff: unknown): Term => list(order, coeff);
 
-function order(term) { return head(term); }
+const order = (term: Term): number => head(term);
 
-function coeff(term) { return head(tail(term)); }
+const coeff = (term: Term): unknown => head(tail(term));
 
-function first_term(term_list) {
+const first_term = (term_list: TermList): Term => {
   // your answer
-}
+};
 
-function rest_terms(term_list) {
+const rest_terms = (term_list: TermList): TermList => {
   // your answer
-}
+};
 
-function adjoin_term(term, term_list) {
+const adjoin_term = (term: Term, term_list: TermList): TermList => {
   // your answer: callers always adjoin a term of higher order than any in
   // term_list, but maybe not the next one up
-}
+};
 
 ${polynomialPackageDefinitions}`,
   tests: [
@@ -383,32 +362,31 @@ ${polynomialPackageDefinitions}`,
       expected: 'list("polynomial", "x", 1, 0, 0, 1)',
     },
   ],
-  solution: `const the_empty_termlist = null;
+  solution: `type Term = List<unknown>;      // list(order, coeff), as before
+type TermList = List<unknown>;  // the coefficients, highest order first
 
-function is_empty_termlist(term_list) { return is_null(term_list); }
+const the_empty_termlist = null;
 
-function make_term(order, coeff) { return list(order, coeff); }
+const is_empty_termlist = (term_list: TermList): boolean => is_null(term_list);
 
-function order(term) { return head(term); }
+const make_term = (order: number, coeff: unknown): Term => list(order, coeff);
 
-function coeff(term) { return head(tail(term)); }
+const order = (term: Term): number => head(term);
+
+const coeff = (term: Term): unknown => head(tail(term));
 
 // The order of the first coefficient is the length of the list, less 1.
-function first_term(term_list) {
-  return make_term(length(term_list) - 1, head(term_list));
-}
+const first_term = (term_list: TermList): Term =>
+  make_term(length(term_list) - 1, head(term_list));
 
-function rest_terms(term_list) {
-  return tail(term_list);
-}
+const rest_terms = (term_list: TermList): TermList => tail(term_list);
 
-function adjoin_term(term, term_list) {
-  return is_equal_to_zero(coeff(term))
+const adjoin_term = (term: Term, term_list: TermList): TermList =>
+  is_equal_to_zero(coeff(term))
     ? term_list
     : order(term) === length(term_list)
     ? pair(coeff(term), term_list)
     : adjoin_term(term, pair(0, term_list));
-}
 
 ${polynomialPackageDefinitions}`,
 };
@@ -418,41 +396,39 @@ ${polynomialPackageDefinitions}`,
  * operations that dispatch on the tag. The polynomial package is the same text
  * as before; only the functions it calls have changed.
  */
-const genericTermLists = `function make_term(order, coeff) { return list(order, coeff); }
-function order(term) { return head(term); }
-function coeff(term) { return head(tail(term)); }
+const genericTermLists = `// A term is list(order, coeff). A term list is tagged "sparse", over a
+// list of terms, or "dense", over a list of coefficients.
+type Term = List<unknown>;
+type TermList = Tagged<List<unknown>>;
 
-function make_sparse(terms) { return attach_tag("sparse", terms); }
-function make_dense(coeffs) { return attach_tag("dense", coeffs); }
+const make_term = (order: number, coeff: unknown): Term => list(order, coeff);
+const order = (term: Term): number => head(term);
+const coeff = (term: Term): unknown => head(tail(term));
+
+const make_sparse = (terms: List<Term>): TermList => attach_tag("sparse", terms);
+const make_dense = (coeffs: List<unknown>): TermList => attach_tag("dense", coeffs);
 
 const the_empty_termlist = make_sparse(null);
 
-function is_empty_termlist(L) {
-  return apply_generic("is_empty_termlist", list(L));
-}
-function first_term(L) {
-  return apply_generic("first_term", list(L));
-}
-function rest_terms(L) {
-  return apply_generic("rest_terms", list(L));
-}
-function adjoin_term(term, L) {
-  return is_equal_to_zero(coeff(term))
+const is_empty_termlist = (L: TermList): boolean =>
+  apply_generic("is_empty_termlist", L);
+const first_term = (L: TermList): Term => apply_generic("first_term", L);
+const rest_terms = (L: TermList): TermList => apply_generic("rest_terms", L);
+const adjoin_term = (term: Term, L: TermList): TermList =>
+  is_equal_to_zero(coeff(term))
     ? L
     : get("adjoin_term", list(type_tag(L)))(term, contents(L));
-}
 
 // The nonzero terms of the polynomial p, as a plain list of terms.
-function poly_terms(p) {
-  function terms(L) {
-    return is_empty_termlist(L)
+const poly_terms = (p: Tagged<Poly>): List<Term> => {
+  const terms = (L: TermList): List<Term> =>
+    is_empty_termlist(L)
       ? null
       : is_equal_to_zero(coeff(first_term(L)))
       ? terms(rest_terms(L))
       : pair(first_term(L), terms(rest_terms(L)));
-  }
   return terms(term_list(contents(p)));
-}
+};
 `;
 
 export const exercise_2_90: ExerciseSpec = {
@@ -471,18 +447,18 @@ ${polynomialPackageDefinitions}`,
 // for rest_terms and adjoin_term return tagged term lists. Terms are not
 // tagged, and the empty term list is make_sparse(null).
 
-function install_sparse_termlist_package() {
-  function tag(L) { return attach_tag("sparse", L); }
+const install_sparse_termlist_package = (): "done" => {
+  const tag = (L: List<Term>): TermList => attach_tag("sparse", L);
   // your answer: put "first_term", "rest_terms", "is_empty_termlist"
   // and "adjoin_term" for list("sparse")
   return "done";
-}
+};
 
-function install_dense_termlist_package() {
-  function tag(L) { return attach_tag("dense", L); }
+const install_dense_termlist_package = (): "done" => {
+  const tag = (L: List<unknown>): TermList => attach_tag("dense", L);
   // your answer: the same for list("dense")
   return "done";
-}
+};
 
 install_sparse_termlist_package();
 install_dense_termlist_package();
@@ -514,29 +490,27 @@ install_dense_termlist_package();
     },
   ],
   budget: 300_000,
-  solution: `function install_sparse_termlist_package() {
-  function tag(L) { return attach_tag("sparse", L); }
+  solution: `const install_sparse_termlist_package = (): "done" => {
+  const tag = (L: List<Term>): TermList => attach_tag("sparse", L);
   put("first_term", list("sparse"), L => head(L));
   put("rest_terms", list("sparse"), L => tag(tail(L)));
   put("is_empty_termlist", list("sparse"), L => is_null(L));
   put("adjoin_term", list("sparse"), (term, L) => tag(pair(term, L)));
   return "done";
-}
+};
 
-function install_dense_termlist_package() {
-  function tag(L) { return attach_tag("dense", L); }
-  function zeros(n, L) {
-    return n === 0 ? L : zeros(n - 1, pair(0, L));
-  }
-  function adjoin(term, L) {
-    return pair(coeff(term), zeros(order(term) - length(L), L));
-  }
+const install_dense_termlist_package = (): "done" => {
+  const tag = (L: List<unknown>): TermList => attach_tag("dense", L);
+  const zeros = (n: number, L: List<unknown>): List<unknown> =>
+    n === 0 ? L : zeros(n - 1, pair(0, L));
+  const adjoin = (term: Term, L: List<unknown>): List<unknown> =>
+    pair(coeff(term), zeros(order(term) - length(L), L));
   put("first_term", list("dense"), L => make_term(length(L) - 1, head(L)));
   put("rest_terms", list("dense"), L => tag(tail(L)));
   put("is_empty_termlist", list("dense"), L => is_null(L));
   put("adjoin_term", list("dense"), (term, L) => tag(adjoin(term, L)));
   return "done";
-}
+};
 
 install_sparse_termlist_package();
 install_dense_termlist_package();
@@ -553,7 +527,7 @@ export const exercise_2_91: ExerciseSpec = {
 // functions at the top level, including add_terms and
 // mul_term_by_all_terms, and negate_terms from Exercise 2.88.
 
-function div_terms(L1, L2) {
+const div_terms = (L1: TermList, L2: TermList): List<TermList> => {
   if (is_empty_termlist(L1)) {
     return list(the_empty_termlist, the_empty_termlist);
   } else {
@@ -568,11 +542,11 @@ function div_terms(L1, L2) {
       return null; // your answer: form and return complete result
     }
   }
-}
+};
 
-function div_poly(p1, p2) {
+const div_poly = (p1: Poly, p2: Poly): List<Poly> => {
   // your answer: a list of the quotient poly and the remainder poly
-}
+};
 `,
   tests: [
     {
@@ -612,9 +586,7 @@ export const exercise_2_92: ExerciseSpec = {
 // Order the variables alphabetically: a polynomial in "x" may have
 // polynomials in "y" as coefficients, never the other way round.
 
-function variable_precedes(v1, v2) {
-  return v1 < v2;
-}
+const variable_precedes = (v1: string, v2: string): boolean => v1 < v2;
 
 // your answer: install "add" and "mul" for two polynomials in any
 // variables, and for a polynomial and a number in either order
@@ -645,38 +617,32 @@ function variable_precedes(v1, v2) {
       expected: 'list("polynomial", "x", list(1, 1), list(0, 4))',
     },
   ],
-  solution: `function variable_precedes(v1, v2) {
-  return v1 < v2;
-}
+  solution: `const variable_precedes = (v1: string, v2: string): boolean => v1 < v2;
 
-function is_poly(x) {
-  return type_tag(x) === "polynomial";
-}
+const is_poly = (x: unknown): boolean => type_tag(x) === "polynomial";
 
 // The variable that comes first among the polynomials x and y (tagged).
-function principal_variable(x, y) {
-  return !is_poly(x)
+const principal_variable = (x: unknown, y: unknown): string =>
+  !is_poly(x)
     ? variable(contents(y))
     : !is_poly(y)
     ? variable(contents(x))
     : variable_precedes(variable(contents(x)), variable(contents(y)))
     ? variable(contents(x))
     : variable(contents(y));
-}
 
 // x as a poly in v: itself if it is one, otherwise a constant term.
-function as_poly_in(v, x) {
-  return is_poly(x) && is_same_variable(variable(contents(x)), v)
+const as_poly_in = (v: string, x: unknown): Poly =>
+  is_poly(x) && is_same_variable(variable(contents(x)), v)
     ? contents(x)
     : make_poly(v, adjoin_term(make_term(0, x), the_empty_termlist));
-}
 
-function install_mixed_operation(op, poly_op) {
-  function tag(p) { return attach_tag("polynomial", p); }
-  function combine(x, y) {
+const install_mixed_operation = (op: string, poly_op: (p1: Poly, p2: Poly) => Poly): "done" => {
+  const tag = (p: Poly): Tagged<Poly> => attach_tag("polynomial", p);
+  const combine = (x: unknown, y: unknown): Tagged<Poly> => {
     const v = principal_variable(x, y);
     return tag(poly_op(as_poly_in(v, x), as_poly_in(v, y)));
-  }
+  };
   put(op, list("polynomial", "polynomial"),
       (p1, p2) => combine(tag(p1), tag(p2)));
   put(op, list("polynomial", "javascript_number"),
@@ -684,7 +650,7 @@ function install_mixed_operation(op, poly_op) {
   put(op, list("javascript_number", "polynomial"),
       (n, p) => combine(n, tag(p)));
   return "done";
-}
+};
 
 install_mixed_operation("add", add_poly);
 install_mixed_operation("mul", mul_poly);
@@ -744,23 +710,21 @@ export const exercise_2_94: ExerciseSpec = {
 // functions at the top level, div_terms and div_poly (Exercise 2.91),
 // and gcd for integers.
 
-function remainder_terms(a, b) {
+const remainder_terms = (a: TermList, b: TermList): TermList => {
   // your answer
-}
+};
 
-function gcd_terms(a, b) {
-  return is_empty_termlist(b)
+const gcd_terms = (a: TermList, b: TermList): TermList =>
+  is_empty_termlist(b)
     ? a
     : gcd_terms(b, remainder_terms(a, b));
-}
 
-function gcd_poly(p1, p2) {
+const gcd_poly = (p1: Poly, p2: Poly): Poly => {
   // your answer: signal an error unless p1 and p2 have the same variable
-}
+};
 
-function greatest_common_divisor(a, b) {
-  return apply_generic("greatest_common_divisor", list(a, b));
-}
+const greatest_common_divisor = (a: unknown, b: unknown): unknown =>
+  apply_generic("greatest_common_divisor", a, b);
 
 // your answer: install greatest_common_divisor for two numbers and for
 // two polynomials
@@ -864,14 +828,14 @@ export const exercise_2_96: ExerciseSpec = {
 // gcd_terms, gcd_poly and greatest_common_divisor (Exercise 2.94), and gcd
 // for integers.
 
-function pseudoremainder_terms(a, b) {
+const pseudoremainder_terms = (a: TermList, b: TermList): TermList => {
   // your answer
-}
+};
 
-function gcd_terms(a, b) {
+const gcd_terms = (a: TermList, b: TermList): TermList => {
   // your answer: Euclid's algorithm with pseudoremainder_terms, then
   // divide the coefficients by their integer gcd
-}
+};
 
 ${gcdPolyInstallation}
 ${pDeclarations}
@@ -919,7 +883,7 @@ const p4 = ${poly('x', [2, 1], [0, -1])};
 const rf1 = make_rational(p1, p2);
 const rf2 = make_rational(p3, p4);`;
 
-const reduceSolution = `function reduce_terms(n, d) {
+const reduceSolution = `const reduce_terms = (n: TermList, d: TermList): List<TermList> => {
   const g = gcd_terms(n, d);
   const o1 = math_max(order(first_term(n)), order(first_term(d)));
   const o2 = order(first_term(g));
@@ -928,9 +892,9 @@ const reduceSolution = `function reduce_terms(n, d) {
   const dd = head(div_terms(mul_term_by_all_terms(factor, d), g));
   const k = gcd(coefficient_gcd(nn), coefficient_gcd(dd));
   return list(divide_coefficients(nn, k), divide_coefficients(dd, k));
-}
+};
 
-function reduce_poly(p1, p2) {
+const reduce_poly = (p1: Poly, p2: Poly): List<Poly> => {
   if (is_same_variable(variable(p1), variable(p2))) {
     const result = reduce_terms(term_list(p1), term_list(p2));
     return list(make_poly(variable(p1), head(result)),
@@ -938,16 +902,15 @@ function reduce_poly(p1, p2) {
   } else {
     return error("polys not in same var -- reduce_poly", list(p1, p2));
   }
-}
+};
 
-function reduce_integers(n, d) {
+const reduce_integers = (n: number, d: number): List<number> => {
   const g = gcd(n, d);
   return list(n / g, d / g);
-}
+};
 
-function reduce(n, d) {
-  return apply_generic("reduce", list(n, d));
-}
+const reduce = (n: unknown, d: unknown): List<unknown> =>
+  apply_generic("reduce", n, d);
 
 put("reduce", list("javascript_number", "javascript_number"), reduce_integers);
 put("reduce", list("polynomial", "polynomial"),
@@ -962,22 +925,21 @@ export const exercise_2_97: ExerciseSpec = {
 // the coefficients of L, and divide_coefficients(L, k), which divides
 // each coefficient of L by k.
 
-function reduce_terms(n, d) {
+const reduce_terms = (n: TermList, d: TermList): List<TermList> => {
   // your answer: list(nn, dd)
-}
+};
 
-function reduce_poly(p1, p2) {
+const reduce_poly = (p1: Poly, p2: Poly): List<Poly> => {
   // your answer
-}
+};
 
-function reduce_integers(n, d) {
+const reduce_integers = (n: number, d: number): List<number> => {
   const g = gcd(n, d);
   return list(n / g, d / g);
-}
+};
 
-function reduce(n, d) {
-  return apply_generic("reduce", list(n, d));
-}
+const reduce = (n: unknown, d: unknown): List<unknown> =>
+  apply_generic("reduce", n, d);
 
 // your answer: install reduce for two numbers and for two polynomials
 

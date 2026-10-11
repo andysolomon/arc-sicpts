@@ -9,29 +9,26 @@ import { close, type ExerciseSpec } from './spec.ts';
  * list of pairs of register name and value, runs it from a fresh stack and
  * returns the contents of one register.
  */
-const checkHelpers = `function check_run(machine, inputs, result) {
+const checkHelpers = `const check_run = (machine: Machine, inputs: List<Pair<string, number>>, result: string): unknown => {
     machine("stack")("initialize");
     for_each(input => set_register_contents(machine, head(input), tail(input)),
              inputs);
     start(machine);
     return get_register_contents(machine, result);
-}
-function check_statistics(machine, inputs) {
+};
+const check_statistics = (machine: Machine, inputs: List<Pair<string, number>>): List<number> => {
     check_run(machine, inputs, head(head(inputs)));
     return machine("stack")("statistics");
-}
-function check_operation_names(machine) {
-    return filter(name => name !== "initialize_stack" &&
-                          name !== "print_stack_statistics",
-                  map(head, machine("operations")));
-}
-function check_only(names, allowed) {
-    return accumulate((name, ok) => ok && !is_null(member(name, allowed)),
-                      true, names);
-}
-function check_has(names, name) {
-    return !is_null(member(name, names));
-}
+};
+const check_operation_names = (machine: Machine): List<string> =>
+    filter(name => name !== "initialize_stack" &&
+                   name !== "print_stack_statistics",
+           map(head, machine("operations")));
+const check_only = (names: List<string>, allowed: List<string>): boolean =>
+    accumulate((name, ok) => ok && !is_null(member(name, allowed)),
+               true, names);
+const check_has = (names: List<string>, name: string): boolean =>
+    !is_null(member(name, names));
 const check_arithmetic =
     list("+", "-", "*", "/", "%", "=", "===", "!==", "<", ">", "<=", ">=", "abs");
 `;
@@ -46,14 +43,13 @@ export const exercise_5_1: ExerciseSpec = {
   context: checkHelpers,
   starter: `// The iterative factorial:
 //
-// function factorial(n) {
-//     function iter(product, counter) {
-//         return counter > n
+// const factorial = (n: number): number => {
+//     const iter = (product: number, counter: number): number =>
+//         counter > n
 //                ? product
 //                : iter(counter * product, counter + 1);
-//     }
 //     return iter(1, 1);
-// }
+// };
 
 const factorial_machine =
     make_machine(
@@ -112,20 +108,17 @@ export const exercise_5_3: ExerciseSpec = {
   context: checkHelpers,
   starter: `// Newton's method, as in §1.1.7:
 //
-// function sqrt(x) {
-//     function is_good_enough(guess) {
-//         return math_abs(square(guess) - x) < 0.001;
-//     }
-//     function improve(guess) {
-//         return average(guess, x / guess);
-//     }
-//     function sqrt_iter(guess) {
-//         return is_good_enough(guess)
+// const sqrt = (x: number): number => {
+//     const is_good_enough = (guess: number): boolean =>
+//         math_abs(square(guess) - x) < 0.001;
+//     const improve = (guess: number): number =>
+//         average(guess, x / guess);
+//     const sqrt_iter = (guess: number): number =>
+//         is_good_enough(guess)
 //                ? guess
 //                : sqrt_iter(improve(guess));
-//     }
 //     return sqrt_iter(1);
-// }
+// };
 
 // First version: good_enough and improve are primitive operations.
 const sqrt_machine_1 =

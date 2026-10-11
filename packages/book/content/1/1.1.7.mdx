@@ -1,33 +1,22 @@
-export const sqrt = `function abs(x) {
-  return x >= 0 ? x : -x;
-}
+export const sqrt = `const abs = (x: number): number => x >= 0 ? x : -x;
 
-function square(x) {
-  return x * x;
-}
+const square = (x: number): number => x * x;
 
-function average(x, y) {
-  return (x + y) / 2;
-}
+const average = (x: number, y: number): number => (x + y) / 2;
 
-function is_good_enough(guess, x) {
-  return abs(square(guess) - x) < 0.001;
-}
+const is_good_enough = (guess: number, x: number): boolean =>
+  abs(square(guess) - x) < 0.001;
 
-function improve(guess, x) {
-  return average(guess, x / guess);
-}
+const improve = (guess: number, x: number): number => average(guess, x / guess);
 
-function sqrt_iter(guess, x) {
+const sqrt_iter = (guess: number, x: number): number => {
   display(guess);
   return is_good_enough(guess, x)
     ? guess
     : sqrt_iter(improve(guess, x), x);
-}
+};
 
-function sqrt(x) {
-  return sqrt_iter(1, x);
-}
+const sqrt = (x: number): number => sqrt_iter(1, x);
 
 sqrt(2);
 `;
@@ -39,6 +28,8 @@ Mathematics can define the square root of *x* as the non-negative *y* whose squa
 Newton's method supplies the how. Start with any guess *y*. If it is not good enough, a better guess is the average of *y* and *x / y*: one of the two is too large and the other too small, and the truth lies between them. Repeat until the guess is good enough.
 
 The program says this almost word for word. `sqrt_iter` is the method; `improve` and `is_good_enough` are the two ideas it depends on; each of those is built from `average`, `square` and `abs`. The `display` call prints every guess, so you can watch the answer converge. Try other numbers.
+
+`sqrt_iter` has two things to do, print the guess and then decide, so its body is not a single expression but a *block*: statements in braces, evaluated in order. The `return` statement at the end gives the value of the application.
 
 </Prose>
 

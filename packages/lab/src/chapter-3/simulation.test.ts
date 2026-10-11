@@ -70,7 +70,7 @@ describe('section 3.3.4: a simulator for digital circuits', () => {
 
   it('computes every row of the full-adder truth table', () => {
     const table = `${circuitSimulatorDefinitions}
-function add_bits(x, y, z) {
+const add_bits = (x: number, y: number, z: number): number => {
   const a = make_wire();
   const b = make_wire();
   const c_in = make_wire();
@@ -82,7 +82,7 @@ function add_bits(x, y, z) {
   set_signal(c_in, z);
   propagate();
   return 2 * get_signal(c_out) + get_signal(sum);
-}
+};
 list(add_bits(0, 0, 0), add_bits(1, 0, 0), add_bits(0, 1, 1), add_bits(1, 1, 0), add_bits(1, 1, 1));
 `;
     const outcome = run(table);
@@ -119,15 +119,15 @@ get_signal(out);
     expect(fifo).toMatchObject({ status: 'done', value: 0 });
     // A stack: insert at the front, so the last action scheduled runs first.
     const stack = circuitQueueDefinitions.replace(
-      /function insert_queue\(queue, item\) \{[\s\S]*?\n\}\n/,
-      `function insert_queue(queue, item) {
+      /const insert_queue = <T>\(queue: Queue<T>, item: T\): Queue<T> => \{[\s\S]*?\n\};\n/,
+      `const insert_queue = <T>(queue: Queue<T>, item: T): Queue<T> => {
   const new_pair = pair(item, front_ptr(queue));
   if (is_empty_queue(queue)) {
     set_rear_ptr(queue, new_pair);
   } else {}
   set_front_ptr(queue, new_pair);
   return queue;
-}
+};
 `,
     );
     expect(stack).not.toBe(circuitQueueDefinitions);

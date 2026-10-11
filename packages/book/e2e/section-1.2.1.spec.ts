@@ -46,7 +46,7 @@ test('a runaway program is stopped by the step budget', async ({ page }) => {
   const editor = page.getByRole('textbox', { name: /factorial\.sicp/ });
   await editor.click();
   await page.keyboard.press('ControlOrMeta+End');
-  await page.keyboard.type('function forever(n) { return forever(n + 1); }');
+  await page.keyboard.type('const forever = (n: number): number => forever(n + 1);');
   await page.keyboard.press('Enter');
   await page.keyboard.type('forever(0);');
   await page.getByRole('button', { name: 'Run' }).click();

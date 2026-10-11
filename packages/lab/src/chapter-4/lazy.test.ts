@@ -99,15 +99,15 @@ describe('section 4.2.1: normal order and applicative order', () => {
   it('exercise 4.23: factorial with unless returns 120 lazily, applying factorial five times', () => {
     const outcome = loop([
       'let calls = 0;',
-      'function unless(condition, usual_value, exceptional_value) { return condition ? exceptional_value : usual_value; }',
-      'function factorial(n) { calls = calls + 1; return unless(n === 1, n * factorial(n - 1), 1); }',
+      'const unless = <T>(condition: boolean, usual_value: T, exceptional_value: T): T => condition ? exceptional_value : usual_value;',
+      'const factorial = (n: number): number => { calls = calls + 1; return unless(n === 1, n * factorial(n - 1), 1); };',
       'factorial(5);',
       'calls;',
     ]);
     expect(printed(outcome).slice(3)).toEqual(['120', '5']);
     const strict = evaluate(
-      `function unless(condition, usual_value, exceptional_value) { return condition ? exceptional_value : usual_value; }
-       function factorial(n) { return unless(n === 1, n * factorial(n - 1), 1); }
+      `const unless = <T>(condition: boolean, usual_value: T, exceptional_value: T): T => condition ? exceptional_value : usual_value;
+       const factorial = (n: number): number => unless(n === 1, n * factorial(n - 1), 1);
        factorial(5);`,
       { budget: 1_000_000 },
     );
@@ -142,8 +142,8 @@ describe('section 4.2.2: an interpreter with lazy evaluation', () => {
   it('exercise 4.27: under n squares, an argument is evaluated once, or 2ⁿ times without memoization', () => {
     const inputs = [
       'let count = 0;',
-      'function id(x) { count = count + 1; return x; }',
-      'function square(x) { return x * x; }',
+      'const id = <T>(x: T): T => { count = count + 1; return x; };',
+      'const square = (x: number): number => x * x;',
       'square(square(square(id(2))));',
       'count;',
     ];
@@ -154,7 +154,7 @@ describe('section 4.2.2: an interpreter with lazy evaluation', () => {
   it('exercise 4.25: count is 1, w is 10, then count is 2', () => {
     const outcome = loop([
       'let count = 0;',
-      'function id(x) { count = count + 1; return x; }',
+      'const id = <T>(x: T): T => { count = count + 1; return x; };',
       'const w = id(id(10));',
       'count;',
       'w;',
@@ -164,7 +164,7 @@ describe('section 4.2.2: an interpreter with lazy evaluation', () => {
   });
 
   it('exercise 4.26: without forcing, a function passed as an argument cannot be applied', () => {
-    const inputs = ['function apply_to_one(f) { return f(1); }', 'apply_to_one(x => x + 1);'];
+    const inputs = ['const apply_to_one = (f: (x: number) => number): number => f(1);', 'apply_to_one(x => x + 1);'];
     expect(printed(loop(inputs))).toEqual(['undefined', '2']);
     const unforced = lazyEvaluator.replace(
       'apply(actual_value(function_expression(component), env),',
@@ -176,14 +176,14 @@ describe('section 4.2.2: an interpreter with lazy evaluation', () => {
 
   it('exercise 4.28: f2(1) is 1 with the text’s eval_sequence, list(1, 2) with Cy’s', () => {
     const inputs = [
-      'function f1(x) { x = pair(x, list(2)); return x; }',
-      'function f2(x) { function f(e) { e; return x; } return f(x = pair(x, list(2))); }',
+      'const f1 = (x: unknown): unknown => { x = pair(x, list(2)); return x; };',
+      'const f2 = (x: unknown): unknown => { const f = (e: unknown): unknown => { e; return x; }; return f(x = pair(x, list(2))); };',
       'f1(1);',
       'f2(1);',
     ];
     expect(printed(loop(inputs)).slice(2)).toEqual(['[1, [2, null]]', '1']);
     const cy = `${lazyEvaluatorWithout('eval_sequence')}
-function eval_sequence(stmts, env) {
+const eval_sequence = (stmts: List<Component>, env: Environment): unknown => {
     if (is_empty_sequence(stmts)) {
         return undefined;
     } else if (is_last_statement(stmts)) {
@@ -197,13 +197,13 @@ function eval_sequence(stmts, env) {
             return eval_sequence(rest_statements(stmts), env);
         }
     }
-}`;
+};`;
     expect(printed(loop(inputs, cy)).slice(2)).toEqual(['[1, [2, null]]', '[1, [2, null]]']);
   });
 
   it('exercise 4.28: for_each displays every element with either eval_sequence', () => {
     const outcome = loop([
-      'function for_each(fun, items) { if (is_null(items)) { return "done"; } else { fun(head(items)); for_each(fun, tail(items)); } }',
+      'const for_each = <T>(fun: (x: T) => unknown, items: List<T>): "done" | undefined => { if (is_null(items)) { return "done"; } else { fun(head(items)); for_each(fun, tail(items)); } };',
       'for_each(display, list(57, 321, 88));',
     ]);
     expect(outcome.output.slice(1, 4)).toEqual(['57', '321', '88']);

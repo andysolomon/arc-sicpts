@@ -1,5 +1,6 @@
 import type { Value } from '../evaluator/values.ts';
-import { isDeclaration, type Block, type Expression, type Lambda, type Program, type Statement } from './ast.ts';
+import { isDeclaration, type Argument, type Block, type Expression, type Lambda, type Loc, type Program, type Statement } from './ast.ts';
+import { SourceError } from './errors.ts';
 
 /**
  * The tagged-list representation of a program that SICP JS's `parse` returns
@@ -11,6 +12,18 @@ import { isDeclaration, type Block, type Expression, type Lambda, type Program, 
 const list = (...items: Value[]): Value => items.reduceRight<Value>((rest, item) => [item, rest], null);
 
 const name = (symbol: string): Value => list('name', symbol);
+
+/**
+ * The evaluators of Chapter 4 know only the syntax of SICP JS. What this subset
+ * adds to it, such as `??` or `await`, has no tagged-list form, so `parse`
+ * refuses it rather than hand those evaluators something they cannot read.
+ */
+const unsupported = (what: string, loc: Loc): never => {
+  throw new SourceError('runtime', `${what} has no tagged-list representation in §4.1.2`, loc);
+};
+
+const argument = (node: Argument): Value =>
+  node.kind === 'spread' ? unsupported('a spread argument (...)', node.loc) : expression(node);
 
 /** A sequence of one statement is just that statement, as in Source's `parse`. */
 function sequence(statements: readonly Statement[]): Value {
@@ -27,6 +40,8 @@ function sequence(statements: readonly Statement[]): Value {
 const block = (node: Block): Value => (node.body.some(isDeclaration) ? list('block', sequence(node.body)) : sequence(node.body));
 
 function lambda(node: Lambda): Value {
+  if (node.rest !== undefined) unsupported('a rest parameter (...)', node.loc);
+  if (node.async === true) unsupported('an async function', node.loc);
   const body = node.body.kind === 'block' ? block(node.body) : list('return_statement', expression(node.body));
   return list('lambda_expression', list(...node.params.map(name)), body);
 }
@@ -38,12 +53,14 @@ function expression(node: Expression): Value {
     case 'name':
       return name(node.symbol);
     case 'application':
-      return list('application', expression(node.fun), list(...node.args.map(expression)));
+      if (node.optional === true) unsupported('an optional call (?.)', node.loc);
+      return list('application', expression(node.fun), list(...node.args.map(argument)));
     case 'unary':
       return list('unary_operator_combination', node.operator === '-' ? '-unary' : '!', expression(node.operand));
     case 'binary':
       return list('binary_operator_combination', node.operator, expression(node.left), expression(node.right));
     case 'logical':
+      if (node.operator === '??') unsupported('nullish coalescing (??)', node.loc);
       return list('logical_composition', node.operator, expression(node.left), expression(node.right));
     case 'conditional':
       return list(
@@ -56,6 +73,8 @@ function expression(node: Expression): Value {
       return lambda(node);
     case 'assignment':
       return list('assignment', name(node.symbol), expression(node.value));
+    case 'await':
+      return unsupported('await', node.loc);
   }
 }
 
@@ -66,6 +85,8 @@ function statement(node: Statement): Value {
     case 'let':
       return list('variable_declaration', name(node.symbol), expression(node.init));
     case 'function':
+      if (node.lambda.rest !== undefined) unsupported('a rest parameter (...)', node.loc);
+      if (node.lambda.async === true) unsupported('an async function', node.loc);
       return list(
         'function_declaration',
         name(node.symbol),

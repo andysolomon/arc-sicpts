@@ -2,7 +2,7 @@ import { conditionalStatementProgram, lambdaProgram, localNamesProgram } from '@
 
 <Prose>
 
-In using `sum` as in §1.3.1, it seems terribly awkward to declare trivial functions such as `pi_term` and `pi_next` just so we can use them as arguments. It is more convenient to say directly "the function that returns its input incremented by 4". A *lambda expression* does that:
+In using `sum` as in §1.3.1, it seems terribly awkward to declare trivial functions such as `pi_term` and `pi_next` just so we can use them as arguments. It is more convenient to say directly "the function that returns its input incremented by 4". Every function so far has been written as parameters, an arrow and a body, and then named with `const`. The part to the right of the `=`, a *lambda expression*, is complete without the name. On its own it says exactly what we want:
 
 ```js
 x => x + 4
@@ -14,15 +14,16 @@ and "the function that returns the reciprocal of its input times its input plus 
 x => 1 / (x * (x + 2))
 ```
 
-A lambda expression has parameters, an arrow, and a body, and its value is a function. The only difference from a function declaration is that the function is not bound to any name. Then `pi_sum` needs no helpers at all:
+A lambda expression's value is a function, and it can be written wherever that function is used. With a single unannotated parameter, the parentheses around it can be left out. Then `pi_sum` needs no helpers at all:
 
 ```js
-function pi_sum(a, b) {
-  return sum(x => 1 / (x * (x + 2)), a, x => x + 4, b);
-}
+const pi_sum = (a: number, b: number): number =>
+  sum(x => 1 / (x * (x + 2)), a, x => x + 4, b);
 ```
 
-In fact a function declaration is just a convenient way to write a constant declaration whose value is a lambda expression: `function plus4(x) { return x + 4; }` and `const plus4 = x => x + 4;` both make a function and bind `plus4` to it. And like any expression that has a function as its value, a lambda expression can be applied directly, without ever being named.
+The two lambda expressions carry no annotations, and need none: the annotations of `sum` already say that `term` and `next` take a number and return one. A named function is different, because its annotations are what its users read, so every named function in this book has them.
+
+So a named function such as `const plus4 = (x: number): number => x + 4;` is just a constant declaration whose right-hand side is a lambda expression. JavaScript also has an older form that does the same job, the *function declaration* `function plus4(x) { return x + 4; }`. The language still accepts it, and you will meet it in other programs; this book names its functions with `const` instead. And like any expression that has a function as its value, a lambda expression can be applied directly, without ever being named.
 
 </Prose>
 
@@ -46,7 +47,7 @@ Applying `f` makes a frame for `x` and `y`. Because the body declares names of i
 
 <Prose>
 
-Sometimes the steps of a function do not fit one return expression. The *conditional statement* chooses between two blocks of statements. Its predicate is in parentheses after `if`, and each branch is a block in braces, which may declare its own constants:
+Sometimes a function has to choose between two sequences of steps rather than two values. The *conditional statement* chooses between two blocks of statements. Its predicate is in parentheses after `if`, and each branch is a block in braces, which may declare its own constants:
 
 </Prose>
 
@@ -58,13 +59,13 @@ The `expmod` of §1.2.6, written with a conditional statement. In the even case,
 
 <Prose>
 
-A conditional statement's branches are statements, so each needs its own `return`. A conditional expression has expressions for branches and is itself an expression, which is why it can be returned, passed as an argument, or nested; both forms only ever evaluate one of their branches.
+A conditional statement's branches are statements, so a function that uses one needs a block for its body, and each branch needs its own `return`. A conditional expression has expressions for branches and is itself an expression, which is why it can be a function's whole body, passed as an argument, or nested; both forms only ever evaluate one of their branches.
 
 </Prose>
 
 <UnderTheHood file="packages/lab/src/syntax/parse.ts">
 
-`parse.ts` recognises a lambda expression by looking ahead from a name or a parenthesis to the `=>`, and it records the declared name on a lambda that initialises a constant, so `plus4` shows up under its own name in traces. The evaluator scans a block for declarations and, only if it finds some, gives the block a frame of its own, which is the second frame in the picture above. The test `chapter-1/abstractions.test.ts` asserts that the in-place application gives 12, that `a` and `b` are declared in a frame inside the call frame, and that `expmod(3, 13, 13)` is 3.
+`parse.ts` recognises a lambda expression by looking ahead from a name or a parenthesis, past any annotations, to the `=>`, and it records the declared name on a lambda that initialises a constant, so `plus4` shows up under its own name in traces. The evaluator scans a block for declarations and, only if it finds some, gives the block a frame of its own, which is the second frame in the picture above. The test `chapter-1/abstractions.test.ts` asserts that the in-place application gives 12, that `a` and `b` are declared in a frame inside the call frame, and that `expmod(3, 13, 13)` is 3.
 
 </UnderTheHood>
 
@@ -75,7 +76,7 @@ Suppose we declare the function `f` below. Then `f(square)` is 4, and `f(z => z 
 
 <Solution>
 
-**Solution.** `f(f)` substitutes `f` for `g` in `g(2)`, giving `f(2)`. That substitutes 2 for `g`, giving `2(2)`. The number 2 is not a function, so the evaluator stops with "Cannot apply 2: it is not a function".
+**Solution.** `f(f)` substitutes `f` for `g` in `g(2)`, giving `f(2)`. That substitutes 2 for `g`, giving `2(2)`. The number 2 is not a function, so the evaluator stops with "Cannot apply 2: it is not a function". The annotation on `g` already said as much, since `f` does not take a number, but annotations are not checked, so the mistake surfaces only when `2(2)` is reached.
 
 </Solution>
 </Exercise>

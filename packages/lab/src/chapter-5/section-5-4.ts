@@ -15,10 +15,9 @@ display(declaration_symbol(declaration));
 declaration_value_expression(declaration);
 `;
 
-/** §5.4: the evaluator reads a function declaration and an application, and evaluates them. */
-export const ecevalFactorialProgram = `set_inputs(list(\`function factorial(n) {
-    return n === 1 ? 1 : factorial(n - 1) * n;
-}\`, "factorial(3);"));
+/** §5.4: the evaluator reads the declaration of `factorial` and an application, and evaluates them. */
+export const ecevalFactorialProgram = `set_inputs(list(\`const factorial = (n: number): number =>
+    n === 1 ? 1 : factorial(n - 1) * n;\`, "factorial(3);"));
 start(eceval);
 `;
 
@@ -33,10 +32,10 @@ start(eceval);
 `;
 
 /** §5.4.2: a function that calls itself in a return statement, as \`count\` does, but stops at k. */
-export const ecevalCountProgram = `set_inputs(list(\`function count(n, k) {
+export const ecevalCountProgram = `set_inputs(list(\`const count = (n: number, k: number): number => {
     display(n);
     return n === k ? n : count(n + 1, k);
-}\`, "count(1, 3);"));
+};\`, "count(1, 3);"));
 start(eceval);
 `;
 
@@ -48,35 +47,31 @@ start(eceval);
 `;
 
 /** §5.4.4: the book's interaction with the evaluator. */
-export const ecevalAppendProgram = `set_inputs(list(\`function append(x, y) {
-    return is_null(x)
+export const ecevalAppendProgram = `set_inputs(list(\`const append = <T>(x: List<T>, y: List<T>): List<T> =>
+    is_null(x)
            ? y
-           : pair(head(x), append(tail(x), y));
-}\`, \`append(list("a", "b", "c"), list("d", "e", "f"));\`));
+           : pair(head(x), append(tail(x), y));\`, \`append(list("a", "b", "c"), list("d", "e", "f"));\`));
 start(eceval);
 `;
 
 /** §5.4.4: the monitored evaluator on recursive factorial for n from 1 to 5. */
-export const ecevalStatisticsProgram = `set_inputs(list(\`function factorial(n) {
-    return n === 1
+export const ecevalStatisticsProgram = `set_inputs(list(\`const factorial = (n: number): number =>
+    n === 1
            ? 1
-           : factorial(n - 1) * n;
-}\`, "factorial(1);", "factorial(2);", "factorial(3);",
+           : factorial(n - 1) * n;\`, "factorial(1);", "factorial(2);", "factorial(3);",
      "factorial(4);", "factorial(5);"));
 start(eceval);
 `;
 
 /** §5.4.4: iterative factorial, then recursive factorial, of 4, in one run. */
-export const ecevalTailProgram = `set_inputs(list(\`function factorial(n) {
-    function iter(product, counter) {
-        return counter > n
+export const ecevalTailProgram = `set_inputs(list(\`const factorial = (n: number): number => {
+    const iter = (product: number, counter: number): number =>
+        counter > n
                ? product
                : iter(counter * product, counter + 1);
-    }
     return iter(1, 1);
-}\`, "factorial(4);",
-\`function fact_rec(n) {
-    return n === 1 ? 1 : fact_rec(n - 1) * n;
-}\`, "fact_rec(4);"));
+};\`, "factorial(4);",
+\`const fact_rec = (n: number): number =>
+    n === 1 ? 1 : fact_rec(n - 1) * n;\`, "fact_rec(4);"));
 start(eceval);
 `;

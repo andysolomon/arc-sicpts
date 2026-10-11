@@ -7,9 +7,9 @@ export const exercise_3_1: ExerciseSpec = {
   id: '3.1',
   starter: `// An accumulator is a function, called repeatedly with a single numeric
 // argument, that accumulates its arguments into a sum and returns it.
-function make_accumulator(initial) {
+const make_accumulator = (initial: number): ((amount: number) => number) => {
   // your answer
-}
+};
 
 const a = make_accumulator(5);
 a(10);
@@ -24,12 +24,11 @@ a(10);
       expected: 25,
     },
   ],
-  solution: `function make_accumulator(sum) {
-  return amount => {
+  solution: `const make_accumulator = (sum: number): ((amount: number) => number) =>
+  amount => {
     sum = sum + amount;
     return sum;
   };
-}
 
 const a = make_accumulator(5);
 a(10);
@@ -41,9 +40,11 @@ export const exercise_3_2: ExerciseSpec = {
   starter: `// make_monitored(f) returns a function mf that keeps count of how often it
 // has been called. mf("how many calls") returns the count, mf("reset count")
 // sets it to zero, and any other argument is passed on to f.
-function make_monitored(f) {
+type Monitored = (x: number | "how many calls" | "reset count") => number;
+
+const make_monitored = (f: (x: number) => number): Monitored => {
   // your answer
-}
+};
 
 const s = make_monitored(math_sqrt);
 s(100);
@@ -65,7 +66,9 @@ s(100);
       expected: 1,
     },
   ],
-  solution: `function make_monitored(f) {
+  solution: `type Monitored = (x: number | "how many calls" | "reset count") => number;
+
+const make_monitored = (f: (x: number) => number): Monitored => {
   let calls = 0;
   return x => {
     if (x === "how many calls") {
@@ -78,7 +81,7 @@ s(100);
       return f(x);
     }
   };
-}
+};
 
 const s = make_monitored(math_sqrt);
 s(100);
@@ -86,31 +89,48 @@ s(100);
 };
 
 /** `make_account` of §3.1.1, the starting point of Exercises 3.3 and 3.4. */
-const passwordAccount = `function make_account(balance, password) {
-  function withdraw(amount) {
+const passwordAccount = `type Transaction = (amount: number) => number | string;
+type Account = (p: string, m: "withdraw" | "deposit") => Transaction;
+
+const make_account = (balance: number, password: string): Account => {
+  const withdraw = (amount: number): number | string => {
     if (balance >= amount) {
       balance = balance - amount;
       return balance;
     } else {
       return "Insufficient funds";
     }
-  }
-  function deposit(amount) {
+  };
+  const deposit = (amount: number): number => {
     balance = balance + amount;
     return balance;
-  }
-  function dispatch(p, m) {
-    return p !== password
+  };
+  const dispatch = (p: string, m: "withdraw" | "deposit"): Transaction =>
+    p !== password
       ? amount => "Incorrect password"
       : m === "withdraw"
       ? withdraw
       : m === "deposit"
       ? deposit
       : error(m, "unknown request -- make_account");
-  }
   return dispatch;
-}
+};
 `;
+
+/** `text` with `from` replaced by `to`; throws when `from` is missing, so that a change to the text cannot go unnoticed. */
+const replaced = (text: string, from: string, to: string): string => {
+  if (!text.includes(from)) throw new Error(`exercise 3.3: ${from} not found`);
+  return text.replace(from, to);
+};
+
+/** §3.1.1's `make_account`, half-way to Exercise 3.3: it takes a password, and its dispatch a password and a message. */
+const passwordStarter = (
+  [
+    ['type Account = (m: ', 'type Account = (p: string, m: '],
+    ['make_account = (balance: number)', 'make_account = (balance: number, password: string)'],
+    ['dispatch = (m: ', 'dispatch = (p: string, m: '],
+  ] as const
+).reduce<string>((text, [from, to]) => replaced(text, from, to), makeAccountDefinition);
 
 export const exercise_3_3: ExerciseSpec = {
   id: '3.3',
@@ -118,7 +138,7 @@ export const exercise_3_3: ExerciseSpec = {
 // make_account(100, "secret password") returns an account that processes a
 // request only if it comes with the password, and otherwise returns
 // "Incorrect password".
-${makeAccountDefinition.replace('make_account(balance)', 'make_account(balance, password)').replace('function dispatch(m)', 'function dispatch(p, m)')}
+${passwordStarter}
 const acc = make_account(100, "secret password");
 acc("secret password", "withdraw")(40);
 `,
@@ -162,10 +182,10 @@ export const exercise_3_4: ExerciseSpec = {
   id: '3.4',
   prelude: `let cops_called = 0;
 
-function call_the_cops() {
+const call_the_cops = (): string => {
   cops_called = cops_called + 1;
   return "Calling the cops";
-}
+};
 `,
   starter: `// call_the_cops() is provided. Change the account so that if it is accessed
 // more than seven consecutive times with an incorrect password, it calls
@@ -206,24 +226,25 @@ acc("secret password", "withdraw")(40);
       expected: 'Incorrect password',
     },
   ],
-  solution: `function make_account(balance, password) {
+  solution: `type Transaction = (amount: number) => number | string;
+type Account = (p: string, m: "withdraw" | "deposit") => Transaction;
+
+const make_account = (balance: number, password: string): Account => {
   let wrong_attempts = 0;
-  function withdraw(amount) {
+  const withdraw = (amount: number): number | string => {
     if (balance >= amount) {
       balance = balance - amount;
       return balance;
     } else {
       return "Insufficient funds";
     }
-  }
-  function deposit(amount) {
+  };
+  const deposit = (amount: number): number => {
     balance = balance + amount;
     return balance;
-  }
-  function refuse(amount) {
-    return "Incorrect password";
-  }
-  function dispatch(p, m) {
+  };
+  const refuse = (amount: number): string => "Incorrect password";
+  const dispatch = (p: string, m: "withdraw" | "deposit"): Transaction => {
     if (p !== password) {
       wrong_attempts = wrong_attempts + 1;
       if (wrong_attempts > 7) {
@@ -238,9 +259,9 @@ acc("secret password", "withdraw")(40);
         ? deposit
         : error(m, "unknown request -- make_account");
     }
-  }
+  };
   return dispatch;
-}
+};
 
 const acc = make_account(100, "secret password");
 acc("secret password", "withdraw")(40);
@@ -254,21 +275,20 @@ acc("secret password", "withdraw")(40);
 const randomInRange = `${randUpdateDefinitions}
 let random_state = random_init;
 
-function random_in_range(low, high) {
+const random_in_range = (low: number, high: number): number => {
   random_state = rand_update(random_state);
   return low + (random_state / 2147483647) * (high - low);
-}
+};
 
-function monte_carlo(trials, experiment) {
-  function iter(trials_remaining, trials_passed) {
-    return trials_remaining === 0
+const monte_carlo = (trials: number, experiment: () => boolean): number => {
+  const iter = (trials_remaining: number, trials_passed: number): number =>
+    trials_remaining === 0
       ? trials_passed / trials
       : experiment()
       ? iter(trials_remaining - 1, trials_passed + 1)
       : iter(trials_remaining - 1, trials_passed);
-  }
   return iter(trials, 0);
-}
+};
 `;
 
 export const exercise_3_5: ExerciseSpec = {
@@ -280,13 +300,18 @@ export const exercise_3_5: ExerciseSpec = {
 // The area of the region where P(x, y) holds, inside the rectangle from
 // x1 to x2 and y1 to y2, estimated from the fraction of random points in
 // the rectangle that fall in the region.
-function estimate_integral(P, x1, x2, y1, y2, trials) {
+const estimate_integral = (
+  P: (x: number, y: number) => boolean,
+  x1: number,
+  x2: number,
+  y1: number,
+  y2: number,
+  trials: number,
+): number => {
   // your answer
-}
+};
 
-function in_unit_circle(x, y) {
-  return x * x + y * y <= 1;
-}
+const in_unit_circle = (x: number, y: number): boolean => x * x + y * y <= 1;
 
 estimate_integral(in_unit_circle, -1, 1, -1, 1, 1000);
 `,
@@ -322,16 +347,20 @@ estimate_integral(in_unit_circle, -1, 1, -1, 1, 1000);
       expected: true,
     },
   ],
-  solution: `function estimate_integral(P, x1, x2, y1, y2, trials) {
-  function experiment() {
-    return P(random_in_range(x1, x2), random_in_range(y1, y2));
-  }
+  solution: `const estimate_integral = (
+  P: (x: number, y: number) => boolean,
+  x1: number,
+  x2: number,
+  y1: number,
+  y2: number,
+  trials: number,
+): number => {
+  const experiment = (): boolean =>
+    P(random_in_range(x1, x2), random_in_range(y1, y2));
   return monte_carlo(trials, experiment) * (x2 - x1) * (y2 - y1);
-}
+};
 
-function in_unit_circle(x, y) {
-  return x * x + y * y <= 1;
-}
+const in_unit_circle = (x: number, y: number): boolean => x * x + y * y <= 1;
 
 estimate_integral(in_unit_circle, -1, 1, -1, 1, 1000);
 `,
@@ -347,9 +376,11 @@ export const exercise_3_6: ExerciseSpec = {
 // rand("generate") produces a new random number; rand("reset")(new_value)
 // resets the internal variable to new_value, so that sequences can be repeated.
 // make_rand() makes such a rand, starting from random_init.
-function make_rand() {
+type Rand = (m: "generate" | "reset") => number | ((new_value: number) => number);
+
+const make_rand = (): Rand => {
   // your answer
-}
+};
 
 const rand = make_rand();
 rand("generate");
@@ -371,7 +402,9 @@ rand("generate");
       expected: update(2026),
     },
   ],
-  solution: `function make_rand() {
+  solution: `type Rand = (m: "generate" | "reset") => number | ((new_value: number) => number);
+
+const make_rand = (): Rand => {
   let x = random_init;
   return m => {
     if (m === "generate") {
@@ -386,7 +419,7 @@ rand("generate");
       return error(m, "unknown request -- rand");
     }
   };
-}
+};
 
 const rand = make_rand();
 rand("generate");
@@ -403,9 +436,9 @@ export const exercise_3_7: ExerciseSpec = {
 
 // make_joint(acc, password, new_password) gives access to the account acc,
 // whose password is password, under the additional password new_password.
-function make_joint(acc, password, new_password) {
+const make_joint = (acc: Account, password: string, new_password: string): Account => {
   // your answer
-}
+};
 
 const peter_acc = make_account(100, "open sesame");
 const paul_acc = make_joint(peter_acc, "open sesame", "rosebud");
@@ -422,12 +455,11 @@ const paul_acc = make_joint(peter_acc, "open sesame", "rosebud");
       expected: 100,
     },
   ],
-  solution: `function make_joint(acc, password, new_password) {
-  return (p, m) =>
+  solution: `const make_joint = (acc: Account, password: string, new_password: string): Account =>
+  (p, m) =>
     p === new_password
       ? acc(password, m)
       : amount => "Incorrect password";
-}
 
 const peter_acc = make_account(100, "open sesame");
 const paul_acc = make_joint(peter_acc, "open sesame", "rosebud");
@@ -439,9 +471,9 @@ export const exercise_3_8: ExerciseSpec = {
   starter: `// make_f() returns a function f such that f(0) + f(1) is 0 when the operands
 // are evaluated from left to right, and 1 when they are evaluated from right
 // to left. (The checker makes a fresh f for each test.)
-function make_f() {
+const make_f = (): ((x: number) => number) => {
   // your answer
-}
+};
 
 const f = make_f();
 f(0) + f(1);
@@ -451,7 +483,7 @@ f(0) + f(1);
     { name: 'right to left gives 1', kind: 'value', expr: 'const g = make_f(); const right = g(1); const left = g(0); left + right', expected: 1 },
   ],
   solution: `// f returns its argument the first time it is called, and 0 after that.
-function make_f() {
+const make_f = (): ((x: number) => number) => {
   let called = false;
   return x => {
     if (called) {
@@ -461,7 +493,7 @@ function make_f() {
       return x;
     }
   };
-}
+};
 
 const f = make_f();
 f(0) + f(1);

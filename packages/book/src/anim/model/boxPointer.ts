@@ -243,7 +243,7 @@ function describe(text: string, added: number, changed: number, dropped: number,
 }
 
 /**
- * One keyframe per top-level statement that is not a function declaration,
+ * One keyframe per top-level statement that does not just declare a function,
  * each with what the statement did to the pairs: made new ones, changed a
  * head or tail of an old one, or left some unreachable.
  */
@@ -251,7 +251,7 @@ export function boxPointerFrames(heap: readonly HeapSnapshot[] | undefined): Box
   const frames: BoxPointerFrame[] = [];
   let previous: HeapSnapshot | null = null;
   for (const snapshot of heap ?? []) {
-    if (snapshot.node?.kind === 'function') continue;
+    if (snapshot.node?.declaresFunction === true) continue;
     const before = new Map((previous?.pairs ?? []).map((p) => [p.id, p]));
     const now = new Set(snapshot.pairs.map((p) => p.id));
     const added = new Set<number>();

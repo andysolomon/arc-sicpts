@@ -48,11 +48,11 @@ describe('parse (§4.1.2)', () => {
 });
 
 describe('the metacircular evaluator (§4.1.1–§4.1.4)', () => {
-  it('runs the cycle of §4.1.1: 17 calls of evaluate and 3 of apply for square(3) + 1', () => {
+  it('runs the cycle of §4.1.1: 16 calls of evaluate and 3 of apply for square(3) + 1', () => {
     const log = createCallLogTracer(['evaluate', 'apply']);
     const outcome = evaluate(programs.evalApplyProgram, { budget: BUDGET, prelude: metacircularPrelude, hooks: [log.hooks] });
     expect(outcome.status === 'done' && outcome.text).toBe('10');
-    expect(log.calls.filter((c) => c.name === 'evaluate')).toHaveLength(17);
+    expect(log.calls.filter((c) => c.name === 'evaluate')).toHaveLength(16);
     expect(log.calls.filter((c) => c.name === 'apply')).toHaveLength(3);
   });
 
@@ -106,20 +106,20 @@ describe('the metacircular evaluator (§4.1.1–§4.1.4)', () => {
 });
 
 describe('the analyzing evaluator (§4.1.7)', () => {
-  it('computes the same value in almost two fifths fewer steps', () => {
+  it('computes the same value in more than a third fewer steps', () => {
     const plain = run(programs.analysisComparisonProgram);
     const analyzed = run(programs.analysisComparisonProgram, analyzingPrelude);
     if (plain.status !== 'done' || analyzed.status !== 'done') throw new Error('did not finish');
     expect(analyzed.text).toBe('3628800');
     expect(plain.text).toBe('3628800');
     // The numbers of the page and of exercise 4.22.
-    expect([plain.steps, analyzed.steps]).toEqual([76_076, 46_980]);
+    expect([plain.steps, analyzed.steps]).toEqual([68_221, 42_691]);
     expect(analyzed.steps / plain.steps).toBeGreaterThan(0.55);
     expect(analyzed.steps / plain.steps).toBeLessThan(0.7);
   });
 
   it('runs programs that declare and assign', () => {
-    expect(text('evaluate_program("let k = 0; function f(n) { k = k + n; return k; } f(2); f(3);");', analyzingPrelude)).toBe('5');
+    expect(text('evaluate_program("let k = 0; const f = (n: number): number => { k = k + n; return k; }; f(2); f(3);");', analyzingPrelude)).toBe('5');
   });
 });
 
@@ -147,12 +147,12 @@ describe('Laboratory support for Chapter 4', () => {
   });
 
   it('says when an error happened in a hidden prelude', () => {
-    expect(errorOf('f(1);', 'function f(x) {\n  return x + "a" * 2;\n}')).toBe('Hidden prelude, line 2: * expects two numbers, got string and number');
+    expect(errorOf('f(1);', 'const f = (x: number): number =>\n  x + "a" * 2;')).toBe('Hidden prelude, line 2: * expects two numbers, got string and number');
   });
 
   it('logs the calls of named functions with their results', () => {
     const log = createCallLogTracer(['fact']);
-    evaluate('function fact(n) { return n === 0 ? 1 : n * fact(n - 1); } fact(2);', { hooks: [log.hooks] });
+    evaluate('const fact = (n: number): number => n === 0 ? 1 : n * fact(n - 1); fact(2);', { hooks: [log.hooks] });
     expect(log.calls.map((c) => [c.args.join(), c.value, c.parent])).toEqual([
       ['2', '2', null],
       ['1', '1', 0],
@@ -161,10 +161,10 @@ describe('Laboratory support for Chapter 4', () => {
   });
 
   it('omits and picks top-level declarations', () => {
-    const source = 'function a() { return 1; }\nconst b = 2;\nfunction c() { return b; }\n';
+    const source = 'const a = (): number => 1;\nconst b = 2;\nconst c = (): number => b;\n';
     expect(declaredNames(source)).toEqual(['a', 'b', 'c']);
-    expect(omit(source, 'b')).toBe('function a() { return 1; }\nfunction c() { return b; }\n');
-    expect(pick(source, 'c', 'a')).toBe('function c() { return b; }\nfunction a() { return 1; }');
+    expect(omit(source, 'b')).toBe('const a = (): number => 1;\nconst c = (): number => b;\n');
+    expect(pick(source, 'c', 'a')).toBe('const c = (): number => b;\nconst a = (): number => 1;');
     expect(() => omit(source, 'd')).toThrow('omit: d is not declared');
   });
 });

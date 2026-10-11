@@ -73,28 +73,30 @@ acc("withdraw")(60);   // 30
 Where is the local state of `acc` kept? Now make another account, `const acc2 = make_account(100);`. How do the two accounts keep their states apart, and what part of the environment structure do `acc` and `acc2` share? Answer the questions in the editor in code.
 
 ```js
-function make_account(balance) {
-  function withdraw(amount) {
+type Transaction = (amount: number) => number | string;
+type Account = (m: "withdraw" | "deposit") => Transaction;
+
+const make_account = (balance: number): Account => {
+  const withdraw = (amount: number): number | string => {
     if (balance >= amount) {
       balance = balance - amount;
       return balance;
     } else {
       return "insufficient funds";
     }
-  }
-  function deposit(amount) {
+  };
+  const deposit = (amount: number): number => {
     balance = balance + amount;
     return balance;
-  }
-  function dispatch(m) {
-    return m === "withdraw"
-           ? withdraw
-           : m === "deposit"
-           ? deposit
-           : error(m, "unknown request: make_account");
-  }
+  };
+  const dispatch = (m: "withdraw" | "deposit"): Transaction =>
+    m === "withdraw"
+    ? withdraw
+    : m === "deposit"
+    ? deposit
+    : error(m, "unknown request: make_account");
   return dispatch;
-}
+};
 ```
 
 <Solution>

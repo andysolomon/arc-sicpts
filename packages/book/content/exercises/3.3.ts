@@ -3,31 +3,29 @@ import type { ExerciseSpec } from './spec.ts';
 
 /** Exercises of §3.3.1–§3.3.3: mutable list structure, queues and tables. */
 
-const makeCycleDefinition = `function make_cycle(x) {
+const makeCycleDefinition = `const make_cycle = <T>(x: List<T>): List<T> => {
   set_tail(last_pair(x), x);
   return x;
-}
+};
 `;
 
 /** Helpers the hidden tests use: a correct pair counter and a cycle detector that cannot be fooled. */
-const structureHelpers = `function pairs_reached(x) {
-  function walk(x, seen) {
-    return !is_pair(x) || !is_null(member(x, seen))
-           ? seen
-           : walk(tail(x), walk(head(x), pair(x, seen)));
-  }
+const structureHelpers = `const pairs_reached = (x: unknown): number => {
+  const walk = (x: unknown, seen: List<unknown>): List<unknown> =>
+    !is_pair(x) || !is_null(member(x, seen))
+    ? seen
+    : walk(tail(x), walk(head(x), pair(x, seen)));
   return length(walk(x, null));
-}
+};
 
-function reaches_itself(x) {
-  function walk(x, path) {
-    return is_pair(x) &&
-           (!is_null(member(x, path)) ||
-            walk(head(x), pair(x, path)) ||
-            walk(tail(x), pair(x, path)));
-  }
+const reaches_itself = (x: unknown): boolean => {
+  const walk = (x: unknown, path: List<unknown>): boolean =>
+    is_pair(x) &&
+    (!is_null(member(x, path)) ||
+     walk(head(x), pair(x, path)) ||
+     walk(tail(x), pair(x, path)));
   return walk(x, null);
-}
+};
 `;
 
 /** Structures of three pairs each, for exercises 3.16 and 3.17. */
@@ -48,18 +46,17 @@ const three_in_a_circle = (() => {
 })();
 `;
 
-const repeatHelper = `function repeat_times(n, f) {
+const repeatHelper = `const repeat_times = (n: number, f: (i: number) => unknown): true => {
   if (n === 0) {
     return true;
   } else {
     f(n);
     return repeat_times(n - 1, f);
   }
-}
+};
 
-function all_up_to(n, pred) {
-  return n === 0 || (pred(n) && all_up_to(n - 1, pred));
-}
+const all_up_to = (n: number, pred: (i: number) => boolean): boolean =>
+  n === 0 || (pred(n) && all_up_to(n - 1, pred));
 `;
 
 export const exercise_3_12: ExerciseSpec = {
@@ -99,9 +96,9 @@ export const exercise_3_13: ExerciseSpec = {
   id: '3.13',
   prelude: mutableLastPairDefinition,
   starter: `// last_pair is provided.
-function make_cycle(x) {
+const make_cycle = <T>(x: List<T>): List<T> => {
   // your answer: make the last pair's tail point back to x, and return x
-}
+};
 
 const z = make_cycle(list("a", "b", "c"));
 
@@ -122,8 +119,8 @@ const last_pair_returns = false;
 
 export const exercise_3_14: ExerciseSpec = {
   id: '3.14',
-  starter: `function mystery(x) {
-  function loop(x, y) {
+  starter: `const mystery = <T>(x: List<T>): List<T> => {
+  const loop = (x: List<T>, y: List<T>): List<T> => {
     if (is_null(x)) {
       return y;
     } else {
@@ -131,9 +128,9 @@ export const exercise_3_14: ExerciseSpec = {
       set_tail(x, y);
       return loop(temp, x);
     }
-  }
+  };
   return loop(x, null);
-}
+};
 
 const v = list("a", "b", "c", "d");
 const w = mystery(v);
@@ -146,8 +143,8 @@ const w_answer = undefined;
     { name: 'v afterwards', kind: 'value', expr: 'equal(v_answer, list("a"))', expected: true },
     { name: 'w afterwards', kind: 'value', expr: 'equal(w_answer, list("d", "c", "b", "a"))', expected: true },
   ],
-  solution: `function mystery(x) {
-  function loop(x, y) {
+  solution: `const mystery = <T>(x: List<T>): List<T> => {
+  const loop = (x: List<T>, y: List<T>): List<T> => {
     if (is_null(x)) {
       return y;
     } else {
@@ -155,9 +152,9 @@ const w_answer = undefined;
       set_tail(x, y);
       return loop(temp, x);
     }
-  }
+  };
   return loop(x, null);
-}
+};
 
 const v = list("a", "b", "c", "d");
 const w = mystery(v);
@@ -198,11 +195,10 @@ const z2_after = pair(list("wow", "b"), list("a", "b"));
 export const exercise_3_16: ExerciseSpec = {
   id: '3.16',
   prelude: structureHelpers,
-  starter: `function count_pairs(x) {
-  return ! is_pair(x)
-         ? 0
-         : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
-}
+  starter: `const count_pairs = (x: unknown): number =>
+  ! is_pair(x)
+  ? 0
+  : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
 
 // Each structure must be made of exactly three pairs.
 const returns_3 = undefined;
@@ -216,11 +212,10 @@ const never_returns = undefined; // don't call count_pairs on this one!
     { name: 'count_pairs says 7', kind: 'value', expr: 'pairs_reached(returns_7) === 3 && count_pairs(returns_7) === 7', expected: true },
     { name: 'three pairs that count_pairs never finishes', kind: 'value', expr: 'pairs_reached(never_returns) === 3 && reaches_itself(never_returns)', expected: true },
   ],
-  solution: `function count_pairs(x) {
-  return ! is_pair(x)
-         ? 0
-         : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
-}
+  solution: `const count_pairs = (x: unknown): number =>
+  ! is_pair(x)
+  ? 0
+  : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
 
 const returns_3 = list("a", "b", "c");
 
@@ -240,9 +235,9 @@ export const exercise_3_17: ExerciseSpec = {
   id: '3.17',
   prelude: threePairStructures,
   starter: `// Count the distinct pairs in x, each once, whatever the sharing.
-function count_pairs(x) {
+const count_pairs = (x: unknown): number => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'a plain list of three', kind: 'value', expr: 'count_pairs(three_in_a_row)', expected: 3 },
@@ -251,18 +246,18 @@ function count_pairs(x) {
     { name: 'a cycle', kind: 'value', expr: 'count_pairs(three_in_a_circle)', expected: 3 },
     { name: 'no pairs at all', kind: 'value', expr: 'count_pairs("a")', expected: 0 },
   ],
-  solution: `function count_pairs(x) {
-  let counted = null;
-  function count(x) {
+  solution: `const count_pairs = (x: unknown): number => {
+  let counted: List<unknown> = null;
+  const count = (x: unknown): number => {
     if (!is_pair(x) || !is_null(member(x, counted))) {
       return 0;
     } else {
       counted = pair(x, counted);
       return count(head(x)) + count(tail(x)) + 1;
     }
-  }
+  };
   return count(x);
-}
+};
 `,
 };
 
@@ -281,21 +276,20 @@ export const exercise_3_18: ExerciseSpec = {
 ${makeCycleDefinition}`,
   starter: `// make_cycle and last_pair are provided.
 // True when taking successive tails of x would go on forever.
-function contains_cycle(x) {
+const contains_cycle = <T>(x: List<T>): boolean => {
   // your answer
-}
+};
 `,
   tests: cycleTests,
-  solution: `function contains_cycle(x) {
-  function walk(x, seen) {
-    return !is_pair(x)
-           ? false
-           : !is_null(member(x, seen))
-           ? true
-           : walk(tail(x), pair(x, seen));
-  }
+  solution: `const contains_cycle = <T>(x: List<T>): boolean => {
+  const walk = (x: List<T>, seen: List<List<T>>): boolean =>
+    !is_pair(x)
+    ? false
+    : !is_null(member(x, seen))
+    ? true
+    : walk(tail(x), pair(x, seen));
   return walk(x, null);
-}
+};
 `,
 };
 
@@ -305,27 +299,27 @@ export const exercise_3_19: ExerciseSpec = {
   prelude: `${mutableLastPairDefinition}
 ${makeCycleDefinition}
 let pairs_made = 0;
-function pair(x, y) {
+const pair = <H, T>(x: H, y: T): Pair<H, T> => {
   pairs_made = pairs_made + 1;
   const fresh = list(x);
   set_tail(fresh, y);
   return fresh;
-}
+};
 
-function pairs_made_by(f) {
+const pairs_made_by = (f: () => unknown): number => {
   const before = pairs_made;
   f();
   return pairs_made - before;
-}
+};
 
 const long_cycle = make_cycle(enum_list(1, 300));
 `,
   starter: `// make_cycle and last_pair are provided.
 // The same question as exercise 3.18, in a constant amount of space:
 // remember no pairs, just keep a fixed number of pointers into x.
-function contains_cycle(x) {
+const contains_cycle = <T>(x: List<T>): boolean => {
   // your answer
-}
+};
 `,
   tests: [
     ...cycleTests,
@@ -335,29 +329,30 @@ function contains_cycle(x) {
   solution: `// Floyd's tortoise and hare: the hare moves two pairs for each of the
 // tortoise's one. If there is a cycle, the hare comes round and lands on
 // the tortoise; if not, it reaches the end of the list.
-function contains_cycle(x) {
-  function race(tortoise, hare) {
-    return !is_pair(hare) || !is_pair(tail(hare))
-           ? false
-           : tail(tortoise) === tail(tail(hare))
-           ? true
-           : race(tail(tortoise), tail(tail(hare)));
-  }
+const contains_cycle = <T>(x: List<T>): boolean => {
+  const race = (tortoise: List<T>, hare: List<T>): boolean =>
+    !is_pair(hare) || !is_pair(tail(hare))
+    ? false
+    : tail(tortoise) === tail(tail(hare))
+    ? true
+    : race(tail(tortoise), tail(tail(hare)));
   return race(x, x);
-}
+};
 `,
 };
 
 export const exercise_3_20: ExerciseSpec = {
   id: '3.20',
   starter: `// Pairs as functions, as in the text.
-function pair(x, y) {
-  function set_x(v) {
+type FunctionalPair = (m: "head" | "tail" | "set_head" | "set_tail") => unknown;
+
+const pair = (x: unknown, y: unknown): FunctionalPair => {
+  const set_x = (v: unknown): void => {
     x = v;
-  }
-  function set_y(v) {
+  };
+  const set_y = (v: unknown): void => {
     y = v;
-  }
+  };
   return m => m === "head"
               ? x
               : m === "tail"
@@ -367,21 +362,17 @@ function pair(x, y) {
               : m === "set_tail"
               ? set_y
               : error(m, "undefined operation -- pair");
-}
-function head(z) {
-  return z("head");
-}
-function tail(z) {
-  return z("tail");
-}
-function set_head(z, new_value) {
+};
+const head = (z: FunctionalPair): unknown => z("head");
+const tail = (z: FunctionalPair): unknown => z("tail");
+const set_head = (z: FunctionalPair, new_value: unknown): FunctionalPair => {
   z("set_head")(new_value);
   return z;
-}
-function set_tail(z, new_value) {
+};
+const set_tail = (z: FunctionalPair, new_value: unknown): FunctionalPair => {
   z("set_tail")(new_value);
   return z;
-}
+};
 
 const x = pair(1, 2);
 const z = pair(x, x);
@@ -413,9 +404,9 @@ export const exercise_3_21: ExerciseSpec = {
   prelude: queueDefinitions,
   starter: `// The queue operations of the text are provided.
 // Display the items of the queue, front first, as a list, and return that list.
-function print_queue(queue) {
+const print_queue = <T>(queue: Queue<T>): List<T> => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'one item', kind: 'value', expr: 'equal(print_queue(insert_queue(make_queue(), "a")), list("a"))', expected: true },
@@ -432,40 +423,37 @@ function print_queue(queue) {
       expected: true,
     },
   ],
-  solution: `function print_queue(queue) {
+  solution: `const print_queue = <T>(queue: Queue<T>): List<T> => {
   const items = front_ptr(queue);
   display_list(items);
   return items;
-}
+};
 `,
 };
 
 export const exercise_3_22: ExerciseSpec = {
   id: '3.22',
-  prelude: `function insert_queue(queue, item) {
-  return queue("insert_queue")(item);
-}
-function delete_queue(queue) {
-  return queue("delete_queue")();
-}
-function front_queue(queue) {
-  return queue("front_queue")();
-}
-function is_empty_queue(queue) {
-  return queue("is_empty_queue")();
-}
+  prelude: `type LocalQueue = (m: "insert_queue" | "delete_queue" | "front_queue" | "is_empty_queue") => unknown;
+
+const insert_queue = (queue: LocalQueue, item: unknown): LocalQueue =>
+  queue("insert_queue")(item);
+const delete_queue = (queue: LocalQueue): LocalQueue => queue("delete_queue")();
+const front_queue = (queue: LocalQueue): unknown => queue("front_queue")();
+const is_empty_queue = (queue: LocalQueue): boolean =>
+  queue("is_empty_queue")();
 `,
   starter: `// insert_queue(q, item), delete_queue(q), front_queue(q) and is_empty_queue(q)
 // are provided: each asks q, by message, for a function and applies it.
-function make_queue() {
-  let front_ptr = null;
-  let rear_ptr = null;
+type LocalQueue = (m: "insert_queue" | "delete_queue" | "front_queue" | "is_empty_queue") => unknown;
+
+const make_queue = (): LocalQueue => {
+  let front_ptr: List<unknown> = null;
+  let rear_ptr: List<unknown> = null;
   // your answer: declare the operations here, then dispatch on m
-  function dispatch(m) {
-    return error(m, "unknown operation -- queue");
-  }
+  const dispatch = (m: "insert_queue" | "delete_queue" | "front_queue" | "is_empty_queue"): unknown =>
+    error(m, "unknown operation -- queue");
   return dispatch;
-}
+};
 `,
   tests: [
     { name: 'a new queue is empty', kind: 'value', expr: 'is_empty_queue(make_queue())', expected: true },
@@ -488,13 +476,13 @@ function make_queue() {
       expected: 'ab',
     },
   ],
-  solution: `function make_queue() {
-  let front_ptr = null;
-  let rear_ptr = null;
-  function is_empty_queue() {
-    return is_null(front_ptr);
-  }
-  function insert_queue(item) {
+  solution: `type LocalQueue = (m: "insert_queue" | "delete_queue" | "front_queue" | "is_empty_queue") => unknown;
+
+const make_queue = (): LocalQueue => {
+  let front_ptr: List<unknown> = null;
+  let rear_ptr: List<unknown> = null;
+  const is_empty_queue = (): boolean => is_null(front_ptr);
+  const insert_queue = (item: unknown): LocalQueue => {
     const new_pair = pair(item, null);
     if (is_empty_queue()) {
       front_ptr = new_pair;
@@ -504,33 +492,31 @@ function make_queue() {
       rear_ptr = new_pair;
     }
     return dispatch;
-  }
-  function delete_queue() {
+  };
+  const delete_queue = (): LocalQueue => {
     if (is_empty_queue()) {
       error("delete_queue called with an empty queue");
     } else {
       front_ptr = tail(front_ptr);
       return dispatch;
     }
-  }
-  function front_queue() {
-    return is_empty_queue()
-           ? error("front_queue called with an empty queue")
-           : head(front_ptr);
-  }
-  function dispatch(m) {
-    return m === "insert_queue"
-           ? insert_queue
-           : m === "delete_queue"
-           ? delete_queue
-           : m === "front_queue"
-           ? front_queue
-           : m === "is_empty_queue"
-           ? is_empty_queue
-           : error(m, "unknown operation -- queue");
-  }
+  };
+  const front_queue = (): unknown =>
+    is_empty_queue()
+    ? error("front_queue called with an empty queue")
+    : head(front_ptr);
+  const dispatch = (m: "insert_queue" | "delete_queue" | "front_queue" | "is_empty_queue"): unknown =>
+    m === "insert_queue"
+    ? insert_queue
+    : m === "delete_queue"
+    ? delete_queue
+    : m === "front_queue"
+    ? front_queue
+    : m === "is_empty_queue"
+    ? is_empty_queue
+    : error(m, "unknown operation -- queue");
   return dispatch;
-}
+};
 `,
 };
 
@@ -539,23 +525,26 @@ export const exercise_3_23: ExerciseSpec = {
   prelude: repeatHelper,
   budget: 1_000_000,
   starter: `// Every operation must take a constant number of steps, however long the deque.
-function make_deque() {
+// Choose how to represent a deque of items of type T.
+type Deque<T> = unknown;
+
+const make_deque = <T>(): Deque<T> => {
   // your answer
-}
-function is_empty_deque(deque) {
-}
-function front_deque(deque) {
-}
-function rear_deque(deque) {
-}
-function front_insert_deque(deque, item) {
-}
-function rear_insert_deque(deque, item) {
-}
-function front_delete_deque(deque) {
-}
-function rear_delete_deque(deque) {
-}
+};
+const is_empty_deque = <T>(deque: Deque<T>): boolean => {
+};
+const front_deque = <T>(deque: Deque<T>): T => {
+};
+const rear_deque = <T>(deque: Deque<T>): T => {
+};
+const front_insert_deque = <T>(deque: Deque<T>, item: T): Deque<T> => {
+};
+const rear_insert_deque = <T>(deque: Deque<T>, item: T): Deque<T> => {
+};
+const front_delete_deque = <T>(deque: Deque<T>): Deque<T> => {
+};
+const rear_delete_deque = <T>(deque: Deque<T>): Deque<T> => {
+};
 `,
   tests: [
     { name: 'a new deque is empty', kind: 'value', expr: 'is_empty_deque(make_deque())', expected: true },
@@ -586,43 +575,34 @@ function rear_delete_deque(deque) {
   ],
   solution: `// A doubly linked list. Each item lives in a node, a pair whose head is
 // the item and whose tail is pair(previous node, next node). The deque is
-// a pair of pointers to its first and last nodes.
-function make_node(item, prev, next) {
-  return pair(item, pair(prev, next));
-}
-function node_item(node) {
-  return head(node);
-}
-function node_prev(node) {
-  return head(tail(node));
-}
-function node_next(node) {
-  return tail(tail(node));
-}
-function set_prev(node, prev) {
-  set_head(tail(node), prev);
-}
-function set_next(node, next) {
-  set_tail(tail(node), next);
-}
+// a pair of pointers to its first and last nodes. A link is a node or null.
+type DequeNode<T> = [T, [Link<T>, Link<T>]];
+type Link<T> = DequeNode<T> | null;
+type Deque<T> = Pair<Link<T>, Link<T>>;
 
-function make_deque() {
-  return pair(null, null);
-}
-function is_empty_deque(deque) {
-  return is_null(head(deque));
-}
-function front_deque(deque) {
-  return is_empty_deque(deque)
-         ? error("front_deque called with an empty deque")
-         : node_item(head(deque));
-}
-function rear_deque(deque) {
-  return is_empty_deque(deque)
-         ? error("rear_deque called with an empty deque")
-         : node_item(tail(deque));
-}
-function front_insert_deque(deque, item) {
+const make_node = <T>(item: T, prev: Link<T>, next: Link<T>): DequeNode<T> =>
+  pair(item, pair(prev, next));
+const node_item = <T>(node: DequeNode<T>): T => head(node);
+const node_prev = <T>(node: DequeNode<T>): Link<T> => head(tail(node));
+const node_next = <T>(node: DequeNode<T>): Link<T> => tail(tail(node));
+const set_prev = <T>(node: DequeNode<T>, prev: Link<T>): void => {
+  set_head(tail(node), prev);
+};
+const set_next = <T>(node: DequeNode<T>, next: Link<T>): void => {
+  set_tail(tail(node), next);
+};
+
+const make_deque = <T>(): Deque<T> => pair(null, null);
+const is_empty_deque = <T>(deque: Deque<T>): boolean => is_null(head(deque));
+const front_deque = <T>(deque: Deque<T>): T =>
+  is_empty_deque(deque)
+  ? error("front_deque called with an empty deque")
+  : node_item(head(deque));
+const rear_deque = <T>(deque: Deque<T>): T =>
+  is_empty_deque(deque)
+  ? error("rear_deque called with an empty deque")
+  : node_item(tail(deque));
+const front_insert_deque = <T>(deque: Deque<T>, item: T): Deque<T> => {
   const node = make_node(item, null, head(deque));
   if (is_empty_deque(deque)) {
     set_tail(deque, node);
@@ -631,8 +611,8 @@ function front_insert_deque(deque, item) {
   }
   set_head(deque, node);
   return deque;
-}
-function rear_insert_deque(deque, item) {
+};
+const rear_insert_deque = <T>(deque: Deque<T>, item: T): Deque<T> => {
   const node = make_node(item, tail(deque), null);
   if (is_empty_deque(deque)) {
     set_head(deque, node);
@@ -641,8 +621,8 @@ function rear_insert_deque(deque, item) {
   }
   set_tail(deque, node);
   return deque;
-}
-function front_delete_deque(deque) {
+};
+const front_delete_deque = <T>(deque: Deque<T>): Deque<T> => {
   if (is_empty_deque(deque)) {
     error("front_delete_deque called with an empty deque");
   } else {
@@ -655,8 +635,8 @@ function front_delete_deque(deque) {
     }
     return deque;
   }
-}
-function rear_delete_deque(deque) {
+};
+const rear_delete_deque = <T>(deque: Deque<T>): Deque<T> => {
   if (is_empty_deque(deque)) {
     error("rear_delete_deque called with an empty deque");
   } else {
@@ -669,19 +649,21 @@ function rear_delete_deque(deque) {
     }
     return deque;
   }
-}
+};
 `,
 };
 
 export const exercise_3_24: ExerciseSpec = {
   id: '3.24',
   starter: `// A two-dimensional local table that compares keys with same_key.
-function make_table(same_key) {
+type LocalTable = (m: "lookup" | "insert") => unknown;
+
+const make_table = (same_key: (a: unknown, b: unknown) => boolean): LocalTable => {
   const local_table = list("*table*");
-  function assoc(key, records) {
+  const assoc = (key: unknown, records: List<unknown>): Pair<unknown, unknown> | undefined => {
     // your answer
-  }
-  function lookup(key_1, key_2) {
+  };
+  const lookup = (key_1: unknown, key_2: unknown): unknown => {
     const subtable = assoc(key_1, tail(local_table));
     if (is_undefined(subtable)) {
       return undefined;
@@ -689,8 +671,8 @@ function make_table(same_key) {
       const record = assoc(key_2, tail(subtable));
       return is_undefined(record) ? undefined : tail(record);
     }
-  }
-  function insert(key_1, key_2, value) {
+  };
+  const insert = (key_1: unknown, key_2: unknown, value: unknown): "ok" => {
     const subtable = assoc(key_1, tail(local_table));
     if (is_undefined(subtable)) {
       set_tail(local_table, pair(list(key_1, pair(key_2, value)), tail(local_table)));
@@ -703,16 +685,15 @@ function make_table(same_key) {
       }
     }
     return "ok";
-  }
-  function dispatch(m) {
-    return m === "lookup"
-           ? lookup
-           : m === "insert"
-           ? insert
-           : error(m, "unknown operation -- table");
-  }
+  };
+  const dispatch = (m: "lookup" | "insert"): unknown =>
+    m === "lookup"
+    ? lookup
+    : m === "insert"
+    ? insert
+    : error(m, "unknown operation -- table");
   return dispatch;
-}
+};
 `,
   tests: [
     {
@@ -734,16 +715,17 @@ function make_table(same_key) {
       expected: 44,
     },
   ],
-  solution: `function make_table(same_key) {
+  solution: `type LocalTable = (m: "lookup" | "insert") => unknown;
+
+const make_table = (same_key: (a: unknown, b: unknown) => boolean): LocalTable => {
   const local_table = list("*table*");
-  function assoc(key, records) {
-    return is_null(records)
-           ? undefined
-           : same_key(key, head(head(records)))
-           ? head(records)
-           : assoc(key, tail(records));
-  }
-  function lookup(key_1, key_2) {
+  const assoc = (key: unknown, records: List<unknown>): Pair<unknown, unknown> | undefined =>
+    is_null(records)
+    ? undefined
+    : same_key(key, head(head(records)))
+    ? head(records)
+    : assoc(key, tail(records));
+  const lookup = (key_1: unknown, key_2: unknown): unknown => {
     const subtable = assoc(key_1, tail(local_table));
     if (is_undefined(subtable)) {
       return undefined;
@@ -751,8 +733,8 @@ function make_table(same_key) {
       const record = assoc(key_2, tail(subtable));
       return is_undefined(record) ? undefined : tail(record);
     }
-  }
-  function insert(key_1, key_2, value) {
+  };
+  const insert = (key_1: unknown, key_2: unknown, value: unknown): "ok" => {
     const subtable = assoc(key_1, tail(local_table));
     if (is_undefined(subtable)) {
       set_tail(local_table, pair(list(key_1, pair(key_2, value)), tail(local_table)));
@@ -765,31 +747,30 @@ function make_table(same_key) {
       }
     }
     return "ok";
-  }
-  function dispatch(m) {
-    return m === "lookup"
-           ? lookup
-           : m === "insert"
-           ? insert
-           : error(m, "unknown operation -- table");
-  }
+  };
+  const dispatch = (m: "lookup" | "insert"): unknown =>
+    m === "lookup"
+    ? lookup
+    : m === "insert"
+    ? insert
+    : error(m, "unknown operation -- table");
   return dispatch;
-}
+};
 `,
 };
 
 export const exercise_3_25: ExerciseSpec = {
   id: '3.25',
   starter: `// Tables whose values are stored under any number of keys, given as a list.
-function make_table() {
-  return list("*table*");
-}
-function lookup(keys, table) {
+type Table = List<unknown>;
+
+const make_table = (): Table => list("*table*");
+const lookup = (keys: List<unknown>, table: Table): unknown => {
   // your answer
-}
-function insert(keys, value, table) {
+};
+const insert = (keys: List<unknown>, value: unknown, table: Table): "ok" => {
   // your answer
-}
+};
 `,
   tests: [
     {
@@ -825,25 +806,24 @@ function insert(keys, value, table) {
   ],
   solution: `// Each key leads to a subtable, itself a headed list, until the keys run
 // out; the value sits in the tail of the last record.
-function make_table() {
-  return list("*table*");
-}
-function assoc(key, records) {
-  return is_null(records)
-         ? undefined
-         : equal(key, head(head(records)))
-         ? head(records)
-         : assoc(key, tail(records));
-}
-function lookup(keys, table) {
+type Table = List<unknown>;
+
+const make_table = (): Table => list("*table*");
+const assoc = (key: unknown, records: List<unknown>): Pair<unknown, unknown> | undefined =>
+  is_null(records)
+  ? undefined
+  : equal(key, head(head(records)))
+  ? head(records)
+  : assoc(key, tail(records));
+const lookup = (keys: List<unknown>, table: Table): unknown => {
   const record = assoc(head(keys), tail(table));
   return is_undefined(record)
          ? undefined
          : is_null(tail(keys))
          ? tail(record)
          : lookup(tail(keys), record);
-}
-function insert(keys, value, table) {
+};
+const insert = (keys: List<unknown>, value: unknown, table: Table): "ok" => {
   const record = assoc(head(keys), tail(table));
   if (is_null(tail(keys))) {
     if (is_undefined(record)) {
@@ -861,7 +841,7 @@ function insert(keys, value, table) {
     }
   }
   return "ok";
-}
+};
 `,
 };
 
@@ -872,13 +852,15 @@ export const exercise_3_26: ExerciseSpec = {
   starter: `// A table of (key, value) records organized as a binary tree, keys being
 // numbers ordered by <. lookup and insert should take a number of steps
 // proportional to the depth of the tree, not to the number of records.
-function make_table() {
+type Table = unknown; // your representation
+
+const make_table = (): Table => {
   // your answer
-}
-function lookup(key, table) {
-}
-function insert(key, value, table) {
-}
+};
+const lookup = (key: number, table: Table): unknown => {
+};
+const insert = (key: number, value: unknown, table: Table): "ok" => {
+};
 `,
   tests: [
     {
@@ -908,22 +890,17 @@ function insert(key, value, table) {
   ],
   solution: `// The table is a headed box whose tail is the tree. A tree is null or
 // list(record, left, right), a record being pair(key, value).
-function make_table() {
-  return pair("*table*", null);
-}
-function make_tree(record) {
-  return list(record, null, null);
-}
-function tree_record(tree) {
-  return head(tree);
-}
-function left_branch(tree) {
-  return tail(tree);
-}
-function right_branch(tree) {
-  return tail(tail(tree));
-}
-function find(key, tree) {
+type Tree = List<unknown>;
+type Table = Pair<string, Tree>;
+
+const make_table = (): Table => pair("*table*", null);
+const make_tree = (record: Pair<number, unknown>): Tree =>
+  list(record, null, null);
+const tree_record = (tree: Tree): Pair<number, unknown> => head(tree);
+// A branch is a pair whose head holds a subtree.
+const left_branch = (tree: Tree): Pair<Tree, unknown> => tail(tree);
+const right_branch = (tree: Tree): Pair<Tree, unknown> => tail(tail(tree));
+const find = (key: number, tree: Tree): Pair<number, unknown> | undefined => {
   if (is_null(tree)) {
     return undefined;
   } else {
@@ -934,13 +911,13 @@ function find(key, tree) {
            ? find(key, head(left_branch(tree)))
            : find(key, head(right_branch(tree)));
   }
-}
-function lookup(key, table) {
+};
+const lookup = (key: number, table: Table): unknown => {
   const record = find(key, tail(table));
   return is_undefined(record) ? undefined : tail(record);
-}
+};
 // box is a pair whose tail (for the table) or head (for a branch) holds a tree.
-function insert_into(key, value, tree, put) {
+const insert_into = (key: number, value: unknown, tree: Tree, put: (tree: Tree) => unknown): void => {
   if (is_null(tree)) {
     put(make_tree(pair(key, value)));
   } else {
@@ -952,11 +929,11 @@ function insert_into(key, value, tree, put) {
       insert_into(key, value, head(branch), subtree => set_head(branch, subtree));
     }
   }
-}
-function insert(key, value, table) {
+};
+const insert = (key: number, value: unknown, table: Table): "ok" => {
   insert_into(key, value, tail(table), tree => set_tail(table, tree));
   return "ok";
-}
+};
 `,
 };
 
@@ -966,9 +943,9 @@ export const exercise_3_27: ExerciseSpec = {
   starter: `// make_table, lookup and insert (the one-dimensional table) are provided.
 // memoize(f) returns a function that computes f(x) once for each x,
 // keeping the results in a local table.
-function memoize(f) {
+const memoize = <A, R>(f: (x: A) => R): ((x: A) => R) => {
   // your answer
-}
+};
 
 const memo_fib = memoize(n => n === 0
                               ? 0
@@ -985,7 +962,7 @@ const memoize_fib_would_work = undefined;
     { name: 'memo_fib(30) applies functions O(n) times, not O(φⁿ)', kind: 'calls', call: 'memo_fib(30)', fn: 'lambda', atMost: 120 },
     { name: 'memoize(fib)', kind: 'value', expr: 'memoize_fib_would_work', expected: false },
   ],
-  solution: `function memoize(f) {
+  solution: `const memoize = <A, R>(f: (x: A) => R): ((x: A) => R) => {
   const table = make_table();
   return x => {
     const previously_computed_result = lookup(x, table);
@@ -997,7 +974,7 @@ const memoize_fib_would_work = undefined;
       return previously_computed_result;
     }
   };
-}
+};
 
 const memo_fib = memoize(n => n === 0
                               ? 0

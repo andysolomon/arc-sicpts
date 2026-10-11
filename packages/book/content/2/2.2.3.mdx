@@ -25,8 +25,8 @@ Every pair splits the call in two, as in `count_leaves`; the enumeration of the 
 On the surface, that function is very different from this one, which constructs a list of all the even Fibonacci numbers Fib(*k*) with *k* ≤ *n*:
 
 ```js
-function even_fibs(n) {
-  function next(k) {
+const even_fibs = (n: number): List<number> => {
+  const next = (k: number): List<number> => {
     if (k > n) {
       return null;
     } else {
@@ -35,9 +35,9 @@ function even_fibs(n) {
         ? pair(f, next(k + 1))
         : next(k + 1);
     }
-  }
+  };
   return next(0);
-}
+};
 ```
 
 Yet a more abstract description of the two computations reveals a great deal of similarity. The first program
@@ -73,21 +73,19 @@ The signal-flow diagram, one stage at a time: the tree, its five leaves, the thr
 Without the names, the stages nest, and each function reads as its signal-flow plan:
 
 ```js
-function sum_odd_squares(tree) {
-  return accumulate(plus,
-                    0,
-                    map(square,
-                        filter(is_odd,
-                               enumerate_tree(tree))));
-}
+const sum_odd_squares = (tree: Tree<number>): number =>
+  accumulate(plus,
+             0,
+             map(square,
+                 filter(is_odd,
+                        enumerate_tree(tree))));
 
-function even_fibs(n) {
-  return accumulate(pair,
-                    null,
-                    filter(is_even,
-                           map(fib,
-                               enumerate_interval(0, n))));
-}
+const even_fibs = (n: number): List<number> =>
+  accumulate(pair,
+             null,
+             filter(is_even,
+                    map(fib,
+                        enumerate_interval(0, n))));
 ```
 
 The value of expressing programs as sequence operations is that it helps us make modular designs, constructed by combining relatively independent pieces. We can encourage modular design by providing a library of standard components together with a conventional interface for connecting them in flexible ways. Modular construction is a powerful strategy for controlling complexity in engineering: signal-processing designers build systems by cascading elements chosen from standard families of filters and transducers. Sequence operations are a library of standard program elements that we can mix and match in the same way.
@@ -105,12 +103,11 @@ Three programs from the same parts. `even_fibs(12)` keeps the even ones among Fi
 Conventional data-processing applications fit the same mould. Given a sequence of personnel records, a selector `salary` and a predicate `is_programmer`, the salary of the highest-paid programmer is
 
 ```js
-function salary_of_highest_paid_programmer(records) {
-  return accumulate(math_max,
-                    0,
-                    map(salary,
-                        filter(is_programmer, records)));
-}
+const salary_of_highest_paid_programmer = (records: List<PersonnelRecord>): number =>
+  accumulate(math_max,
+             0,
+             map(salary,
+                 filter(is_programmer, records)));
 ```
 
 These examples only hint at the range of operations that can be expressed as sequence operations. Sequences, implemented here as lists, are a conventional interface that lets us combine processing modules. And when we represent structures uniformly as sequences, the data-structure dependencies in our programs are confined to a small number of sequence operations. By changing these, we can experiment with other representations of sequences while leaving the design of our programs intact. Section 3.5 does exactly that, to admit infinite sequences.
@@ -150,7 +147,7 @@ Six permutations of three items, each a list of three: 24 pairs. The comments in
 
 <UnderTheHood file="packages/lab/src/chapter-2/sequences.ts">
 
-`map`, `filter`, `accumulate` and `append` are in the Laboratory's list library (`evaluator/library.ts`), written in Source with the same argument order as here; the programs on this page declare their own copies, as the book does, and those take precedence. A signal is an ordinary list, which is why the box-and-pointer scene can draw each stage. The test `chapter-2/sequences.test.ts` asserts that both forms of `sum_odd_squares` give 35, that the stages are `list(1, 2, 3, 4, 5)`, `list(1, 3, 5)` and `list(1, 9, 25)`, that `even_fibs(12)` is `list(0, 2, 8, 34, 144)`, that `prime_sum_pairs(6)` is the table above, that `permutations(list(1, 2, 3))` lists all six orders, and that the queens program finds 92 solutions on the eight-by-eight board after trying 15 720 positions. For boards of 3 to 5 it checks that Louis Reasoner's version applies `queen_cols` (*n*ⁿ⁺¹ − 1) / (*n* − 1) times, and for 3 to 6 that it takes 3.6, 11, 37 and 136 times as many evaluator steps.
+`map`, `filter`, `accumulate` and `append` are in the Laboratory's list library (`evaluator/library.ts`), written in Source with the same argument order as here; the programs on this page declare their own copies, as the book does, and those take precedence. A signal is an ordinary list, which is why the box-and-pointer scene can draw each stage. The test `chapter-2/sequences.test.ts` asserts that both forms of `sum_odd_squares` give 35, that the stages are `list(1, 2, 3, 4, 5)`, `list(1, 3, 5)` and `list(1, 9, 25)`, that `even_fibs(12)` is `list(0, 2, 8, 34, 144)`, that `prime_sum_pairs(6)` is the table above, that `permutations(list(1, 2, 3))` lists all six orders, and that the queens program finds 92 solutions on the eight-by-eight board after trying 15 720 positions. For boards of 3 to 5 it checks that Louis Reasoner's version applies `queen_cols` (*n*ⁿ⁺¹ − 1) / (*n* − 1) times, and for 3 to 6 that it takes 3.6, 11, 37 and 135 times as many evaluator steps.
 
 </UnderTheHood>
 
@@ -160,15 +157,14 @@ Six permutations of three items, each a list of three: 24 pairs. The comments in
 Fill in the missing expressions in the editor to complete these declarations of some basic list-manipulation operations as accumulations:
 
 ```js
-function map(f, sequence) {
-  return accumulate((x, y) => ⟨??⟩, null, sequence);
-}
-function append(seq1, seq2) {
-  return accumulate(pair, ⟨??⟩, ⟨??⟩);
-}
-function length(sequence) {
-  return accumulate(⟨??⟩, 0, sequence);
-}
+const map = <A, B>(f: (x: A) => B, sequence: List<A>): List<B> =>
+  accumulate((x, y) => ⟨??⟩, null, sequence);
+
+const append = <T>(seq1: List<T>, seq2: List<T>): List<T> =>
+  accumulate(pair, ⟨??⟩, ⟨??⟩);
+
+const length = <T>(sequence: List<T>): number =>
+  accumulate(⟨??⟩, 0, sequence);
 ```
 
 <Solution>
@@ -192,9 +188,8 @@ Evaluating a polynomial in *x* at a given value of *x* can be formulated as an a
 Redeclare `count_leaves` from §2.2.2 as an accumulation:
 
 ```js
-function count_leaves(t) {
-  return accumulate(⟨??⟩, ⟨??⟩, map(⟨??⟩, ⟨??⟩));
-}
+const count_leaves = <T>(t: Tree<T>): number =>
+  accumulate(⟨??⟩, ⟨??⟩, map(⟨??⟩, ⟨??⟩));
 ```
 
 <Solution>
@@ -208,12 +203,11 @@ function count_leaves(t) {
 The function `accumulate_n` is similar to `accumulate` except that it takes as its third argument a sequence of sequences, all with the same number of elements. It combines all the first elements with the accumulation function, all the second elements, and so on, and returns a sequence of the results. If `s` is `list(list(1, 2, 3), list(4, 5, 6), list(7, 8, 9), list(10, 11, 12))`, then `accumulate_n(plus, 0, s)` is `list(22, 26, 30)`. Fill in the missing expressions:
 
 ```js
-function accumulate_n(op, init, seqs) {
-  return is_null(head(seqs))
+const accumulate_n = <T, R>(op: (x: T, acc: R) => R, init: R, seqs: List<List<T>>): List<R> =>
+  is_null(head(seqs))
     ? null
     : pair(accumulate(op, init, ⟨??⟩),
            accumulate_n(op, init, ⟨??⟩));
-}
 ```
 
 <Solution>
@@ -235,9 +229,8 @@ list(list(1, 2, 3, 4),
 With this representation, sequence operations express the basic matrix and vector operations concisely: `dot_product(v, w)` returns the sum Σᵢ *vᵢwᵢ*; `matrix_times_vector(m, v)` returns the vector *t* with *tᵢ* = Σⱼ *mᵢⱼvⱼ*; `matrix_times_matrix(m, n)` returns the matrix *p* with *pᵢⱼ* = Σₖ *mᵢₖnₖⱼ*; and `transpose(m)` returns the matrix *n* with *nᵢⱼ* = *mⱼᵢ*. The dot product is
 
 ```js
-function dot_product(v, w) {
-  return accumulate(plus, 0, accumulate_n(times, 1, list(v, w)));
-}
+const dot_product = (v: List<number>, w: List<number>): number =>
+  accumulate(plus, 0, accumulate_n(times, 1, list(v, w)));
 ```
 
 Fill in the missing expressions in the editor for the other three. (`accumulate_n` is that of Exercise 2.36.)
@@ -272,13 +265,11 @@ Work them out, then record them as `right_divide`, `left_divide`, `right_list` a
 Complete the following declarations of `reverse` (Exercise 2.18) in terms of `fold_right` and `fold_left` from Exercise 2.38, renamed `reverse_right` and `reverse_left` so that both fit in one program:
 
 ```js
-function reverse(sequence) {
-  return fold_right((x, y) => ⟨??⟩, null, sequence);
-}
+const reverse = <T>(sequence: List<T>): List<T> =>
+  fold_right((x, y) => ⟨??⟩, null, sequence);
 
-function reverse(sequence) {
-  return fold_left((x, y) => ⟨??⟩, null, sequence);
-}
+const reverse = <T>(sequence: List<T>): List<T> =>
+  fold_left((x, y) => ⟨??⟩, null, sequence);
 ```
 
 <Solution>
@@ -335,7 +326,7 @@ Explain why this interchange makes the program run slowly. Estimate how long it 
 
 <Solution>
 
-**Solution.** In Louis's version, `queen_cols(k - 1)` is evaluated inside the function given to `flatmap`, once for every `new_row`: *n* times for every application of `queen_cols(k)`. So `queen_cols(k)` is applied *n*ⁿ⁻ᵏ times, 1 + *n* + ⋯ + *n*ⁿ = (*n*ⁿ⁺¹ − 1) / (*n* − 1) applications in all, against *n* + 1 for the original: 19 173 961 against 9 for eight queens. The work does not grow quite that much, because the repeated calls are the cheap ones near the left of the board. The original tries *n* positions for each way of filling the previous columns, 15 720 for eight queens. Louis's tries the positions of column *k* again *n*ⁿ⁻ᵏ times, about 51 million. So his program takes about 3 200 *T*. The measured ratio of evaluator steps tracks this count closely: 3.6, 11, 37 and 136 for boards of 3 to 6.
+**Solution.** In Louis's version, `queen_cols(k - 1)` is evaluated inside the function given to `flatmap`, once for every `new_row`: *n* times for every application of `queen_cols(k)`. So `queen_cols(k)` is applied *n*ⁿ⁻ᵏ times, 1 + *n* + ⋯ + *n*ⁿ = (*n*ⁿ⁺¹ − 1) / (*n* − 1) applications in all, against *n* + 1 for the original: 19 173 961 against 9 for eight queens. The work does not grow quite that much, because the repeated calls are the cheap ones near the left of the board. The original tries *n* positions for each way of filling the previous columns, 15 720 for eight queens. Louis's tries the positions of column *k* again *n*ⁿ⁻ᵏ times, about 51 million. So his program takes about 3 200 *T*. The measured ratio of evaluator steps tracks this count closely: 3.6, 11, 37 and 135 for boards of 3 to 6.
 
 </Solution>
 </Exercise>

@@ -49,12 +49,10 @@ We build a stream from a pair, with the first element in the head. The tail, tho
 pair(h, () => t)
 ```
 
-and wrapping *t* in `() =>` keeps it from being evaluated now. The empty stream is `null`, as for lists. The head of a stream is read with `head`, as for a list; to get the rest we have to call the function in the tail, which `stream_tail` does:
+and wrapping *t* in `() =>` keeps it from being evaluated now. The empty stream is `null`, as for lists. The library's type `Stream<T>` says just this: a stream of `T`s is either `null` or a pair of a `T` and a function of no arguments that returns a `Stream<T>`. The head of a stream is read with `head`, as for a list; to get the rest we have to call the function in the tail, which `stream_tail` does:
 
 ```js
-function stream_tail(stream) {
-  return tail(stream)();
-}
+const stream_tail = <T>(stream: Stream<T>): Stream<T> => tail(stream)();
 ```
 
 Applying that function *forces* the promise: it evaluates the delayed expression and returns the next pair of the stream, or `null`. With `stream_tail` in place of `tail`, the list operations of chapter 2 have stream analogues: `stream_ref`, `stream_map`, `stream_for_each`, and `display_stream` for looking at a (finite) stream. That we need a second copy of each list function suggests an abstraction we haven't captured yet; §4.2 comes back to it, with an evaluator in which lists and streams are the same thing.
@@ -74,12 +72,11 @@ So a stream evaluates its tail when it is *selected* by `stream_tail`, not when 
 Here is the second-prime computation again, in streams. `stream_enumerate_interval` is the stream counterpart of `enumerate_interval`, and `stream_filter` of `filter`:
 
 ```js
-function stream_enumerate_interval(low, high) {
-  return low > high
+const stream_enumerate_interval = (low: number, high: number): Stream<number> =>
+  low > high
     ? null
     : pair(low,
            () => stream_enumerate_interval(low + 1, high));
-}
 
 head(stream_tail(stream_filter(
                      is_prime,
@@ -119,9 +116,9 @@ One way to think about delayed evaluation is as *demand-driven* programming: eve
 **Memoization.** Wrapping tails in functions and calling them when needed is enough for streams to work. But many programs force the same tail more than once, and every forcing repeats the whole computation, which in recursive stream programs can be ruinously slow (exercise 3.57 measures how slow). The remedy is to make a promise remember its value: the first time it is forced it stores what it computed, and afterwards it just returns the stored value. The function `memo` turns any function of no arguments into such a remembering version, in the style of the memoization of exercise 3.27:
 
 ```js
-function memo(fun) {
+const memo = <T>(fun: () => T): (() => T) => {
   let already_run = false;
-  let result = undefined;
+  let result: T | undefined = undefined;
   return () => {
     if (!already_run) {
       result = fun();
@@ -131,18 +128,17 @@ function memo(fun) {
       return result;
     }
   };
-}
+};
 ```
 
-Then we can wrap `memo` around a tail wherever we build a stream pair. A memoizing `stream_map`, for instance:
+`memo` returns a function of no arguments again, so a stream whose tails are memoized is still a `Stream<T>`, and we can wrap `memo` around a tail wherever we build a stream pair. A memoizing `stream_map`, for instance:
 
 ```js
-function stream_map_optimized(f, s) {
-  return is_null(s)
+const stream_map_optimized = <A, B>(f: (x: A) => B, s: Stream<A>): Stream<B> =>
+  is_null(s)
     ? null
     : pair(f(head(s)),
            memo(() => stream_map_optimized(f, stream_tail(s))));
-}
 ```
 
 The streams of this chapter don't memoize by default, so that every tail stays a bare lambda expression; we memoize where it pays. The same holds for the Laboratory's library: its `stream_map`, `stream_filter` and the rest are unmemoized, and a program that wants memoized versions declares its own (under the library's names, if it likes, since a program's declarations shadow the library's).
@@ -170,7 +166,7 @@ The stream library is Source code, evaluated into the `library` frame below ever
 <Exercises range="3.50 – 3.52" total={3}>
 <Exercise id="3.50">
 
-Declare `stream_map_2`, which takes a function of two arguments and two streams and returns the stream of the function's values on corresponding elements of the two, ending when either stream ends. It is to `stream_map` what a two-argument `map` is to `map` (Source has no rest parameters, so we don't try for any number of streams). Then declare `stream_map_2_optimized`, the same function with memoized tails, as `stream_map_optimized` does it.
+Declare `stream_map_2`, which takes a function of two arguments and two streams and returns the stream of the function's values on corresponding elements of the two, ending when either stream ends. It is to `stream_map` what a two-argument `map` is to `map` (we keep to two streams rather than any number). Then declare `stream_map_2_optimized`, the same function with memoized tails, as `stream_map_optimized` does it.
 
 <Solution>
 
@@ -202,10 +198,10 @@ Consider
 
 ```js
 let sum = 0;
-function accum(x) {
+const accum = (x: number): number => {
   sum = x + sum;
   return sum;
-}
+};
 const seq = stream_map(accum, stream_enumerate_interval(1, 20));
 const y = stream_filter(is_even, seq);
 const z = stream_filter(x => x % 5 === 0, seq);

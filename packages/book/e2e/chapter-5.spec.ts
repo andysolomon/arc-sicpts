@@ -62,13 +62,13 @@ test('exercise 5.28 checks measured stack formulas', async ({ page }) => {
 
   await editor.click();
   await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.type('function recursive_depth(n) { return 5 * n + 3; } function recursive_pushes(n) { return 32 * n - 16; }');
+  await page.keyboard.type('const recursive_depth = (n: number): number => 5 * n + 3; const recursive_pushes = (n: number): number => 32 * n - 16;');
   await exercise.getByRole('button', { name: 'Check' }).click();
   await expect(status).toHaveText('3 / 6 hidden tests pass');
 
   await editor.click();
   await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.type('function recursive_depth(n) { return 5 * n + 3; } function recursive_pushes(n) { return 32 * n - 15; }');
+  await page.keyboard.type('const recursive_depth = (n: number): number => 5 * n + 3; const recursive_pushes = (n: number): number => 32 * n - 15;');
   await exercise.getByRole('button', { name: 'Check' }).click();
   await expect(status).toHaveText('6 / 6 hidden tests pass');
 });

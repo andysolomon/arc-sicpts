@@ -43,7 +43,7 @@ and_gate(d, e, s);
 Rather than wiring it by hand each time, we can name the pattern. `half_adder(a, b, s, c)` creates the two internal wires and attaches the four gates:
 
 ```js
-function half_adder(a, b, s, c) {
+const half_adder = (a: Wire, b: Wire, s: Wire, c: Wire): "ok" => {
   const d = make_wire();
   const e = make_wire();
   or_gate(a, b, d);
@@ -51,13 +51,13 @@ function half_adder(a, b, s, c) {
   inverter(c, e);
   and_gate(d, e, s);
   return "ok";
-}
+};
 ```
 
 The half-adder is then a part like any other. A *full-adder*, the building block of binary addition, adds two bits and a carry coming in from the next lower position, and is made of two half-adders and an or-gate:
 
 ```js
-function full_adder(a, b, c_in, sum, c_out) {
+const full_adder = (a: Wire, b: Wire, c_in: Wire, sum: Wire, c_out: Wire): "ok" => {
   const s = make_wire();
   const c1 = make_wire();
   const c2 = make_wire();
@@ -65,7 +65,7 @@ function full_adder(a, b, c_in, sum, c_out) {
   half_adder(a, s, sum, c2);
   or_gate(c1, c2, c_out);
   return "ok";
-}
+};
 ```
 
 </Prose>
@@ -81,36 +81,35 @@ This is exactly the structure of a language as §1.1 described it. The primitive
 With these, an inverter attaches an action to its input. The action computes the new output from the current input and schedules the output change `inverter_delay` later:
 
 ```js
-function inverter(input, output) {
-  function invert_input() {
+const inverter = (input: Wire, output: Wire): "ok" => {
+  const invert_input = (): void => {
     const new_value = logical_not(get_signal(input));
     after_delay(inverter_delay, () => set_signal(output, new_value));
-  }
+  };
   add_action(input, invert_input);
   return "ok";
-}
+};
 
-function logical_not(s) {
-  return s === 0
+const logical_not = (s: number): number =>
+  s === 0
     ? 1
     : s === 1
     ? 0
     : error(s, "invalid signal");
-}
 ```
 
 The and-gate is the same idea with two inputs, and it attaches its action to both, since a change at either can change the output:
 
 ```js
-function and_gate(a1, a2, output) {
-  function and_action_function() {
+const and_gate = (a1: Wire, a2: Wire, output: Wire): "ok" => {
+  const and_action_function = (): void => {
     const new_value = logical_and(get_signal(a1), get_signal(a2));
     after_delay(and_gate_delay, () => set_signal(output, new_value));
-  }
+  };
   add_action(a1, and_action_function);
   add_action(a2, and_action_function);
   return "ok";
-}
+};
 ```
 
 `logical_and` (and `logical_or`) follow the pattern of `logical_not`. The or-gate itself is Exercise 3.28; the programs below contain a version of it so that they can run, so try the exercise before you look.
@@ -118,35 +117,37 @@ function and_gate(a1, a2, output) {
 **Representing wires.** A wire is an object with two pieces of local state: its signal, which starts at 0, and the list of action functions to run when the signal changes. As with the bank accounts of §3.1.1, it is written in message-passing style, as a function `dispatch` that answers requests by name:
 
 ```js
-function make_wire() {
+type Wire = (m: string) => unknown;
+type Action = () => void;
+
+const make_wire = (): Wire => {
   let signal_value = 0;
-  let action_functions = null;
-  function set_my_signal(new_value) {
+  let action_functions: List<Action> = null;
+  const set_my_signal = (new_value: number): "done" => {
     if (signal_value !== new_value) {
       signal_value = new_value;
       return call_each(action_functions);
     } else {
       return "done";
     }
-  }
-  function accept_action_function(fun) {
+  };
+  const accept_action_function = (fun: Action): void => {
     action_functions = pair(fun, action_functions);
     fun();
-  }
-  function dispatch(m) {
-    return m === "get_signal"
+  };
+  const dispatch = (m: string): unknown =>
+    m === "get_signal"
       ? signal_value
       : m === "set_signal"
       ? set_my_signal
       : m === "add_action"
       ? accept_action_function
       : error(m, "unknown operation -- wire");
-  }
   return dispatch;
-}
+};
 ```
 
-`call_each` applies every function in a list in turn, and `get_signal`, `set_signal` and `add_action` simply send the matching message to the wire. Note that `accept_action_function` runs a new action at once as well as storing it. Exercise 3.31 asks why.
+The type `Wire` says only that a wire takes a message: what comes back depends on the message, a number for `"get_signal"` and a function for the other two, so it is `unknown`. `call_each` applies every function in a list in turn, and `get_signal`, `set_signal` and `add_action` simply send the matching message to the wire. Note that `accept_action_function` runs a new action at once as well as storing it. Exercise 3.31 asks why.
 
 Wires are where the need for mutable state shows most clearly. A wire joins several boxes: when one box sets it, every box attached to it must see the new value. A wire is shared, it changes over time, and everyone who holds it sees the change, which is just what an object with local state provides. It would be awkward to model with pure functions.
 
@@ -162,11 +163,11 @@ Wires are where the need for mutable state shows most clearly. A wire joins seve
 The simulation uses one agenda, `the_agenda`. `after_delay` puts an action on it at the current time plus the delay, and `propagate` runs the simulation: it keeps taking the first action off the agenda and running it until the agenda is empty. Actions usually schedule new actions, so the agenda can stay busy for a while.
 
 ```js
-function after_delay(delay, action) {
+const after_delay = (delay: number, action: Action): void => {
   add_to_agenda(delay + current_time(the_agenda), action, the_agenda);
-}
+};
 
-function propagate() {
+const propagate = (): "done" => {
   if (is_empty_agenda(the_agenda)) {
     return "done";
   } else {
@@ -175,7 +176,7 @@ function propagate() {
     remove_first_agenda_item(the_agenda);
     return propagate();
   }
-}
+};
 ```
 
 `propagate` calls itself as its last act, so it is an iterative process: the Laboratory reuses the frame of each tail call, and a long simulation does not make the stack grow.
@@ -183,10 +184,10 @@ function propagate() {
 **A sample simulation.** To watch a circuit, we attach a *probe* to a wire. A probe is an action that prints the wire's name, the current time and the wire's new signal:
 
 ```js
-function probe(name, wire) {
+const probe = (name: string, wire: Wire): void => {
   add_action(wire, () => display(name + " " + stringify(current_time(the_agenda)) +
                                  ", new value = " + stringify(get_signal(wire))));
-}
+};
 ```
 
 `display` takes a single argument here, so the message is assembled with `+` and `stringify`. Because `display` prints a string with its quotation marks, each line appears as a string, just as the REPL prints it in the book. In the editors below, the whole simulator of this page is predefined: the queue, the agenda, wires, gates, adders, `probe` and `propagate`, with the agenda already made and the delays set (inverter 2, and-gate 3, or-gate 5). The editor shows only the run: make four wires, probe the two outputs, build a half-adder, then set `input_1` to 1 and propagate, and finally set `input_2` to 1 and propagate again.
@@ -228,17 +229,14 @@ At time 21, `sum` drops to 0 and comes back to 1 at the very same moment: two ac
 **Implementing the agenda.** The agenda is a list of *time segments*. Each segment pairs a time with a queue (§3.3.2) of the actions due at that time:
 
 ```js
-function make_time_segment(time, queue) {
-  return pair(time, queue);
-}
+type TimeSegment = Pair<number, Queue<Action>>;
 
-function segment_time(s) {
-  return head(s);
-}
+const make_time_segment = (time: number, queue: Queue<Action>): TimeSegment =>
+  pair(time, queue);
 
-function segment_queue(s) {
-  return tail(s);
-}
+const segment_time = (s: TimeSegment): number => head(s);
+
+const segment_queue = (s: TimeSegment): Queue<Action> => tail(s);
 ```
 
 The segments are kept in order of increasing time. The agenda itself is a headed list: its head is the current time, and its tail is the list of segments. A new agenda is `list(0)`, with time 0 and no segments, and `current_time`, `set_current_time`, `segments` and `set_segments` read and change the two parts. The agenda is empty when it has no segments.
@@ -246,16 +244,17 @@ The segments are kept in order of increasing time. The agenda itself is a headed
 To add an action, `add_to_agenda` walks along the segments. If there is already a segment for the action's time, the action joins that segment's queue. Otherwise, a new segment is created and spliced in before the first segment with a later time, or at the end. Because the agenda has a header, inserting at the front is just a change to the header's tail:
 
 ```js
-function add_to_agenda(time, action, agenda) {
-  function belongs_before(segs) {
-    return is_null(segs) || time < segment_time(head(segs));
-  }
-  function make_new_time_segment(time, action) {
+type Agenda = Pair<number, List<TimeSegment>>;
+
+const add_to_agenda = (time: number, action: Action, agenda: Agenda): void => {
+  const belongs_before = (segs: List<TimeSegment>): boolean =>
+    is_null(segs) || time < segment_time(head(segs));
+  const make_new_time_segment = (time: number, action: Action): TimeSegment => {
     const q = make_queue();
     insert_queue(q, action);
     return make_time_segment(time, q);
-  }
-  function add_to_segments(segs) {
+  };
+  const add_to_segments = (segs: List<TimeSegment>): void => {
     if (segment_time(head(segs)) === time) {
       insert_queue(segment_queue(head(segs)), action);
     } else {
@@ -266,14 +265,14 @@ function add_to_agenda(time, action, agenda) {
         add_to_segments(rest);
       }
     }
-  }
+  };
   const segs = segments(agenda);
   if (belongs_before(segs)) {
     set_segments(agenda, pair(make_new_time_segment(time, action), segs));
   } else {
     add_to_segments(segs);
   }
-}
+};
 ```
 
 `remove_first_agenda_item` deletes the front of the first segment's queue, and drops the segment when its queue becomes empty. `first_agenda_item` returns the action at the front of the first segment's queue, and it is also the one place where time moves: it sets the current time to that segment's time. The simulated clock therefore always reads the time of the action being run.

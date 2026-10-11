@@ -1,4 +1,5 @@
 import {
+  argumentExpression,
   createGlobalEnvironment,
   isPrimitive,
   lookup,
@@ -282,9 +283,12 @@ export function substitution(source: string, { order = 'applicative', maxSteps =
           alternative: toTerm(node.alternative, env),
         };
       case 'application':
-        return { id: fresh(), kind: 'application', fun: toTerm(node.fun, env), args: node.args.map((arg) => toTerm(arg, env)) };
+        // The model substitutes one argument for one parameter; a spread list has no place in it.
+        if (node.optional === true || node.args.some((arg) => arg.kind === 'spread')) return { id: fresh(), kind: 'opaque', text: text(node) };
+        return { id: fresh(), kind: 'application', fun: toTerm(node.fun, env), args: node.args.map((arg) => toTerm(argumentExpression(arg), env)) };
       case 'lambda':
       case 'assignment':
+      case 'await':
         return { id: fresh(), kind: 'opaque', text: text(node) };
     }
   };
@@ -474,6 +478,17 @@ export function substitution(source: string, { order = 'applicative', maxSteps =
         };
       }
       case 'logical': {
+        if (target.operator === '??') {
+          if (!isLit(target.left)) throw new Stuck('?? expects a value on the left');
+          const missing = target.left.value === null || target.left.value === undefined;
+          return {
+            term: replace(whole, target.id, missing ? target.right : lit(target.left.value, fresh())),
+            rule: 'logical',
+            caption: missing
+              ? `\`??\` with ${literalText(target.left.value)} on the left is whatever the right side is: keep ${q(target.right)}.`
+              : `\`??\` with ${literalText(target.left.value)} on the left is ${literalText(target.left.value)}. The right side, ${q(target.right)}, is never looked at.`,
+          };
+        }
         if (!isLit(target.left) || typeof target.left.value !== 'boolean') throw new Stuck(`${target.operator} expects a boolean on the left`);
         const decides = (target.operator === '&&') !== target.left.value;
         const replacement = decides ? lit(target.left.value, fresh()) : target.right;
@@ -537,8 +552,8 @@ export function substitution(source: string, { order = 'applicative', maxSteps =
           rule: 'apply',
           caption:
             bindings === ''
-              ? `Apply \`${name}\`, which takes no arguments: its return expression is ${q(body)}.`
-              : `Apply \`${name}\`: replace ${bindings} in its return expression${unevaluated ? ', unevaluated' : ''}, giving ${q(body)}.`,
+              ? `Apply \`${name}\`, which takes no arguments: its body is ${q(body)}.`
+              : `Apply \`${name}\`: replace ${bindings} in its body${unevaluated ? ', unevaluated' : ''}, giving ${q(body)}.`,
         };
       }
       default:

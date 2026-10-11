@@ -22,17 +22,15 @@ function run(program: string) {
 
 const summary = (program: string) => run(program).results.map((r) => [r.value, r.totalPushes, r.maximumDepth]);
 
-const count = (body: string) => `function count(n, k) { display(n); ${body} }`;
-const withReturn = count('return n === k ? n : count(n + 1, k);');
-const withoutReturn = count('n === k ? n : count(n + 1, k);');
+const withReturn = 'const count = (n: number, k: number): number => { display(n); return n === k ? n : count(n + 1, k); };';
+const withoutReturn = 'const count = (n: number, k: number): void => { display(n); n === k ? n : count(n + 1, k); };';
 
-const iterativeFactorial = `function factorial(n) {
-    function iter(product, counter) {
-        return counter > n ? product : iter(counter * product, counter + 1);
-    }
+const iterativeFactorial = `const factorial = (n: number): number => {
+    const iter = (product: number, counter: number): number =>
+        counter > n ? product : iter(counter * product, counter + 1);
     return iter(1, 1);
-}`;
-const recursiveFactorial = 'function factorial(n) { return n === 1 ? 1 : factorial(n - 1) * n; }';
+};`;
+const recursiveFactorial = 'const factorial = (n: number): number => n === 1 ? 1 : factorial(n - 1) * n;';
 
 describe('section 5.4: programs as data', () => {
   it('parses the book’s example into tagged lists and takes it apart', () => {
@@ -103,6 +101,18 @@ describe('section 5.4.3: blocks, assignments and declarations', () => {
     const { results } = runEceval(['let x = 1;', '{ let x = 2; x = x + 1; }', 'x;']);
     expect(results.map((r) => r.value)).toEqual(['undefined', '3', '1']);
   });
+
+  it('evaluates a function declaration as a constant declaration, with the same stack use', () => {
+    // Kept as a function declaration on purpose: ev_function_declaration is what is tested.
+    const declared = 'function factorial(n) { return n === 1 ? 1 : factorial(n - 1) * n; }';
+    const measure = (definition: string) =>
+      runEceval([definition, 'factorial(5);']).results.map((r) => [r.value, r.totalPushes, r.maximumDepth]);
+    expect(measure(declared)).toEqual(measure(recursiveFactorial));
+    expect(measure(declared)).toEqual([
+      ['undefined', 4, 3],
+      ['120', 145, 28],
+    ]);
+  });
 });
 
 describe('section 5.4.4: running the evaluator', () => {
@@ -162,7 +172,7 @@ const eceval_controller = eceval_controller_with(list(
   });
 
   it('exercise 5.30: S(0) = S(1) = 17 pushes', () => {
-    const { results } = runEceval(['function fib(n) { return n < 2 ? n : fib(n - 1) + fib(n - 2); }', 'fib(0);', 'fib(1);']);
+    const { results } = runEceval(['const fib = (n: number): number => n < 2 ? n : fib(n - 1) + fib(n - 2);', 'fib(0);', 'fib(1);']);
     expect(results.slice(1).map((r) => r.totalPushes)).toEqual([17, 17]);
   });
 });

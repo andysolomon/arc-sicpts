@@ -19,17 +19,12 @@ fib(20);
 `;
 
 /** Exercise 1.15: sine by repeated use of the triple-angle formula. */
-export const sineDefinitions = `function cube(x) {
-  return x * x * x;
-}
+export const sineDefinitions = `const cube = (x: number): number => x * x * x;
 
-function p(x) {
-  return 3 * x - 4 * cube(x);
-}
+const p = (x: number): number => 3 * x - 4 * cube(x);
 
-function sine(angle) {
-  return !(math_abs(angle) > 0.1)
+const sine = (angle: number): number =>
+  !(math_abs(angle) > 0.1)
     ? angle
     : p(sine(angle / 3));
-}
 `;

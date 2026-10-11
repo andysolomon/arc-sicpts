@@ -12,28 +12,26 @@ import type { ExerciseSpec } from './spec.ts';
 /** A string literal holding the text of an amb program, for a hidden test. */
 const quoted = (program: string): string => JSON.stringify(program);
 
-const anIntegerBetween = `function an_integer_between(low, high) {
+const anIntegerBetween = `const an_integer_between = (low: number, high: number): number => {
     require(low <= high);
     return amb(low, an_integer_between(low + 1, high));
-}
+};
 `;
 
-const tripleBetween = `function a_pythagorean_triple_between(low, high) {
+const tripleBetween = `const a_pythagorean_triple_between = (low: number, high: number): List<number> => {
     const i = an_integer_between(low, high);
     const j = an_integer_between(i, high);
     const k = an_integer_between(j, high);
     require(i * i + j * j === k * k);
     return list(i, j, k);
-}
+};
 `;
 
-/** The book's `office_move` as a list of strings, for a starter to change. */
-const asLines = (program: string, indent = '    '): string =>
-  program
-    .trimEnd()
-    .split('\n')
-    .map((line) => `${indent}${line.includes('"') && !line.includes("'") ? `'${line}'` : JSON.stringify(line)}`)
-    .join(',\n');
+/** An amb program as a backquoted Source string, for a starter to change. */
+const asTemplate = (program: string): string => {
+  if (/[`\\]|\$\{/.test(program)) throw new Error('asTemplate: the program would need escapes');
+  return `\`\n${program.trimEnd()}\``;
+};
 
 const officeSolution = (alyssa: number, ben: number, cy: number, lem: number, louis: number): string =>
   `list(list("alyssa", ${alyssa}), list("ben", ${ben}), list("cy", ${cy}), list("lem", ${lem}), list("louis", ${louis}))`;
@@ -41,7 +39,7 @@ const officeSolution = (alyssa: number, ben: number, cy: number, lem: number, lo
 /** `analyze` of the amb evaluator with one more clause just before `before`. */
 function analyzeWith(clause: string, before: string): string {
   const analyze = pick(ambEvaluator, 'analyze');
-  const at = analyze.indexOf(`           : ${before}(component)`);
+  const at = analyze.indexOf(`    : ${before}(component)`);
   if (at < 0) throw new Error(`analyze has no clause for ${before}`);
   return `${analyze.slice(0, at)}${clause}${analyze.slice(at)}\n`;
 }
@@ -53,10 +51,10 @@ export const exercise_4_33: ExerciseSpec = {
 // an_integer_starting_from declared in it. A program for it is a string,
 // or a list of strings that are its lines.
 
-const an_integer_between_program = list(
-    "function an_integer_between(low, high) {",
-    "    // your answer",
-    "}");
+const an_integer_between_program = \`
+const an_integer_between = (low: number, high: number): number => {
+    // your answer
+};\`;
 
 `,
   tests: [
@@ -80,36 +78,33 @@ const an_integer_between_program = list(
     },
   ],
   budget: 10_000_000,
-  solution: `const an_integer_between_program = list(
-    "function an_integer_between(low, high) {",
-    "    require(low <= high);",
-    "    return amb(low, an_integer_between(low + 1, high));",
-    "}");
+  solution: `const an_integer_between_program = \`
+const an_integer_between = (low: number, high: number): number => {
+    require(low <= high);
+    return amb(low, an_integer_between(low + 1, high));
+};\`;
 
 `,
 };
 
 /** True when `triples` are n different Pythagorean triples (i, j, k) with i ≤ j. */
-const tripleChecks = `function is_triple(t) {
-    return is_list(t) && length(t) === 3 &&
-           list_ref(t, 0) >= 1 && list_ref(t, 0) <= list_ref(t, 1) &&
-           list_ref(t, 0) * list_ref(t, 0) + list_ref(t, 1) * list_ref(t, 1)
-           === list_ref(t, 2) * list_ref(t, 2);
-}
-function all_different(xs) {
-    function occurs(x, ys) {
-        return ! is_null(ys) && (equal(x, head(ys)) || occurs(x, tail(ys)));
-    }
+const tripleChecks = `const is_triple = (t: unknown): boolean =>
+    is_list(t) && length(t) === 3 &&
+    list_ref(t, 0) >= 1 && list_ref(t, 0) <= list_ref(t, 1) &&
+    list_ref(t, 0) * list_ref(t, 0) + list_ref(t, 1) * list_ref(t, 1)
+    === list_ref(t, 2) * list_ref(t, 2);
+const all_different = <T>(xs: List<T>): boolean => {
+    const occurs = (x: T, ys: List<T>): boolean =>
+        ! is_null(ys) && (equal(x, head(ys)) || occurs(x, tail(ys)));
     return is_null(xs) ||
            (! occurs(head(xs), tail(xs)) && all_different(tail(xs)));
-}
-function are_triples(triples, n) {
-    function all_triples(ts) {
-        return is_null(ts) || (is_triple(head(ts)) && all_triples(tail(ts)));
-    }
+};
+const are_triples = (triples: List<unknown>, n: number): boolean => {
+    const all_triples = (ts: List<unknown>): boolean =>
+        is_null(ts) || (is_triple(head(ts)) && all_triples(tail(ts)));
     return length(triples) === n && all_triples(triples) &&
            all_different(triples);
-}
+};
 `;
 
 export const exercise_4_34: ExerciseSpec = {
@@ -120,10 +115,10 @@ export const exercise_4_34: ExerciseSpec = {
 
 // Every Pythagorean triple, list(i, j, k) with i <= j, should be among
 // the values of a_pythagorean_triple() sooner or later.
-const pythagorean_triples_program = list(
-    "function a_pythagorean_triple() {",
-    "    // your answer",
-    "}");
+const pythagorean_triples_program = \`
+const a_pythagorean_triple = (): List<number> => {
+    // your answer
+};\`;
 
 `,
   tests: [
@@ -143,14 +138,14 @@ const pythagorean_triples_program = list(
   budget: 15_000_000,
   solution: `// Choose the largest number first, from an infinite range; the other
 // two then come from finite ranges, so every triple is reached.
-const pythagorean_triples_program = list(
-    "function a_pythagorean_triple() {",
-    "    const k = an_integer_starting_from(1);",
-    "    const i = an_integer_between(1, k);",
-    "    const j = an_integer_between(i, k);",
-    "    require(i * i + j * j === k * k);",
-    "    return list(i, j, k);",
-    "}");
+const pythagorean_triples_program = \`
+const a_pythagorean_triple = (): List<number> => {
+    const k = an_integer_starting_from(1);
+    const i = an_integer_between(1, k);
+    const j = an_integer_between(i, k);
+    require(i * i + j * j === k * k);
+    return list(i, j, k);
+};\`;
 
 `,
 };
@@ -193,7 +188,9 @@ const ben_is_right = true;
 `,
 };
 
-const officeMoveWithoutLouisCy = ambOfficeMove.replace('    require(math_abs(louis - cy) !== 1);\n', '');
+const louisCy = '    require(math_abs(louis - cy) !== 1);\n';
+if (!ambOfficeMove.includes(louisCy)) throw new Error('office_move has no requirement about Louis and Cy');
+const officeMoveWithoutLouisCy = ambOfficeMove.replace(louisCy, '');
 
 export const exercise_4_36: ExerciseSpec = {
   id: '4.36',
@@ -201,8 +198,7 @@ export const exercise_4_36: ExerciseSpec = {
   starter: `// The amb evaluator is provided, with distinct as a primitive.
 // Here is the book's office_move: drop the requirement that Louis's
 // office is not next to Cy's.
-const office_move_program = list(
-${asLines(ambOfficeMove)});
+const office_move_program = ${asTemplate(ambOfficeMove)};
 
 // How many solutions are there now?
 const number_of_solutions = 0;
@@ -217,8 +213,7 @@ const number_of_solutions = 0;
     { name: 'how many there are', kind: 'value', expr: 'number_of_solutions', expected: 5 },
   ],
   budget: 30_000_000,
-  solution: `const office_move_program = list(
-${asLines(officeMoveWithoutLouisCy)});
+  solution: `const office_move_program = ${asTemplate(officeMoveWithoutLouisCy)};
 
 // length(amb_solutions(list(office_move_program, "office_move();"), 10))
 const number_of_solutions = 5;
@@ -277,10 +272,10 @@ const assignments_after = 0;
 
 // The office-move puzzle again, generating only the possibilities not
 // already ruled out by the requirements on the people chosen so far.
-const office_move_program = list(
-    "function office_move() {",
-    "    // your answer",
-    "}");
+const office_move_program = \`
+const office_move = (): List<List<string | number>> => {
+    // your answer
+};\`;
 
 `,
   tests: [
@@ -307,23 +302,23 @@ const assignments_after = 5 * 4 * 3 * 2 * 1;
 
 // Each person's own restrictions narrow the choices before they are
 // made, and each requirement is imposed as soon as its names are chosen.
-const office_move_program = list(
-    "function office_move() {",
-    "    const cy = amb(2, 3, 4);",
-    "    const ben = amb(2, 3, 4, 5);",
-    "    require(math_abs(cy - ben) > 1);",
-    "    const lem = amb(1, 2, 3, 4, 5);",
-    "    require(lem > ben);",
-    "    require(lem !== cy);",
-    "    const alyssa = amb(1, 2, 3, 4);",
-    "    require(distinct(list(alyssa, ben, cy, lem)));",
-    "    const louis = amb(1, 2, 3, 4, 5);",
-    "    require(math_abs(louis - cy) !== 1);",
-    "    require(distinct(list(alyssa, ben, cy, lem, louis)));",
-    '    return list(list("alyssa", alyssa), list("ben", ben),',
-    '                list("cy", cy), list("lem", lem),',
-    '                list("louis", louis));',
-    "}");
+const office_move_program = \`
+const office_move = (): List<List<string | number>> => {
+    const cy = amb(2, 3, 4);
+    const ben = amb(2, 3, 4, 5);
+    require(math_abs(cy - ben) > 1);
+    const lem = amb(1, 2, 3, 4, 5);
+    require(lem > ben);
+    require(lem !== cy);
+    const alyssa = amb(1, 2, 3, 4);
+    require(distinct(list(alyssa, ben, cy, lem)));
+    const louis = amb(1, 2, 3, 4, 5);
+    require(math_abs(louis - cy) !== 1);
+    require(distinct(list(alyssa, ben, cy, lem, louis)));
+    return list(list("alyssa", alyssa), list("ben", ben),
+                list("cy", cy), list("lem", lem),
+                list("louis", louis));
+};\`;
 
 `,
 };
@@ -333,9 +328,9 @@ export const exercise_4_39: ExerciseSpec = {
   starter: `// map, filter, accumulate, for_each and enum_list are provided; no amb.
 // Return the assignment in the form office_move gives it:
 // list(list("alyssa", 3), list("ben", 2), ...).
-function office_move() {
+const office_move = (): List<List<string | number>> => {
     // your answer
-}
+};
 
 office_move();
 `,
@@ -349,20 +344,18 @@ office_move();
   ],
   budget: 5_000_000,
   solution: `// The permutations of a list, as in section 2.2.3.
-function permutations(s) {
-    return is_null(s)
-           ? list(null)
-           : accumulate(append, null,
-                        map(x => map(p => pair(x, p),
-                                     permutations(remove(x, s))),
-                            s));
-}
-function remove(item, sequence) {
-    return filter(x => x !== item, sequence);
-}
+const permutations = <T>(s: List<T>): List<List<T>> =>
+    is_null(s)
+    ? list(null)
+    : accumulate(append, null,
+                 map(x => map(p => pair(x, p),
+                              permutations(remove(x, s))),
+                     s));
+const remove = <T>(item: T, sequence: List<T>): List<T> =>
+    filter(x => x !== item, sequence);
 
-function office_move() {
-    function satisfies(p) {
+const office_move = (): List<List<string | number>> => {
+    const satisfies = (p: List<number>): boolean => {
         const alyssa = list_ref(p, 0);
         const ben = list_ref(p, 1);
         const cy = list_ref(p, 2);
@@ -371,12 +364,12 @@ function office_move() {
         return alyssa !== 5 && ben !== 1 && cy !== 5 && cy !== 1 &&
                lem > ben && math_abs(louis - cy) !== 1 &&
                math_abs(cy - ben) !== 1;
-    }
+    };
     const p = head(filter(satisfies, permutations(enum_list(1, 5))));
     return list(list("alyssa", list_ref(p, 0)), list("ben", list_ref(p, 1)),
                 list("cy", list_ref(p, 2)), list("lem", list_ref(p, 3)),
                 list("louis", list_ref(p, 4)));
-}
+};
 
 office_move();
 `,
@@ -389,10 +382,10 @@ export const exercise_4_40: ExerciseSpec = {
 // liars() should return the order of arrival in the form
 // list(list("alyssa", a), list("cy", c), list("eva", e),
 //      list("lem", l), list("louis", o)), where 1 is first.
-const liars_program = list(
-    "function liars() {",
-    "    // your answer",
-    "}");
+const liars_program = \`
+const liars = (): List<List<string | number>> => {
+    // your answer
+};\`;
 
 `,
   tests: [
@@ -406,26 +399,25 @@ const liars_program = list(
   budget: 40_000_000,
   solution: `// Each diner makes one true and one false statement: exactly one of the
 // two is true, so the two truth values differ.
-const liars_program = list(
-    "function liars() {",
-    "    function one_of(p, q) {",
-    "        return p !== q;",
-    "    }",
-    "    const alyssa = amb(1, 2, 3, 4, 5);",
-    "    const lem = amb(1, 2, 3, 4, 5);",
-    "    require(one_of(lem === 2, alyssa === 3));",
-    "    const louis = amb(1, 2, 3, 4, 5);",
-    "    require(one_of(lem === 2, louis === 4));",
-    "    require(one_of(louis === 4, alyssa === 1));",
-    "    const cy = amb(1, 2, 3, 4, 5);",
-    "    const eva = amb(1, 2, 3, 4, 5);",
-    "    require(one_of(cy === 1, eva === 2));",
-    "    require(one_of(eva === 3, cy === 5));",
-    "    require(distinct(list(alyssa, cy, eva, lem, louis)));",
-    '    return list(list("alyssa", alyssa), list("cy", cy),',
-    '                list("eva", eva), list("lem", lem),',
-    '                list("louis", louis));',
-    "}");
+const liars_program = \`
+const liars = (): List<List<string | number>> => {
+    const one_of = (p: boolean, q: boolean): boolean =>
+        p !== q;
+    const alyssa = amb(1, 2, 3, 4, 5);
+    const lem = amb(1, 2, 3, 4, 5);
+    require(one_of(lem === 2, alyssa === 3));
+    const louis = amb(1, 2, 3, 4, 5);
+    require(one_of(lem === 2, louis === 4));
+    require(one_of(louis === 4, alyssa === 1));
+    const cy = amb(1, 2, 3, 4, 5);
+    const eva = amb(1, 2, 3, 4, 5);
+    require(one_of(cy === 1, eva === 2));
+    require(one_of(eva === 3, cy === 5));
+    require(distinct(list(alyssa, cy, eva, lem, louis)));
+    return list(list("alyssa", alyssa), list("cy", cy),
+                list("eva", eva), list("lem", lem),
+                list("louis", louis));
+};\`;
 
 `,
 };
@@ -437,8 +429,8 @@ export const exercise_4_41: ExerciseSpec = {
 // The chapters are "Functions", "Data", "State", "Meta" and
 // "Register Machines"; the people are "alyssa", "ben", "cy", "eva" and
 // "louis".
-const puzzle_program = list(
-    "// your answer");
+const puzzle_program = \`
+// your answer\`;
 
 // Who checks the exercises in the Data chapter?
 const data_checker = undefined;
@@ -453,39 +445,37 @@ const solutions_without_alyssa_meta = 0;
   ],
   budget: 20_000_000,
   solution: `// Who solves what is given; the search is over who checks what. Fixing
-// the checks we are told first leaves few possibilities to try.
-function puzzle(alyssa_checks) {
-    return list(
-        'const chapters = list("Functions", "Data", "State", "Meta",',
-        '                      "Register Machines");',
-        'const solvers = list("louis", "alyssa", "cy", "eva", "ben");',
-        "function solver_of(chapter) {",
-        "    function find(cs, ss) {",
-        "        return head(cs) === chapter ? head(ss) : find(tail(cs), tail(ss));",
-        "    }",
-        "    return find(chapters, solvers);",
-        "}",
-        "const alyssa = " + alyssa_checks + ";",
-        'require(alyssa !== "Data");',
-        'const louis = "Register Machines";',
-        "const ben = an_element_of(chapters);",
-        'require(ben !== "Register Machines");',
-        "const cy = an_element_of(chapters);",
-        'require(cy !== "State");',
-        "const eva = an_element_of(chapters);",
-        'require(eva !== "Meta");',
-        "require(distinct(list(alyssa, ben, cy, eva, louis)));",
-        'const checkers = list("alyssa", "ben", "cy", "eva", "louis");',
-        "const checks = list(alyssa, ben, cy, eva, louis);",
-        "function checker_of(chapter) {",
-        "    function find(cs, ps) {",
-        "        return head(cs) === chapter ? head(ps) : find(tail(cs), tail(ps));",
-        "    }",
-        "    return find(checks, checkers);",
-        "}",
-        'require(checker_of("Functions") === solver_of(eva));',
-        'checker_of("Data");');
-}
+// the checks we are told first leaves few possibilities to try. The
+// program is a list of three parts, the middle one saying what Alyssa checks.
+const puzzle = (alyssa_checks: string): List<string> =>
+    list(\`
+const chapters = list("Functions", "Data", "State", "Meta",
+                      "Register Machines");
+const solvers = list("louis", "alyssa", "cy", "eva", "ben");
+const solver_of = (chapter: string): string => {
+    const find = (cs: List<string>, ss: List<string>): string =>
+        head(cs) === chapter ? head(ss) : find(tail(cs), tail(ss));
+    return find(chapters, solvers);
+};\`,
+         "const alyssa = " + alyssa_checks + ";",
+         \`require(alyssa !== "Data");
+const louis = "Register Machines";
+const ben = an_element_of(chapters);
+require(ben !== "Register Machines");
+const cy = an_element_of(chapters);
+require(cy !== "State");
+const eva = an_element_of(chapters);
+require(eva !== "Meta");
+require(distinct(list(alyssa, ben, cy, eva, louis)));
+const checkers = list("alyssa", "ben", "cy", "eva", "louis");
+const checks = list(alyssa, ben, cy, eva, louis);
+const checker_of = (chapter: string): string => {
+    const find = (cs: List<string>, ps: List<string>): string =>
+        head(cs) === chapter ? head(ps) : find(tail(cs), tail(ps));
+    return find(checks, checkers);
+};
+require(checker_of("Functions") === solver_of(eva));
+checker_of("Data");\`);
 
 const puzzle_program = puzzle('"Meta"');
 
@@ -497,31 +487,27 @@ const solutions_without_alyssa_meta =
 };
 
 /** True when `boards` are `count` different solutions of the n-queens puzzle. */
-const queensChecks = `function is_board(rows, n) {
-    function safe(row, rest, distance) {
-        return is_null(rest) ||
-               (head(rest) !== row &&
-                math_abs(head(rest) - row) !== distance &&
-                safe(row, tail(rest), distance + 1));
-    }
-    function all_safe(rows) {
-        return is_null(rows) ||
-               (head(rows) >= 1 && head(rows) <= n &&
-                safe(head(rows), tail(rows), 1) && all_safe(tail(rows)));
-    }
+const queensChecks = `const is_board = (rows: unknown, n: number): boolean => {
+    const safe = (row: number, rest: List<number>, distance: number): boolean =>
+        is_null(rest) ||
+        (head(rest) !== row &&
+         math_abs(head(rest) - row) !== distance &&
+         safe(row, tail(rest), distance + 1));
+    const all_safe = (rows: List<number>): boolean =>
+        is_null(rows) ||
+        (head(rows) >= 1 && head(rows) <= n &&
+         safe(head(rows), tail(rows), 1) && all_safe(tail(rows)));
     return is_list(rows) && length(rows) === n && all_safe(rows);
-}
-function are_boards(boards, n, count) {
-    function occurs(x, ys) {
-        return ! is_null(ys) && (equal(x, head(ys)) || occurs(x, tail(ys)));
-    }
-    function check(bs) {
-        return is_null(bs) ||
-               (is_board(head(bs), n) && ! occurs(head(bs), tail(bs)) &&
-                check(tail(bs)));
-    }
+};
+const are_boards = (boards: List<unknown>, n: number, count: number): boolean => {
+    const occurs = (x: unknown, ys: List<unknown>): boolean =>
+        ! is_null(ys) && (equal(x, head(ys)) || occurs(x, tail(ys)));
+    const check = (bs: List<unknown>): boolean =>
+        is_null(bs) ||
+        (is_board(head(bs), n) && ! occurs(head(bs), tail(bs)) &&
+         check(tail(bs)));
     return length(boards) === count && check(boards);
-}
+};
 `;
 
 export const exercise_4_42: ExerciseSpec = {
@@ -530,10 +516,10 @@ export const exercise_4_42: ExerciseSpec = {
   starter: `// The amb evaluator is provided, with an_integer_between declared in it.
 // queens(n) should place n queens on an n-by-n board, none attacking
 // another, and return the list of their rows, column by column.
-const queens_program = list(
-    "function queens(board_size) {",
-    "    // your answer",
-    "}");
+const queens_program = \`
+const queens = (board_size: number): List<number> => {
+    // your answer
+};\`;
 
 `,
   tests: [
@@ -553,28 +539,27 @@ const queens_program = list(
   budget: 20_000_000,
   solution: `// Choose a row for each column in turn, and require at once that the
 // new queen is safe from those already placed.
-const queens_program = list(
-    "function queens(board_size) {",
-    "    function is_safe(row, positions) {",
-    "        function safe_from(rest, distance) {",
-    "            return is_null(rest) ||",
-    "                   (head(rest) !== row &&",
-    "                    math_abs(head(rest) - row) !== distance &&",
-    "                    safe_from(tail(rest), distance + 1));",
-    "        }",
-    "        return safe_from(positions, 1);",
-    "    }",
-    "    function place(k, positions) {",
-    "        if (k === 0) {",
-    "            return reverse(positions);",
-    "        } else {",
-    "            const row = an_integer_between(1, board_size);",
-    "            require(is_safe(row, positions));",
-    "            return place(k - 1, pair(row, positions));",
-    "        }",
-    "    }",
-    "    return place(board_size, null);",
-    "}");
+const queens_program = \`
+const queens = (board_size: number): List<number> => {
+    const is_safe = (row: number, positions: List<number>): boolean => {
+        const safe_from = (rest: List<number>, distance: number): boolean =>
+            is_null(rest) ||
+            (head(rest) !== row &&
+             math_abs(head(rest) - row) !== distance &&
+             safe_from(tail(rest), distance + 1));
+        return safe_from(positions, 1);
+    };
+    const place = (k: number, positions: List<number>): List<number> => {
+        if (k === 0) {
+            return reverse(positions);
+        } else {
+            const row = an_integer_between(1, board_size);
+            require(is_safe(row, positions));
+            return place(k - 1, pair(row, positions));
+        }
+    };
+    return place(board_size, null);
+};\`;
 
 `,
 };
@@ -583,16 +568,14 @@ const queens_program = list(
 const parseCount = (grammar: string, words: string, n = 5): string =>
   `length(amb_solutions(list(${quoted(ambSentenceParser)}, ${grammar}, "parse_input(list(${words.split(' ').map((w) => `\\"${w}\\"`).join(', ')}));"), ${n}))`;
 
-const attachmentChecks = `function same_rows(xs, ys) {
-    function occurs(x, zs) {
-        return ! is_null(zs) && (equal(x, head(zs)) || occurs(x, tail(zs)));
-    }
-    function all_in(ps, qs) {
-        return is_null(ps) || (occurs(head(ps), qs) && all_in(tail(ps), qs));
-    }
+const attachmentChecks = `const same_rows = <T>(xs: List<T>, ys: List<T>): boolean => {
+    const occurs = (x: T, zs: List<T>): boolean =>
+        ! is_null(zs) && (equal(x, head(zs)) || occurs(x, tail(zs)));
+    const all_in = (ps: List<T>, qs: List<T>): boolean =>
+        is_null(ps) || (occurs(head(ps), qs) && all_in(tail(ps), qs));
     return is_list(xs) && length(xs) === length(ys) &&
            all_in(xs, ys) && all_in(ys, xs);
-}
+};
 `;
 
 const fiveParses =
@@ -660,18 +643,17 @@ const words_it_accepts = list();
   ],
   budget: 3_000_000,
   solution: `// Evaluate the rest of the arguments first, then this one.
-function get_args(afuns, env, succeed, fail) {
-    return is_null(afuns)
-           ? succeed(null, fail)
-           : get_args(tail(afuns),
-                      env,
-                      (args, fail2) =>
-                        head(afuns)(env,
-                                    (arg, fail3) =>
-                                      succeed(pair(arg, args), fail3),
-                                    fail2),
-                      fail);
-}
+const get_args = (afuns: List<Execution>, env: Environment, succeed: Succeed, fail: Fail): unknown =>
+    is_null(afuns)
+    ? succeed(null, fail)
+    : get_args(tail(afuns),
+               env,
+               (args, fail2) =>
+                 head(afuns)(env,
+                             (arg, fail3) =>
+                               succeed(pair(arg, args), fail3),
+                             fail2),
+               fail);
 
 // parse_sentence now parses its verb phrase before its noun phrase, and
 // a simple noun phrase its noun before its article: the parser reads the
@@ -723,8 +705,8 @@ export const exercise_4_46: ExerciseSpec = {
 // book's grammar of section 4.3.2, and a function you declare again
 // replaces the book's. Add adjectives "lazy", "clever" and "old", any
 // number of which may come between an article and a noun.
-const grammar_extension = list(
-    "// your answer");
+const grammar_extension = \`
+// your answer\`;
 
 `,
   tests: [
@@ -744,51 +726,44 @@ const grammar_extension = list(
     { name: 'the cat lazy eats is not a sentence', kind: 'value', expr: parseCount('grammar_extension', 'the cat lazy eats'), expected: 0 },
   ],
   budget: 10_000_000,
-  solution: `const grammar_extension = list(
-    'const adjectives = list("adjective", "lazy", "clever", "old");',
-    "",
-    "// A noun, or an adjective followed by what may follow an article.",
-    "function parse_described_noun() {",
-    "    return amb(parse_word(nouns),",
-    '               list("described-noun",',
-    "                    parse_word(adjectives),",
-    "                    parse_described_noun()));",
-    "}",
-    "function parse_simple_noun_phrase() {",
-    '    return list("simple-noun-phrase",',
-    "                parse_word(articles),",
-    "                parse_described_noun());",
-    "}");
+  solution: `const grammar_extension = \`
+const adjectives = list("adjective", "lazy", "clever", "old");
+
+// A noun, or an adjective followed by what may follow an article.
+const parse_described_noun = (): ParseTree =>
+    amb(parse_word(nouns),
+        list("described-noun",
+             parse_word(adjectives),
+             parse_described_noun()));
+const parse_simple_noun_phrase = (): ParseTree =>
+    list("simple-noun-phrase",
+         parse_word(articles),
+         parse_described_noun());\`;
 
 `,
 };
 
 /** True when the first n sentences generated are different and all parse. */
-const generationChecks = `function words_of(tree) {
-    return is_string(head(tail(tree)))
-           ? tail(tree)
-           : accumulate(append, null, map(words_of, tail(tree)));
-}
-function quoted_words(words) {
-    return is_null(tail(words))
-           ? "\\"" + head(words) + "\\""
-           : "\\"" + head(words) + "\\", " + quoted_words(tail(words));
-}
-function parses(words) {
-    return ! is_null(amb_solutions(list(book_grammar,
+const generationChecks = `const words_of = (tree: List<unknown>): List<string> =>
+    is_string(head(tail(tree)))
+    ? tail(tree)
+    : accumulate(append, null, map(words_of, tail(tree)));
+const quoted_words = (words: List<string>): string =>
+    is_null(tail(words))
+    ? "\\"" + head(words) + "\\""
+    : "\\"" + head(words) + "\\", " + quoted_words(tail(words));
+const parses = (words: List<string>): boolean =>
+    ! is_null(amb_solutions(list(book_grammar,
         "parse_input(list(" + quoted_words(words) + "));"), 1));
-}
-function generated_sentences_parse(sentences, n) {
-    function occurs(x, ys) {
-        return ! is_null(ys) && (equal(x, head(ys)) || occurs(x, tail(ys)));
-    }
-    function check(ss) {
-        return is_null(ss) ||
-               (head(head(ss)) === "sentence" && parses(words_of(head(ss))) &&
-                ! occurs(head(ss), tail(ss)) && check(tail(ss)));
-    }
+const generated_sentences_parse = (sentences: List<List<unknown>>, n: number): boolean => {
+    const occurs = (x: unknown, ys: List<unknown>): boolean =>
+        ! is_null(ys) && (equal(x, head(ys)) || occurs(x, tail(ys)));
+    const check = (ss: List<List<unknown>>): boolean =>
+        is_null(ss) ||
+        (head(head(ss)) === "sentence" && parses(words_of(head(ss))) &&
+         ! occurs(head(ss), tail(ss)) && check(tail(ss)));
     return length(sentences) === n && check(sentences);
-}
+};
 `;
 
 export const exercise_4_47: ExerciseSpec = {
@@ -797,14 +772,14 @@ export const exercise_4_47: ExerciseSpec = {
   starter: `// The amb evaluator is provided, and book_grammar is the text of the
 // grammar of section 4.3.2. Your declarations come after it, and a
 // function you declare again replaces the book's.
-const generator = list(
-    "function parse_word(word_list) {",
-    "    require(! is_null(not_yet_parsed));",
-    "    require(! is_null(member(head(not_yet_parsed), tail(word_list))));",
-    "    const found_word = head(not_yet_parsed);",
-    "    not_yet_parsed = tail(not_yet_parsed);",
-    "    return list(head(word_list), found_word);",
-    "}");
+const generator = \`
+const parse_word = (word_list: List<string>): ParseTree => {
+    require(! is_null(not_yet_parsed));
+    require(! is_null(member(head(not_yet_parsed), tail(word_list))));
+    const found_word = head(not_yet_parsed);
+    not_yet_parsed = tail(not_yet_parsed);
+    return list(head(word_list), found_word);
+};\`;
 
 `,
   tests: [
@@ -817,40 +792,37 @@ const generator = list(
   ],
   budget: 20_000_000,
   solution: `// Ignore the input: any word of the right part of speech will do.
-const generator = list(
-    "function parse_word(word_list) {",
-    "    return list(head(word_list), an_element_of(tail(word_list)));",
-    "}");
+const generator = \`
+const parse_word = (word_list: List<string>): ParseTree =>
+    list(head(word_list), an_element_of(tail(word_list)));\`;
 
 `,
 };
 
 const ambEvaluatorWithout = (...names: string[]): string => omit(ambEvaluator, ...names);
 
-const isApplicationOf = (name: string, fn: string): string => `function ${fn}(component) {
-    return is_tagged_list(component, "application") &&
-           is_name(function_expression(component)) &&
-           symbol_of_name(function_expression(component)) === "${name}";
-}`;
+const isApplicationOf = (name: string, fn: string): string => `const ${fn} = (component: Component): boolean =>
+    is_tagged_list(component, "application") &&
+    is_name(function_expression(component)) &&
+    symbol_of_name(function_expression(component)) === "${name}";`;
 
 /** True when xs and ys hold the same numbers, in any order. */
-const sameNumbers = `function same_numbers(xs, ys) {
-    function remove_one(x, zs) {
-        return is_null(zs)
-               ? null
-               : head(zs) === x
-               ? tail(zs)
-               : pair(head(zs), remove_one(x, tail(zs)));
-    }
+const sameNumbers = `const same_numbers = (xs: List<number>, ys: List<number>): boolean => {
+    const remove_one = (x: number, zs: List<number>): List<number> =>
+        is_null(zs)
+        ? null
+        : head(zs) === x
+        ? tail(zs)
+        : pair(head(zs), remove_one(x, tail(zs)));
     return is_null(xs)
            ? is_null(ys)
            : ! is_null(member(head(xs), ys)) &&
              same_numbers(tail(xs), remove_one(head(xs), ys));
-}
+};
 `;
 
-const rambClause = `           : is_ramb(component)
-           ? analyze_ramb(component)
+const rambClause = `    : is_ramb(component)
+    ? analyze_ramb(component)
 `;
 
 export const exercise_4_48: ExerciseSpec = {
@@ -858,13 +830,13 @@ export const exercise_4_48: ExerciseSpec = {
   prelude: sameNumbers,
   starter: `// The rest of the amb evaluator follows your declarations.
 
-function is_ramb(component) {
+const is_ramb = (component: Component): boolean => {
     // your answer
-}
+};
 
-function analyze_ramb(component) {
+const analyze_ramb = (component: Component): Execution => {
     // your answer
-}
+};
 
 // analyze, with a clause for ramb.
 ${analyzeWith(rambClause, 'is_application')}
@@ -882,11 +854,10 @@ ${analyzeWith(rambClause, 'is_application')}
       kind: 'value',
       expr: `(() => {
     const first = head(amb_solutions("ramb(1, 2, 3, 4, 5, 6, 7, 8);", 1));
-    function differs(k) {
-        return k > 0 &&
-               (head(amb_solutions("ramb(1, 2, 3, 4, 5, 6, 7, 8);", 1)) !== first ||
-                differs(k - 1));
-    }
+    const differs = (k: number): boolean =>
+        k > 0 &&
+        (head(amb_solutions("ramb(1, 2, 3, 4, 5, 6, 7, 8);", 1)) !== first ||
+         differs(k - 1));
     return differs(15);
 })()`,
       expected: true,
@@ -905,10 +876,10 @@ ${analyzeWith(rambClause, 'is_application')}
 
 // Like analyze_amb, but each time it picks one of the alternatives left at
 // random, and the failure continuation tries the others.
-function analyze_ramb(component) {
+const analyze_ramb = (component: Component): Execution => {
     const cfuns = map(analyze, amb_choices(component));
     return (env, succeed, fail) => {
-               function try_next(choices) {
+               const try_next = (choices: List<Execution>): unknown => {
                    if (is_null(choices)) {
                        return fail();
                    } else {
@@ -920,10 +891,10 @@ function analyze_ramb(component) {
                                      () => try_next(filter(c => c !== chosen,
                                                            choices)));
                    }
-               }
+               };
                return try_next(cfuns);
            };
-}
+};
 
 ${analyzeWith(rambClause, 'is_application')}
 `,
@@ -943,8 +914,7 @@ export const exercise_4_49: ExerciseSpec = {
 
 ${pick(ambEvaluator, 'analyze_assignment')}
 
-const counting = list(
-${asLines(countingProgram)});
+const counting = ${asTemplate(countingProgram)};
 
 // The first two values with the original, undoable assignment:
 const with_undoable_assignment = null;
@@ -967,7 +937,7 @@ const with_undoable_assignment = null;
   budget: 2_000_000,
   solution: `// The success continuation passes the failure continuation it was given,
 // instead of one that restores the old value first.
-function analyze_assignment(component) {
+const analyze_assignment = (component: Component): Execution => {
     const symbol = assignment_symbol(component);
     const vfun = analyze(assignment_value_expression(component));
     return (env, succeed, fail) =>
@@ -977,24 +947,21 @@ function analyze_assignment(component) {
                       return succeed(val, fail2);
                   },
                   fail);
-}
+};
 
-const counting = list(
-${asLines(countingProgram)});
+const counting = ${asTemplate(countingProgram)};
 
 // Each failure undoes count = count + 1, so count is 1 whenever it is read.
 const with_undoable_assignment = list(list("a", "b", 1), list("a", "c", 1));
 `,
 };
 
-const ifFailClause = `           : is_if_fail(component)
-           ? analyze_if_fail(component)
+const ifFailClause = `    : is_if_fail(component)
+    ? analyze_if_fail(component)
 `;
 
 const allOdd = (items: string): string =>
-  quoted(`function is_even(n) {
-    return n % 2 === 0;
-}
+  quoted(`const is_even = (n: number): boolean => n % 2 === 0;
 if (evaluation_succeeds_take) {
     const x = an_element_of(list(${items}));
     require(is_even(x));
@@ -1007,13 +974,13 @@ export const exercise_4_50: ExerciseSpec = {
   id: '4.50',
   starter: `// The rest of the amb evaluator follows your declarations.
 
-function is_if_fail(component) {
+const is_if_fail = (component: Component): boolean => {
     // your answer
-}
+};
 
-function analyze_if_fail(component) {
+const analyze_if_fail = (component: Component): Execution => {
     // your answer
-}
+};
 
 // analyze, with a clause for the new form before the one for conditionals.
 ${analyzeWith(ifFailClause, 'is_conditional')}
@@ -1030,21 +997,20 @@ ${analyzeWith(ifFailClause, 'is_conditional')}
     },
   ],
   budget: 2_000_000,
-  solution: `function is_if_fail(component) {
-    return is_tagged_list(component, "conditional_statement") &&
-           is_name(conditional_predicate(component)) &&
-           symbol_of_name(conditional_predicate(component)) ===
-             "evaluation_succeeds_take";
-}
+  solution: `const is_if_fail = (component: Component): boolean =>
+    is_tagged_list(component, "conditional_statement") &&
+    is_name(conditional_predicate(component)) &&
+    symbol_of_name(conditional_predicate(component)) ===
+      "evaluation_succeeds_take";
 
 // Run the consequent with a failure continuation that runs the
 // alternative instead of failing.
-function analyze_if_fail(component) {
+const analyze_if_fail = (component: Component): Execution => {
     const sfun = analyze(conditional_consequent(component));
     const ffun = analyze(conditional_alternative(component));
     return (env, succeed, fail) =>
              sfun(env, succeed, () => ffun(env, succeed, fail));
-}
+};
 
 ${analyzeWith(ifFailClause, 'is_conditional')}
 `,
@@ -1080,11 +1046,10 @@ export const exercise_4_52: ExerciseSpec = {
 // reads require(...) as an application, require is recognized as amb is.
 
 ${isApplicationOf('require', 'is_require')}
-function require_predicate(component) {
-    return head(arg_expressions(component));
-}
+const require_predicate = (component: Component): Component =>
+    head(arg_expressions(component));
 
-function analyze_require(component) {
+const analyze_require = (component: Component): Execution => {
     const pfun = analyze(require_predicate(component));
     return (env, succeed, fail) =>
              pfun(env,
@@ -1093,7 +1058,7 @@ function analyze_require(component) {
                     ? undefined // your answer
                     : succeed("ok", fail2),
                   fail);
-}
+};
 
 // analyze, with a clause for require.
 ${analyzeWith(requireClause, 'is_application')}
@@ -1117,13 +1082,12 @@ ${analyzeWith(requireClause, 'is_application')}
   ],
   budget: 3_000_000,
   solution: `${isApplicationOf('require', 'is_require')}
-function require_predicate(component) {
-    return head(arg_expressions(component));
-}
+const require_predicate = (component: Component): Component =>
+    head(arg_expressions(component));
 
 // A false predicate fails with the failure continuation that came with
 // its value, so the search backs up to the most recent choice.
-function analyze_require(component) {
+const analyze_require = (component: Component): Execution => {
     const pfun = analyze(require_predicate(component));
     return (env, succeed, fail) =>
              pfun(env,
@@ -1132,7 +1096,7 @@ function analyze_require(component) {
                     ? fail2()
                     : succeed("ok", fail2),
                   fail);
-}
+};
 
 ${analyzeWith(requireClause, 'is_application')}
 `,

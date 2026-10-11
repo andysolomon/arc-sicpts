@@ -49,10 +49,12 @@ export function FrontPage() {
           book independently or alongside a programming course.
         </p>
         <p className="m-0">
-          The editors run <em>Source</em>, a small JavaScript subset: you write functions and expressions
-          without TypeScript type annotations. The companion app and Laboratory engine are implemented
-          in TypeScript. <Link to="/appendix/grammar">Appendix A</Link> lists the syntax and library
-          functions available in every editor, including the differences from ordinary JavaScript.
+          The editors run <em>Source</em>, a small subset of TypeScript: you write typed arrow functions
+          and expressions, with rest parameters, spread arguments, <code>??</code> and <code>async</code> where
+          they help. Type annotations document a program; the Laboratory strips them before running it, as
+          Node does. The companion app and Laboratory engine are implemented in TypeScript too.{' '}
+          <Link to="/appendix/grammar">Appendix A</Link> lists the syntax and library functions available in
+          every editor, including the differences from ordinary TypeScript.
         </p>
         <h3 className="m-0 mt-1 text-xl font-semibold">A study routine</h3>
         <ol className="m-0 flex list-decimal flex-col gap-2 pl-6">

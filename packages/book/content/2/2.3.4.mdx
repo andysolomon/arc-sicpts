@@ -24,7 +24,7 @@ Significant savings come from variable-length prefix codes that exploit the rela
 
 To encode a symbol, start at the root and move down to its leaf, adding a 0 for each left branch and a 1 for each right branch; the symbol sets tell which branch leads to the leaf. In the tree for the code above, D is right, left, right, right: 1011. To decode, start at the root and let each bit choose the left or the right branch. On reaching a leaf, emit its symbol and start again at the root. With the bits 10001010, right, left, left reaches B; then left reaches A; then right, left, right, left reaches C. The message is BAC.
 
-**Representing Huffman trees.** A leaf is a list of the string `"leaf"`, the symbol and the weight. A general tree is a list of the string `"code_tree"`, a left branch, a right branch, a set of symbols and a weight. The set of symbols is simply a list, and merging two nodes appends their symbol lists, with `append` from §2.2.1, and adds their weights. The selectors `symbols` and `weight` must do something slightly different for a leaf and for a general tree: they are simple examples of *generic functions*, functions that handle more than one kind of data, which §2.4 and §2.5 have much more to say about.
+**Representing Huffman trees.** A leaf is a list of the string `"leaf"`, the symbol and the weight. A general tree is a list of the string `"code_tree"`, a left branch, a right branch, a set of symbols and a weight. The program calls these types `Leaf` and `CodeTree`; a `HuffmanTree` is either. The set of symbols is simply a list, and merging two nodes appends their symbol lists, with `append` from §2.2.1, and adds their weights. The selectors `symbols` and `weight` must do something slightly different for a leaf and for a general tree: they are simple examples of *generic functions*, functions that handle more than one kind of data, which §2.4 and §2.5 have much more to say about.
 
 **The decoding function.** `decode` takes a list of zeros and ones and a Huffman tree. Its helper `decode_1` takes the remaining bits and the current position in the tree, and keeps moving down, choosing a branch for each bit with `choose_branch`. On reaching a leaf it adjoins the leaf's symbol to the result of decoding the rest of the message, starting again from the root. `choose_branch` signals an error for anything other than a zero or a one.
 
@@ -97,12 +97,11 @@ Use the `decode` function to decode the message, and give the result.
 The `encode` function takes a message and a tree and produces the list of bits that encodes the message.
 
 ```js
-function encode(message, tree) {
-  return is_null(message)
+const encode = (message: List<string>, tree: HuffmanTree): List<number> =>
+  is_null(message)
     ? null
     : append(encode_symbol(head(message), tree),
              encode(tail(message), tree));
-}
 ```
 
 Write `encode_symbol`, which returns the list of bits that encodes a given symbol according to a given tree. It should signal an error if the symbol is not in the tree at all. Test it by encoding the result of exercise 2.67 with the sample tree and checking that you get the original sample message.
@@ -118,9 +117,8 @@ Write `encode_symbol`, which returns the list of bits that encodes a given symbo
 The following function takes a list of symbol-frequency pairs, where no symbol appears in more than one pair, and generates a Huffman encoding tree according to the Huffman algorithm.
 
 ```js
-function generate_huffman_tree(pairs) {
-  return successive_merge(make_leaf_set(pairs));
-}
+const generate_huffman_tree = (pairs: List<List<string | number>>): HuffmanTree =>
+  successive_merge(make_leaf_set(pairs));
 ```
 
 `make_leaf_set` is given above. Write `successive_merge`, using `make_code_tree` to merge the smallest-weight elements of the set until only one element is left, which is the desired Huffman tree. (This function is slightly tricky, but not complicated. If you find yourself designing a complex function, you are almost certainly doing something wrong. You can take significant advantage of the ordered set representation.)

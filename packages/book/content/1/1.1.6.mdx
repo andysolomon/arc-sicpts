@@ -1,31 +1,23 @@
-export const conditionals = `function abs(x) {
-  return x >= 0 ? x : -x;
-}
+export const conditionals = `const abs = (x: number): number => x >= 0 ? x : -x;
 
-function sign(x) {
-  return x > 0
+const sign = (x: number): number =>
+  x > 0
     ? 1
     : x === 0
       ? 0
       : -1;
-}
 
-function is_between(x, low, high) {
-  return x >= low && x <= high;
-}
+const is_between = (x: number, low: number, high: number): boolean =>
+  x >= low && x <= high;
 
 display(abs(-12));
 display(sign(-12));
 is_between(5, 1, 10);
 `;
 
-export const orderTest = `function p() {
-  return p();
-}
+export const orderTest = `const p = (): number => p();
 
-function test(x, y) {
-  return x === 0 ? 0 : y;
-}
+const test = (x: number, y: number): number => x === 0 ? 0 : y;
 
 test(0, p());
 `;

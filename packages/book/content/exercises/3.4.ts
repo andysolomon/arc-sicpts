@@ -11,37 +11,28 @@ import type { ExerciseSpec } from './spec.ts';
  */
 
 /** Lists used as sets, and a scenario run many times. */
-const sets = `function contains(xs, x) {
-    return !is_null(member(x, xs));
-}
+const sets = `const contains = <T>(xs: List<T>, x: T): boolean => !is_null(member(x, xs));
 
-function subset(xs, ys) {
-    return is_null(xs) || (contains(ys, head(xs)) && subset(tail(xs), ys));
-}
+const subset = <T>(xs: List<T>, ys: List<T>): boolean =>
+    is_null(xs) || (contains(ys, head(xs)) && subset(tail(xs), ys));
 
-function same_values(xs, ys) {
-    return subset(xs, ys) && subset(ys, xs);
-}
+const same_values = <T>(xs: List<T>, ys: List<T>): boolean =>
+    subset(xs, ys) && subset(ys, xs);
 
-function distinct(xs) {
-    return is_null(xs)
-           ? null
-           : contains(tail(xs), head(xs))
-           ? distinct(tail(xs))
-           : pair(head(xs), distinct(tail(xs)));
-}
+const distinct = <T>(xs: List<T>): List<T> =>
+    is_null(xs)
+    ? null
+    : contains(tail(xs), head(xs))
+    ? distinct(tail(xs))
+    : pair(head(xs), distinct(tail(xs)));
 
-function outcomes(run, n) {
-    return n === 0 ? null : pair(run(), outcomes(run, n - 1));
-}
+const outcomes = <T>(run: () => T, n: number): List<T> =>
+    n === 0 ? null : pair(run(), outcomes(run, n - 1));
 
-function all_are(xs, v) {
-    return is_null(filter(x => x !== v, xs));
-}
+const all_are = <T>(xs: List<T>, v: T): boolean =>
+    is_null(filter(x => x !== v, xs));
 
-function some_are(xs, v) {
-    return contains(xs, v);
-}
+const some_are = <T>(xs: List<T>, v: T): boolean => contains(xs, v);
 `;
 
 const serialBalances = 'list(35, 40, 45, 50)';
@@ -89,13 +80,13 @@ const interleaved_balances = list(110, 80, 55);
 };
 
 const run339 = `${serializerDefinitions}
-function run_exercise_3_39() {
+const run_exercise_3_39 = (): number => {
     let x = 10;
     const s = make_serializer();
     concurrent_execute(() => { x = s(() => x * x)(); },
                        s(() => { x = x + 1; }));
     return x;
-}
+};
 `;
 
 export const exercise_3_39: ExerciseSpec = {
@@ -133,18 +124,18 @@ const remaining = list(101, 121, 100, 11);
 };
 
 const run340 = `${serializerDefinitions}
-function run_exercise_3_40(serialized) {
+const run_exercise_3_40 = (serialized: boolean): number => {
     let x = 10;
     const s = make_serializer();
-    const p1 = () => { x = x * x; };
-    const p2 = () => { x = x * x * x; };
+    const p1 = (): void => { x = x * x; };
+    const p2 = (): void => { x = x * x * x; };
     if (serialized) {
         concurrent_execute(s(p1), s(p2));
     } else {
         concurrent_execute(p1, p2);
     }
     return x;
-}
+};
 `;
 
 export const exercise_3_40: ExerciseSpec = {
@@ -225,45 +216,50 @@ export const exercise_3_42: ExerciseSpec = {
   id: '3.42',
   prelude: `${sets}
 ${serializerDefinitions}
-function bank_day(make_account) {
+type Transaction = (amount: number) => number | string;
+type Account = (m: "withdraw" | "deposit" | "balance") => Transaction | number;
+
+const bank_day = (make_account: (balance: number) => Account): number => {
     const account = make_account(100);
     concurrent_execute(() => account("withdraw")(10),
                        () => account("withdraw")(25),
                        () => account("deposit")(40));
     return account("balance");
-}
+};
 `,
   seed: 342,
   budget: 600_000,
   starter: `// make_serializer is provided. Ben builds the protected functions once:
-function make_account(balance) {
-    function withdraw(amount) {
+type Transaction = (amount: number) => number | string;
+type Account = (m: "withdraw" | "deposit" | "balance") => Transaction | number;
+
+const make_account = (balance: number): Account => {
+    const withdraw = (amount: number): number | string => {
         if (balance >= amount) {
             balance = balance - amount;
             return balance;
         } else {
             return "Insufficient funds";
         }
-    }
-    function deposit(amount) {
+    };
+    const deposit = (amount: number): number => {
         balance = balance + amount;
         return balance;
-    }
+    };
     const protect = make_serializer();
     // your answer: serialize these two, once for all requests
     const protected_withdraw = withdraw;
     const protected_deposit = deposit;
-    function dispatch(m) {
-        return m === "withdraw"
-               ? protected_withdraw
-               : m === "deposit"
-               ? protected_deposit
-               : m === "balance"
-               ? balance
-               : error(m, "unknown request -- make_account");
-    }
+    const dispatch = (m: "withdraw" | "deposit" | "balance"): Transaction | number =>
+        m === "withdraw"
+        ? protected_withdraw
+        : m === "deposit"
+        ? protected_deposit
+        : m === "balance"
+        ? balance
+        : error(m, "unknown request -- make_account");
     return dispatch;
-}
+};
 
 // Is Ben's change safe? true or false:
 const ben_is_safe = undefined;
@@ -280,33 +276,35 @@ const concurrency_differs = undefined;
     { name: 'whether the change is safe', kind: 'value', expr: 'ben_is_safe', expected: true },
     { name: 'whether the concurrency differs', kind: 'value', expr: 'concurrency_differs', expected: false },
   ],
-  solution: `function make_account(balance) {
-    function withdraw(amount) {
+  solution: `type Transaction = (amount: number) => number | string;
+type Account = (m: "withdraw" | "deposit" | "balance") => Transaction | number;
+
+const make_account = (balance: number): Account => {
+    const withdraw = (amount: number): number | string => {
         if (balance >= amount) {
             balance = balance - amount;
             return balance;
         } else {
             return "Insufficient funds";
         }
-    }
-    function deposit(amount) {
+    };
+    const deposit = (amount: number): number => {
         balance = balance + amount;
         return balance;
-    }
+    };
     const protect = make_serializer();
-    const protected_withdraw = amount => protect(() => withdraw(amount))();
-    const protected_deposit = amount => protect(() => deposit(amount))();
-    function dispatch(m) {
-        return m === "withdraw"
-               ? protected_withdraw
-               : m === "deposit"
-               ? protected_deposit
-               : m === "balance"
-               ? balance
-               : error(m, "unknown request -- make_account");
-    }
+    const protected_withdraw = protect(withdraw);
+    const protected_deposit = protect(deposit);
+    const dispatch = (m: "withdraw" | "deposit" | "balance"): Transaction | number =>
+        m === "withdraw"
+        ? protected_withdraw
+        : m === "deposit"
+        ? protected_deposit
+        : m === "balance"
+        ? balance
+        : error(m, "unknown request -- make_account");
     return dispatch;
-}
+};
 
 // Every serialized function the account makes takes the same mutex,
 // the one in protect, however many of them there are and whenever
@@ -318,44 +316,52 @@ const concurrency_differs = false;
 
 /** Accounts for exercise 3.43. They never refuse a withdrawal, as the exercise's argument assumes. */
 const exchangeAccounts = `${serializerDefinitions}
-function make_plain_account(balance) {
-    function withdraw(amount) {
+type Transaction = (amount: number) => number;
+type Account = (m: "withdraw" | "deposit" | "balance" | "serializer") => Transaction | number | Serializer;
+
+const make_plain_account = (balance: number): Account => {
+    const withdraw = (amount: number): number => {
         balance = balance - amount;
         return balance;
-    }
-    function deposit(amount) {
+    };
+    const deposit = (amount: number): number => {
         balance = balance + amount;
         return balance;
-    }
+    };
     return m => m === "withdraw" ? withdraw
               : m === "deposit" ? deposit
               : m === "balance" ? balance
               : error(m, "unknown request -- make_plain_account");
-}
+};
 
-function make_account(balance) {
+const make_account = (balance: number): Account => {
     const plain = make_plain_account(balance);
     const protect = make_serializer();
-    return m => m === "withdraw" ? amount => protect(() => plain("withdraw")(amount))()
-              : m === "deposit" ? amount => protect(() => plain("deposit")(amount))()
+    return m => m === "withdraw" ? protect(plain("withdraw"))
+              : m === "deposit" ? protect(plain("deposit"))
               : plain(m);
-}
+};
 
-function make_account_and_serializer(balance) {
+const make_account_and_serializer = (balance: number): Account => {
     const plain = make_plain_account(balance);
     const balance_serializer = make_serializer();
     return m => m === "serializer" ? balance_serializer : plain(m);
-}
+};
 
 ${accountExchangeDefinitions}
-function serialized_exchange(account1, account2) {
+const serialized_exchange = (account1: Account, account2: Account): void => {
     const serializer1 = account1("serializer");
     const serializer2 = account2("serializer");
-    return serializer1(serializer2(() => exchange(account1, account2)))();
-}
+    return serializer1(serializer2(exchange))(account1, account2);
+};
 
-function exchange_trials(make, exchange_function, check, n) {
-    function trial() {
+const exchange_trials = (
+    make: (balance: number) => Account,
+    exchange_function: (account1: Account, account2: Account) => void,
+    check: (a: number, b: number, c: number) => string,
+    n: number
+): List<string> => {
+    const trial = (): string => {
         const a = make(10);
         const b = make(20);
         const c = make(30);
@@ -363,9 +369,9 @@ function exchange_trials(make, exchange_function, check, n) {
                            () => exchange_function(b, c),
                            () => exchange_function(a, c));
         return check(a("balance"), b("balance"), c("balance"));
-    }
+    };
     return outcomes(trial, n);
-}
+};
 `;
 
 export const exercise_3_43: ExerciseSpec = {
@@ -379,9 +385,11 @@ ${exchangeAccounts}`,
 //   "in some order"  when they are 10, 20 and 30 in some order,
 //   "same sum"       when they are not, but they still add up to 60,
 //   "wrong sum"      otherwise.
-function check_balances(a, b, c) {
+type Verdict = "in some order" | "same sum" | "wrong sum";
+
+const check_balances = (a: number, b: number, c: number): Verdict => {
     // your answer
-}
+};
 `,
   tests: [
     {
@@ -424,7 +432,9 @@ function check_balances(a, b, c) {
       expected: true,
     },
   ],
-  solution: `function check_balances(a, b, c) {
+  solution: `type Verdict = "in some order" | "same sum" | "wrong sum";
+
+const check_balances = (a: number, b: number, c: number): Verdict => {
     const in_order = (a === 10 || a === 20 || a === 30)
                      && (b === 10 || b === 20 || b === 30)
                      && (c === 10 || c === 20 || c === 30)
@@ -434,7 +444,7 @@ function check_balances(a, b, c) {
            : a + b + c === 60
            ? "same sum"
            : "wrong sum";
-}
+};
 `,
 };
 
@@ -442,38 +452,41 @@ export const exercise_3_44: ExerciseSpec = {
   id: '3.44',
   prelude: `${sets}
 ${serializerDefinitions}
-function make_account(balance) {
-    function withdraw(amount) {
+type Transaction = (amount: number) => number | string;
+type Account = (m: "withdraw" | "deposit" | "balance") => Transaction | number;
+type Transfer = (from_account: Account, to_account: Account, amount: number) => void;
+
+const make_account = (balance: number): Account => {
+    const withdraw = (amount: number): number | string => {
         if (balance >= amount) {
             balance = balance - amount;
             return balance;
         } else {
             return "Insufficient funds";
         }
-    }
-    function deposit(amount) {
+    };
+    const deposit = (amount: number): number => {
         balance = balance + amount;
         return balance;
-    }
+    };
     const protect = make_serializer();
-    return m => m === "withdraw" ? amount => protect(() => withdraw(amount))()
-              : m === "deposit" ? amount => protect(() => deposit(amount))()
+    return m => m === "withdraw" ? protect(withdraw)
+              : m === "deposit" ? protect(deposit)
               : m === "balance" ? balance
               : error(m, "unknown request -- make_account");
-}
+};
 
-function balances(a, b, c) {
-    return stringify(a("balance")) + " " + stringify(b("balance")) + " " + stringify(c("balance"));
-}
+const balances = (a: Account, b: Account, c: Account): string =>
+    stringify(a("balance")) + " " + stringify(b("balance")) + " " + stringify(c("balance"));
 
-function one_transfer(transfer) {
+const one_transfer = (transfer: Transfer): boolean => {
     const a = make_account(100);
     const b = make_account(50);
     transfer(a, b, 30);
     return a("balance") === 70 && b("balance") === 80;
-}
+};
 
-function ring_of_transfers(transfer) {
+const ring_of_transfers = (transfer: Transfer): string => {
     const a = make_account(100);
     const b = make_account(100);
     const c = make_account(100);
@@ -481,15 +494,15 @@ function ring_of_transfers(transfer) {
                        () => transfer(b, c, 20),
                        () => transfer(c, a, 30));
     return balances(a, b, c);
-}
+};
 `,
   seed: 344,
   budget: 600_000,
-  starter: `// make_account (with serialized withdraw and deposit) is provided.
+  starter: `// make_account (with serialized withdraw and deposit) and its type Account are provided.
 // Move amount from one account to the other; from_account has enough.
-function transfer(from_account, to_account, amount) {
+const transfer = (from_account: Account, to_account: Account, amount: number): void => {
     // your answer
-}
+};
 
 // Louis thinks transfer needs a more sophisticated method, such as the
 // serialized_exchange of the text. Is he right? true or false:
@@ -505,10 +518,10 @@ const louis_is_right = undefined;
     },
     { name: 'whether Louis is right', kind: 'value', expr: 'louis_is_right', expected: false },
   ],
-  solution: `function transfer(from_account, to_account, amount) {
+  solution: `const transfer = (from_account: Account, to_account: Account, amount: number): void => {
     from_account("withdraw")(amount);
     to_account("deposit")(amount);
-}
+};
 
 // No. exchange computes the amount from both balances, and they can change
 // before it is moved. transfer's amount is given, and each withdrawal and
@@ -521,9 +534,9 @@ export const exercise_3_45: ExerciseSpec = {
   id: '3.45',
   starter: `// Louis serializes withdrawals and deposits automatically, and exports the serializer:
 //   return m => m === "withdraw"
-//               ? amount => balance_serializer(() => withdraw(amount))()
+//               ? balance_serializer(withdraw)
 //               : m === "deposit"
-//               ? amount => balance_serializer(() => deposit(amount))()
+//               ? balance_serializer(deposit)
 //               : m === "balance"
 //               ? balance
 //               : m === "serializer"
@@ -553,31 +566,31 @@ const stuck_in = "withdraw";
 export const exercise_3_46: ExerciseSpec = {
   id: '3.46',
   prelude: `${sets}
-function sequential_test_and_set(tas) {
+const sequential_test_and_set = (tas: (cell: List<boolean>) => boolean): boolean => {
     const cell = list(false);
     const first = tas(cell);
     const second = tas(cell);
     return first === false && second === true && head(cell) === true;
-}
+};
 
-function both_acquire(tas) {
+const both_acquire = (tas: (cell: List<boolean>) => boolean): boolean => {
     const cell = list(false);
     let first = false;
     let second = false;
     concurrent_execute(() => { first = !tas(cell); },
                        () => { second = !tas(cell); });
     return first && second;
-}
+};
 `,
   seed: 346,
   budget: 400_000,
   starter: `// The Laboratory's test_and_set is a primitive: one step, atomic.
 // Write test_and_set as an ordinary function instead, as in the text,
 // and two threads should be able to acquire the same mutex.
-function non_atomic_test_and_set(cell) {
+const non_atomic_test_and_set = (cell: List<boolean>): boolean => {
     // your answer
     return test_and_set(cell);
-}
+};
 `,
   tests: [
     {
@@ -593,29 +606,29 @@ function non_atomic_test_and_set(cell) {
       expected: true,
     },
   ],
-  solution: `function non_atomic_test_and_set(cell) {
+  solution: `const non_atomic_test_and_set = (cell: List<boolean>): boolean => {
     if (head(cell)) {
         return true;
     } else {
         set_head(cell, true);
         return false;
     }
-}
+};
 `,
 };
 
 /** Runs four workers through a semaphore of size n and returns the most that were inside at once. */
 const semaphoreTrial = `${sets}
 ${mutexDefinitions}
-function most_inside(make_semaphore, n) {
+type Semaphore = (m: "acquire" | "release") => void;
+
+const most_inside = (make_semaphore: (n: number) => Semaphore, n: number): number => {
     const semaphore = make_semaphore(n);
     const guard = make_mutex();
     let inside = 0;
     let most = 0;
-    function work(k) {
-        return k === 0 ? true : work(k - 1);
-    }
-    function worker() {
+    const work = (k: number): true => k === 0 ? true : work(k - 1);
+    const worker = (): void => {
         semaphore("acquire");
         guard("acquire");
         inside = inside + 1;
@@ -626,14 +639,13 @@ function most_inside(make_semaphore, n) {
         inside = inside - 1;
         guard("release");
         semaphore("release");
-    }
+    };
     concurrent_execute(worker, worker, worker, worker);
     return most;
-}
+};
 
-function most_of_runs(make_semaphore, n, runs) {
-    return accumulate(math_max, 0, outcomes(() => most_inside(make_semaphore, n), runs));
-}
+const most_of_runs = (make_semaphore: (n: number) => Semaphore, n: number, runs: number): number =>
+    accumulate(math_max, 0, outcomes(() => most_inside(make_semaphore, n), runs));
 `;
 
 export const exercise_3_47: ExerciseSpec = {
@@ -644,15 +656,17 @@ export const exercise_3_47: ExerciseSpec = {
   starter: `// make_mutex is provided. A semaphore of size n lets at most n processes hold it at once:
 // semaphore("acquire") waits until fewer than n do, semaphore("release") lets one go.
 
+type Semaphore = (m: "acquire" | "release") => void;
+
 // a. In terms of mutexes:
-function make_semaphore(n) {
+const make_semaphore = (n: number): Semaphore => {
     // your answer
-}
+};
 
 // b. In terms of test_and_set:
-function make_semaphore_tas(n) {
+const make_semaphore_tas = (n: number): Semaphore => {
     // your answer
-}
+};
 `,
   tests: [
     { name: 'a. size 2, 4 workers, 25 runs: two at once, never three', kind: 'value', expr: 'most_of_runs(make_semaphore, 2, 25)', expected: 2 },
@@ -660,10 +674,12 @@ function make_semaphore_tas(n) {
     { name: 'b. size 2, 4 workers, 25 runs: two at once, never three', kind: 'value', expr: 'most_of_runs(make_semaphore_tas, 2, 25)', expected: 2 },
     { name: 'b. size 1, 4 workers, 20 runs: one at a time', kind: 'value', expr: 'most_of_runs(make_semaphore_tas, 1, 20)', expected: 1 },
   ],
-  solution: `function make_semaphore(n) {
+  solution: `type Semaphore = (m: "acquire" | "release") => void;
+
+const make_semaphore = (n: number): Semaphore => {
     const guard = make_mutex();
     let taken = 0;
-    function the_semaphore(m) {
+    const the_semaphore = (m: "acquire" | "release"): true => {
         if (m === "acquire") {
             guard("acquire");
             if (taken < n) {
@@ -682,20 +698,18 @@ function make_semaphore_tas(n) {
         } else {
             return error(m, "unknown request -- semaphore");
         }
-    }
+    };
     return the_semaphore;
-}
+};
 
-function make_semaphore_tas(n) {
+const make_semaphore_tas = (n: number): Semaphore => {
     const cell = list(false);
     let taken = 0;
-    function lock() {
-        return test_and_set(cell) ? lock() : true;
-    }
-    function unlock() {
+    const lock = (): true => test_and_set(cell) ? lock() : true;
+    const unlock = (): void => {
         set_head(cell, false);
-    }
-    function the_semaphore(m) {
+    };
+    const the_semaphore = (m: "acquire" | "release"): true => {
         if (m === "acquire") {
             lock();
             if (taken < n) {
@@ -714,9 +728,9 @@ function make_semaphore_tas(n) {
         } else {
             return error(m, "unknown request -- semaphore");
         }
-    }
+    };
     return the_semaphore;
-}
+};
 `,
 };
 
@@ -725,19 +739,23 @@ export const exercise_3_48: ExerciseSpec = {
   prelude: `${sets}
 ${serializerDefinitions}
 ${accountExchangeDefinitions}
-function balances(a, b) {
-    return stringify(a("balance")) + " " + stringify(b("balance"));
-}
+type Transaction = (amount: number) => number | string;
+type Message = "withdraw" | "deposit" | "balance" | "serializer" | "number";
+type Account = (m: Message) => Transaction | number | Serializer;
+type Exchange = (account1: Account, account2: Account) => void;
 
-function opposite_exchanges(make, serialized_exchange) {
+const balances = (a: Account, b: Account): string =>
+    stringify(a("balance")) + " " + stringify(b("balance"));
+
+const opposite_exchanges = (make: (balance: number) => Account, serialized_exchange: Exchange): string => {
     const a = make(10);
     const b = make(30);
     concurrent_execute(() => serialized_exchange(a, b),
                        () => serialized_exchange(b, a));
     return balances(a, b);
-}
+};
 
-function ring_of_exchanges(make, serialized_exchange) {
+const ring_of_exchanges = (make: (balance: number) => Account, serialized_exchange: Exchange): boolean => {
     const a = make(10);
     const b = make(20);
     const c = make(30);
@@ -747,26 +765,29 @@ function ring_of_exchanges(make, serialized_exchange) {
     const sum = a("balance") + b("balance") + c("balance");
     const product = a("balance") * b("balance") * c("balance");
     return sum === 60 && product === 6000;
-}
+};
 `,
   seed: 348,
   budget: 500_000,
-  starter: `// make_serializer and exchange are provided.
+  starter: `// make_serializer (of type Serializer) and exchange are provided.
 // Give each account a number, and make serialized_exchange take the
 // serializer of the lower-numbered account first.
-function make_account_and_serializer(balance) {
-    function withdraw(amount) {
+type Transaction = (amount: number) => number | string;
+type Account = (m: "withdraw" | "deposit" | "balance" | "serializer") => Transaction | number | Serializer;
+
+const make_account_and_serializer = (balance: number): Account => {
+    const withdraw = (amount: number): number | string => {
         if (balance >= amount) {
             balance = balance - amount;
             return balance;
         } else {
             return "Insufficient funds";
         }
-    }
-    function deposit(amount) {
+    };
+    const deposit = (amount: number): number => {
         balance = balance + amount;
         return balance;
-    }
+    };
     const balance_serializer = make_serializer();
     return m => m === "withdraw"
                 ? withdraw
@@ -777,13 +798,13 @@ function make_account_and_serializer(balance) {
                 : m === "serializer"
                 ? balance_serializer
                 : error(m, "unknown request -- make_account");
-}
+};
 
-function serialized_exchange(account1, account2) {
+const serialized_exchange = (account1: Account, account2: Account): void => {
     const serializer1 = account1("serializer");
     const serializer2 = account2("serializer");
-    return serializer1(serializer2(() => exchange(account1, account2)))();
-}
+    return serializer1(serializer2(exchange))(account1, account2);
+};
 `,
   tests: [
     {
@@ -805,21 +826,25 @@ function serialized_exchange(account1, account2) {
       expected: true,
     },
   ],
-  solution: `let accounts_made = 0;
+  solution: `type Transaction = (amount: number) => number | string;
+type Message = "withdraw" | "deposit" | "balance" | "serializer" | "number";
+type Account = (m: Message) => Transaction | number | Serializer;
 
-function make_account_and_serializer(balance) {
-    function withdraw(amount) {
+let accounts_made = 0;
+
+const make_account_and_serializer = (balance: number): Account => {
+    const withdraw = (amount: number): number | string => {
         if (balance >= amount) {
             balance = balance - amount;
             return balance;
         } else {
             return "Insufficient funds";
         }
-    }
-    function deposit(amount) {
+    };
+    const deposit = (amount: number): number => {
         balance = balance + amount;
         return balance;
-    }
+    };
     const balance_serializer = make_serializer();
     accounts_made = accounts_made + 1;
     const number = accounts_made;
@@ -834,13 +859,13 @@ function make_account_and_serializer(balance) {
                 : m === "number"
                 ? number
                 : error(m, "unknown request -- make_account");
-}
+};
 
-function serialized_exchange(account1, account2) {
+const serialized_exchange = (account1: Account, account2: Account): void => {
     const first = account1("number") < account2("number") ? account1 : account2;
     const second = first === account1 ? account2 : account1;
-    return first("serializer")(second("serializer")(() => exchange(account1, account2)))();
-}
+    return first("serializer")(second("serializer")(exchange))(account1, account2);
+};
 `,
 };
 

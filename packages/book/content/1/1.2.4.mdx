@@ -5,15 +5,12 @@ import { exptGrowthProgram, fastExptProgram } from '@sicp/lab';
 Consider computing the exponential of a number: given a base *b* and a non-negative integer exponent *n*, compute *b*ⁿ. The recursive definition *b*ⁿ = *b* · *b*ⁿ⁻¹, *b*⁰ = 1 translates into `expt` below, a linear recursive process with Θ(*n*) steps and Θ(*n*) space. As with factorial, an iterative version keeps a running product and needs Θ(*n*) steps but only Θ(1) space:
 
 ```js
-function expt(b, n) {
-  return expt_iter(b, n, 1);
-}
+const expt = (b: number, n: number): number => expt_iter(b, n, 1);
 
-function expt_iter(b, counter, product) {
-  return counter === 0
+const expt_iter = (b: number, counter: number, product: number): number =>
+  counter === 0
     ? product
     : expt_iter(b, counter - 1, b * product);
-}
 ```
 
 We can do much better by *successive squaring*. To compute *b*⁸, instead of multiplying by *b* seven times, square three times: *b*² = *b* · *b*, *b*⁴ = (*b*²)², *b*⁸ = (*b*⁴)². In general, *b*ⁿ = (*b*<sup>n/2</sup>)² when *n* is even, and *b*ⁿ = *b* · *b*ⁿ⁻¹ when it is odd. That is `fast_expt`. Every call with an even exponent halves the problem; an odd exponent becomes even after one more call.

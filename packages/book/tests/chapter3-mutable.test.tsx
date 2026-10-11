@@ -88,10 +88,14 @@ describe('box-and-pointer model', () => {
     expect([...(frames[2]?.changed ?? [])]).toHaveLength(1);
   });
 
-  it('skips function declarations', () => {
+  it('skips statements that only declare a function', () => {
     const frames = boxPointerFrames(heapTraceOf(mutableSharingProgram).heap);
-    expect(frames.some((f) => f.snapshot.node?.kind === 'function')).toBe(false);
-    expect(frames.map((f) => f.snapshot.node?.text)).toContain('set_to_wow(z1)');
+    // Eight statements, of which the declaration of set_to_wow draws nothing.
+    expect(frames).toHaveLength(7);
+    expect(frames.some((f) => f.snapshot.node?.declaresFunction === true)).toBe(false);
+    const texts = frames.map((f) => f.snapshot.node?.text ?? '');
+    expect(texts.some((text) => text.startsWith('const set_to_wow'))).toBe(false);
+    expect(texts).toContain('set_to_wow(z1)');
   });
 });
 
@@ -120,7 +124,7 @@ describe('box-and-pointer scene', () => {
   });
 
   it('handles a program with no pairs, and one that fails', () => {
-    render(<BoxPointerScene trace={heapTraceOf('function f(x) { return x; }')} />);
+    render(<BoxPointerScene trace={heapTraceOf('const f = (x: number): number => x;')} />);
     expect(screen.getByText('No pairs to draw')).toBeInTheDocument();
     const failing = heapTraceOf('const x = list(1);\nhead(null);');
     render(<BoxPointerScene trace={failing} title="Failing" stepIndex={failing.records.length} />);

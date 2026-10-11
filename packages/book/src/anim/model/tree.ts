@@ -1,4 +1,4 @@
-import { parse, tokenize, type Expression, type Loc, type Program, type Statement, type StepRecord } from '@sicp/lab';
+import { argumentExpression, parse, tokenize, type Expression, type Loc, type Program, type Statement, type StepRecord } from '@sicp/lab';
 import type { Trace } from '../useTrace.ts';
 import type { TreeInput } from './layout.ts';
 
@@ -61,12 +61,14 @@ export function expressionTree(source: string, expr: Expression): TreeInput<Expr
       );
     case 'application': {
       const name = expr.fun.kind === 'name' ? expr.fun.symbol : source.slice(expr.fun.loc.start, expr.fun.loc.end);
-      return node('call', `${name}(…)`, expr.fun.loc.start, expr.args.map((arg) => expressionTree(source, arg)), name);
+      return node('call', `${name}(…)`, expr.fun.loc.start, expr.args.map((arg) => expressionTree(source, argumentExpression(arg))), name);
     }
     case 'lambda':
       return node('other', 'fn', expr.loc.start);
     case 'assignment':
       return node('other', `${expr.symbol} =`, expr.loc.start, [expressionTree(source, expr.value)]);
+    case 'await':
+      return node('other', 'await', expr.loc.start, [expressionTree(source, expr.argument)]);
   }
 }
 

@@ -23,18 +23,16 @@ So there are two representations, each suited to different operations. Yet someo
 We follow the strategy of §2.1.1 and assume four selectors, `real_part`, `imag_part`, `magnitude` and `angle`, and two constructors: `make_from_real_imag` returns a complex number with given real and imaginary parts, and `make_from_mag_ang` one with given magnitude and angle. For any complex number `z`, both `make_from_real_imag(real_part(z), imag_part(z))` and `make_from_mag_ang(magnitude(z), angle(z))` produce numbers equal to `z`. With these we can write the arithmetic exactly as the formulas say, adding and subtracting in terms of real and imaginary parts, multiplying and dividing in terms of magnitudes and angles:
 
 ```js
-function add_complex(z1, z2) {
-  return make_from_real_imag(real_part(z1) + real_part(z2),
-                             imag_part(z1) + imag_part(z2));
-}
+const add_complex = (z1: Complex, z2: Complex): Complex =>
+  make_from_real_imag(real_part(z1) + real_part(z2),
+                      imag_part(z1) + imag_part(z2));
 
-function mul_complex(z1, z2) {
-  return make_from_mag_ang(magnitude(z1) * magnitude(z2),
-                           angle(z1) + angle(z2));
-}
+const mul_complex = (z1: Complex, z2: Complex): Complex =>
+  make_from_mag_ang(magnitude(z1) * magnitude(z2),
+                    angle(z1) + angle(z2));
 ```
 
-`sub_complex` and `div_complex` are the same with `-` and `/`. To complete the package we must choose a representation. Imagine two programmers, Ben Bitdiddle and Alyssa P. Hacker, designing representations independently. Ben chooses rectangular form. Selecting the real and imaginary parts is then immediate, and so is constructing a number from them. For the magnitude and angle, or to construct a number from them, he uses the trigonometric relations
+`sub_complex` and `div_complex` are the same with `-` and `/`. The type `Complex` is left open here: each representation declares what it is. To complete the package we must choose a representation. Imagine two programmers, Ben Bitdiddle and Alyssa P. Hacker, designing representations independently. Ben chooses rectangular form. Selecting the real and imaginary parts is then immediate, and so is constructing a number from them. For the magnitude and angle, or to construct a number from them, he uses the trigonometric relations
 
 - *x* = *r* cos *A* and *y* = *r* sin *A*,
 - *r* = √(*x*² + *y*²) and *A* = arctan(*y*, *x*),

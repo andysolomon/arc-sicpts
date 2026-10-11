@@ -54,7 +54,7 @@ describe('the evaluate–apply scene', () => {
   const steps = cycleSteps(log.calls);
 
   it('describes each call in the terms of §4.1.1', () => {
-    expect(steps.map((s) => `${s.kind} ${s.summary}`).slice(4, 11)).toEqual([
+    expect(steps.map((s) => `${s.kind} ${s.summary}`).slice(3, 10)).toEqual([
       'evaluate operator combination "+"',
       'evaluate application of +',
       'evaluate name +',

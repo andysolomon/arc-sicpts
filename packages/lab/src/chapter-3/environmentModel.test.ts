@@ -49,7 +49,7 @@ describe('section 3.2.1: the rules for evaluation', () => {
   });
 
   it('assigning to an undeclared name or a constant is an error', () => {
-    expect(evaluate('function f() { total = 1; return total; }\nf();')).toMatchObject({ status: 'error' });
+    expect(evaluate('const f = (): number => {\n  total = 1;\n  return total;\n};\nf();')).toMatchObject({ status: 'error' });
     expect(evaluate(envModelAssignmentProgram.replace('let count', 'const count'))).toMatchObject({ status: 'error' });
   });
 });

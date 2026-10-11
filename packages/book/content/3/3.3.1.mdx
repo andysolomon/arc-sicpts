@@ -128,13 +128,12 @@ The box-and-pointer pictures come from the Laboratory's heap inspector. After ea
 Here is `append` again, next to `append_mutator`, which joins its two lists by changing the last pair of the first, using the helper `last_pair`:
 
 ```js
-function append_mutator(x, y) {
+const append_mutator = <T>(x: List<T>, y: List<T>): List<T> => {
   set_tail(last_pair(x), y);
   return x;
-}
-function last_pair(x) {
-  return is_null(tail(x)) ? x : last_pair(tail(x));
-}
+};
+const last_pair = <T>(x: List<T>): List<T> =>
+  is_null(tail(x)) ? x : last_pair(tail(x));
 ```
 
 After `const z = append(x, y);` with `x = list("a", "b")` and `y = list("c", "d")`, what is `tail(x)`? After `const w = append_mutator(x, y);`, what is it then? Draw the box-and-pointer diagrams that explain your answers, and write the two answers as lists.
@@ -162,8 +161,8 @@ Write `make_cycle`, which takes a list and makes the tail of its last pair point
 This function is useful, if obscure:
 
 ```js
-function mystery(x) {
-  function loop(x, y) {
+const mystery = <T>(x: List<T>): List<T> => {
+  const loop = (x: List<T>, y: List<T>): List<T> => {
     if (is_null(x)) {
       return y;
     } else {
@@ -171,9 +170,9 @@ function mystery(x) {
       set_tail(x, y);
       return loop(temp, x);
     }
-  }
+  };
   return loop(x, null);
-}
+};
 ```
 
 `loop` keeps the tail of `x` in `temp` before `set_tail` overwrites it. Explain what `mystery` does in general. With `const v = list("a", "b", "c", "d");` and `const w = mystery(v);`, draw `v` before the call and `v` and `w` after it, and say what `v` and `w` print as.
@@ -182,7 +181,7 @@ function mystery(x) {
 
 **Solution.** `mystery` reverses a list in place: at each step it turns one pair's tail around to point at the pairs already reversed, so no new pair is made. `w` is `list("d", "c", "b", "a")`. `v` still names the pair holding `"a"`, but that pair is now the *last* of the reversed list, its tail `null`, so `v` prints as `list("a")`.
 
-<BoxPointerDiagram source={'function mystery(x) {\n  function loop(x, y) {\n    if (is_null(x)) {\n      return y;\n    } else {\n      const temp = tail(x);\n      set_tail(x, y);\n      return loop(temp, x);\n    }\n  }\n  return loop(x, null);\n}\nconst v = list("a", "b", "c", "d");\nconst w = mystery(v);'} title="v and w after mystery" caption="Four pairs, all of them v's original pairs; v now names the last." />
+<BoxPointerDiagram source={'const mystery = <T>(x: List<T>): List<T> => {\n  const loop = (x: List<T>, y: List<T>): List<T> => {\n    if (is_null(x)) {\n      return y;\n    } else {\n      const temp = tail(x);\n      set_tail(x, y);\n      return loop(temp, x);\n    }\n  };\n  return loop(x, null);\n};\nconst v = list("a", "b", "c", "d");\nconst w = mystery(v);'} title="v and w after mystery" caption="Four pairs, all of them v's original pairs; v now names the last." />
 
 </Solution>
 </Exercise>
@@ -201,11 +200,10 @@ Draw box-and-pointer diagrams that explain what `set_to_wow` does to `z1` and to
 Ben Bitdiddle counts the pairs in a structure like this:
 
 ```js
-function count_pairs(x) {
-  return ! is_pair(x)
-         ? 0
-         : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
-}
+const count_pairs = (x: unknown): number =>
+  ! is_pair(x)
+  ? 0
+  : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
 ```
 
 Show that he is wrong: build four structures, each made of exactly three pairs, for which `count_pairs` returns 3, returns 4, returns 7, and never returns at all.

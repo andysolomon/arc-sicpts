@@ -45,7 +45,7 @@ test('§3.5.2 checks exercise 3.53 against the hidden tests', async ({ page }) =
 
   await editor.click();
   await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.type('const s = pair(1, () => add_streams(s, s)); function element_of_s(n) { return math_pow(2, n); }');
+  await page.keyboard.type('const s = pair(1, () => add_streams(s, s)); const element_of_s = (n: number): number => math_pow(2, n);');
   await exercise.getByRole('button', { name: 'Check' }).click();
   await expect(status).toHaveText('4 / 4 hidden tests pass');
 });

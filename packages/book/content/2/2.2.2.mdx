@@ -10,7 +10,7 @@ pair(list(1, 2), list(3, 4));
 
 is a list of three items, the first of which is itself a list, `list(1, 2)`. Its list notation is `list(list(1, 2), 3, 4)`.
 
-Another way to think of sequences whose elements are sequences is as *trees*. The elements of the sequence are the branches of the tree, and elements that are themselves sequences are subtrees. Seen as a tree, `x` below has three branches: the first is a subtree with two leaves, 1 and 2, and the other two are the leaves 3 and 4.
+Another way to think of sequences whose elements are sequences is as *trees*. The elements of the sequence are the branches of the tree, and elements that are themselves sequences are subtrees. Seen as a tree, `x` below has three branches: the first is a subtree with two leaves, 1 and 2, and the other two are the leaves 3 and 4. The programs of this section describe a tree with the type `Tree<T>`: a list whose elements are leaves of type `T` or trees.
 
 </Prose>
 
@@ -166,9 +166,8 @@ should be `list(1, list(4, list(9, 16), 25), list(36, 49))`. Declare `square_tre
 Abstract your answer to Exercise 2.30 to produce a function `tree_map` with the property that `square_tree` could be declared as
 
 ```js
-function square_tree(tree) {
-  return tree_map(square, tree);
-}
+const square_tree = (tree: Tree<number>): Tree<number> =>
+  tree_map(square, tree);
 ```
 
 <Solution>

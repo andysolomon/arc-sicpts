@@ -6,7 +6,7 @@ One way to view data abstraction is as an application of the *principle of least
 
 The principle can be carried further. If we like, we can keep the ambiguity of representation even *after* the selectors and constructors are designed, and use Ben's representation *and* Alyssa's. Then we need a way to tell polar data from rectangular data. Asked for the `magnitude` of the pair (3, 4), we could not otherwise say whether to answer 5 (reading the pair as rectangular) or 3 (reading it as polar). A straightforward way to make the distinction is to include a *type tag*, the string `"rectangular"` or `"polar"`, as part of each complex number, and to use the tag to decide which selector to apply.
 
-We need a function `attach_tag` that takes a tag and contents and produces a tagged data object, and functions `type_tag` and `contents` that take it apart again. Ordinary list structure will do: the tag is the head, the contents the tail.
+We need a function `attach_tag` that takes a tag and contents and produces a tagged data object, and functions `type_tag` and `contents` that take it apart again. Ordinary list structure will do: the tag is the head, the contents the tail. A datum of type `T` with its tag attached has the type `Tagged<T>`, which is `Pair<string, T>`.
 
 </Prose>
 
@@ -18,7 +18,7 @@ The same pair (3, 4), tagged two ways. Each tagged datum is one more pair whose 
 
 <Prose>
 
-With `type_tag` we define the predicates `is_rectangular` and `is_polar`, which compare the tag with `"rectangular"` and `"polar"`. Ben and Alyssa now change their code so that the two representations can coexist. Whenever Ben constructs a complex number he tags it as rectangular, and whenever Alyssa constructs one she tags it as polar. They must also make sure that the names of their functions do not conflict, since one program has room for only one `real_part`. One way is for Ben to append the suffix `rectangular` to the name of each of his functions and for Alyssa to append `polar` to hers.
+With `type_tag` we define the predicates `is_rectangular` and `is_polar`, which compare the tag with `"rectangular"` and `"polar"`. Ben and Alyssa now change their code so that the two representations can coexist. Whenever Ben constructs a complex number he tags it as rectangular, and whenever Alyssa constructs one she tags it as polar. They must also make sure that the names of their functions do not conflict, since one program has room for only one `real_part`. One way is for Ben to append the suffix `rectangular` to the name of each of his functions and for Alyssa to append `polar` to hers. Their untagged pairs get the types `Rectangular` and `Polar`, and a `Complex` number is either one with its tag attached.
 
 Each generic selector is then a function that checks the tag of its argument and calls the appropriate function for that type. To find the real part, `real_part` looks at the tag to decide between Ben's `real_part_rectangular` and Alyssa's `real_part_polar`; either way it uses `contents` to extract the bare, untagged datum and passes that on. The arithmetic functions `add_complex` and the rest are those of §2.4.1, unchanged, because the selectors they call are generic and work with either representation. Finally we must choose which representation to construct, and a reasonable choice is rectangular numbers whenever we have real and imaginary parts and polar numbers whenever we have magnitudes and angles.
 

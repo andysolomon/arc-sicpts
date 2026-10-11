@@ -1,4 +1,4 @@
-import { jointAccountProgram, peterPaulDepositProgram } from '@sicp/lab';
+import { awaitInterleavingProgram, jointAccountProgram, peterPaulDepositProgram } from '@sicp/lab';
 
 <Prose>
 
@@ -46,11 +46,19 @@ Sixty runs, seed 1 to 60, each interleaving the two threads its own way. The bar
 
 The requirement could be weakened further. A program that simulates a physical system, for example, may tolerate threads that occasionally see slightly stale values, as long as the results stay within some bound. Such cases need their own arguments. For bank accounts and most of what follows, "the same result as some serial order" is the standard we want, and the next subsection builds the tools to meet it.
 
+**Interleaving at `await`.** JavaScript itself runs one thing at a time. It has no threads that a scheduler can interrupt between any two steps; its concurrency comes from `async` functions, which interleave in a more orderly way. An async function runs until it reaches `await`. There it stops, its caller carries on, and the rest of the function waits in a queue until the work in hand is done. So two async functions can interleave only at their `await`s, never in the middle of `balance - amount`. That narrows the danger without removing it: a function that reads shared state, awaits, and then writes is open to exactly the lost withdrawal of figure 3.29.
+
 </Prose>
+
+<Example index={2} file="async_withdrawals.sicp" source={awaitInterleavingProgram}>
+
+Peter's withdrawal reads 100 and awaits; Paul's reads 100 and awaits; then Peter's writes 90 and Paul's writes 75 over it. Unlike the threads above, this happens on every run, with no seed, because the only places to switch are the `await`s. Move `await null;` above `const current = balance;` and the balance ends at 65 every time. `await null` stands for any wait, such as a request to a server, during which other work can run.
+
+</Example>
 
 <UnderTheHood file="packages/lab/src/evaluator/machine.ts">
 
-`concurrent_execute` is carried out by the machine itself, in `spawn`: each function gets its own stack of continuations, and the caller is marked as waiting until all of them end. After every step, `schedule` keeps the running thread with probability 0.7 and otherwise picks one of the runnable threads at random. Its choices come from a small random number generator, so a run with a `seed` repeats exactly; the animations above pass seeds to the worker. `chapter-3/concurrency.test.ts` enumerates every interleaving of the reads and writes and checks that the machine's 300 seeded runs of the deposit program produce exactly the five possible balances, 30, 50, 70, 90 and 140, and that the joint account ends at 65, 75 or 90.
+`concurrent_execute` is carried out by the machine itself, in `spawn`: each function gets its own stack of continuations, and the caller is marked as waiting until all of them end. After every step, `schedule` keeps the running thread with probability 0.7 and otherwise picks one of the runnable threads at random. Its choices come from a small random number generator, so a run with a `seed` repeats exactly; the animations above pass seeds to the worker. `chapter-3/concurrency.test.ts` enumerates every interleaving of the reads and writes and checks that the machine's 300 seeded runs of the deposit program produce exactly the five possible balances, 30, 50, 70, 90 and 140, and that the joint account ends at 65, 75 or 90. `await` is the machine's work too: `suspend` lifts the waiting function's part of the stack off and hands its caller the function's promise, and a queued job puts the frames back once the stack is empty. The same test file checks that the async withdrawals end at 75 on every seed, and at 65 once the read follows the `await`.
 
 </UnderTheHood>
 

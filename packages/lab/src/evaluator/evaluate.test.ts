@@ -105,4 +105,87 @@ describe('evaluate', () => {
     });
     expect(outcome).toMatchObject({ status: 'done', value: 5 });
   });
+
+  it('runs typed programs exactly as the same programs without types', () => {
+    expect(value('const square = (x: number): number => x * x;\nsquare(square(3));')).toBe(81);
+    expect(value('type Op = (x: number) => number;\nconst twice = (f: Op): Op => (x: number): number => f(f(x));\ntwice(x => x + 3)(1);')).toBe(7);
+  });
+
+  it('collects rest parameters into a list and spreads lists into arguments', () => {
+    expect(value('const f = (a: number, ...rest: List<number>): number => a + length(rest);\nf(10, 1, 2, 3);')).toBe(13);
+    expect(value('const f = (...rest: List<number>): List<number> => rest;\nf();')).toBe(null);
+    expect(value('const xs = list(3, 1, 2);\nmath_max(...xs) + math_min(...xs);')).toBe(4);
+    expect(value('const xs = list(2, 3);\nlist_to_string(list(1, ...xs, 4));')).toBe('list(1, 2, 3, 4)');
+    expect(errorOf('const f = (a: number, ...rest: List<number>): number => a;\nf();')).toContain('f expects at least 1 argument(s), got 0');
+    expect(errorOf('math_max(...5);')).toContain('... expects a list to spread into arguments, got number');
+  });
+
+  it('coalesces only null and undefined, leaving the right operand unevaluated otherwise', () => {
+    expect(value('list_to_string(list(null ?? 1, undefined ?? 2, 0 ?? 3, false ?? 4, "" ?? 5));')).toBe('list(1, 2, 0, false, "")');
+    expect(value('let n = 0;\n1 ?? (n = 1);\nn;')).toBe(0);
+  });
+
+  it('skips an optional call, and the rest of its chain, when the function is null or undefined', () => {
+    expect(value('const f = null;\nf?.(1);')).toBe(undefined);
+    expect(value('const f = undefined;\nf?.(1)(2)(3);')).toBe(undefined);
+    expect(value('let n = 0;\nconst f = null;\nf?.(n = 1);\nn;')).toBe(0);
+    expect(value('const f = (x: number): number => x + 1;\nf?.(1);')).toBe(2);
+    expect(errorOf('const f = null;\n(f?.(1))(2);')).toContain('Cannot apply undefined');
+  });
+
+  it('runs an async function up to its first await and resumes it once the stack is empty', () => {
+    const outcome = evaluate(`const task = async (name: string): Promise<string> => {
+  display(name, "start");
+  await null;
+  display(name, "end");
+  return name;
+};
+const a = task("a");
+const b = task("b");
+display("main", "sync");
+await a;
+await b;`);
+    expect(outcome).toMatchObject({ status: 'done', value: 'b' });
+    expect(outcome.output).toEqual(['start "a"', 'start "b"', 'sync "main"', 'end "a"', 'end "b"']);
+  });
+
+  it('interleaves async functions only where they await', () => {
+    const lostUpdate = `let balance = 100;
+const withdraw = async (amount: number): Promise<undefined> => {
+  const current = balance;
+  await null;
+  balance = current - amount;
+};
+const peter = withdraw(10);
+const paul = withdraw(20);
+await peter;
+await paul;
+balance;`;
+    expect(value(lostUpdate)).toBe(80);
+    expect(value(lostUpdate.replace('  const current = balance;\n  await null;\n', '  await null;\n  const current = balance;\n'))).toBe(70);
+  });
+
+  it('fulfils a promise with the value of a promise its function returns', () => {
+    expect(value('const a = async (): Promise<number> => 1;\nconst b = async (): Promise<number> => a();\nawait b();')).toBe(1);
+    expect(value('const a = async (): Promise<number> => 1;\nstringify(a());')).toBe('promise[1]');
+    expect(value('const loop = async (n: number): Promise<number> => n === 0 ? 0 : loop(n - 1);\nawait loop(5000);')).toBe(0);
+  });
+
+  it('reports a program that waits for a promise nothing will fulfil', () => {
+    expect(errorOf(`let q = null;
+const f = async (): Promise<number> => {
+  await null;
+  await q;
+  return 1;
+};
+q = f();
+await q;`)).toBe('Line 8: The program is waiting for a promise that is never fulfilled');
+  });
+
+  it('gives parse the stripped program, and refuses syntax the tagged lists of §4.1.2 cannot express', () => {
+    expect(value('equal(parse("const f = (x: number): number => x;"), parse("const f = x => x;"));')).toBe(true);
+    expect(errorOf('parse("a ?? b;");')).toContain('nullish coalescing (??) has no tagged-list representation');
+    expect(errorOf('parse("f(...xs);");')).toContain('a spread argument (...) has no tagged-list representation');
+    expect(errorOf('parse("async () => 1;");')).toContain('an async function has no tagged-list representation');
+  });
 });

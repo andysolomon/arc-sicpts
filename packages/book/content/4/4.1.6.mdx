@@ -18,7 +18,7 @@ The evaluator of §4.1.1 achieves this simultaneous scope by scanning out the de
 
 <Example index={0} file="mutual_recursion.sicp" source={mutualRecursionProgram} prelude={metacircularPrelude} budget={5000000}>
 
-Both function declarations are evaluated before `is_even(7)` is: the frame scanned out for `f`’s body binds both names from the start, so each finds the other. Seven is odd, and the value is `false`.
+Both declarations are evaluated before `is_even(7)` is: the frame scanned out for `f`’s body binds both names from the start, so each finds the other. Seven is odd, and the value is `false`.
 
 </Example>
 
@@ -29,21 +29,21 @@ Both function declarations are evaluated before `is_even(7)` is: the frame scann
 Scanning out costs time on every evaluation of a block. Alternatively, a block could start with an empty frame, and each declaration could add its binding as it is evaluated:
 
 ```js
-function eval_block(component, env) {
+const eval_block = (component: Component, env: Environment): unknown => {
     const body = block_body(component);
     return evaluate(body, extend_environment(null, null, env));
-}
-function eval_declaration(component, env) {
+};
+const eval_declaration = (component: Component, env: Environment): undefined => {
     add_binding_to_frame(
         declaration_symbol(component),
         evaluate(declaration_value_expression(component), env),
         first_frame(env));
     return undefined;
-}
-function add_binding_to_frame(symbol, value, frame) {
+};
+const add_binding_to_frame = (symbol: string, value: unknown, frame: Frame): void => {
     set_head(frame, pair(symbol, head(frame)));
     set_tail(frame, pair(value, tail(frame)));
-}
+};
 ```
 
 Now a declaration’s scope is only the part of the block that follows it. `f` above still works, but for an accidental reason: its internal declarations come first, so neither function is applied before both exist. Sequential processing gives the same results as scanning out whenever the declarations come first in a body and their value expressions do not use the declared names. It is cheaper and simpler, but which declaration a name refers to may then depend on the order in which statements are evaluated. Not everyone agrees whether that is acceptable. Consider this program, from exercise 4.19:
@@ -105,14 +105,13 @@ Eva writes programs in which function declarations and other statements are inte
 </Exercise>
 <Exercise id="4.18">
 
-Check that the expression above computes factorials. Devise an analogous expression for computing Fibonacci numbers. Then complete this alternative declaration of `f`, which has no internal function declarations, by filling in the arguments marked `??`:
+Check that the expression above computes factorials. Devise an analogous expression for computing Fibonacci numbers. Then complete this alternative declaration of `f`, which has no internal declarations, by filling in the arguments marked `??`:
 
 ```js
-function f(x) {
-    return ((is_even, is_odd) => is_even(is_even, is_odd, x))
-           ((is_ev, is_od, n) => n === 0 ? true : is_od(??, ??, ??),
-            (is_ev, is_od, n) => n === 0 ? false : is_ev(??, ??, ??));
-}
+const f = (x: number): boolean =>
+    ((is_even, is_odd) => is_even(is_even, is_odd, x))
+    ((is_ev, is_od, n) => n === 0 ? true : is_od(??, ??, ??),
+     (is_ev, is_od, n) => n === 0 ? false : is_ev(??, ??, ??));
 ```
 
 <Solution>

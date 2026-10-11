@@ -1,23 +1,19 @@
-export const compound = `function square(x) {
-  return x * x;
-}
+export const compound = `const square = (x: number): number => x * x;
 
-function sum_of_squares(x, y) {
-  return square(x) + square(y);
-}
+const sum_of_squares = (x: number, y: number): number => square(x) + square(y);
 
-function f(a) {
-  return sum_of_squares(a + 1, a * 2);
-}
+const f = (a: number): number => sum_of_squares(a + 1, a * 2);
 
 f(5);
 `;
 
 <Prose>
 
-Names let us refer to values. A *function declaration* lets us name a computation. `square` below says: to square something, multiply it by itself. The something is called `x`, a *parameter*, a name that stands for whatever the function is eventually given.
+Names let us refer to values. A *function* packages a computation so that it, too, can be named. `square` below says: to square something, multiply it by itself. The something is called `x`, a *parameter*, a name that stands for whatever the function is eventually given. After the arrow `=>` comes the function's *body*, `x * x`, the expression whose value the function returns. A function is a value like any other, and the constant declaration binds it to the name `square` just as `const size = 2;` bound a number in §1.1.2.
 
-Declaring the function runs nothing. The declaration creates a function value and binds it to the name `square` in the environment, where it waits. An *application* such as `square(21)` evaluates the argument, hands the value to the function, and the function's `return` statement produces the value of the whole application.
+This is also the first program in the book with *type annotations*. `x: number` says that the parameter takes a number, and the `: number` after the parentheses says that the function returns one. The Laboratory checks that every annotation is well formed and then strips it before running the program, so annotations document a function but do not change what it does. [Appendix A](/appendix/grammar) has the details.
+
+Declaring the function runs nothing. The declaration creates a function value and binds it to the name `square` in the environment, where it waits. An *application* such as `square(21)` evaluates the argument, hands the value to the function, and the body, evaluated with `x` standing for 21, produces the value of the whole application.
 
 </Prose>
 

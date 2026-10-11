@@ -7,27 +7,24 @@ export const exercise_3_9: ExerciseSpec = {
   id: '3.9',
   starter: `// The two factorials of section 1.2.1:
 //
-// function factorial(n) {               // recursive
-//   return n === 1 ? 1 : n * factorial(n - 1);
-// }
+// const factorial = (n: number): number =>     // recursive
+//   n === 1 ? 1 : n * factorial(n - 1);
 //
-// function factorial(n) {               // iterative
-//   return fact_iter(1, 1, n);
-// }
-// function fact_iter(product, counter, max_count) {
-//   return counter > max_count
-//          ? product
-//          : fact_iter(counter * product, counter + 1, max_count);
-// }
+// const factorial = (n: number): number =>     // iterative
+//   fact_iter(1, 1, n);
+// const fact_iter = (product: number, counter: number, max_count: number): number =>
+//   counter > max_count
+//     ? product
+//     : fact_iter(counter * product, counter + 1, max_count);
 
 // How many frames does evaluating factorial(n) create, for n >= 1?
-function frames_recursive(n) {
+const frames_recursive = (n: number): number => {
   return 0; // your answer
-}
+};
 
-function frames_iterative(n) {
+const frames_iterative = (n: number): number => {
   return 0; // your answer
-}
+};
 
 // Which frame does every one of those frames extend? "program", or the
 // frame of the call that made it ("caller")?
@@ -46,14 +43,12 @@ const most_pending_iterative = 0; // your answer
     { name: 'the enclosing environment', kind: 'value', expr: 'enclosing', expected: 'program' },
     { name: 'frames pending at once', kind: 'value', expr: 'most_pending_recursive * 100 + most_pending_iterative', expected: 601 },
   ],
-  solution: `function frames_recursive(n) {
-  return n;
-}
+  solution: `const frames_recursive = (n: number): number => n;
 
-function frames_iterative(n) {
+const frames_iterative = (n: number): number => {
   // one for factorial(n), then fact_iter with counter = 1, 2, ..., n + 1
   return 1 + (n + 1);
-}
+};
 
 const enclosing = "program";
 
@@ -67,16 +62,15 @@ export const exercise_3_10: ExerciseSpec = {
   starter: `// Rewrite make_withdraw so that its parameter is initial_amount and
 // balance is created separately, by applying a lambda expression
 // with parameter balance to initial_amount.
-function make_withdraw(balance) {
-  return amount => {
-           if (balance >= amount) {
-             balance = balance - amount;
-             return balance;
-           } else {
-             return "insufficient funds";
-           }
-         };
-}
+const make_withdraw = (balance: number): ((amount: number) => number | string) =>
+  amount => {
+    if (balance >= amount) {
+      balance = balance - amount;
+      return balance;
+    } else {
+      return "insufficient funds";
+    }
+  };
 
 // How many frames does evaluating make_withdraw(100) now create?
 const frames_per_make_withdraw = 0; // your answer
@@ -100,17 +94,16 @@ const its_enclosing_frame_binds = ""; // your answer
     { name: 'frames per make_withdraw', kind: 'value', expr: 'frames_per_make_withdraw', expected: 2 },
     { name: 'the frames W1 reaches', kind: 'value', expr: 'pointed_at_frame_binds + " in " + its_enclosing_frame_binds', expected: 'balance in initial_amount' },
   ],
-  solution: `function make_withdraw(initial_amount) {
-  return (balance =>
-            amount => {
-              if (balance >= amount) {
-                balance = balance - amount;
-                return balance;
-              } else {
-                return "insufficient funds";
-              }
-            })(initial_amount);
-}
+  solution: `const make_withdraw = (initial_amount: number): ((amount: number) => number | string) =>
+  (balance =>
+     amount => {
+       if (balance >= amount) {
+         balance = balance - amount;
+         return balance;
+       } else {
+         return "insufficient funds";
+       }
+     })(initial_amount);
 
 const frames_per_make_withdraw = 2;
 const pointed_at_frame_binds = "balance";

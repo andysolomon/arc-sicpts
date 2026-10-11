@@ -7,23 +7,25 @@ With the evaluator we hold a description, in JavaScript, of the process by which
 Our evaluator reduces everything, in the end, to the application of primitive functions. All it needs in order to run is a way to call on the underlying system for those. There must be a binding for each primitive function and each operator, so that when `evaluate` meets the name `head` or `+` it finds an object to pass to `apply`. The global environment provides them, together with constants such as `undefined`:
 
 ```js
-function setup_environment() {
-    return extend_environment(append(primitive_function_symbols,
-                                     primitive_constant_symbols),
-                              append(primitive_function_objects,
-                                     primitive_constant_values),
-                              the_empty_environment);
-}
+const setup_environment = (): Environment =>
+    extend_environment(append(primitive_function_symbols,
+                              primitive_constant_symbols),
+                       append(primitive_function_objects,
+                              primitive_constant_values),
+                       the_empty_environment);
 const the_global_environment = setup_environment();
 ```
 
 How primitives are represented does not matter, as long as `is_primitive_function` and `apply_primitive_function` agree. We make a primitive a list of the tag `"primitive"` and the function of the underlying language that implements it:
 
 ```js
-function is_primitive_function(fun) {
-    return is_tagged_list(fun, "primitive");
-}
-function primitive_implementation(fun) { return head(tail(fun)); }
+type PrimitiveFunction = List<unknown>;
+
+const is_primitive_function = (fun: unknown): boolean =>
+    is_tagged_list(fun, "primitive");
+
+const primitive_implementation = (fun: PrimitiveFunction): ((...args: List<unknown>) => unknown) =>
+    head(tail(fun));
 
 const primitive_functions = list(list("head",    head             ),
                                  list("tail",    tail             ),
@@ -39,23 +41,21 @@ const primitive_function_objects =
         primitive_functions);
 ```
 
-The constants are set up the same way from `primitive_constants`. To apply a primitive we apply its implementation with the underlying system:
+The constants are set up the same way from `primitive_constants`. To apply a primitive we apply its implementation with the underlying system, spreading the list of arguments into the call:
 
 ```js
-function apply_primitive_function(fun, arglist) {
-    return apply_in_underlying_javascript(
-               primitive_implementation(fun), arglist);
-}
+const apply_primitive_function = (fun: PrimitiveFunction, arglist: List<unknown>): unknown =>
+    primitive_implementation(fun)(...arglist);
 ```
 
-`apply_in_underlying_javascript` takes a function and a *list* of arguments; in JavaScript it turns the list into an array and uses the function’s `apply` method.
+`...arglist` passes the elements of the list as separate arguments. The book's JavaScript, whose Source had no spread syntax, writes `apply_in_underlying_javascript(primitive_implementation(fun), arglist)`, a primitive that does the same; the Laboratory still provides it.
 
 ## A driver loop
 
 The book gives the evaluator a *driver loop*, modelled on the read-evaluate-print loop of the underlying system: it prompts for a program, parses it, evaluates it, prints the result after an *output prompt*, and goes round again. Like a JavaScript program, each input is treated as if it were in a block: its declarations are scanned out and bound to `"*unassigned*"` in a new frame, and the environment it ends with is passed on to the next input. A page cannot stop and wait for typing, so here the inputs come from a list instead of from `prompt`:
 
 ```js
-function driver_loop(env, inputs) {
+const driver_loop = (env: Environment, inputs: List<string>): void => {
     if (is_null(inputs)) {
        display("evaluator terminated");
     } else {
@@ -67,7 +67,7 @@ function driver_loop(env, inputs) {
        user_print(output_prompt, output);
        return driver_loop(program_env, tail(inputs));
     }
-}
+};
 ```
 
 `user_print` prints compound functions as `"< compound-function >"` rather than printing their environments, which are very long lists and may even contain cycles.
@@ -94,7 +94,7 @@ Any function of the underlying language can be made a primitive, under any name.
 
 <UnderTheHood file="packages/lab/src/evaluator/machine.ts">
 
-`apply_in_underlying_javascript` is the one primitive the Laboratory’s machine (`evaluator/machine.ts`) treats specially: it spreads the list into arguments and applies the function in place, so that it can apply lambda expressions such as `(x, y) => x + y`, which no ordinary primitive could call. The setup and the driver loop are `evaluatorSetup` in `chapter-4/metacircular.ts`. The test `chapter-4/metacircular.test.ts` asserts the driver loop’s three lines of output, and that the second example prints 26 and then fails to apply a `"compound_function"`.
+A spread argument is the Laboratory machine's own work (`evaluator/machine.ts`): it evaluates the list and passes its elements as arguments, so the evaluator can apply lambda expressions such as `(x, y) => x + y` found in its primitive table, as well as primitives. The setup and the driver loop are `evaluatorSetup` in `chapter-4/metacircular.ts`. The test `chapter-4/metacircular.test.ts` asserts the driver loop’s three lines of output, and that the second example prints 26 and then fails to apply a `"compound_function"`.
 
 </UnderTheHood>
 

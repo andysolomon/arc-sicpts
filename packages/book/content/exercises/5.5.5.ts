@@ -24,8 +24,8 @@ import { close, type ExerciseSpec } from './spec.ts';
 /** Steps for compiling in Source and running the result. */
 const BUDGET = 5_000_000;
 
-const recursiveFactorial = 'function factorial(n) { return n === 1 ? 1 : factorial(n - 1) * n; }';
-const alternativeFactorial = 'function factorial_alt(n) { return n === 1 ? 1 : n * factorial_alt(n - 1); }';
+const recursiveFactorial = 'const factorial = (n: number): number => n === 1 ? 1 : factorial(n - 1) * n;';
+const alternativeFactorial = 'const factorial_alt = (n: number): number => n === 1 ? 1 : n * factorial_alt(n - 1);';
 
 /** A Source expression running `program` with `compile_and_go` and then each input; its value is the last value printed. */
 const compileAndGo = (program: string, inputs: string[]): string =>
@@ -62,14 +62,14 @@ export const exercise_5_37: ExerciseSpec = {
 // with the compiled recursive and iterative functions.
 // To measure, run for instance
 //   set_inputs(list("factorial(3);", "factorial(4);"));
-//   compile_and_go(parse(\`function factorial(n) { ... }\`));
-function recursive_depth(n) {
+//   compile_and_go(parse(\`const factorial = (n: number): number => ...;\`));
+const recursive_depth = (n: number): number => {
     // your answer
-}
+};
 
-function iterative_depth(n) {
+const iterative_depth = (n: number): number => {
     // your answer
-}
+};
 `,
   tests: [
     { name: 'recursive, n = 2', kind: 'value', expr: 'recursive_depth(2)', expected: 5 },
@@ -78,13 +78,9 @@ function iterative_depth(n) {
     { name: 'iterative, n = 2', kind: 'value', expr: 'iterative_depth(2)', expected: 3 },
     { name: 'iterative, n = 10', kind: 'value', expr: 'iterative_depth(10)', expected: 3 },
   ],
-  solution: `function recursive_depth(n) {
-    return 3 * n - 1;
-}
+  solution: `const recursive_depth = (n: number): number => 3 * n - 1;
 
-function iterative_depth(n) {
-    return 3;
-}
+const iterative_depth = (n: number): number => 3;
 `,
 };
 
@@ -102,13 +98,13 @@ const program = \`
     { name: 'it compiles to the code of the figure', kind: 'value', expr: 'check_same_code(program)', expected: true },
   ],
   solution: `const program = \`
-function f(x) {
-    return x + g(x + 2);
-}\`;
+const f = (x: number): number =>
+    x + g(x + 2);\`;
 `,
 };
 
-const orderProgram = 'let order = null; function note(x) { order = pair(x, order); return x; } list(note(1), note(2), note(3)); order;';
+const orderProgram =
+  'let order: List<number> = null; const note = (x: number): number => { order = pair(x, order); return x; }; list(note(1), note(2), note(3)); order;';
 
 export const exercise_5_39: ExerciseSpec = {
   id: '5.39',
@@ -126,12 +122,12 @@ ${argumentOrderFunctions}
     { name: 'the order of the compiler of §5.5.3', kind: 'value', expr: 'argument_order', expected: 'right to left' },
     { name: 'arguments are now evaluated from left to right', kind: 'value', expr: `equal(${compileAndGo(orderProgram, [])}, list(3, 2, 1))`, expected: true },
     { name: 'compiled factorial still computes 5!', kind: 'value', expr: compileAndGo(recursiveFactorial, ['factorial(5);']), expected: 120 },
-    { name: 'arguments arrive in their places', kind: 'value', expr: compileAndGo('function f(a, b, c) { return a - b * c; } f(20, 3, 4);', []), expected: 8 },
-    { name: 'a call without arguments', kind: 'value', expr: compileAndGo('function seven() { return 7; } seven();', []), expected: 7 },
+    { name: 'arguments arrive in their places', kind: 'value', expr: compileAndGo('const f = (a: number, b: number, c: number): number => a - b * c; f(20, 3, 4);', []), expected: 8 },
+    { name: 'a call without arguments', kind: 'value', expr: compileAndGo('const seven = (): number => 7; seven();', []), expected: 7 },
   ],
   solution: `const argument_order = "right to left";
 
-function construct_arglist(arg_codes) {
+const construct_arglist = (arg_codes: List<InstructionSequence>): InstructionSequence => {
     if (is_null(arg_codes)) {
         return make_instruction_sequence(null, list("argl"),
                    list(assign("argl", constant(null))));
@@ -148,9 +144,9 @@ function construct_arglist(arg_codes) {
                      code_to_get_first_arg,
                      code_to_get_rest_args(tail(arg_codes)));
     }
-}
+};
 
-function code_to_get_rest_args(arg_codes) {
+const code_to_get_rest_args = (arg_codes: List<InstructionSequence>): InstructionSequence => {
     const code_for_next_arg =
         preserving(list("argl"),
             head(arg_codes),
@@ -162,7 +158,7 @@ function code_to_get_rest_args(arg_codes) {
            : preserving(list("env"),
                         code_for_next_arg,
                         code_to_get_rest_args(tail(arg_codes)));
-}
+};
 `,
 };
 
@@ -180,7 +176,11 @@ ${preservingFunction}
     { name: 'it still computes 5!', kind: 'value', expr: compileAndGo(recursiveFactorial, ['factorial(5);']), expected: 120 },
     { name: 'and 10!', kind: 'value', expr: compileAndGo(recursiveFactorial, ['factorial(10);']), expected: 3628800 },
   ],
-  solution: `function preserving(regs, seq1, seq2) {
+  solution: `const preserving = (
+    regs: List<string>,
+    seq1: InstructionSequence,
+    seq2: InstructionSequence
+): InstructionSequence => {
     if (is_null(regs)) {
         return append_instruction_sequences(seq1, seq2);
     } else {
@@ -196,7 +196,7 @@ ${preservingFunction}
                                      list(restore(first_reg))))),
                    seq2);
     }
-}
+};
 `,
 };
 
@@ -205,14 +205,14 @@ export const exercise_5_41: ExerciseSpec = {
   context: openCodingContext,
   budget: BUDGET,
   starter: `// Compile the argument expressions to arg1 and arg2.
-function spread_arguments(argument_expressions) {
+const spread_arguments = (argument_expressions: List<Component>): InstructionSequence => {
     // your answer
-}
+};
 
 // Code for an application of ===, *, - or + to two arguments.
-function compile_open_coded(component, target, linkage) {
+const compile_open_coded = (component: Component, target: Target, linkage: Linkage): InstructionSequence => {
     // your answer
-}
+};
 
 // Make compile dispatch to compile_open_coded.
 ${compileFunction}
@@ -226,15 +226,14 @@ ${compileFunction}
     { name: 'and factorial_alt too', kind: 'value', expr: compileAndGo(alternativeFactorial, ['factorial_alt(6);']), expected: 720 },
     { name: 'open-coded arguments of open-coded operators', kind: 'value', expr: compileAndGo('(1 + 2) * (3 + 4) - (10 - 2 * 3);', []), expected: 17 },
   ],
-  solution: `function is_open_coded(component) {
-    return is_application(component) &&
-           is_name(function_expression(component)) &&
-           ! is_null(member(symbol_of_name(function_expression(component)),
-                            list("===", "*", "-", "+"))) &&
-           length(arg_expressions(component)) === 2;
-}
+  solution: `const is_open_coded = (component: Component): boolean =>
+    is_application(component) &&
+    is_name(function_expression(component)) &&
+    ! is_null(member(symbol_of_name(function_expression(component)),
+                     list("===", "*", "-", "+"))) &&
+    length(arg_expressions(component)) === 2;
 
-function spread_arguments(argument_expressions) {
+const spread_arguments = (argument_expressions: List<Component>): InstructionSequence => {
     const arg1_code = compile(head(argument_expressions), "arg1", "next");
     const arg2_code = compile(head(tail(argument_expressions)),
                               "arg2", "next");
@@ -243,9 +242,9 @@ function spread_arguments(argument_expressions) {
                preserving(list("arg1"),
                    arg2_code,
                    make_instruction_sequence(list("arg1"), null, null)));
-}
+};
 
-function compile_open_coded(component, target, linkage) {
+const compile_open_coded = (component: Component, target: Target, linkage: Linkage): InstructionSequence => {
     const operator = symbol_of_name(function_expression(component));
     return end_with_linkage(linkage,
                append_instruction_sequences(
@@ -255,40 +254,39 @@ function compile_open_coded(component, target, linkage) {
                        list(assign(target,
                                    list(op(operator),
                                         reg("arg1"), reg("arg2")))))));
-}
+};
 
-function compile(component, target, linkage) {
-    return is_literal(component)
-           ? compile_literal(component, target, linkage)
-           : is_name(component)
-           ? compile_name(component, target, linkage)
-           : is_open_coded(component)
-           ? compile_open_coded(component, target, linkage)
-           : is_application(component)
-           ? compile_application(component, target, linkage)
-           : is_operator_combination(component)
-           ? compile(operator_combination_to_application(component),
-                     target, linkage)
-           : is_conditional(component)
-           ? compile_conditional(component, target, linkage)
-           : is_lambda_expression(component)
-           ? compile_lambda_expression(component, target, linkage)
-           : is_sequence(component)
-           ? compile_sequence(sequence_statements(component),
-                              target, linkage)
-           : is_block(component)
-           ? compile_block(component, target, linkage)
-           : is_return_statement(component)
-           ? compile_return_statement(component, target, linkage)
-           : is_function_declaration(component)
-           ? compile(function_decl_to_constant_decl(component),
-                     target, linkage)
-           : is_declaration(component)
-           ? compile_declaration(component, target, linkage)
-           : is_assignment(component)
-           ? compile_assignment(component, target, linkage)
-           : error(component, "unknown component type -- compile");
-}
+const compile = (component: Component, target: Target, linkage: Linkage): InstructionSequence =>
+    is_literal(component)
+    ? compile_literal(component, target, linkage)
+    : is_name(component)
+    ? compile_name(component, target, linkage)
+    : is_open_coded(component)
+    ? compile_open_coded(component, target, linkage)
+    : is_application(component)
+    ? compile_application(component, target, linkage)
+    : is_operator_combination(component)
+    ? compile(operator_combination_to_application(component),
+              target, linkage)
+    : is_conditional(component)
+    ? compile_conditional(component, target, linkage)
+    : is_lambda_expression(component)
+    ? compile_lambda_expression(component, target, linkage)
+    : is_sequence(component)
+    ? compile_sequence(sequence_statements(component),
+                       target, linkage)
+    : is_block(component)
+    ? compile_block(component, target, linkage)
+    : is_return_statement(component)
+    ? compile_return_statement(component, target, linkage)
+    : is_function_declaration(component)
+    ? compile(function_decl_to_constant_decl(component),
+              target, linkage)
+    : is_declaration(component)
+    ? compile_declaration(component, target, linkage)
+    : is_assignment(component)
+    ? compile_assignment(component, target, linkage)
+    : error(component, "unknown component type -- compile");
 `,
 };
 
@@ -297,14 +295,16 @@ function compile(component, target, linkage) {
 export const exercise_5_42: ExerciseSpec = {
   id: '5.42',
   context: lexicalAddressEnvironment,
-  starter: `// An address is list(frame_number, displacement_number).
-function lexical_address_lookup(address, env) {
-    // your answer
-}
+  starter: `// A lexical address is list(frame_number, displacement_number).
+type LexicalAddress = List<number>;
 
-function lexical_address_assign(address, value, env) {
+const lexical_address_lookup = (address: LexicalAddress, env: Environment): unknown => {
     // your answer
-}
+};
+
+const lexical_address_assign = (address: LexicalAddress, value: unknown, env: Environment): void => {
+    // your answer
+};
 `,
   tests: [
     { name: 'x two frames out', kind: 'value', expr: 'lexical_address_lookup(list(2, 0), check_environment())', expected: 3 },
@@ -315,29 +315,30 @@ function lexical_address_assign(address, value, env) {
     { name: 'assigning an unassigned name', kind: 'value', expr: 'check_assign_then_lookup(list(1, 4), 9)', expected: 9 },
     { name: 'assigning the outer y', kind: 'value', expr: 'check_assign_then_lookup(list(2, 1), 40)', expected: 40 },
   ],
-  solution: `function lexical_address_values(address, env) {
-    function frame(n, env) {
-        return n === 0
-               ? first_frame(env)
-               : frame(n - 1, enclosing_environment(env));
-    }
-    function drop(k, values) {
-        return k === 0 ? values : drop(k - 1, tail(values));
-    }
+  solution: `// A lexical address is list(frame_number, displacement_number).
+type LexicalAddress = List<number>;
+
+const lexical_address_values = (address: LexicalAddress, env: Environment): List<unknown> => {
+    const frame = (n: number, env: Environment): Frame =>
+        n === 0
+        ? first_frame(env)
+        : frame(n - 1, enclosing_environment(env));
+    const drop = <T>(k: number, values: List<T>): List<T> =>
+        k === 0 ? values : drop(k - 1, tail(values));
     return drop(head(tail(address)),
                 frame_values(frame(head(address), env)));
-}
+};
 
-function lexical_address_lookup(address, env) {
+const lexical_address_lookup = (address: LexicalAddress, env: Environment): unknown => {
     const value = head(lexical_address_values(address, env));
     return value === "*unassigned*"
            ? error(address, "unassigned name")
            : value;
-}
+};
 
-function lexical_address_assign(address, value, env) {
+const lexical_address_assign = (address: LexicalAddress, value: unknown, env: Environment): void => {
     set_head(lexical_address_values(address, env), value);
-}
+};
 `,
 };
 
@@ -345,9 +346,16 @@ const compileTimeEnvironment = 'list(list("y", "z"), list("a", "b", "c", "d", "e
 
 export const exercise_5_44: ExerciseSpec = {
   id: '5.44',
-  starter: `function find_symbol(symbol, compile_time_environment) {
+  starter: `// A compile-time environment is a list of frames, each a list of symbols.
+type CompileTimeEnvironment = List<List<string>>;
+type LexicalAddress = List<number>;
+
+const find_symbol = (
+    symbol: string,
+    compile_time_environment: CompileTimeEnvironment
+): LexicalAddress | "not found" => {
     // your answer
-}
+};
 `,
   tests: [
     { name: 'c is at (1, 2)', kind: 'value', expr: `equal(find_symbol("c", ${compileTimeEnvironment}), list(1, 2))`, expected: true },
@@ -356,21 +364,31 @@ export const exercise_5_44: ExerciseSpec = {
     { name: 'the innermost y', kind: 'value', expr: `equal(find_symbol("y", ${compileTimeEnvironment}), list(0, 0))`, expected: true },
     { name: 'the empty environment', kind: 'value', expr: 'find_symbol("x", null)', expected: 'not found' },
   ],
-  solution: `function find_symbol(symbol, compile_time_environment) {
-    function scan(symbols, frame_number, displacement, frames) {
-        return is_null(symbols)
-               ? search(tail(frames), frame_number + 1)
-               : head(symbols) === symbol
-               ? list(frame_number, displacement)
-               : scan(tail(symbols), frame_number, displacement + 1, frames);
-    }
-    function search(frames, frame_number) {
-        return is_null(frames)
-               ? "not found"
-               : scan(head(frames), frame_number, 0, frames);
-    }
+  solution: `// A compile-time environment is a list of frames, each a list of symbols.
+type CompileTimeEnvironment = List<List<string>>;
+type LexicalAddress = List<number>;
+
+const find_symbol = (
+    symbol: string,
+    compile_time_environment: CompileTimeEnvironment
+): LexicalAddress | "not found" => {
+    const scan = (
+        symbols: List<string>,
+        frame_number: number,
+        displacement: number,
+        frames: CompileTimeEnvironment
+    ): LexicalAddress | "not found" =>
+        is_null(symbols)
+        ? search(tail(frames), frame_number + 1)
+        : head(symbols) === symbol
+        ? list(frame_number, displacement)
+        : scan(tail(symbols), frame_number, displacement + 1, frames);
+    const search = (frames: CompileTimeEnvironment, frame_number: number): LexicalAddress | "not found" =>
+        is_null(frames)
+        ? "not found"
+        : scan(head(frames), frame_number, 0, frames);
     return search(compile_time_environment, 0);
-}
+};
 `,
 };
 
@@ -382,13 +400,13 @@ export const exercise_5_48: ExerciseSpec = {
   budget: BUDGET,
   starter: `// Stack use of compiled factorial(n): total pushes, and maximum depth
 // for n ≥ 2.
-function compiled_pushes(n) {
+const compiled_pushes = (n: number): number => {
     // your answer
-}
+};
 
-function compiled_depth(n) {
+const compiled_depth = (n: number): number => {
     // your answer
-}
+};
 
 // The limits, as n grows, of compiled / interpreted
 // and of special-purpose machine / interpreted.
@@ -408,13 +426,9 @@ const special_depth_ratio = 0;
     { name: 'special-purpose / interpreted pushes', kind: 'value', expr: close('special_pushes_ratio', 2 / 32, 1e-9), expected: true },
     { name: 'special-purpose / interpreted depth', kind: 'value', expr: close('special_depth_ratio', 2 / 5, 1e-9), expected: true },
   ],
-  solution: `function compiled_pushes(n) {
-    return 7 * n + 1;
-}
+  solution: `const compiled_pushes = (n: number): number => 7 * n + 1;
 
-function compiled_depth(n) {
-    return 3 * n - 1;
-}
+const compiled_depth = (n: number): number => 3 * n - 1;
 
 const compiled_pushes_ratio = 7 / 32;
 const compiled_depth_ratio = 3 / 5;
@@ -423,9 +437,7 @@ const special_depth_ratio = 2 / 5;
 `,
 };
 
-const fibDeclaration = `function fib(n) {
-    return n < 2 ? n : fib(n - 1) + fib(n - 2);
-}
+const fibDeclaration = `const fib = (n: number): number => n < 2 ? n : fib(n - 1) + fib(n - 2);
 `;
 
 export const exercise_5_49: ExerciseSpec = {
@@ -435,13 +447,13 @@ ${fibDeclaration}`,
   budget: BUDGET,
   starter: `// fib is provided, as in §1.2.2.
 // Stack use of compiled fib(n): total pushes, and maximum depth for n ≥ 2.
-function compiled_fib_pushes(n) {
+const compiled_fib_pushes = (n: number): number => {
     // your answer
-}
+};
 
-function compiled_fib_depth(n) {
+const compiled_fib_depth = (n: number): number => {
     // your answer
-}
+};
 
 // The limit, as n grows, of compiled / interpreted pushes.
 const fib_pushes_ratio = 0;
@@ -455,13 +467,9 @@ const fib_pushes_ratio = 0;
     { name: 'depth for fib(15)', kind: 'value', expr: 'compiled_fib_depth(15)', expected: 44 },
     { name: 'compiled / interpreted pushes', kind: 'value', expr: close('fib_pushes_ratio', 12 / 56, 1e-9), expected: true },
   ],
-  solution: `function compiled_fib_pushes(n) {
-    return 12 * fib(n + 1) - 4;
-}
+  solution: `const compiled_fib_pushes = (n: number): number => 12 * fib(n + 1) - 4;
 
-function compiled_fib_depth(n) {
-    return 3 * n - 1;
-}
+const compiled_fib_depth = (n: number): number => 3 * n - 1;
 
 const fib_pushes_ratio = 12 / 56;
 `,
@@ -479,30 +487,39 @@ ${compileFunctionCallFunction}
     {
       name: 'compiled f calls interpreted g',
       kind: 'value',
-      expr: compileAndGo('function f(g, x) { return g(x) + 1; }', ['function g(x) { return x * 2; }', 'f(g, 5);']),
+      expr: compileAndGo('const f = (g: (x: number) => number, x: number): number => g(x) + 1;', [
+        'const g = (x: number): number => x * 2;',
+        'f(g, 5);',
+      ]),
       expected: 11,
     },
     {
       name: 'a tail call to an interpreted function',
       kind: 'value',
-      expr: compileAndGo('let g = null; function h(x) { return g(x); }', ['g = x => x * 3;', 'h(5);']),
+      expr: compileAndGo('let g: ((x: number) => number) | null = null; const h = (x: number): number => g(x);', ['g = x => x * 3;', 'h(5);']),
       expected: 15,
     },
     {
       name: 'an interpreted function computing the function to call',
       kind: 'value',
-      expr: compileAndGo('function k(pick, x) { return pick()(x); }', ['function pick() { return y => y + 100; }', 'k(pick, 1);']),
+      expr: compileAndGo('const k = (pick: () => (x: number) => number, x: number): number => pick()(x);', [
+        'const pick = (): ((y: number) => number) => y => y + 100;',
+        'k(pick, 1);',
+      ]),
       expected: 101,
     },
     {
       name: 'a call whose value is not returned',
       kind: 'value',
-      expr: compileAndGo('function f(g, x) { g(x); return x; }', ['function g(x) { return x; }', 'f(g, 7);']),
+      expr: compileAndGo('const f = (g: (x: number) => unknown, x: number): number => { g(x); return x; };', [
+        'const g = (x: number): number => x;',
+        'f(g, 7);',
+      ]),
       expected: 7,
     },
     { name: 'compiled factorial still computes 5!', kind: 'value', expr: compileAndGo(recursiveFactorial, ['factorial(5);']), expected: 120 },
   ],
-  solution: `function compile_function_call(target, linkage) {
+  solution: `const compile_function_call = (target: Target, linkage: Linkage): InstructionSequence => {
     const primitive_branch = make_label("primitive_branch");
     const compiled_branch = make_label("compiled_branch");
     const compound_branch = make_label("compound_branch");
@@ -533,9 +550,9 @@ ${compileFunctionCallFunction}
                                        list(op("apply_primitive_function"),
                                             reg("fun"), reg("argl"))))))))),
             after_call));
-}
+};
 
-function compound_fun_appl(target, linkage) {
+const compound_fun_appl = (target: Target, linkage: Linkage): InstructionSequence => {
     const fun_return = make_label("fun_return");
     return target === "val" && linkage !== "return"
            ? make_instruction_sequence(list("fun", "argl", "compapp"),
@@ -559,6 +576,6 @@ function compound_fun_appl(target, linkage) {
                  list(save("continue"),
                       go_to(reg("compapp"))))
            : error(target, "return linkage, target not val -- compile");
-}
+};
 `,
 };

@@ -13,15 +13,18 @@
 /** The operation table, type tags, `apply_generic`, and the number and rational packages. */
 export const symbolicArithmeticDefinitions = `// The operation table: a list of entries pair(pair(op, type), item).
 // put adds to the front, so a later put for the same key wins.
-let operation_table = null;
+type Operation = (...args: List<unknown>) => unknown;
+type Entry = Pair<Pair<string, string | List<string>>, Operation>;
 
-function put(op, type, item) {
+let operation_table: List<Entry> = null;
+
+const put = (op: string, type: string | List<string>, item: Operation): "ok" => {
   operation_table = pair(pair(pair(op, type), item), operation_table);
   return "ok";
-}
+};
 
-function get(op, type) {
-  function lookup(entries) {
+const get = (op: string, type: string | List<string>): Operation | undefined => {
+  const lookup = (entries: List<Entry>): Operation | undefined => {
     if (is_null(entries)) {
       return undefined;
     } else {
@@ -30,53 +33,45 @@ function get(op, type) {
         ? tail(head(entries))
         : lookup(tail(entries));
     }
-  }
+  };
   return lookup(operation_table);
-}
+};
 
 // Type tags, with numbers left untagged (Exercise 2.78).
-function attach_tag(type_tag, contents) {
-  return is_number(contents) ? contents : pair(type_tag, contents);
-}
+type Tagged<T> = T | Pair<string, T>;
 
-function type_tag(datum) {
-  return is_number(datum)
+const attach_tag = <T>(type_tag: string, contents: T): Tagged<T> =>
+  is_number(contents) ? contents : pair(type_tag, contents);
+
+const type_tag = (datum: Tagged<unknown>): string =>
+  is_number(datum)
     ? "javascript_number"
     : is_pair(datum)
     ? head(datum)
     : error("bad tagged datum -- type_tag", datum);
-}
 
-function contents(datum) {
-  return is_number(datum)
+const contents = <T>(datum: Tagged<T>): T =>
+  is_number(datum)
     ? datum
     : is_pair(datum)
     ? tail(datum)
     : error("bad tagged datum -- contents", datum);
-}
 
-// Source cannot spread a list into arguments; our operations take one or two.
-function apply_in_underlying_javascript(fun, args) {
-  return is_null(tail(args))
-    ? fun(head(args))
-    : fun(head(args), head(tail(args)));
-}
-
-function apply_generic(op, args) {
+const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   return is_undefined(fun)
     ? error("no method for these types -- apply_generic", list(op, type_tags))
-    : apply_in_underlying_javascript(fun, map(contents, args));
-}
+    : fun(...map(contents, args));
+};
 
-function add(x, y) { return apply_generic("add", list(x, y)); }
-function sub(x, y) { return apply_generic("sub", list(x, y)); }
-function mul(x, y) { return apply_generic("mul", list(x, y)); }
-function div(x, y) { return apply_generic("div", list(x, y)); }
-function is_equal_to_zero(x) { return apply_generic("is_equal_to_zero", list(x)); }
+const add = (x: unknown, y: unknown): unknown => apply_generic("add", x, y);
+const sub = (x: unknown, y: unknown): unknown => apply_generic("sub", x, y);
+const mul = (x: unknown, y: unknown): unknown => apply_generic("mul", x, y);
+const div = (x: unknown, y: unknown): unknown => apply_generic("div", x, y);
+const is_equal_to_zero = (x: unknown): boolean => apply_generic("is_equal_to_zero", x);
 
-function install_javascript_number_package() {
+const install_javascript_number_package = (): "done" => {
   const nn = list("javascript_number", "javascript_number");
   put("add", nn, (x, y) => x + y);
   put("sub", nn, (x, y) => x - y);
@@ -84,34 +79,30 @@ function install_javascript_number_package() {
   put("div", nn, (x, y) => x / y);
   put("is_equal_to_zero", list("javascript_number"), x => x === 0);
   return "done";
-}
+};
 
-function gcd(a, b) {
-  return b === 0 ? a : gcd(b, a % b);
-}
+const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
 
-function install_rational_package() {
-  function numer(x) { return head(x); }
-  function denom(x) { return tail(x); }
-  function make_rat(n, d) {
+type Rational = Pair<number, number>;
+
+const install_rational_package = (): "done" => {
+  const numer = (x: Rational): number => head(x);
+  const denom = (x: Rational): number => tail(x);
+  const make_rat = (n: number, d: number): Rational => {
     const g = gcd(n, d);
     return pair(n / g, d / g);
-  }
-  function add_rat(x, y) {
-    return make_rat(numer(x) * denom(y) + numer(y) * denom(x),
-                    denom(x) * denom(y));
-  }
-  function sub_rat(x, y) {
-    return make_rat(numer(x) * denom(y) - numer(y) * denom(x),
-                    denom(x) * denom(y));
-  }
-  function mul_rat(x, y) {
-    return make_rat(numer(x) * numer(y), denom(x) * denom(y));
-  }
-  function div_rat(x, y) {
-    return make_rat(numer(x) * denom(y), denom(x) * numer(y));
-  }
-  function tag(x) { return attach_tag("rational", x); }
+  };
+  const add_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(numer(x) * denom(y) + numer(y) * denom(x),
+             denom(x) * denom(y));
+  const sub_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(numer(x) * denom(y) - numer(y) * denom(x),
+             denom(x) * denom(y));
+  const mul_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(numer(x) * numer(y), denom(x) * denom(y));
+  const div_rat = (x: Rational, y: Rational): Rational =>
+    make_rat(numer(x) * denom(y), denom(x) * numer(y));
+  const tag = (x: Rational): Tagged<Rational> => attach_tag("rational", x);
   const rr = list("rational", "rational");
   put("add", rr, (x, y) => tag(add_rat(x, y)));
   put("sub", rr, (x, y) => tag(sub_rat(x, y)));
@@ -120,36 +111,39 @@ function install_rational_package() {
   put("is_equal_to_zero", list("rational"), x => numer(x) === 0);
   put("make", "rational", (n, d) => tag(make_rat(n, d)));
   return "done";
-}
+};
 
-function make_rational(n, d) {
-  return get("make", "rational")(n, d);
-}
+const make_rational = (n: number, d: number): Tagged<Rational> =>
+  get("make", "rational")(n, d);
 
 install_javascript_number_package();
 install_rational_package();
 `;
 
 /** Terms and sparse term lists, highest order first. */
-export const sparseTermListDefinitions = `function adjoin_term(term, term_list) {
-  return is_equal_to_zero(coeff(term))
+export const sparseTermListDefinitions = `// A term is list(order, coeff), where the coefficient is any number the
+// generic system knows; a term list is a list of terms, highest order first.
+type Term = List<unknown>;
+type TermList = List<Term>;
+
+const adjoin_term = (term: Term, term_list: TermList): TermList =>
+  is_equal_to_zero(coeff(term))
     ? term_list
     : pair(term, term_list);
-}
 
 const the_empty_termlist = null;
 
-function first_term(term_list) { return head(term_list); }
+const first_term = (term_list: TermList): Term => head(term_list);
 
-function rest_terms(term_list) { return tail(term_list); }
+const rest_terms = (term_list: TermList): TermList => tail(term_list);
 
-function is_empty_termlist(term_list) { return is_null(term_list); }
+const is_empty_termlist = (term_list: TermList): boolean => is_null(term_list);
 
-function make_term(order, coeff) { return list(order, coeff); }
+const make_term = (order: number, coeff: unknown): Term => list(order, coeff);
 
-function order(term) { return head(term); }
+const order = (term: Term): number => head(term);
 
-function coeff(term) { return head(tail(term)); }
+const coeff = (term: Term): unknown => head(tail(term));
 `;
 
 /**
@@ -158,27 +152,27 @@ function coeff(term) { return head(tail(term)); }
  * declared at the top level so that the exercises can extend them, and the
  * installation function only puts the interface into the table.
  */
-export const polynomialPackageDefinitions = `function make_poly(variable, term_list) {
-  return pair(variable, term_list);
-}
+export const polynomialPackageDefinitions = `// A poly is a variable and a term list.
+type Poly = Pair<string, TermList>;
 
-function variable(p) { return head(p); }
+const make_poly = (variable: string, term_list: TermList): Poly =>
+  pair(variable, term_list);
 
-function term_list(p) { return tail(p); }
+const variable = (p: Poly): string => head(p);
 
-function is_variable(x) { return is_string(x); }
+const term_list = (p: Poly): TermList => tail(p);
 
-function is_same_variable(v1, v2) {
-  return is_variable(v1) && is_variable(v2) && v1 === v2;
-}
+const is_variable = (x: unknown): boolean => is_string(x);
 
-function add_poly(p1, p2) {
-  return is_same_variable(variable(p1), variable(p2))
+const is_same_variable = (v1: string, v2: string): boolean =>
+  is_variable(v1) && is_variable(v2) && v1 === v2;
+
+const add_poly = (p1: Poly, p2: Poly): Poly =>
+  is_same_variable(variable(p1), variable(p2))
     ? make_poly(variable(p1), add_terms(term_list(p1), term_list(p2)))
     : error("polys not in same var -- add_poly", list(p1, p2));
-}
 
-function add_terms(L1, L2) {
+const add_terms = (L1: TermList, L2: TermList): TermList => {
   if (is_empty_termlist(L1)) {
     return L2;
   } else if (is_empty_termlist(L2)) {
@@ -193,22 +187,20 @@ function add_terms(L1, L2) {
       : adjoin_term(make_term(order(t1), add(coeff(t1), coeff(t2))),
                     add_terms(rest_terms(L1), rest_terms(L2)));
   }
-}
+};
 
-function mul_poly(p1, p2) {
-  return is_same_variable(variable(p1), variable(p2))
+const mul_poly = (p1: Poly, p2: Poly): Poly =>
+  is_same_variable(variable(p1), variable(p2))
     ? make_poly(variable(p1), mul_terms(term_list(p1), term_list(p2)))
     : error("polys not in same var -- mul_poly", list(p1, p2));
-}
 
-function mul_terms(L1, L2) {
-  return is_empty_termlist(L1)
+const mul_terms = (L1: TermList, L2: TermList): TermList =>
+  is_empty_termlist(L1)
     ? the_empty_termlist
     : add_terms(mul_term_by_all_terms(first_term(L1), L2),
                 mul_terms(rest_terms(L1), L2));
-}
 
-function mul_term_by_all_terms(t1, L) {
+const mul_term_by_all_terms = (t1: Term, L: TermList): TermList => {
   if (is_empty_termlist(L)) {
     return the_empty_termlist;
   } else {
@@ -217,10 +209,10 @@ function mul_term_by_all_terms(t1, L) {
                                  mul(coeff(t1), coeff(t2))),
                        mul_term_by_all_terms(t1, rest_terms(L)));
   }
-}
+};
 
-function install_polynomial_package() {
-  function tag(p) { return attach_tag("polynomial", p); }
+const install_polynomial_package = (): "done" => {
+  const tag = (p: Poly): Tagged<Poly> => attach_tag("polynomial", p);
   put("add", list("polynomial", "polynomial"),
       (p1, p2) => tag(add_poly(p1, p2)));
   put("mul", list("polynomial", "polynomial"),
@@ -228,13 +220,12 @@ function install_polynomial_package() {
   put("make", "polynomial",
       (variable, terms) => tag(make_poly(variable, terms)));
   return "done";
-}
+};
 
 install_polynomial_package();
 
-function make_polynomial(variable, terms) {
-  return get("make", "polynomial")(variable, terms);
-}
+const make_polynomial = (variable: string, terms: TermList): Tagged<Poly> =>
+  get("make", "polynomial")(variable, terms);
 `;
 
 /** The whole system of this section: generic arithmetic, term lists and the polynomial package. */
@@ -268,9 +259,7 @@ export const nestedCoefficientsProgram = `// adjoin_term asks whether each new c
 put("is_equal_to_zero", list("polynomial"),
     p => is_empty_termlist(term_list(p)));
 
-function poly_y(terms) {
-  return make_polynomial("y", terms);
-}
+const poly_y = (terms: TermList): Tagged<Poly> => make_polynomial("y", terms);
 
 // (y + 1)x² + (y² + 1)x + (y − 1)
 const a = make_polynomial("x", list(
@@ -289,9 +278,8 @@ product;
 `;
 
 /** The dense and the sparse term lists of A and B. */
-export const termListsProgram = `function make_term(order, coeff) {
-  return list(order, coeff);
-}
+export const termListsProgram = `const make_term = (order: number, coeff: number): List<number> =>
+  list(order, coeff);
 
 // A: x⁵ + 2x⁴ + 3x² − 2x − 5
 const A_dense = list(1, 2, 0, 3, -2, -5);

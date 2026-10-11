@@ -5,23 +5,23 @@
  */
 
 /** §4.1.1: one application, followed through `evaluate` and `apply`. */
-export const evalApplyProgram = `evaluate_program(
-    "function square(x) {" +
-    "    return x * x;" +
-    "}" +
-    "square(3) + 1;");
+export const evalApplyProgram = `evaluate_program(\`
+const square = (x: number): number => x * x;
+square(3) + 1;
+\`);
 `;
 
 /** §4.1.1: a return value stops the sequence it is in. */
-export const returnProgram = `evaluate_program(
-    "function first_positive(a, b) {" +
-    "    if (a > 0) {" +
-    "        return a;" +
-    "    } else {}" +
-    "    display(\\"a was not positive\\");" +
-    "    return b;" +
-    "}" +
-    "first_positive(5, 7) + first_positive(-1, 7);");
+export const returnProgram = `evaluate_program(\`
+const first_positive = (a: number, b: number): number => {
+    if (a > 0) {
+        return a;
+    } else {}
+    display("a was not positive");
+    return b;
+};
+first_positive(5, 7) + first_positive(-1, 7);
+\`);
 `;
 
 /** §4.1.2: program text to tagged lists. */
@@ -61,11 +61,10 @@ length(function_environment(f));
 
 /** §4.1.4: the driver loop, fed a list of inputs instead of a prompt. */
 export const driverLoopProgram = `driver_loop(the_global_environment,
-            list("function append(xs, ys) {" +
-                 "    return is_null(xs)" +
-                 "           ? ys" +
-                 "           : pair(head(xs), append(tail(xs), ys));" +
-                 "}",
+            list(\`const append = <T>(xs: List<T>, ys: List<T>): List<T> =>
+                      is_null(xs)
+                             ? ys
+                             : pair(head(xs), append(tail(xs), ys));\`,
                  'append(list("a", "b", "c"), list("d", "e", "f"));'));
 `;
 
@@ -90,47 +89,47 @@ evaluate(program, the_global_environment);
 `;
 
 /** §4.1.5: the evaluator, configured by its input as a factorial machine. */
-export const factorialMachineProgram = `evaluate_program(
-    "function factorial(n) {" +
-    "    return n === 1" +
-    "           ? 1" +
-    "           : factorial(n - 1) * n;" +
-    "}" +
-    "factorial(5);");
+export const factorialMachineProgram = `evaluate_program(\`
+const factorial = (n: number): number =>
+    n === 1
+           ? 1
+           : factorial(n - 1) * n;
+factorial(5);
+\`);
 `;
 
 /** §4.1.6: mutually recursive internal declarations. */
-export const mutualRecursionProgram = `evaluate_program(
-    "function f(x) {" +
-    "    function is_even(n) {" +
-    "        return n === 0 ? true : is_odd(n - 1);" +
-    "    }" +
-    "    function is_odd(n) {" +
-    "        return n === 0 ? false : is_even(n - 1);" +
-    "    }" +
-    "    return is_even(x);" +
-    "}" +
-    "f(7);");
+export const mutualRecursionProgram = `evaluate_program(\`
+const f = (x: number): boolean => {
+    const is_even = (n: number): boolean =>
+        n === 0 ? true : is_odd(n - 1);
+    const is_odd = (n: number): boolean =>
+        n === 0 ? false : is_even(n - 1);
+    return is_even(x);
+};
+f(7);
+\`);
 `;
 
 /** §4.1.6: a name used before its declaration has been evaluated (Exercise 4.19). */
-export const scopeQuestionProgram = `evaluate_program(
-    "const a = 1;" +
-    "function f(x) {" +
-    "    const b = a + x;" +
-    "    const a = 5;" +
-    "    return a + b;" +
-    "}" +
-    "f(10);");
+export const scopeQuestionProgram = `evaluate_program(\`
+const a = 1;
+const f = (x: number): number => {
+    const b = a + x;
+    const a = 5;
+    return a + b;
+};
+f(10);
+\`);
 `;
 
 /** §4.1.6: the same program, run by the Laboratory's own evaluator. */
 export const scopeQuestionDirectProgram = `const a = 1;
-function f(x) {
+const f = (x: number): number => {
     const b = a + x;
     const a = 5;
     return a + b;
-}
+};
 f(10);
 `;
 
@@ -142,11 +141,11 @@ export const selfApplicationProgram = `(n => (fact => fact(fact, n))
 `;
 
 /** §4.1.7: the same program for both evaluators, so their step counts compare. */
-export const analysisComparisonProgram = `evaluate_program(
-    "function factorial(n) {" +
-    "    return n === 1" +
-    "           ? 1" +
-    "           : factorial(n - 1) * n;" +
-    "}" +
-    "factorial(10);");
+export const analysisComparisonProgram = `evaluate_program(\`
+const factorial = (n: number): number =>
+    n === 1
+           ? 1
+           : factorial(n - 1) * n;
+factorial(10);
+\`);
 `;

@@ -12,7 +12,8 @@ The Laboratory is the TypeScript package `@sicp/lab`. The Book never evaluates c
 
 | Export | What it does |
 | --- | --- |
-| `parse(source)` | Text to syntax tree. Throws `SourceError` with a location. |
+| `parse(source)` | Text to syntax tree, with type annotations stripped. Throws `SourceError` with a location. |
+| `functionBinding(statement)`, `argumentExpression(argument)` | The function a declaration names, whether written `function f(…) {…}` or `const f = (…) => …`; and the expression an argument evaluates, the list itself for a spread `...xs`. The Book's diagrams read programs through them. |
 | `evaluate(source, options?)` | Runs to completion on the calling thread and returns an `Outcome`: `done`, `error` or `budget-exhausted`. Never throws for a program's own mistakes. |
 | `prepare(source, options?)` | Parses and returns a `Machine` without running it. |
 | `Machine.run(maxSteps?)` | Advances at most `maxSteps` steps and returns the status; `paused` means call again. |
@@ -41,6 +42,8 @@ Every program starts in a frame that extends two outer frames: `global`, which h
 
 In Source, `make_machine(register_names, operations, controller)` returns a machine as the message-passing object of §5.2.1, so `start`, `get_register_contents` and `set_register_contents` work as in the book. Besides `"print_statistics"`, a machine's stack answers `"statistics"` with `list(total_pushes, maximum_depth)`, which exercise checks read. `prompt()` and the evaluator's `user_read` return the strings queued by `set_inputs(list(...))`, and `null` when there are none. Operations may be primitives or Source functions; a Source function is applied on a machine of its own.
 ## Threads
+
+`await` is carried out by the machine as well. Applying an `async` function pushes a marker under its call; `await` lifts the frames above the marker off the stack, hands the caller the function's promise, and queues a job that puts the frames back once the awaited value is ready. Jobs run only when the stack is empty, as JavaScript's microtasks do, and `Machine.run` reports `done` once the queue is empty too. A top-level `await` suspends the program itself.
 
 `concurrent_execute(f, g, ...)` gives each function of no arguments a thread of its own: a separate stack of continuations, with the frames shared. After every step a scheduler may switch to another runnable thread, so an assignment such as `balance = balance - amount`, which takes several steps, can be interrupted between reading `balance` and writing it. The call returns `undefined` once all of its threads have finished. `test_and_set(cell)` is a single primitive step, which is what makes it atomic. The scheduler draws from a seeded generator: a `seed` option, accepted by `prepare`, `evaluate` and the `run`, `trace` and `check` requests, replays an interleaving exactly, and a run without one interleaves differently each time. Trace records carry the thread they ran in, and `thread` events mark where threads start and end.
 

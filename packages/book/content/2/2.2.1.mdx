@@ -24,7 +24,7 @@ One of the useful structures we can build with pairs is a *sequence*, an ordered
 pair(1, pair(2, pair(3, pair(4, null))));
 ```
 
-A sequence of pairs formed by nested `pair` applications is a *list*, and the primitive `list` builds one: `list(1, 2, 3, 4)` is the sequence above. In general `list(a₁, a₂, …, aₙ)` is `pair(a₁, pair(a₂, pair(…, pair(aₙ, null)…)))`.
+A sequence of pairs formed by nested `pair` applications is a *list*, and the primitive `list` builds one: `list(1, 2, 3, 4)` is the sequence above. In general `list(a₁, a₂, …, aₙ)` is `pair(a₁, pair(a₂, pair(…, pair(aₙ, null)…)))`. In the programs, the library's type `List<T>` describes a list whose elements have the type `T`: it is either `null` or a pair of a `T` and a `List<T>`.
 
 The interpreter prints pairs in *box notation*, a textual box-and-pointer diagram: `pair(1, 2)` prints as `[1, 2]`, and the list above as `[1, [2, [3, [4, null]]]]`. Box notation is hard to read once lists nest, so when we want to show the list nature of a structure we use *list notation* instead, the application of `list` that would build it: `list(1, 2, 3, 4)`. The primitive `display_list` prints in list notation.
 
@@ -45,14 +45,13 @@ The interpreter prints pairs in *box notation*, a textual box-and-pointer diagra
 Often we walk down a whole list. The primitive predicate `is_null` tests whether its argument is the empty list, and `length` shows the typical pattern: the length of any list is 1 plus the length of its tail, applied until we reach the base case, where the length of the empty list is 0. Like `factorial`, `length` can also be written to generate an iterative process:
 
 ```js
-function length(items) {
-  function length_iter(a, count) {
-    return is_null(a)
+const length = <T>(items: List<T>): number => {
+  const length_iter = (a: List<T>, count: number): number =>
+    is_null(a)
       ? count
       : length_iter(tail(a), count + 1);
-  }
   return length_iter(items, 0);
-}
+};
 ```
 
 </Prose>
@@ -80,9 +79,8 @@ Another conventional technique is to build an answer list by adjoining elements 
 **Mapping over lists.** One extremely useful operation applies some transformation to each element of a list and makes the list of results. `scale_list` multiplies each number in a list by a factor. The general idea is a common pattern, which we can capture as a higher-order function, as in §1.3. That function is `map`: it takes a function of one argument and a list, and returns the list of the results of applying the function to each element. Now `scale_list` is one line:
 
 ```js
-function scale_list(items, factor) {
-  return map(x => x * factor, items);
-}
+const scale_list = (items: List<number>, factor: number): List<number> =>
+  map(x => x * factor, items);
 ```
 
 </Prose>
@@ -151,9 +149,7 @@ The new `cc` has the same form as the old one, but it accesses its second argume
 In the presence of higher-order functions, functions need not have more than one parameter. If a function such as `plus` naturally takes two arguments, we can write a variant to which we pass the arguments one at a time: applying it to the first argument returns a function that we apply to the second, and so on. This practice is called *currying*, after the logician Haskell Brooks Curry, and is common in languages such as Haskell and OCaml. In JavaScript, a curried `plus` is
 
 ```js
-function plus_curried(x) {
-  return y => x + y;
-}
+const plus_curried = (x: number): ((y: number) => number) => y => x + y;
 ```
 
 Write a function `brooks` that takes a curried function as its first argument and as its second a list of arguments, to which the curried function is applied one by one, in order. `brooks(plus_curried, list(3, 4))` should have the same effect as `plus_curried(3)(4)`.
@@ -190,16 +186,15 @@ The function `square_list` takes a list of numbers and returns a list of their s
 Louis Reasoner tries to rewrite the first `square_list` of Exercise 2.21 so that it evolves an iterative process:
 
 ```js
-function square_list(items) {
-  function iter(things, answer) {
-    return is_null(things)
+const square_list = (items: List<number>): List<number> => {
+  const iter = (things: List<number>, answer: List<number>): List<number> =>
+    is_null(things)
       ? answer
       : iter(tail(things),
              pair(square(head(things)),
                   answer));
-  }
   return iter(items, null);
-}
+};
 ```
 
 Unfortunately, this produces the answer list in the reverse order of the one desired. Why? Louis then tries to fix the bug by interchanging the arguments to `pair`, and that does not work either. Explain. Then record what Louis's first version returns for `list(1, 2, 3)` as `louis_result`, and write a `square_list` that is iterative and gets the order right.

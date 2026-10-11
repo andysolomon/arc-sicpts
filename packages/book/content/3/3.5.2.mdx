@@ -13,9 +13,8 @@ import {
 A stream computes only as much of itself as anyone reads, so a very long sequence costs no more than the part we look at. Taken one step further, a stream can be *infinitely* long. Here are the positive integers:
 
 ```js
-function integers_starting_from(n) {
-  return pair(n, () => integers_starting_from(n + 1));
-}
+const integers_starting_from = (n: number): Stream<number> =>
+  pair(n, () => integers_starting_from(n + 1));
 
 const integers = integers_starting_from(1);
 ```
@@ -47,12 +46,11 @@ The Fibonacci numbers come out of a generator in the same way. `fibgen(a, b)` is
 **The sieve of Eratosthenes.** A more striking infinite stream is the stream of all primes, produced by a sieve. Start with the integers from 2; the first, 2, is prime. Remove the multiples of 2 from the rest: what is left starts with 3, the next prime. Remove the multiples of 3 from that: what is left starts with 5. In general, to *sieve* a stream, keep its first element, and sieve what remains of the rest once the multiples of that first element are filtered out. In streams that description is the program:
 
 ```js
-function sieve(stream) {
-  return pair(head(stream),
-              () => sieve(stream_filter(
-                              x => ! is_divisible(x, head(stream)),
-                              stream_tail(stream))));
-}
+const sieve = (stream: Stream<number>): Stream<number> =>
+  pair(head(stream),
+       () => sieve(stream_filter(
+                       x => ! is_divisible(x, head(stream)),
+                       stream_tail(stream))));
 
 const primes = sieve(integers_starting_from(2));
 ```
@@ -86,9 +84,8 @@ const ones = pair(1, () => ones);
 This works much as a recursive function declaration does: `ones` is a pair whose head is 1 and whose tail promises `ones`, which gives a 1 and the same promise again. With an operation on whole streams such as `add_streams`, which adds two streams element by element using the `stream_map_2` of exercise 3.50,
 
 ```js
-function add_streams(s1, s2) {
-  return stream_map_2((x1, x2) => x1 + x2, s1, s2);
-}
+const add_streams = (s1: Stream<number>, s2: Stream<number>): Stream<number> =>
+  stream_map_2((x1, x2) => x1 + x2, s1, s2);
 ```
 
 the integers can be defined from themselves: they start with 1, and after that each element is 1 more than the element before.
@@ -131,10 +128,9 @@ Here each addition prints its sum, so the animation counts additions. Element 8,
 `scale_stream` is another useful operation for such definitions; it multiplies every element of a stream by a constant:
 
 ```js
-function scale_stream(stream, factor) {
-  return stream_map(x => x * factor,
-                    stream);
-}
+const scale_stream = (stream: Stream<number>, factor: number): Stream<number> =>
+  stream_map(x => x * factor,
+             stream);
 ```
 
 With it, the powers of 2 are a stream that starts with 1 and continues with itself doubled.
@@ -152,16 +148,15 @@ With it, the powers of 2 are a stream that starts with 1 and continues with itse
 The primes, too, can be defined implicitly: start from 2 and keep the integers from 3 on that pass a primality test. The test is the interesting part. To decide whether *n* is prime it is enough to try dividing *n* by the *primes* up to √*n*, and it takes those primes from the very stream being defined:
 
 ```js
-function is_prime(n) {
-  function iter(ps) {
-    return square(head(ps)) > n
+const is_prime = (n: number): boolean => {
+  const iter = (ps: Stream<number>): boolean =>
+    square(head(ps)) > n
       ? true
       : is_divisible(n, head(ps))
       ? false
       : iter(stream_tail(ps));
-  }
   return iter(primes);
-}
+};
 ```
 
 So `primes` uses `is_prime`, which uses `primes`. The definition works because enough of `primes` is always there to test the next candidate: either *n* is composite, and an already-found prime divides it, or *n* is prime, and an already-found prime smaller than *n* is larger than √*n*. That last claim relies on the fact that the next prime after *p* is less than *p*², which is far from obvious. Euclid's proof that the primes never run out only bounds the next prime by the product of all the earlier ones plus one; the much better bound that there is always a prime between *n* and 2*n* (Bertrand's postulate, conjectured in 1845) was proved by Chebyshev in 1851.
@@ -170,7 +165,7 @@ So `primes` uses `is_prime`, which uses `primes`. The definition works because e
 
 <Example index={6} file="primes.sicp" source={primesFromPrimesProgram} budget={1000000}>
 
-The same 233 as the sieve, and each candidate meets only the primes up to its square root. Without memoization it is still slow: every call of `is_prime` walks `primes` from the start, which re-runs the filter over the integers already seen. Add `memo` around the tail of `primes` (and use a memoizing `stream_filter`) and the step count falls from about 197,000 to about 56,000.
+The same 233 as the sieve, and each candidate meets only the primes up to its square root. Without memoization it is still slow: every call of `is_prime` walks `primes` from the start, which re-runs the filter over the integers already seen. Add `memo` around the tail of `primes` (and use a memoizing `stream_filter`) and the step count falls from about 180,000 to about 51,000.
 
 </Example>
 
@@ -261,10 +256,9 @@ Answer with two functions of *n*.
 Interpret the stream computed by
 
 ```js
-function expand(num, den, radix) {
-  return pair(math_trunc((num * radix) / den),
-              () => expand((num * radix) % den, den, radix));
-}
+const expand = (num: number, den: number, radix: number): Stream<number> =>
+  pair(math_trunc((num * radix) / den),
+       () => expand((num * radix) % den, den, radix));
 ```
 
 where `math_trunc` drops the fractional part of its argument. Give the first eight elements of `expand(1, 7, 10)` and of `expand(3, 8, 10)`.
@@ -302,9 +296,8 @@ b. The derivative of sine is cosine and the derivative of cosine is minus sine. 
 With series as streams of coefficients, `add_streams` adds two series. Complete
 
 ```js
-function mul_series(s1, s2) {
-  return pair(??, () => add_streams(??, ??));
-}
+const mul_series = (s1: Stream<number>, s2: Stream<number>): Stream<number> =>
+  pair(??, () => add_streams(??, ??));
 ```
 
 to multiply them. Check it by verifying that sin² *x* + cos² *x* = 1 with the series of exercise 3.59.

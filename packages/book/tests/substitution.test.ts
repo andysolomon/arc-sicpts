@@ -2,13 +2,13 @@ import { evaluate, factorialProgram, fastExptProgram, gcdProgram, smallestDiviso
 import { describe, expect, it } from 'vitest';
 import { print, substitution, tokens } from '../src/anim/model/substitution.ts';
 
-const compound = `function square(x) { return x * x; }
-function sum_of_squares(x, y) { return square(x) + square(y); }
-function f(a) { return sum_of_squares(a + 1, a * 2); }
+const compound = `const square = (x: number): number => x * x;
+const sum_of_squares = (x: number, y: number): number => square(x) + square(y);
+const f = (a: number): number => sum_of_squares(a + 1, a * 2);
 f(5);`;
 
-const orderTest = `function p() { return p(); }
-function test(x, y) { return x === 0 ? 0 : y; }
+const orderTest = `const p = (): number => p();
+const test = (x: number, y: number): number => x === 0 ? 0 : y;
 test(0, p());`;
 
 const finalValue = (source: string, order: 'applicative' | 'normal' = 'applicative'): string | null => {
@@ -31,8 +31,8 @@ describe('the substitution model', () => {
       '137 + 349; 1000 - 334; 5 * 99; 2.7 + 10; (3 * 5) + (10 - 6);',
       '3 * (2 * 4 + (3 + 5)) + (10 - 7 + 6);',
       'const pi = 3.14159; const radius = 10; const c = 2 * pi * radius; c;',
-      'function abs(x) { return x >= 0 ? x : -x; } abs(-12);',
-      'function is_between(x, low, high) { return x >= low && x <= high; } is_between(5, 1, 10);',
+      'const abs = (x: number): number => x >= 0 ? x : -x; abs(-12);',
+      'const is_between = (x: number, low: number, high: number): boolean => x >= low && x <= high; is_between(5, 1, 10);',
     ]) {
       expect(finalValue(source), source).toBe(machineValue(source));
       expect(finalValue(source, 'normal'), source).toBe(machineValue(source));
@@ -62,7 +62,7 @@ describe('the substitution model', () => {
       '36 + 100',
       '136',
     ]);
-    expect(statement?.steps[1]?.caption).toBe('Apply `f`: replace `a` by `5` in its return expression, giving `sum_of_squares(5 + 1, 5 * 2)`.');
+    expect(statement?.steps[1]?.caption).toBe('Apply `f`: replace `a` by `5` in its body, giving `sum_of_squares(5 + 1, 5 * 2)`.');
     expect(statement?.steps.at(-1)?.rule).toBe('done');
   });
 
@@ -123,7 +123,7 @@ describe('the substitution model', () => {
   it('stops at a parse error, an unknown name, or a body the model does not describe', () => {
     expect(substitution('1 +;').error).toMatch(/expected/i);
     expect(substitution('x;').statements[0]?.stuck).toBe('Name x not declared');
-    const opaque = substitution('function f(x) { display(x); return x; } f(1);').statements[0];
+    const opaque = substitution('const f = (x: number): number => { display(x); return x; }; f(1);').statements[0];
     expect(opaque?.steps.at(-1)?.caption).toContain('more than a single return');
   });
 

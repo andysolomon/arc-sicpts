@@ -110,12 +110,11 @@ describe('section 2.2.2: hierarchical structures', () => {
   });
 
   it('Louis’s swapped pair in Exercise 2.22 is not a list', () => {
-    const louis = `function square_list(items) {
-      function iter(things, answer) {
-        return is_null(things) ? answer : iter(tail(things), pair(answer, head(things) * head(things)));
-      }
+    const louis = `const square_list = (items: List<number>): unknown => {
+      const iter = (things: List<number>, answer: unknown): unknown =>
+        is_null(things) ? answer : iter(tail(things), pair(answer, head(things) * head(things)));
       return iter(items, null);
-    }
+    };
     square_list(list(1, 2, 3));`;
     expect(stringify(value(louis) as never)).toBe('[[[null, 1], 4], 9]');
   });
@@ -168,7 +167,7 @@ describe('section 2.2.3: sequences as conventional interfaces', () => {
     expect(calls(`${queens} queens(8);`, 'queen_cols', 10_000_000)).toBe(9);
   }, 30_000);
 
-  it('Louis’s queens applies queen_cols (nⁿ⁺¹ − 1) / (n − 1) times and runs 3.6, 11, 37 and 136 times slower', () => {
+  it('Louis’s queens applies queen_cols (nⁿ⁺¹ − 1) / (n − 1) times and runs 3.6, 11, 37 and 135 times slower', () => {
     const both = `${queensBoardDefinitions}${queensDefinition}${louisQueensDefinition}`;
     const base = run(`${both} 0;`).steps;
     const steps = (call: string): number => run(`${both} ${call};`, 100_000_000).steps - base;
@@ -178,7 +177,7 @@ describe('section 2.2.3: sequences as conventional interfaces', () => {
     }
     const ratios = [3, 4, 5, 6].map((n) => steps(`louis_queens(${n})`) / steps(`queens(${n})`));
     expect(Math.round(ratios[0]! * 10) / 10).toBe(3.6);
-    expect(ratios.slice(1).map(Math.round)).toEqual([11, 37, 136]);
+    expect(ratios.slice(1).map(Math.round)).toEqual([11, 37, 135]);
     // The positions tried follow the count Σ n^(n−k) · n · |Q(k − 1)|: for n = 5, 8 160 against 220.
     expect(calls(`${both} louis_queens(5);`, 'adjoin_position', 10_000_000)).toBe(8160);
     expect(calls(`${both} queens(5);`, 'adjoin_position')).toBe(220);
@@ -186,7 +185,7 @@ describe('section 2.2.3: sequences as conventional interfaces', () => {
 
   it('count_leaves as an accumulation agrees with the recursion', () => {
     const acc = `${sequenceOperationDefinitions}
-      function count_leaves(t) { return accumulate(plus, 0, map(sub => is_pair(sub) ? count_leaves(sub) : 1, t)); }
+      const count_leaves = <T>(t: Tree<T>): number => accumulate(plus, 0, map(sub => is_pair(sub) ? count_leaves(sub) : 1, t));
       count_leaves(list(1, list(2, list(3, 4)), 5));`;
     expect(value(acc)).toBe(5);
     expect(value(`${countLeavesDefinition} count_leaves(list(1, list(2, list(3, 4)), 5));`)).toBe(5);

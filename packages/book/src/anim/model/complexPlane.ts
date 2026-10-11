@@ -48,7 +48,8 @@ export function candidates(source: string): Candidate[] | null {
     return null;
   }
   return body.flatMap((statement): Candidate[] => {
-    if (statement.kind !== 'const') return [];
+    // A constant that names a function is an operation, not a number to plot.
+    if (statement.kind !== 'const' || statement.init.kind === 'lambda') return [];
     const init = statement.init;
     let via: Derivation | null = null;
     if (init.kind === 'application' && init.fun.kind === 'name' && init.args.length === 2) {

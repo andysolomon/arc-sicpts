@@ -85,7 +85,7 @@ describe('section 5.5.5: an example of compiled code', () => {
         .map((line) => line.trim().replace(/,$/, ''))
         .join('\n'),
     );
-    const outcome = evaluate(`check_same_code(${JSON.stringify(compiledCodeMysteryProgram)}) && ! check_same_code("function f(x) { return g(x + 2) + x; }");`, {
+    const outcome = evaluate(`check_same_code(${JSON.stringify(compiledCodeMysteryProgram)}) && ! check_same_code("const f = (x: number): number => g(x + 2) + x;");`, {
       prelude: compiledCodeFigurePrelude,
       budget: 5_000_000,
     });
@@ -141,9 +141,7 @@ describe('section 5.5.7: interfacing compiled code to the evaluator', () => {
 
   it('exercise 5.49: fib compiled uses 12 Fib(n + 1) − 4 pushes and depth 3n − 1', () => {
     const sizes = [0, 1, 2, 3, 4, 5, 6, 8, 10, 15];
-    const fib = `function fib(n) {
-    return n < 2 ? n : fib(n - 1) + fib(n - 2);
-}`;
+    const fib = 'const fib = (n: number): number => n < 2 ? n : fib(n - 1) + fib(n - 2);';
     expect(interfacingFibCompareProgram).toContain(fib);
     const compiled = runCompiled(fib, sizes.map((n) => `fib(${n});`)).results.slice(1);
     const machine = special(interfacingSpecialFib, sizes);
@@ -162,7 +160,7 @@ describe('section 5.5.7: interfacing compiled code to the evaluator', () => {
       `${alwaysPreservingContext}
 ${alwaysPreservingSolution}
 set_inputs(list("factorial(5);"));
-compile_and_go(parse("function factorial(n) { return n === 1 ? 1 : factorial(n - 1) * n; }"));`,
+compile_and_go(parse("const factorial = (n: number): number => n === 1 ? 1 : factorial(n - 1) * n;"));`,
       { budget: 5_000_000 },
     );
     expect(outcome.output.slice(3)).toEqual(['total pushes = 167', 'maximum depth = 18', 'EC-evaluate value: 120']);
@@ -172,7 +170,7 @@ compile_and_go(parse("function factorial(n) { return n === 1 ? 1 : factorial(n -
     const outcome = evaluate(
       `${openCodingContext}
 ${openCodingSolution}
-const code = instructions(compile(parse("function factorial(n) { return n === 1 ? 1 : factorial(n - 1) * n; }"), "val", "next"));
+const code = instructions(compile(parse("const factorial = (n: number): number => n === 1 ? 1 : factorial(n - 1) * n;"), "val", "next"));
 list(length(code), length(filter(is_string, code)));`,
       { budget: 5_000_000 },
     );
@@ -184,7 +182,7 @@ list(length(code), length(filter(is_string, code)));`,
       `${openCodingContext}
 ${openCodingSolution}
 set_inputs(list("factorial(5);", "factorial(10);"));
-compile_and_go(parse("function factorial(n) { return n === 1 ? 1 : factorial(n - 1) * n; }"));`,
+compile_and_go(parse("const factorial = (n: number): number => n === 1 ? 1 : factorial(n - 1) * n;"));`,
       { budget: 5_000_000 },
     );
     expect(outcome.status).toBe('done');
@@ -200,7 +198,11 @@ compile_and_go(parse("function factorial(n) { return n === 1 ? 1 : factorial(n -
 });
 
 /** The reference answer of exercise 5.40 (book/content/exercises/5.5.5.ts), for the measurement above. */
-const alwaysPreservingSolution = `function preserving(regs, seq1, seq2) {
+const alwaysPreservingSolution = `const preserving = (
+    regs: List<string>,
+    seq1: InstructionSequence,
+    seq2: InstructionSequence
+): InstructionSequence => {
     if (is_null(regs)) {
         return append_instruction_sequences(seq1, seq2);
     } else {
@@ -213,34 +215,33 @@ const alwaysPreservingSolution = `function preserving(regs, seq1, seq2) {
                               append(instructions(seq1), list(restore(first_reg))))),
                    seq2);
     }
-}
+};
 `;
 
 /** The reference answer of exercise 5.41 (book/content/exercises/5.5.5.ts), for the measurement above. */
-const openCodingSolution = `function is_open_coded(component) {
-    return is_application(component) &&
+const openCodingSolution = `const is_open_coded = (component: Component): boolean =>
+    is_application(component) &&
            is_name(function_expression(component)) &&
            ! is_null(member(symbol_of_name(function_expression(component)),
                             list("===", "*", "-", "+"))) &&
            length(arg_expressions(component)) === 2;
-}
-function spread_arguments(argument_expressions) {
+const spread_arguments = (argument_expressions: List<Component>): InstructionSequence => {
     const arg1_code = compile(head(argument_expressions), "arg1", "next");
     const arg2_code = compile(head(tail(argument_expressions)), "arg2", "next");
     return preserving(list("env"), arg1_code,
                preserving(list("arg1"), arg2_code,
                    make_instruction_sequence(list("arg1"), null, null)));
-}
-function compile_open_coded(component, target, linkage) {
+};
+const compile_open_coded = (component: Component, target: Target, linkage: Linkage): InstructionSequence => {
     const operator = symbol_of_name(function_expression(component));
     return end_with_linkage(linkage,
                append_instruction_sequences(
                    spread_arguments(arg_expressions(component)),
                    make_instruction_sequence(list("arg1", "arg2"), list(target),
                        list(assign(target, list(op(operator), reg("arg1"), reg("arg2")))))));
-}
-function compile(component, target, linkage) {
-    return is_literal(component) ? compile_literal(component, target, linkage)
+};
+const compile = (component: Component, target: Target, linkage: Linkage): InstructionSequence =>
+    is_literal(component) ? compile_literal(component, target, linkage)
          : is_name(component) ? compile_name(component, target, linkage)
          : is_open_coded(component) ? compile_open_coded(component, target, linkage)
          : is_application(component) ? compile_application(component, target, linkage)
@@ -256,5 +257,4 @@ function compile(component, target, linkage) {
          : is_declaration(component) ? compile_declaration(component, target, linkage)
          : is_assignment(component) ? compile_assignment(component, target, linkage)
          : error(component, "unknown component type -- compile");
-}
 `;

@@ -3,25 +3,19 @@
  * function it works on as an argument.
  */
 
-export const averageDefinition = `function average(x, y) {
-  return (x + y) / 2;
-}
+export const averageDefinition = `const average = (x: number, y: number): number => (x + y) / 2;
 `;
 
-export const halfIntervalDefinitions = `${averageDefinition}
-function positive(x) {
-  return x > 0;
-}
+export const halfIntervalDefinitions = `type NumFn = (x: number) => number;
 
-function negative(x) {
-  return x < 0;
-}
+${averageDefinition}
+const positive = (x: number): boolean => x > 0;
 
-function close_enough(x, y) {
-  return math_abs(x - y) < 0.001;
-}
+const negative = (x: number): boolean => x < 0;
 
-function search(f, neg_point, pos_point) {
+const close_enough = (x: number, y: number): boolean => math_abs(x - y) < 0.001;
+
+const search = (f: NumFn, neg_point: number, pos_point: number): number => {
   const midpoint = average(neg_point, pos_point);
   if (close_enough(neg_point, pos_point)) {
     return midpoint;
@@ -33,9 +27,9 @@ function search(f, neg_point, pos_point) {
         ? search(f, midpoint, pos_point)
         : midpoint;
   }
-}
+};
 
-function half_interval_method(f, a, b) {
+const half_interval_method = (f: NumFn, a: number, b: number): number => {
   const a_value = f(a);
   const b_value = f(b);
   return negative(a_value) && positive(b_value)
@@ -43,27 +37,28 @@ function half_interval_method(f, a, b) {
     : negative(b_value) && positive(a_value)
       ? search(f, b, a)
       : error("values are not of opposite sign");
-}
+};
 `;
 
 export const halfIntervalProgram = `${halfIntervalDefinitions}
 half_interval_method(math_sin, 2, 4);
 `;
 
-export const fixedPointDefinitions = `const tolerance = 0.00001;
+export const fixedPointDefinitions = `type NumFn = (x: number) => number;
 
-function fixed_point(f, first_guess) {
-  function close_enough(x, y) {
-    return math_abs(x - y) < tolerance;
-  }
-  function try_with(guess) {
+const tolerance = 0.00001;
+
+const fixed_point = (f: NumFn, first_guess: number): number => {
+  const close_enough = (x: number, y: number): boolean =>
+    math_abs(x - y) < tolerance;
+  const try_with = (guess: number): number => {
     const next = f(guess);
     return close_enough(guess, next)
       ? next
       : try_with(next);
-  }
+  };
   return try_with(first_guess);
-}
+};
 `;
 
 export const fixedPointProgram = `${fixedPointDefinitions}

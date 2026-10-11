@@ -9,37 +9,31 @@
  */
 
 /** §3.3.2's queue: a pair of pointers to the front and rear of an ordinary list. */
-export const circuitQueueDefinitions = `function front_ptr(queue) {
-  return head(queue);
-}
+export const circuitQueueDefinitions = `type Queue<T> = Pair<List<T>, List<T>>;
 
-function rear_ptr(queue) {
-  return tail(queue);
-}
+const front_ptr = <T>(queue: Queue<T>): List<T> => head(queue);
 
-function set_front_ptr(queue, item) {
+const rear_ptr = <T>(queue: Queue<T>): List<T> => tail(queue);
+
+const set_front_ptr = <T>(queue: Queue<T>, item: List<T>): void => {
   set_head(queue, item);
-}
+};
 
-function set_rear_ptr(queue, item) {
+const set_rear_ptr = <T>(queue: Queue<T>, item: List<T>): void => {
   set_tail(queue, item);
-}
+};
 
-function is_empty_queue(queue) {
-  return is_null(front_ptr(queue));
-}
+const is_empty_queue = <T>(queue: Queue<T>): boolean =>
+  is_null(front_ptr(queue));
 
-function make_queue() {
-  return pair(null, null);
-}
+const make_queue = <T>(): Queue<T> => pair(null, null);
 
-function front_queue(queue) {
-  return is_empty_queue(queue)
+const front_queue = <T>(queue: Queue<T>): T =>
+  is_empty_queue(queue)
     ? error(queue, "front_queue called with an empty queue")
     : head(front_ptr(queue));
-}
 
-function insert_queue(queue, item) {
+const insert_queue = <T>(queue: Queue<T>, item: T): Queue<T> => {
   const new_pair = pair(item, null);
   if (is_empty_queue(queue)) {
     set_front_ptr(queue, new_pair);
@@ -49,73 +43,60 @@ function insert_queue(queue, item) {
     set_rear_ptr(queue, new_pair);
   }
   return queue;
-}
+};
 
-function delete_queue(queue) {
+const delete_queue = <T>(queue: Queue<T>): Queue<T> => {
   if (is_empty_queue(queue)) {
     error(queue, "delete_queue called with an empty queue");
   } else {
     set_front_ptr(queue, tail(front_ptr(queue)));
     return queue;
   }
-}
+};
 `;
 
 /** The agenda: the current time, then a list of time segments, each a queue of actions due at that time. */
-export const circuitAgendaDefinitions = `function make_time_segment(time, queue) {
-  return pair(time, queue);
-}
+export const circuitAgendaDefinitions = `type Action = () => void;
+type TimeSegment = Pair<number, Queue<Action>>;
+type Agenda = Pair<number, List<TimeSegment>>;
 
-function segment_time(s) {
-  return head(s);
-}
+const make_time_segment = (time: number, queue: Queue<Action>): TimeSegment =>
+  pair(time, queue);
 
-function segment_queue(s) {
-  return tail(s);
-}
+const segment_time = (s: TimeSegment): number => head(s);
 
-function make_agenda() {
-  return list(0);
-}
+const segment_queue = (s: TimeSegment): Queue<Action> => tail(s);
 
-function current_time(agenda) {
-  return head(agenda);
-}
+const make_agenda = (): Agenda => list(0);
 
-function set_current_time(agenda, time) {
+const current_time = (agenda: Agenda): number => head(agenda);
+
+const set_current_time = (agenda: Agenda, time: number): void => {
   set_head(agenda, time);
-}
+};
 
-function segments(agenda) {
-  return tail(agenda);
-}
+const segments = (agenda: Agenda): List<TimeSegment> => tail(agenda);
 
-function set_segments(agenda, segs) {
+const set_segments = (agenda: Agenda, segs: List<TimeSegment>): void => {
   set_tail(agenda, segs);
-}
+};
 
-function first_segment(agenda) {
-  return head(segments(agenda));
-}
+const first_segment = (agenda: Agenda): TimeSegment => head(segments(agenda));
 
-function rest_segments(agenda) {
-  return tail(segments(agenda));
-}
+const rest_segments = (agenda: Agenda): List<TimeSegment> =>
+  tail(segments(agenda));
 
-function is_empty_agenda(agenda) {
-  return is_null(segments(agenda));
-}
+const is_empty_agenda = (agenda: Agenda): boolean => is_null(segments(agenda));
 
-function add_to_agenda(time, action, agenda) {
-  function belongs_before(segs) {
-    return is_null(segs) || time < segment_time(head(segs));
-  }
-  function make_new_time_segment(time, action) {
+const add_to_agenda = (time: number, action: Action, agenda: Agenda): void => {
+  const belongs_before = (segs: List<TimeSegment>): boolean =>
+    is_null(segs) || time < segment_time(head(segs));
+  const make_new_time_segment = (time: number, action: Action): TimeSegment => {
     const q = make_queue();
     insert_queue(q, action);
     return make_time_segment(time, q);
-  }
-  function add_to_segments(segs) {
+  };
+  const add_to_segments = (segs: List<TimeSegment>): void => {
     if (segment_time(head(segs)) === time) {
       insert_queue(segment_queue(head(segs)), action);
     } else {
@@ -126,24 +107,24 @@ function add_to_agenda(time, action, agenda) {
         add_to_segments(rest);
       }
     }
-  }
+  };
   const segs = segments(agenda);
   if (belongs_before(segs)) {
     set_segments(agenda, pair(make_new_time_segment(time, action), segs));
   } else {
     add_to_segments(segs);
   }
-}
+};
 
-function remove_first_agenda_item(agenda) {
+const remove_first_agenda_item = (agenda: Agenda): void => {
   const q = segment_queue(first_segment(agenda));
   delete_queue(q);
   if (is_empty_queue(q)) {
     set_segments(agenda, rest_segments(agenda));
   } else {}
-}
+};
 
-function first_agenda_item(agenda) {
+const first_agenda_item = (agenda: Agenda): Action => {
   if (is_empty_agenda(agenda)) {
     error("agenda is empty -- first_agenda_item");
   } else {
@@ -151,116 +132,110 @@ function first_agenda_item(agenda) {
     set_current_time(agenda, segment_time(first_seg));
     return front_queue(segment_queue(first_seg));
   }
-}
+};
 `;
 
 /** Wires: a computational object with a signal and the action functions to run when it changes. */
-export const circuitWireDefinitions = `function make_wire() {
+export const circuitWireDefinitions = `type Wire = (m: string) => unknown;
+
+const make_wire = (): Wire => {
   let signal_value = 0;
-  let action_functions = null;
-  function set_my_signal(new_value) {
+  let action_functions: List<Action> = null;
+  const set_my_signal = (new_value: number): "done" => {
     if (signal_value !== new_value) {
       signal_value = new_value;
       return call_each(action_functions);
     } else {
       return "done";
     }
-  }
-  function accept_action_function(fun) {
+  };
+  const accept_action_function = (fun: Action): void => {
     action_functions = pair(fun, action_functions);
     fun();
-  }
-  function dispatch(m) {
-    return m === "get_signal"
+  };
+  const dispatch = (m: string): unknown =>
+    m === "get_signal"
       ? signal_value
       : m === "set_signal"
       ? set_my_signal
       : m === "add_action"
       ? accept_action_function
       : error(m, "unknown operation -- wire");
-  }
   return dispatch;
-}
+};
 
-function call_each(functions) {
+const call_each = (functions: List<Action>): "done" => {
   if (is_null(functions)) {
     return "done";
   } else {
     head(functions)();
     return call_each(tail(functions));
   }
-}
+};
 
-function get_signal(wire) {
-  return wire("get_signal");
-}
+const get_signal = (wire: Wire): number => wire("get_signal");
 
-function set_signal(wire, new_value) {
-  return wire("set_signal")(new_value);
-}
+const set_signal = (wire: Wire, new_value: number): "done" =>
+  wire("set_signal")(new_value);
 
-function add_action(wire, action_function) {
-  return wire("add_action")(action_function);
-}
+const add_action = (wire: Wire, action_function: Action): void =>
+  wire("add_action")(action_function);
 `;
 
 /** The logical functions behind the gates; the book leaves \`logical_and\` and \`logical_or\` to the reader. */
-export const circuitLogicDefinitions = `function logical_not(s) {
-  return s === 0
+export const circuitLogicDefinitions = `const logical_not = (s: number): number =>
+  s === 0
     ? 1
     : s === 1
     ? 0
     : error(s, "invalid signal");
-}
 
-function logical_and(s1, s2) {
-  return s1 === 1 && s2 === 1
+const logical_and = (s1: number, s2: number): number =>
+  s1 === 1 && s2 === 1
     ? 1
     : (s1 === 0 || s1 === 1) && (s2 === 0 || s2 === 1)
     ? 0
     : error(pair(s1, s2), "invalid signals");
-}
 
-function logical_or(s1, s2) {
-  return s1 === 0 && s2 === 0
+const logical_or = (s1: number, s2: number): number =>
+  s1 === 0 && s2 === 0
     ? 0
     : (s1 === 0 || s1 === 1) && (s2 === 0 || s2 === 1)
     ? 1
     : error(pair(s1, s2), "invalid signals");
-}
 `;
 
 /** The inverter and the and-gate, as in the book. */
-export const circuitInverterAndDefinitions = `function inverter(input, output) {
-  function invert_input() {
+export const circuitInverterAndDefinitions = `const inverter = (input: Wire, output: Wire): "ok" => {
+  const invert_input = (): void => {
     const new_value = logical_not(get_signal(input));
     after_delay(inverter_delay, () => set_signal(output, new_value));
-  }
+  };
   add_action(input, invert_input);
   return "ok";
-}
+};
 
-function and_gate(a1, a2, output) {
-  function and_action_function() {
+const and_gate = (a1: Wire, a2: Wire, output: Wire): "ok" => {
+  const and_action_function = (): void => {
     const new_value = logical_and(get_signal(a1), get_signal(a2));
     after_delay(and_gate_delay, () => set_signal(output, new_value));
-  }
+  };
   add_action(a1, and_action_function);
   add_action(a2, and_action_function);
   return "ok";
-}
+};
 `;
 
 /** The or-gate as a primitive function box: Exercise 3.28's answer. */
-export const circuitOrGateDefinition = `function or_gate(a1, a2, output) {
-  function or_action_function() {
+export const circuitOrGateDefinition = `const or_gate = (a1: Wire, a2: Wire, output: Wire): "ok" => {
+  const or_action_function = (): void => {
     const new_value = logical_or(get_signal(a1), get_signal(a2));
     after_delay(or_gate_delay, () => set_signal(output, new_value));
-  }
+  };
   add_action(a1, or_action_function);
   add_action(a2, or_action_function);
   return "ok";
-}
+};
 `;
 
 export const circuitGateDefinitions = `${circuitLogicDefinitions}
@@ -268,7 +243,7 @@ ${circuitInverterAndDefinitions}
 ${circuitOrGateDefinition}`;
 
 /** The half-adder and the full-adder, wired from gates. */
-export const circuitAdderDefinitions = `function half_adder(a, b, s, c) {
+export const circuitAdderDefinitions = `const half_adder = (a: Wire, b: Wire, s: Wire, c: Wire): "ok" => {
   const d = make_wire();
   const e = make_wire();
   or_gate(a, b, d);
@@ -276,9 +251,9 @@ export const circuitAdderDefinitions = `function half_adder(a, b, s, c) {
   inverter(c, e);
   and_gate(d, e, s);
   return "ok";
-}
+};
 
-function full_adder(a, b, c_in, sum, c_out) {
+const full_adder = (a: Wire, b: Wire, c_in: Wire, sum: Wire, c_out: Wire): "ok" => {
   const s = make_wire();
   const c1 = make_wire();
   const c2 = make_wire();
@@ -286,7 +261,7 @@ function full_adder(a, b, c_in, sum, c_out) {
   half_adder(a, s, sum, c2);
   or_gate(c1, c2, c_out);
   return "ok";
-}
+};
 `;
 
 /** The agenda the gates schedule on, the delays, and the functions that run and watch a simulation. */
@@ -295,11 +270,11 @@ const inverter_delay = 2;
 const and_gate_delay = 3;
 const or_gate_delay = 5;
 
-function after_delay(delay, action) {
+const after_delay = (delay: number, action: Action): void => {
   add_to_agenda(delay + current_time(the_agenda), action, the_agenda);
-}
+};
 
-function propagate() {
+const propagate = (): "done" => {
   if (is_empty_agenda(the_agenda)) {
     return "done";
   } else {
@@ -308,12 +283,12 @@ function propagate() {
     remove_first_agenda_item(the_agenda);
     return propagate();
   }
-}
+};
 
-function probe(name, wire) {
+const probe = (name: string, wire: Wire): void => {
   add_action(wire, () => display(name + " " + stringify(current_time(the_agenda)) +
                                  ", new value = " + stringify(get_signal(wire))));
-}
+};
 `;
 
 /** Everything the gates need to run, without the gates: the base an exercise builds gates on. */
@@ -414,7 +389,7 @@ add_to_agenda(2, () => display("at 2"), agenda);
 add_to_agenda(5, () => display("at 5, second"), agenda);
 add_to_agenda(3, () => display("at 3"), agenda);
 
-function run(agenda) {
+const run = (agenda: Agenda): number => {
   if (is_empty_agenda(agenda)) {
     return current_time(agenda);
   } else {
@@ -423,7 +398,7 @@ function run(agenda) {
     remove_first_agenda_item(agenda);
     return run(agenda);
   }
-}
+};
 
 display_list(map(segment_time, segments(agenda)));
 run(agenda);
@@ -432,11 +407,16 @@ run(agenda);
 /* §3.3.5: propagation of constraints. */
 
 /** Connectors, and the protocol constraints use to talk to them. */
-export const constraintConnectorDefinitions = `function make_connector() {
-  let value = false;
-  let informant = false;
-  let constraints = null;
-  function set_my_value(newval, setter) {
+export const constraintConnectorDefinitions = `type Connector = (request: string) => unknown;
+type Constraint = (request: "I have a value." | "I lost my value.") => void;
+// Whoever sets a connector's value: a constraint, or a name such as "user".
+type Informant = Constraint | string;
+
+const make_connector = (): Connector => {
+  let value: number | false = false;
+  let informant: Informant | false = false;
+  let constraints: List<Constraint> = null;
+  const set_my_value = (newval: number, setter: Informant): "done" | "ignored" => {
     if (!has_value(me)) {
       value = newval;
       informant = setter;
@@ -446,16 +426,16 @@ export const constraintConnectorDefinitions = `function make_connector() {
     } else {
       return "ignored";
     }
-  }
-  function forget_my_value(retractor) {
+  };
+  const forget_my_value = (retractor: Informant): "done" | "ignored" => {
     if (retractor === informant) {
       informant = false;
       return for_each_except(retractor, inform_about_no_value, constraints);
     } else {
       return "ignored";
     }
-  }
-  function connect(new_constraint) {
+  };
+  const connect = (new_constraint: Constraint): "done" => {
     if (is_null(member(new_constraint, constraints))) {
       constraints = pair(new_constraint, constraints);
     } else {}
@@ -463,8 +443,8 @@ export const constraintConnectorDefinitions = `function make_connector() {
       inform_about_value(new_constraint);
     } else {}
     return "done";
-  }
-  function me(request) {
+  };
+  const me = (request: string): unknown => {
     if (request === "has_value") {
       return informant !== false;
     } else if (request === "value") {
@@ -478,12 +458,12 @@ export const constraintConnectorDefinitions = `function make_connector() {
     } else {
       error(request, "unknown operation -- connector");
     }
-  }
+  };
   return me;
-}
+};
 
-function for_each_except(exception, fun, list) {
-  function loop(items) {
+const for_each_except = <T>(exception: unknown, fun: (item: T) => void, list: List<T>): "done" => {
+  const loop = (items: List<T>): "done" => {
     if (is_null(items)) {
       return "done";
     } else if (head(items) === exception) {
@@ -492,42 +472,33 @@ function for_each_except(exception, fun, list) {
       fun(head(items));
       return loop(tail(items));
     }
-  }
+  };
   return loop(list);
-}
+};
 
-function has_value(connector) {
-  return connector("has_value");
-}
+const has_value = (connector: Connector): boolean => connector("has_value");
 
-function get_value(connector) {
-  return connector("value");
-}
+const get_value = (connector: Connector): number => connector("value");
 
-function set_value(connector, new_value, informant) {
-  return connector("set_value")(new_value, informant);
-}
+const set_value = (connector: Connector, new_value: number, informant: Informant): "done" | "ignored" =>
+  connector("set_value")(new_value, informant);
 
-function forget_value(connector, retractor) {
-  return connector("forget")(retractor);
-}
+const forget_value = (connector: Connector, retractor: Informant): "done" | "ignored" =>
+  connector("forget")(retractor);
 
-function connect(connector, new_constraint) {
-  return connector("connect")(new_constraint);
-}
+const connect = (connector: Connector, new_constraint: Constraint): "done" =>
+  connector("connect")(new_constraint);
 
-function inform_about_value(constraint) {
-  return constraint("I have a value.");
-}
+const inform_about_value = (constraint: Constraint): void =>
+  constraint("I have a value.");
 
-function inform_about_no_value(constraint) {
-  return constraint("I lost my value.");
-}
+const inform_about_no_value = (constraint: Constraint): void =>
+  constraint("I lost my value.");
 `;
 
 /** The primitive constraints: adder, multiplier and constant. */
-export const constraintPrimitiveDefinitions = `function adder(a1, a2, sum) {
-  function process_new_value() {
+export const constraintPrimitiveDefinitions = `const adder = (a1: Connector, a2: Connector, sum: Connector): Constraint => {
+  const process_new_value = (): void => {
     if (has_value(a1) && has_value(a2)) {
       set_value(sum, get_value(a1) + get_value(a2), me);
     } else if (has_value(a1) && has_value(sum)) {
@@ -535,14 +506,14 @@ export const constraintPrimitiveDefinitions = `function adder(a1, a2, sum) {
     } else if (has_value(a2) && has_value(sum)) {
       set_value(a1, get_value(sum) - get_value(a2), me);
     } else {}
-  }
-  function process_forget_value() {
+  };
+  const process_forget_value = (): void => {
     forget_value(sum, me);
     forget_value(a1, me);
     forget_value(a2, me);
     process_new_value();
-  }
-  function me(request) {
+  };
+  const me = (request: "I have a value." | "I lost my value."): void => {
     if (request === "I have a value.") {
       process_new_value();
     } else if (request === "I lost my value.") {
@@ -550,15 +521,15 @@ export const constraintPrimitiveDefinitions = `function adder(a1, a2, sum) {
     } else {
       error(request, "unknown request -- adder");
     }
-  }
+  };
   connect(a1, me);
   connect(a2, me);
   connect(sum, me);
   return me;
-}
+};
 
-function multiplier(m1, m2, product) {
-  function process_new_value() {
+const multiplier = (m1: Connector, m2: Connector, product: Connector): Constraint => {
+  const process_new_value = (): void => {
     if ((has_value(m1) && get_value(m1) === 0) ||
         (has_value(m2) && get_value(m2) === 0)) {
       set_value(product, 0, me);
@@ -569,14 +540,14 @@ function multiplier(m1, m2, product) {
     } else if (has_value(product) && has_value(m2)) {
       set_value(m1, get_value(product) / get_value(m2), me);
     } else {}
-  }
-  function process_forget_value() {
+  };
+  const process_forget_value = (): void => {
     forget_value(product, me);
     forget_value(m1, me);
     forget_value(m2, me);
     process_new_value();
-  }
-  function me(request) {
+  };
+  const me = (request: "I have a value." | "I lost my value."): void => {
     if (request === "I have a value.") {
       process_new_value();
     } else if (request === "I lost my value.") {
@@ -584,44 +555,43 @@ function multiplier(m1, m2, product) {
     } else {
       error(request, "unknown request -- multiplier");
     }
-  }
+  };
   connect(m1, me);
   connect(m2, me);
   connect(product, me);
   return me;
-}
+};
 
-function constant(value, connector) {
-  function me(request) {
+const constant = (value: number, connector: Connector): Constraint => {
+  const me = (request: "I have a value." | "I lost my value."): void => {
     error(request, "unknown request -- constant");
-  }
+  };
   connect(connector, me);
   set_value(connector, value, me);
   return me;
-}
+};
 `;
 
 /** A probe prints a message whenever its connector is given a value or loses one. */
-export const constraintProbeDefinition = `function probe(name, connector) {
-  function print_probe(value) {
+export const constraintProbeDefinition = `const probe = (name: string, connector: Connector): Constraint => {
+  const print_probe = (value: string): void => {
     display("Probe: " + name + " = " + value);
-  }
-  function process_new_value() {
+  };
+  const process_new_value = (): void => {
     print_probe(stringify(get_value(connector)));
-  }
-  function process_forget_value() {
+  };
+  const process_forget_value = (): void => {
     print_probe("?");
-  }
-  function me(request) {
-    return request === "I have a value."
+  };
+  const me = (request: "I have a value." | "I lost my value."): void =>
+    request === "I have a value."
       ? process_new_value()
       : request === "I lost my value."
       ? process_forget_value()
       : error(request, "unknown request -- probe");
-  }
   connect(connector, me);
   return me;
-}
+};
 `;
 
 /** The whole constraint system: connectors, primitive constraints and probes. */
@@ -630,7 +600,7 @@ ${constraintPrimitiveDefinitions}
 ${constraintProbeDefinition}`;
 
 /** 9C = 5(F − 32) as a network of two multipliers, an adder and three constants. */
-export const celsiusFahrenheitDefinition = `function celsius_fahrenheit_converter(c, f) {
+export const celsiusFahrenheitDefinition = `const celsius_fahrenheit_converter = (c: Connector, f: Connector): "ok" => {
   const u = make_connector();
   const v = make_connector();
   const w = make_connector();
@@ -643,7 +613,7 @@ export const celsiusFahrenheitDefinition = `function celsius_fahrenheit_converte
   constant(5, x);
   constant(32, y);
   return "ok";
-}
+};
 `;
 
 /** The book's run: set C to 25, forget it, then set F to 212. */

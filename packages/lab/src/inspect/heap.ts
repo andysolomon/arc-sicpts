@@ -1,7 +1,7 @@
 import type { Environment } from '../evaluator/environment.ts';
 import type { MachineHooks } from '../evaluator/machine.ts';
-import { isPair, stringify, type Pair, type Value } from '../evaluator/values.ts';
-import type { Loc, Node, Statement } from '../syntax/ast.ts';
+import { isPair, isPromise, stringify, type Pair, type Value } from '../evaluator/values.ts';
+import { functionBinding, type Loc, type Node, type Statement } from '../syntax/ast.ts';
 import { excerpt } from './sourceText.ts';
 
 /**
@@ -37,7 +37,8 @@ export interface HeapSnapshot {
   /** Index of the top-level statement that has just finished. */
   statement: number;
   /** What that statement was. */
-  node: { kind: Node['kind']; loc: Loc; text: string } | null;
+  /** The statement that ran; `declaresFunction` is set when all it did was name a function. */
+  node: { kind: Node['kind']; loc: Loc; text: string; declaresFunction: boolean } | null;
   /** How many step records had been logged when the snapshot was taken (0 without a step log). */
   records: number;
   /** The program frame's assigned bindings, in declaration order. */
@@ -102,7 +103,8 @@ export function heapGraph(
       if (!listed.has(value)) pending.push(value);
       return { kind: 'pair', id: ids.of(value) };
     }
-    if (typeof value === 'object') return { kind: 'function', text: stringify(value) };
+    // A promise is drawn by its text, as an atom: it is not a function.
+    if (typeof value === 'object' && !isPromise(value)) return { kind: 'function', text: stringify(value) };
     return { kind: 'atom', text: stringify(value) };
   };
 
@@ -154,7 +156,7 @@ export function createHeapInspector(
     const { index, node } = previous;
     snapshots.push({
       statement: index,
-      node: { kind: node.kind, loc: node.loc, text: excerpt(source, node, 60) },
+      node: { kind: node.kind, loc: node.loc, text: excerpt(source, node, 60), declaresFunction: functionBinding(node) !== null },
       records: records(),
       ...heapGraph(env, ids, maxPairs),
     });
