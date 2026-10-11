@@ -13,7 +13,7 @@ The following puzzle, adapted from Dinesman (1968), is typical of a large class 
 We can find out in a straightforward way by enumerating all the possibilities and imposing the given restrictions:
 
 ```js
-const office_move = () => {
+const office_move = (): List<List<string | number>> => {
     const alyssa = amb(1, 2, 3, 4, 5);
     const ben = amb(1, 2, 3, 4, 5);
     const cy = amb(1, 2, 3, 4, 5);
@@ -62,7 +62,11 @@ const articles = list("article", "the", "a");
 We also need a *grammar*: rules that say how grammatical elements are composed from simpler ones. A very simple grammar might stipulate that a sentence is a noun phrase followed by a verb, and a noun phrase is an article followed by a noun. A program with one function for each rule parses such sentences. At the lowest level, parsing a word means checking that the next not-yet-parsed word is a member of the list for the required part of speech. We keep the input not yet parsed in a variable `not_yet_parsed`; each time we check a word, we require that it is there and of the right kind, remove it, and return it tagged with its part of speech:
 
 ```js
-const parse_word = (word_list) => {
+// A parse tree is a list: what the words make, then the words or trees
+// it is made of.
+type ParseTree = null | [string | ParseTree, ParseTree];
+
+const parse_word = (word_list: List<string>): ParseTree => {
     require(! is_null(not_yet_parsed));
     require(! is_null(member(head(not_yet_parsed), tail(word_list))));
     const found_word = head(not_yet_parsed);
@@ -70,9 +74,9 @@ const parse_word = (word_list) => {
     return list(head(word_list), found_word);
 };
 
-let not_yet_parsed = null;
+let not_yet_parsed: List<string> = null;
 
-const parse_input = (input) => {
+const parse_input = (input: List<string>): ParseTree => {
     not_yet_parsed = input;
     const sent = parse_sentence();
     require(is_null(not_yet_parsed));
@@ -87,18 +91,18 @@ The `amb` evaluator is convenient here because it is easy to express the constra
 ```js
 const prepositions = list("prep", "for", "to", "in", "by", "with");
 
-const parse_prepositional_phrase = () =>
+const parse_prepositional_phrase = (): ParseTree =>
     list("prep-phrase",
                 parse_word(prepositions),
                 parse_noun_phrase());
 
-const parse_sentence = () =>
+const parse_sentence = (): ParseTree =>
     list("sentence",
                 parse_noun_phrase(),
                 parse_verb_phrase());
 
-const parse_verb_phrase = () => {
-    const maybe_extend = (verb_phrase) =>
+const parse_verb_phrase = (): ParseTree => {
+    const maybe_extend = (verb_phrase: ParseTree): ParseTree =>
         amb(verb_phrase,
                    maybe_extend(list("verb-phrase",
                                      verb_phrase,
@@ -110,13 +114,13 @@ const parse_verb_phrase = () => {
 While we are at it, we let noun phrases grow too, to permit such things as “a cat in the class”. What we called a noun phrase is now a *simple* noun phrase, and a noun phrase is either a simple noun phrase or a noun phrase extended by a prepositional phrase:
 
 ```js
-const parse_simple_noun_phrase = () =>
+const parse_simple_noun_phrase = (): ParseTree =>
     list("simple-noun-phrase",
                 parse_word(articles),
                 parse_word(nouns));
 
-const parse_noun_phrase = () => {
-    const maybe_extend = (noun_phrase) =>
+const parse_noun_phrase = (): ParseTree => {
+    const maybe_extend = (noun_phrase: ParseTree): ParseTree =>
         amb(noun_phrase,
                    maybe_extend(list("noun-phrase",
                                      noun_phrase,
@@ -263,7 +267,7 @@ The evaluators of sections 4.1 and 4.2 do not determine the order in which argum
 Louis Reasoner suggests that, since a verb phrase is either a verb or a verb phrase followed by a prepositional phrase, it would be much more straightforward to declare `parse_verb_phrase` as follows (and similarly for noun phrases):
 
 ```js
-const parse_verb_phrase = () =>
+const parse_verb_phrase = (): ParseTree =>
     amb(parse_word(verbs),
                list("verb-phrase",
                     parse_verb_phrase(),

@@ -14,18 +14,18 @@ import { pick } from './source.ts';
  */
 
 /** §4.3.3: recognizing `amb`, which `parse` reads as an application. */
-export const ambSyntax = `const is_amb = (component) =>
+export const ambSyntax = `const is_amb = (component: Component): boolean =>
     is_tagged_list(component, "application") &&
            is_name(function_expression(component)) &&
            symbol_of_name(function_expression(component)) === "amb";
-const amb_choices = (component) =>
+const amb_choices = (component: Component): List<Component> =>
     arg_expressions(component);
 
 // Not in the book's evaluator: && and || as derived conditional
 // expressions, as in exercise 4.4, so that requirements can use them.
-const is_logical_composition = (component) =>
+const is_logical_composition = (component: Component): boolean =>
     is_tagged_list(component, "logical_composition");
-const logical_composition_to_conditional = (component) => {
+const logical_composition_to_conditional = (component: Component): Component => {
     const operator = list_ref(component, 1);
     const left = list_ref(component, 2);
     const right = list_ref(component, 3);
@@ -38,10 +38,10 @@ const logical_composition_to_conditional = (component) => {
 `;
 
 /** §4.3.3: the execution function for `amb`, the heart of the evaluator. */
-export const analyzeAmb = `const analyze_amb = (component) => {
+export const analyzeAmb = `const analyze_amb = (component: Component): Execution => {
     const cfuns = map(analyze, amb_choices(component));
     return (env, succeed, fail) => {
-               const try_next = (choices) =>
+               const try_next = (choices: List<Execution>): unknown =>
                    is_null(choices)
                           ? fail()
                           : head(choices)(env,
@@ -53,10 +53,17 @@ export const analyzeAmb = `const analyze_amb = (component) => {
 };`;
 
 /** §4.3.3: `ambeval`, `analyze` and the execution functions with continuations. */
-export const ambAnalyze = `const ambeval = (component, env, succeed, fail) =>
+export const ambAnalyze = `// An execution function takes an environment and two continuations. A
+// success continuation takes a value and the failure continuation that
+// goes with it; a failure continuation takes no arguments.
+type Fail = () => unknown;
+type Succeed = (value: unknown, fail: Fail) => unknown;
+type Execution = (env: Environment, succeed: Succeed, fail: Fail) => unknown;
+
+const ambeval = (component: Component, env: Environment, succeed: Succeed, fail: Fail): unknown =>
     analyze(component)(env, succeed, fail);
 
-const analyze = (component) =>
+const analyze = (component: Component): Execution =>
     is_literal(component)
            ? analyze_literal(component)
            : is_name(component)
@@ -87,17 +94,17 @@ const analyze = (component) =>
            ? analyze_assignment(component)
            : error(component, "unknown syntax -- analyze");
 
-const analyze_literal = (component) =>
+const analyze_literal = (component: Component): Execution =>
     (env, succeed, fail) =>
              succeed(literal_value(component), fail);
 
-const analyze_name = (component) =>
+const analyze_name = (component: Component): Execution =>
     (env, succeed, fail) =>
              succeed(lookup_symbol_value(symbol_of_name(component),
                                          env),
                      fail);
 
-const analyze_lambda_expression = (component) => {
+const analyze_lambda_expression = (component: Component): Execution => {
     const params = lambda_parameter_symbols(component);
     const bfun = analyze(lambda_body(component));
     return (env, succeed, fail) =>
@@ -105,7 +112,7 @@ const analyze_lambda_expression = (component) => {
                      fail);
 };
 
-const analyze_conditional = (component) => {
+const analyze_conditional = (component: Component): Execution => {
     const pfun = analyze(conditional_predicate(component));
     const cfun = analyze(conditional_consequent(component));
     const afun = analyze(conditional_alternative(component));
@@ -121,8 +128,8 @@ const analyze_conditional = (component) => {
                   fail);
 };
 
-const analyze_sequence = (stmts) => {
-    const sequentially = (a, b) =>
+const analyze_sequence = (stmts: List<Component>): Execution => {
+    const sequentially = (a: Execution, b: Execution): Execution =>
         (env, succeed, fail) =>
                  a(env,
                    // success continuation for calling a
@@ -132,7 +139,7 @@ const analyze_sequence = (stmts) => {
                      : b(env, succeed, fail2),
                    // failure continuation for calling a
                    fail);
-    const loop = (first_fun, rest_funs) =>
+    const loop = (first_fun: Execution, rest_funs: List<Execution>): Execution =>
         is_null(rest_funs)
                ? first_fun
                : loop(sequentially(first_fun, head(rest_funs)),
@@ -145,7 +152,7 @@ const analyze_sequence = (stmts) => {
            : loop(head(funs), tail(funs));
 };
 
-const analyze_declaration = (component) => {
+const analyze_declaration = (component: Component): Execution => {
     const symbol = declaration_symbol(component);
     const vfun = analyze(declaration_value_expression(component));
     return (env, succeed, fail) =>
@@ -157,7 +164,7 @@ const analyze_declaration = (component) => {
                   fail);
 };
 
-const analyze_assignment = (component) => {
+const analyze_assignment = (component: Component): Execution => {
     const symbol = assignment_symbol(component);
     const vfun = analyze(assignment_value_expression(component));
     return (env, succeed, fail) =>
@@ -177,7 +184,7 @@ const analyze_assignment = (component) => {
                   fail);
 };
 
-const analyze_return_statement = (component) => {
+const analyze_return_statement = (component: Component): Execution => {
     const rfun = analyze(return_expression(component));
     return (env, succeed, fail) =>
              rfun(env,
@@ -186,7 +193,7 @@ const analyze_return_statement = (component) => {
                   fail);
 };
 
-const analyze_block = (component) => {
+const analyze_block = (component: Component): Execution => {
     const body = block_body(component);
     const locals = scan_out_declarations(body);
     const unassigneds = list_of_unassigned(locals);
@@ -197,7 +204,7 @@ const analyze_block = (component) => {
                   fail);
 };
 
-const analyze_application = (component) => {
+const analyze_application = (component: Component): Execution => {
     const ffun = analyze(function_expression(component));
     const afuns = map(analyze, arg_expressions(component));
     return (env, succeed, fail) =>
@@ -214,7 +221,7 @@ const analyze_application = (component) => {
                   fail);
 };
 
-const get_args = (afuns, env, succeed, fail) =>
+const get_args = (afuns: List<Execution>, env: Environment, succeed: Succeed, fail: Fail): unknown =>
     is_null(afuns)
            ? succeed(null, fail)
            : head(afuns)(env,
@@ -230,7 +237,12 @@ const get_args = (afuns, env, succeed, fail) =>
                                     fail2),
                          fail);
 
-const execute_application = (fun, args, succeed, fail) =>
+const execute_application = (
+    fun: PrimitiveFunction | CompoundFunction,
+    args: List<unknown>,
+    succeed: Succeed,
+    fail: Fail
+): unknown =>
     is_primitive_function(fun)
            ? succeed(apply_primitive_function(fun, args),
                      fail)
@@ -255,7 +267,7 @@ ${analyzeAmb}
  * evaluator gets it as a primitive: the puzzles then spend their steps on
  * the search rather than on comparing lists.
  */
-export const ambDistinct = `const distinct = (items) =>
+export const ambDistinct = `const distinct = <T>(items: List<T>): boolean =>
     is_null(items)
            ? true
            : is_null(tail(items))
@@ -269,7 +281,11 @@ export const ambDistinct = `const distinct = (items) =>
  * The primitives of §4.1.4 and a few more that the programs of §4.3 use, the
  * most frequently looked up first: names are found by scanning frames.
  */
-const ambPrimitives = `const primitive_functions = list(
+const ambPrimitives = `// A primitive function: the tag "primitive" and its implementation, as in
+// section 4.1.4, of which only some declarations are taken here.
+type PrimitiveFunction = List<unknown>;
+
+const primitive_functions = list(
        list("is_null", is_null          ),
        list("head",    head             ),
        list("tail",    tail             ),
@@ -311,7 +327,10 @@ const ambDrivers = `const input_prompt = "amb-evaluate input:";
 const output_prompt = "amb-evaluate value:";
 
 // A program is a string, or a list of programs that are its lines.
-const program_text = (input) =>
+type ProgramText = string | ProgramLines;
+type ProgramLines = null | [ProgramText, ProgramLines];
+
+const program_text = (input: ProgramText): string =>
     is_string(input)
            ? input
            : accumulate((line, rest) => program_text(line) + "\\n" + rest,
@@ -319,16 +338,16 @@ const program_text = (input) =>
 
 // The frame a program's own declarations live in, as the driver loop
 // makes it for each new problem.
-const program_environment = (program, env) => {
+const program_environment = (program: Component, env: Environment): Environment => {
     const locals = scan_out_declarations(program);
     return extend_environment(locals, list_of_unassigned(locals), env);
 };
 
 // The book's driver loop, reading from the list inputs instead of from a
 // prompt: each input is a program, or "retry" for its next value.
-const driver_loop = (env, inputs) => {
+const driver_loop = (env: Environment, inputs: List<ProgramText>): void => {
     let unread = inputs;
-    const user_read = (prompt_string) => {
+    const user_read = (prompt_string: string): string | null => {
         if (is_null(unread)) {
             return null;
         } else {
@@ -338,7 +357,7 @@ const driver_loop = (env, inputs) => {
             return input;
         }
     };
-    const internal_loop = (retry) => {
+    const internal_loop = (retry: Fail): void => {
         const input = user_read(input_prompt);
         if (is_null(input)) {
             display("evaluator terminated");
@@ -372,11 +391,11 @@ const driver_loop = (env, inputs) => {
 
 // The first n values of a program, as a list: a new problem, then retry
 // until there are n values or no more.
-const amb_solutions = (input, n) => {
+const amb_solutions = (input: ProgramText, n: number): List<unknown> => {
     const program = parse(program_text(input));
-    let values = null;
+    let values: List<unknown> = null;
     let count = 0;
-    const solution_found = (value, next_alternative) => {
+    const solution_found = (value: unknown, next_alternative: Fail): List<unknown> => {
         values = pair(value, values);
         count = count + 1;
         return count < n
@@ -390,7 +409,7 @@ const amb_solutions = (input, n) => {
 };
 
 // The environment env with the declarations of an amb program added.
-const with_declarations = (env, input) => {
+const with_declarations = (env: Environment, input: ProgramText): Environment => {
     const program = parse(program_text(input));
     const program_env = program_environment(program, env);
     return ambeval(program,
@@ -404,18 +423,18 @@ const with_declarations = (env, input) => {
  * §4.3.1: what the book declares in the nondeterministic language itself
  * before running its examples.
  */
-export const ambLibrary = `const require = (p) => {
+export const ambLibrary = `const require = (p: boolean): void => {
     if (! p) {
         amb();
     } else {}
 };
 
-const an_element_of = (items) => {
+const an_element_of = <T>(items: List<T>): T => {
     require(! is_null(items));
     return amb(head(items), an_element_of(tail(items)));
 };
 
-const an_integer_starting_from = (n) =>
+const an_integer_starting_from = (n: number): number =>
     amb(n, an_integer_starting_from(n + 1));
 `;
 
@@ -459,15 +478,15 @@ export function ambEvaluatorWith(...programs: string[]): string {
 export const ambEvaluator = ambEvaluatorWith();
 
 /** §4.3: `prime_sum_pair` and the `is_prime` it assumes. */
-export const ambPrimeSumPair = `const is_prime = (n) => {
-    const divides = (d) =>
+export const ambPrimeSumPair = `const is_prime = (n: number): boolean => {
+    const divides = (d: number): boolean =>
         d * d > n
                ? false
                : n % d === 0 || divides(d + 1);
     return n > 1 && ! divides(2);
 };
 
-const prime_sum_pair = (list1, list2) => {
+const prime_sum_pair = (list1: List<number>, list2: List<number>): List<number> => {
     const a = an_element_of(list1);
     const b = an_element_of(list2);
     require(is_prime(a + b));
@@ -476,12 +495,12 @@ const prime_sum_pair = (list1, list2) => {
 `;
 
 /** Exercise 4.33: Pythagorean triples between two bounds, with its solution. */
-export const ambPythagoreanTriples = `const an_integer_between = (low, high) => {
+export const ambPythagoreanTriples = `const an_integer_between = (low: number, high: number): number => {
     require(low <= high);
     return amb(low, an_integer_between(low + 1, high));
 };
 
-const a_pythagorean_triple_between = (low, high) => {
+const a_pythagorean_triple_between = (low: number, high: number): List<number> => {
     const i = an_integer_between(low, high);
     const j = an_integer_between(i, high);
     const k = an_integer_between(j, high);
@@ -491,7 +510,7 @@ const a_pythagorean_triple_between = (low, high) => {
 `;
 
 /** §4.3.2: the office-move puzzle, as the book first writes it. */
-export const ambOfficeMove = `const office_move = () => {
+export const ambOfficeMove = `const office_move = (): List<List<string | number>> => {
     const alyssa = amb(1, 2, 3, 4, 5);
     const ben = amb(1, 2, 3, 4, 5);
     const cy = amb(1, 2, 3, 4, 5);
@@ -522,7 +541,11 @@ const articles = list("article", "the", "a");
 
 const prepositions = list("prep", "for", "to", "in", "by", "with");
 
-const parse_word = (word_list) => {
+// A parse tree is a list: what the words make, then the words or trees
+// it is made of.
+type ParseTree = null | [string | ParseTree, ParseTree];
+
+const parse_word = (word_list: List<string>): ParseTree => {
     require(! is_null(not_yet_parsed));
     require(! is_null(member(head(not_yet_parsed), tail(word_list))));
     const found_word = head(not_yet_parsed);
@@ -530,27 +553,27 @@ const parse_word = (word_list) => {
     return list(head(word_list), found_word);
 };
 
-let not_yet_parsed = null;
+let not_yet_parsed: List<string> = null;
 
-const parse_input = (input) => {
+const parse_input = (input: List<string>): ParseTree => {
     not_yet_parsed = input;
     const sent = parse_sentence();
     require(is_null(not_yet_parsed));
     return sent;
 };
 
-const parse_prepositional_phrase = () =>
+const parse_prepositional_phrase = (): ParseTree =>
     list("prep-phrase",
                 parse_word(prepositions),
                 parse_noun_phrase());
 
-const parse_sentence = () =>
+const parse_sentence = (): ParseTree =>
     list("sentence",
                 parse_noun_phrase(),
                 parse_verb_phrase());
 
-const parse_verb_phrase = () => {
-    const maybe_extend = (verb_phrase) =>
+const parse_verb_phrase = (): ParseTree => {
+    const maybe_extend = (verb_phrase: ParseTree): ParseTree =>
         amb(verb_phrase,
                    maybe_extend(list("verb-phrase",
                                      verb_phrase,
@@ -558,13 +581,13 @@ const parse_verb_phrase = () => {
     return maybe_extend(parse_word(verbs));
 };
 
-const parse_simple_noun_phrase = () =>
+const parse_simple_noun_phrase = (): ParseTree =>
     list("simple-noun-phrase",
                 parse_word(articles),
                 parse_word(nouns));
 
-const parse_noun_phrase = () => {
-    const maybe_extend = (noun_phrase) =>
+const parse_noun_phrase = (): ParseTree => {
+    const maybe_extend = (noun_phrase: ParseTree): ParseTree =>
         amb(noun_phrase,
                    maybe_extend(list("noun-phrase",
                                      noun_phrase,
@@ -581,14 +604,14 @@ const parse_noun_phrase = () => {
  * among them. Choice points are numbered as they are reached.
  */
 const probedAnalyzeAmb = `let amb_points = 0;
-const amb_tried = (point, index, count, amb_text, choice_text) =>
+const amb_tried = (point: number, index: number, count: number, amb_text: string, choice_text: string): void =>
     undefined;
-const amb_chose = (point, index, value) =>
+const amb_chose = (point: number, index: number, value: unknown): void =>
     undefined;
-const amb_exhausted = (point, count) =>
+const amb_exhausted = (point: number, count: number): void =>
     undefined;
-const amb_text_of = (component) => {
-    const texts = (components) =>
+const amb_text_of = (component: Component): string => {
+    const texts = (components: List<Component>): string =>
         is_null(components)
                ? ""
                : is_null(tail(components))
@@ -611,7 +634,7 @@ const amb_text_of = (component) => {
              amb_text_of(first_operand(component))
            : "…";
 };
-const analyze_amb = (component) => {
+const analyze_amb = (component: Component): Execution => {
     const cfuns = map(analyze, amb_choices(component));
     const texts = map(amb_text_of, amb_choices(component));
     const amb_text = amb_text_of(component);
@@ -619,7 +642,7 @@ const analyze_amb = (component) => {
     return (env, succeed, fail) => {
                amb_points = amb_points + 1;
                const point = amb_points;
-               const try_next = (choices, texts, index) => {
+               const try_next = (choices: List<Execution>, texts: List<string>, index: number): unknown => {
                    if (is_null(choices)) {
                        amb_exhausted(point, count);
                        return fail();
@@ -706,7 +729,7 @@ export const sentenceProgram = `amb_solutions(list(
 `;
 
 /** §4.3.3: \`ambeval\` called with continuations of our own. */
-export const ambevalProgram = `const first_value = (input) => {
+export const ambevalProgram = `const first_value = (input: string): unknown => {
     const program = parse(input);
     return ambeval(program,
                    program_environment(program, the_global_environment),

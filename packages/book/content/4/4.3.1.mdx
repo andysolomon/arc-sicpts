@@ -7,7 +7,7 @@ In this section we extend the evaluator to support a programming paradigm called
 Nondeterministic computing, like stream processing, is useful for generate-and-test applications. Take two lists of positive integers and find a pair, one integer from each list, whose sum is prime. Section 2.2.3 did this with finite sequence operations and section 3.5.3 with infinite streams: generate the sequence of all possible pairs and filter it. The nondeterministic approach evokes a different image. Imagine simply that we choose (in some way) a number from the first list and a number from the second, and require (using some mechanism) that their sum be prime:
 
 ```js
-const prime_sum_pair = (list1, list2) => {
+const prime_sum_pair = (list1: List<number>, list2: List<number>): List<number> => {
     const a = an_element_of(list1);
     const b = an_element_of(list2);
     require(is_prime(a + b));
@@ -38,7 +38,7 @@ All six values, in the order the evaluator finds them: the last choice made vari
 An `amb` with a single choice produces an ordinary value. An `amb` with no choices, `amb()`, is an expression with no acceptable values: evaluating it makes the computation fail. Using this, we can express the requirement that a predicate `p` must hold:
 
 ```js
-const require = (p) => {
+const require = (p: boolean): void => {
     if (! p) {
         amb();
     } else {}
@@ -48,7 +48,7 @@ const require = (p) => {
 With `amb` and `require` we can implement `an_element_of`, which fails if the list is empty and otherwise ambiguously returns either its first element or an element of the rest:
 
 ```js
-const an_element_of = (items) => {
+const an_element_of = <T>(items: List<T>): T => {
     require(! is_null(items));
     return amb(head(items), an_element_of(tail(items)));
 };
@@ -57,7 +57,7 @@ const an_element_of = (items) => {
 We can also express infinite ranges of choices. This function potentially returns any integer greater than or equal to *n*:
 
 ```js
-const an_integer_starting_from = (n) =>
+const an_integer_starting_from = (n: number): number =>
     amb(n, an_integer_starting_from(n + 1));
 ```
 
@@ -103,7 +103,7 @@ The book's sample interaction. Each `retry` resumes the search where the last va
 
 <UnderTheHood file="packages/lab/src/chapter-4/amb.test.ts">
 
-The `amb` evaluator is `chapter-4/amb.ts`, a Source program of about seven hundred lines, and every value on this page comes from running it in the Laboratory, an evaluator interpreted by an evaluator. `amb_solutions` makes a new problem of its program and calls the failure continuation of each value it receives, which is all `retry` does. The test `chapter-4/amb.test.ts` checks the six values of `list(amb(1, 2, 3), amb("a", "b"))` in order, the integers 8, 9 and 10, the transcript of the driver loop above line by line, and that the search tree's events, read from the call log of a probed `analyze_amb`, are the ones described under the tree.
+The `amb` evaluator is `chapter-4/amb.ts`, a Source program of about 650 lines, and every value on this page comes from running it in the Laboratory, an evaluator interpreted by an evaluator. `amb_solutions` makes a new problem of its program and calls the failure continuation of each value it receives, which is all `retry` does. The test `chapter-4/amb.test.ts` checks the six values of `list(amb(1, 2, 3), amb("a", "b"))` in order, the integers 8, 9 and 10, the transcript of the driver loop above line by line, and that the search tree's events, read from the call log of a probed `analyze_amb`, are the ones described under the tree.
 
 </UnderTheHood>
 
@@ -113,7 +113,7 @@ The `amb` evaluator is `chapter-4/amb.ts`, a Source program of about seven hundr
 Write a function `an_integer_between` that returns an integer between two given bounds. It can be used to find Pythagorean triples, triples of integers (*i*, *j*, *k*) between the bounds such that *i* ≤ *j* and *i*² + *j*² = *k*²:
 
 ```js
-const a_pythagorean_triple_between = (low, high) => {
+const a_pythagorean_triple_between = (low: number, high: number): List<number> => {
     const i = an_integer_between(low, high);
     const j = an_integer_between(i, high);
     const k = an_integer_between(j, high);
@@ -145,7 +145,7 @@ Exercise 3.69 generated the stream of *all* Pythagorean triples, with no upper b
 Ben Bitdiddle claims that the following method for generating Pythagorean triples is more efficient than the one in exercise 4.33. Is he correct? (Hint: consider the number of possibilities that must be explored.)
 
 ```js
-const a_pythagorean_triple_between = (low, high) => {
+const a_pythagorean_triple_between = (low: number, high: number): List<number> => {
     const i = an_integer_between(low, high);
     const hsq = high * high;
     const j = an_integer_between(i, high);

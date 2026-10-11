@@ -13,16 +13,16 @@ import { metacircularEvaluator } from './metacircular.ts';
  */
 
 /** §3.3.3: two-dimensional tables, for `put` and `get`. */
-export const queryTable = `const assoc = (key, records) =>
+export const queryTable = `const assoc = <K, V>(key: K, records: List<Pair<K, V>>): Pair<K, V> | undefined =>
     is_null(records)
            ? undefined
            : equal(key, head(head(records)))
            ? head(records)
            : assoc(key, tail(records));
 
-const make_table = () => {
+const make_table = (): ((m: string) => unknown) => {
     const local_table = list("*table*");
-    const lookup = (key_1, key_2) => {
+    const lookup = (key_1: unknown, key_2: unknown): unknown => {
         const subtable = assoc(key_1, tail(local_table));
         if (is_undefined(subtable)) {
             return undefined;
@@ -33,7 +33,7 @@ const make_table = () => {
                    : tail(record);
         }
     };
-    const insert = (key_1, key_2, value) => {
+    const insert = (key_1: unknown, key_2: unknown, value: unknown): void => {
         const subtable = assoc(key_1, tail(local_table));
         if (is_undefined(subtable)) {
             set_tail(local_table,
@@ -49,7 +49,7 @@ const make_table = () => {
             }
         }
     };
-    const dispatch = (m) =>
+    const dispatch = (m: string): unknown =>
         m === "lookup"
                ? lookup
                : m === "insert"
@@ -64,14 +64,16 @@ const put = operation_table("insert");
 `;
 
 /** §4.4.4.2: the evaluator. */
-export const queryEval = `const evaluate_query = (query, frame_stream) => {
+export const queryEval = `type FrameStream = Stream<QueryFrame>;
+
+const evaluate_query = (query: Query, frame_stream: FrameStream): FrameStream => {
     const qfun = get(type(query), "evaluate_query");
     return is_undefined(qfun)
            ? simple_query(query, frame_stream)
            : qfun(contents(query), frame_stream);
 };
 
-const simple_query = (query_pattern, frame_stream) =>
+const simple_query = (query_pattern: Pattern, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
                frame =>
                  stream_append_delayed(
@@ -79,7 +81,7 @@ const simple_query = (query_pattern, frame_stream) =>
                      () => apply_rules(query_pattern, frame)),
                frame_stream);
 
-const conjoin = (conjuncts, frame_stream) =>
+const conjoin = (conjuncts: List<Query>, frame_stream: FrameStream): FrameStream =>
     is_empty_conjunction(conjuncts)
            ? frame_stream
            : conjoin(rest_conjuncts(conjuncts),
@@ -87,7 +89,7 @@ const conjoin = (conjuncts, frame_stream) =>
                                     frame_stream));
 put("and", "evaluate_query", conjoin);
 
-const disjoin = (disjuncts, frame_stream) =>
+const disjoin = (disjuncts: List<Query>, frame_stream: FrameStream): FrameStream =>
     is_empty_disjunction(disjuncts)
            ? null
            : interleave_delayed(
@@ -95,7 +97,7 @@ const disjoin = (disjuncts, frame_stream) =>
                  () => disjoin(rest_disjuncts(disjuncts), frame_stream));
 put("or", "evaluate_query", disjoin);
 
-const negate = (exps, frame_stream) =>
+const negate = (exps: List<Query>, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
                frame =>
                  is_null(evaluate_query(negated_query(exps),
@@ -105,7 +107,7 @@ const negate = (exps, frame_stream) =>
                frame_stream);
 put("not", "evaluate_query", negate);
 
-const javascript_predicate = (exps, frame_stream) =>
+const javascript_predicate = (exps: List<Component>, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
                frame =>
                  evaluate(instantiate_expression(
@@ -117,18 +119,18 @@ const javascript_predicate = (exps, frame_stream) =>
                frame_stream);
 put("javascript_predicate", "evaluate_query", javascript_predicate);
 
-const always_true = (ignore, frame_stream) =>
+const always_true = (ignore: unknown, frame_stream: FrameStream): FrameStream =>
     frame_stream;
 put("always_true", "evaluate_query", always_true);
 `;
 
 /** §4.4.4.3: finding assertions by pattern matching. */
-export const queryAssertions = `const find_assertions = (pattern, frame) =>
+export const queryAssertions = `const find_assertions = (pattern: Pattern, frame: QueryFrame): FrameStream =>
     stream_flatmap(
                datum => check_an_assertion(datum, pattern, frame),
                fetch_assertions(pattern, frame));
 
-const check_an_assertion = (assertion, query_pat, query_frame) => {
+const check_an_assertion = (assertion: Pattern, query_pat: Pattern, query_frame: QueryFrame): FrameStream => {
     const match_result = pattern_match(query_pat, assertion,
                                        query_frame);
     return match_result === "failed"
@@ -136,7 +138,7 @@ const check_an_assertion = (assertion, query_pat, query_frame) => {
            : singleton_stream(match_result);
 };
 
-const pattern_match = (pattern, data, frame) =>
+const pattern_match = (pattern: Pattern, data: Pattern, frame: QueryFrame | "failed"): QueryFrame | "failed" =>
     frame === "failed"
            ? "failed"
            : equal(pattern, data)
@@ -151,7 +153,7 @@ const pattern_match = (pattern, data, frame) =>
                                          frame))
            : "failed";
 
-const extend_if_consistent = (variable, data, frame) => {
+const extend_if_consistent = (variable: Variable, data: Pattern, frame: QueryFrame): QueryFrame | "failed" => {
     const binding = binding_in_frame(variable, frame);
     return is_undefined(binding)
            ? extend(variable, data, frame)
@@ -160,11 +162,11 @@ const extend_if_consistent = (variable, data, frame) => {
 `;
 
 /** §4.4.4.4: rules and unification. */
-export const queryRules = `const apply_rules = (pattern, frame) =>
+export const queryRules = `const apply_rules = (pattern: Pattern, frame: QueryFrame): FrameStream =>
     stream_flatmap(rule => apply_a_rule(rule, pattern, frame),
                           fetch_rules(pattern, frame));
 
-const apply_a_rule = (rule, query_pattern, query_frame) => {
+const apply_a_rule = (rule: Rule, query_pattern: Pattern, query_frame: QueryFrame): FrameStream => {
     const clean_rule = rename_variables_in(rule);
     const unify_result = unify_match(query_pattern,
                                      conclusion(clean_rule),
@@ -175,9 +177,9 @@ const apply_a_rule = (rule, query_pattern, query_frame) => {
                             singleton_stream(unify_result));
 };
 
-const rename_variables_in = (rule) => {
+const rename_variables_in = (rule: Rule): Rule => {
     const rule_application_id = new_rule_application_id();
-    const tree_walk = (exp) =>
+    const tree_walk = (exp: Pattern): Pattern =>
         is_variable(exp)
                ? make_new_variable(exp, rule_application_id)
                : is_pair(exp)
@@ -187,7 +189,7 @@ const rename_variables_in = (rule) => {
     return tree_walk(rule);
 };
 
-const unify_match = (p1, p2, frame) =>
+const unify_match = (p1: Pattern, p2: Pattern, frame: QueryFrame | "failed"): QueryFrame | "failed" =>
     frame === "failed"
            ? "failed"
            : equal(p1, p2)
@@ -204,7 +206,7 @@ const unify_match = (p1, p2, frame) =>
                                      frame))
            : "failed";
 
-const extend_if_possible = (variable, value, frame) => {
+const extend_if_possible = (variable: Variable, value: Pattern, frame: QueryFrame): QueryFrame | "failed" => {
     const binding = binding_in_frame(variable, frame);
     if (! is_undefined(binding)) {
         return unify_match(binding_value(binding),
@@ -223,8 +225,8 @@ const extend_if_possible = (variable, value, frame) => {
     }
 };
 
-const depends_on = (expression, variable, frame) => {
-    const tree_walk = (e) => {
+const depends_on = (expression: Pattern, variable: Variable, frame: QueryFrame): boolean => {
+    const tree_walk = (e: Pattern): boolean => {
         if (is_variable(e)) {
             if (equal(variable, e)) {
                 return true;
@@ -245,42 +247,42 @@ const depends_on = (expression, variable, frame) => {
 `;
 
 /** §4.4.4.5: maintaining the data base. */
-export const queryDataBase = `const fetch_assertions = (pattern, frame) =>
+export const queryDataBase = `const fetch_assertions = (pattern: Pattern, frame: QueryFrame): Stream<Pattern> =>
     get_indexed_assertions(pattern);
-const get_indexed_assertions = (pattern) =>
+const get_indexed_assertions = (pattern: Pattern): Stream<Pattern> =>
     get_stream(index_key_of(pattern), "assertion-stream");
 
-const get_stream = (key1, key2) => {
+const get_stream = (key1: string, key2: string): Stream<Pattern> => {
     const s = get(key1, key2);
     return is_undefined(s) ? null : s;
 };
 
-const fetch_rules = (pattern, frame) =>
+const fetch_rules = (pattern: Pattern, frame: QueryFrame): Stream<Rule> =>
     get_indexed_rules(pattern);
-const get_indexed_rules = (pattern) =>
+const get_indexed_rules = (pattern: Pattern): Stream<Rule> =>
     get_stream(index_key_of(pattern), "rule-stream");
 
-const add_rule_or_assertion = (assertion) =>
+const add_rule_or_assertion = (assertion: Pattern): "ok" =>
     is_rule(assertion)
            ? add_rule(assertion)
            : add_assertion(assertion);
-const add_assertion = (assertion) => {
+const add_assertion = (assertion: Pattern): "ok" => {
     store_assertion_in_index(assertion);
     return "ok";
 };
-const add_rule = (rule) => {
+const add_rule = (rule: Rule): "ok" => {
     store_rule_in_index(rule);
     return "ok";
 };
 
-const store_assertion_in_index = (assertion) => {
+const store_assertion_in_index = (assertion: Pattern): void => {
     const key = index_key_of(assertion);
     const current_assertion_stream =
                 get_stream(key, "assertion-stream");
     put(key, "assertion-stream",
         pair(assertion, () => current_assertion_stream));
 };
-const store_rule_in_index = (rule) => {
+const store_rule_in_index = (rule: Rule): void => {
     const pattern = conclusion(rule);
     const key = index_key_of(pattern);
     const current_rule_stream =
@@ -289,54 +291,63 @@ const store_rule_in_index = (rule) => {
         pair(rule, () => current_rule_stream));
 };
 
-const index_key_of = (pattern) => head(pattern);
+const index_key_of = (pattern: Pattern): string => head(pattern);
 `;
 
 /** §4.4.4.6: stream operations. */
-export const queryStreams = `const stream_append_delayed = (s1, delayed_s2) =>
+export const queryStreams = `const stream_append_delayed = <T>(s1: Stream<T>, delayed_s2: () => Stream<T>): Stream<T> =>
     is_null(s1)
            ? delayed_s2()
            : pair(head(s1),
                   () => stream_append_delayed(stream_tail(s1),
                                               delayed_s2));
-const interleave_delayed = (s1, delayed_s2) =>
+const interleave_delayed = <T>(s1: Stream<T>, delayed_s2: () => Stream<T>): Stream<T> =>
     is_null(s1)
            ? delayed_s2()
            : pair(head(s1),
                   () => interleave_delayed(delayed_s2(),
                                            () => stream_tail(s1)));
 
-const stream_flatmap = (fun, s) =>
+const stream_flatmap = <A, B>(fun: (x: A) => Stream<B>, s: Stream<A>): Stream<B> =>
     flatten_stream(stream_map(fun, s));
-const flatten_stream = (stream) =>
+const flatten_stream = <T>(stream: Stream<Stream<T>>): Stream<T> =>
     is_null(stream)
            ? null
            : interleave_delayed(
                  head(stream),
                  () => flatten_stream(stream_tail(stream)));
 
-const singleton_stream = (x) =>
+const singleton_stream = <T>(x: T): Stream<T> =>
     pair(x, () => null);
 `;
 
 /** §4.4.4.7: query syntax functions and instantiation. */
-export const querySyntax = `// The book uses a primitive char_at here. Comparing strings does the same
+export const querySyntax = `// The query language's representation, which convert_to_query_syntax
+// makes: a pattern is a string, a number, a boolean, null, a variable or a
+// pair of patterns. A datum is a pattern without variables. Queries and
+// rules are written in the same representation.
+type Variable = List<string>; // list("name", "$x")
+type Pattern = string | number | boolean | null | Variable | [Pattern, Pattern];
+type Query = Pattern;
+type Rule = List<Pattern>; // list("rule", conclusion, body)
+
+// The book uses a primitive char_at here. Comparing strings does the same
 // job: a symbol starts with "$" exactly when it lies between "$" and "%".
-const is_variable = (exp) =>
+const is_variable = (exp: Pattern): boolean =>
     is_name(exp) && symbol_of_name(exp) >= "$"
                         && symbol_of_name(exp) < "%";
 
 let rule_counter = 0;
 
-const new_rule_application_id = () => {
+const new_rule_application_id = (): number => {
     rule_counter = rule_counter + 1;
     return rule_counter;
 };
-const make_new_variable = (variable, rule_application_id) =>
+const make_new_variable = (variable: Variable, rule_application_id: number): Variable =>
     make_name(symbol_of_name(variable) + "_" +
                      stringify(rule_application_id));
 
-const convert_to_query_syntax = (exp) => {
+const convert_to_query_syntax = (exp: Component): Pattern => {
     if (is_application(exp)) {
         const function_symbol = symbol_of_name(function_expression(exp));
         if (function_symbol === "javascript_predicate") {
@@ -357,7 +368,7 @@ const convert_to_query_syntax = (exp) => {
     }
 };
 
-const instantiate_expression = (expression, frame) =>
+const instantiate_expression = (expression: Component, frame: QueryFrame): Component =>
     is_variable(expression)
            ? convert(instantiate_term(expression, frame))
            : is_pair(expression)
@@ -365,7 +376,7 @@ const instantiate_expression = (expression, frame) =>
                   instantiate_expression(tail(expression), frame))
            : expression;
 
-const instantiate_term = (term, frame) => {
+const instantiate_term = (term: Pattern, frame: QueryFrame): Pattern => {
     if (is_variable(term)) {
         const binding = binding_in_frame(term, frame);
         return is_undefined(binding)
@@ -379,7 +390,7 @@ const instantiate_term = (term, frame) => {
     }
 };
 
-const convert = (term) =>
+const convert = (term: Pattern): Component =>
     is_variable(term)
            ? term
            : is_pair(term)
@@ -389,7 +400,7 @@ const convert = (term) =>
            : // term is a primitive value
              make_literal(term);
 
-const unparse = (exp) =>
+const unparse = (exp: Component): string =>
     is_literal(exp)
            ? unparse_literal(literal_value(exp))
            : is_name(exp)
@@ -412,23 +423,23 @@ const unparse = (exp) =>
 // The book stringifies every literal. An answer is itself displayed as a
 // string, which puts it in double quotes, so the strings inside it get single
 // quotes to stay readable.
-const unparse_literal = (value) =>
+const unparse_literal = (value: unknown): string =>
     is_string(value)
            ? "'" + value + "'"
            : stringify(value);
 
-const comma_separated = (strings) =>
+const comma_separated = (strings: List<string>): string =>
     accumulate((s, acc) => s + (acc === "" ? "" : ", " + acc),
                       "",
                       strings);
 
-const is_list_construction = (exp) =>
+const is_list_construction = (exp: Component): boolean =>
     (is_literal(exp) && is_null(literal_value(exp))) ||
            (is_application(exp) && is_name(function_expression(exp)) &&
             symbol_of_name(function_expression(exp)) === "pair" &&
             is_list_construction(head(tail(arg_expressions(exp)))));
 
-const element_expressions = (list_constr) =>
+const element_expressions = (list_constr: Component): List<Component> =>
     is_literal(list_constr)
            ? null // list_constr is literal null
            :      // list_constr is application of pair
@@ -436,55 +447,61 @@ const element_expressions = (list_constr) =>
                   element_expressions(
                       head(tail(arg_expressions(list_constr)))));
 
-const type = (exp) =>
+const type = (exp: Query): string =>
     is_pair(exp)
            ? head(exp)
            : error(exp, "unknown expression type");
-const contents = (exp) =>
+const contents = (exp: Query): List<Pattern> =>
     is_pair(exp)
            ? tail(exp)
            : error(exp, "unknown expression contents");
 
-const is_assertion = (exp) =>
+const is_assertion = (exp: Query): boolean =>
     type(exp) === "assert";
-const assertion_body = (exp) => head(contents(exp));
+const assertion_body = (exp: Query): Pattern => head(contents(exp));
 
-const is_empty_conjunction = (exps) => is_null(exps);
+const is_empty_conjunction = (exps: List<Query>): boolean => is_null(exps);
 
-const first_conjunct = (exps) => head(exps);
+const first_conjunct = (exps: List<Query>): Query => head(exps);
 
-const rest_conjuncts = (exps) => tail(exps);
+const rest_conjuncts = (exps: List<Query>): List<Query> => tail(exps);
 
-const is_empty_disjunction = (exps) => is_null(exps);
+const is_empty_disjunction = (exps: List<Query>): boolean => is_null(exps);
 
-const first_disjunct = (exps) => head(exps);
+const first_disjunct = (exps: List<Query>): Query => head(exps);
 
-const rest_disjuncts = (exps) => tail(exps);
+const rest_disjuncts = (exps: List<Query>): List<Query> => tail(exps);
 
-const negated_query = (exps) => head(exps);
+const negated_query = (exps: List<Query>): Query => head(exps);
 
-const javascript_predicate_expression = (exps) => head(exps);
+const javascript_predicate_expression = (exps: List<Component>): Component => head(exps);
 
-const is_rule = (assertion) =>
+const is_rule = (assertion: Pattern): boolean =>
     is_tagged_list(assertion, "rule");
-const conclusion = (rule) => head(tail(rule));
+const conclusion = (rule: Rule): Pattern => head(tail(rule));
 
-const rule_body = (rule) =>
+const rule_body = (rule: Rule): Query =>
     is_null(tail(tail(rule)))
            ? list("always_true")
            : head(tail(tail(rule)));
 `;
 
 /** §4.4.4.8: frames and bindings. */
-export const queryFrames = `const make_binding = (variable, value) =>
+export const queryFrames = `// A frame is a list of bindings, each a pair of a variable and a value.
+// It is a QueryFrame here, since Frame is the environment frame of
+// section 4.1.3.
+type Binding = Pair<Variable, Pattern>;
+type QueryFrame = List<Binding>;
+
+const make_binding = (variable: Variable, value: Pattern): Binding =>
     pair(variable, value);
-const binding_variable = (binding) =>
+const binding_variable = (binding: Binding): Variable =>
     head(binding);
-const binding_value = (binding) =>
+const binding_value = (binding: Binding): Pattern =>
     tail(binding);
-const binding_in_frame = (variable, frame) =>
+const binding_in_frame = (variable: Variable, frame: QueryFrame): Binding | undefined =>
     assoc(variable, frame);
-const extend = (variable, value, frame) =>
+const extend = (variable: Variable, value: Pattern, frame: QueryFrame): QueryFrame =>
     pair(make_binding(variable, value), frame);
 `;
 
@@ -495,7 +512,7 @@ const extend = (variable, value, frame) =>
  * found and returns how many there were. The other functions give the answers
  * as data, for programs and checks that compute with them.
  */
-export const queryDriver = `const query = (input) => {
+export const queryDriver = `const query = (input: string): number | undefined => {
     const expression = parse(input + ";");
     const query_syntax = convert_to_query_syntax(expression);
     if (is_assertion(query_syntax)) {
@@ -511,8 +528,8 @@ export const queryDriver = `const query = (input) => {
     }
 };
 
-const display_answers = (answers) => {
-    const display_next = (s, count) => {
+const display_answers = (answers: Stream<string>): number => {
+    const display_next = (s: Stream<string>, count: number): number => {
         if (is_null(s)) {
             return count;
         } else {
@@ -524,18 +541,18 @@ const display_answers = (answers) => {
 };
 
 // Each of the strings, an assertion or a rule, added to the data base.
-const assert_all = (inputs) =>
+const assert_all = (inputs: List<string>): true =>
     for_each(input => add_rule_or_assertion(
                                  convert_to_query_syntax(
                                      parse(input + ";"))),
                     inputs);
 
 // A pattern written in JavaScript syntax, in the query language's form.
-const pattern_of = (input) =>
+const pattern_of = (input: string): Pattern =>
     convert_to_query_syntax(parse(input + ";"));
 
 // A frame as text, one variable = value for each binding, oldest first.
-const frame_text = (frame) =>
+const frame_text = (frame: QueryFrame | "failed"): string =>
     frame === "failed"
            ? "failed"
            : is_null(frame)
@@ -547,24 +564,24 @@ const frame_text = (frame) =>
                      reverse(frame)));
 
 // The stream of frames that satisfy a query.
-const query_frames = (input) =>
+const query_frames = (input: string): FrameStream =>
     evaluate_query(convert_to_query_syntax(parse(input + ";")),
                           singleton_stream(null));
 
 // The answers to a query, as unparsed strings.
-const answers = (input) => {
+const answers = (input: string): List<string> => {
     const expression = parse(input + ";");
     return map(frame => unparse(instantiate_expression(expression, frame)),
                stream_to_list(query_frames(input)));
 };
 
 // The value of a pattern variable, such as "$x", in each answer.
-const values_of = (variable, input) =>
+const values_of = (variable: string, input: string): List<Pattern> =>
     map(frame => instantiate_term(make_name(variable), frame),
                stream_to_list(query_frames(input)));
 
 // For each answer, the list of the values of the given variables.
-const bindings_of = (variables, input) =>
+const bindings_of = (variables: List<string>, input: string): List<List<Pattern>> =>
     map(frame => map(variable => instantiate_term(make_name(variable),
                                                          frame),
                             variables),
@@ -572,8 +589,8 @@ const bindings_of = (variables, input) =>
 
 // The values of one variable, for the first n answers only, when there may
 // be infinitely many.
-const first_values_of = (n, variable, input) => {
-    const take = (s, k) =>
+const first_values_of = (n: number, variable: string, input: string): List<Pattern> => {
+    const take = (s: FrameStream, k: number): List<Pattern> =>
         k === 0 || is_null(s)
                ? null
                : pair(instantiate_term(make_name(variable), head(s)),
@@ -581,12 +598,12 @@ const first_values_of = (n, variable, input) => {
     return take(query_frames(input), n);
 };
 
-const count_answers = (input) =>
+const count_answers = (input: string): number =>
     length(stream_to_list(query_frames(input)));
 
 // True when xs and ys hold the same elements, in any order, counting repeats.
-const same_elements = (xs, ys) => {
-    const remove_one = (x, items) =>
+const same_elements = <T>(xs: List<T>, ys: List<T>): boolean => {
+    const remove_one = (x: T, items: List<T>): List<T> | undefined =>
         is_null(items)
                ? undefined
                : equal(x, head(items))
@@ -674,19 +691,19 @@ export const queryPrelude = `${querySystem}\n${assertAll(gargleAssertions)}`;
  * §4.4.4, exercise 4.68: Louis Reasoner's `simple_query` and `disjoin`, which
  * do without the delayed second arguments, in an otherwise unchanged system.
  */
-export const louisSimpleQuery = `const simple_query = (query_pattern, frame_stream) =>
+export const louisSimpleQuery = `const simple_query = (query_pattern: Pattern, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
                frame =>
                  stream_append(find_assertions(query_pattern, frame),
                                apply_rules(query_pattern, frame)),
                frame_stream);
-const disjoin = (disjuncts, frame_stream) =>
+const disjoin = (disjuncts: List<Query>, frame_stream: FrameStream): FrameStream =>
     is_empty_disjunction(disjuncts)
            ? null
            : interleave(
                  evaluate_query(first_disjunct(disjuncts), frame_stream),
                  disjoin(rest_disjuncts(disjuncts), frame_stream));
-const interleave = (s1, s2) =>
+const interleave = <T>(s1: Stream<T>, s2: Stream<T>): Stream<T> =>
     is_null(s1)
            ? s2
            : pair(head(s1),

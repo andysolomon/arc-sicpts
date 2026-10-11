@@ -27,22 +27,26 @@ Failures are initiated only when a dead end is encountered: when the user progra
 The syntax and data representations, and the basic `analyze` function, are those of section 4.1.7, with one more syntactic form to recognise. `parse` reads `amb(…)` as a function application, so the evaluator treats every application whose function expression is the name `amb` as a choice point. As a result `amb` is not a name with proper scoping: our nondeterministic programs must not declare it.
 
 ```js
-const is_amb = (component) =>
+const is_amb = (component: Component): boolean =>
     is_tagged_list(component, "application") &&
            is_name(function_expression(component)) &&
            symbol_of_name(function_expression(component)) === "amb";
-const amb_choices = (component) =>
+const amb_choices = (component: Component): List<Component> =>
     arg_expressions(component);
 ```
 
 `analyze` gets a clause `is_amb(component) ? analyze_amb(component)` before the one for applications. The top-level function `ambeval` analyses a component and applies the resulting execution function to an environment and two continuations:
 
 ```js
-const ambeval = (component, env, succeed, fail) =>
+type Fail = () => unknown;
+type Succeed = (value: unknown, fail: Fail) => unknown;
+type Execution = (env: Environment, succeed: Succeed, fail: Fail) => unknown;
+
+const ambeval = (component: Component, env: Environment, succeed: Succeed, fail: Fail): unknown =>
     analyze(component)(env, succeed, fail);
 ```
 
-A success continuation is a function of two arguments, `(value, fail) => …`: the value just obtained and another failure continuation, to be used if that value leads to a subsequent failure. A failure continuation is a function of no arguments, `() => …`. Called with a success continuation that returns its value and a failure continuation that returns `"failed"`, `ambeval` evaluates a component and returns either its first value or `"failed"`. `program_environment` makes the frame for a program’s own declarations, as the driver loop does.
+A success continuation is a function of two arguments, `(value, fail) => …`: the value just obtained and another failure continuation, to be used if that value leads to a subsequent failure. A failure continuation is a function of no arguments, `() => …`. The types `Succeed` and `Fail` above name these two kinds of function, and `Execution` the execution functions that take them. Called with a success continuation that returns its value and a failure continuation that returns `"failed"`, `ambeval` evaluates a component and returns either its first value or `"failed"`. `program_environment` makes the frame for a program’s own declarations, as the driver loop does.
 
 </Prose>
 
@@ -61,17 +65,17 @@ Most of the complexity of the `amb` evaluator results from the mechanics of pass
 The execution functions for the simplest kinds of expressions simply succeed with the value, passing along the failure continuation they were given:
 
 ```js
-const analyze_literal = (component) =>
+const analyze_literal = (component: Component): Execution =>
     (env, succeed, fail) =>
              succeed(literal_value(component), fail);
 
-const analyze_name = (component) =>
+const analyze_name = (component: Component): Execution =>
     (env, succeed, fail) =>
              succeed(lookup_symbol_value(symbol_of_name(component),
                                          env),
                      fail);
 
-const analyze_lambda_expression = (component) => {
+const analyze_lambda_expression = (component: Component): Execution => {
     const params = lambda_parameter_symbols(component);
     const bfun = analyze(lambda_body(component));
     return (env, succeed, fail) =>
@@ -87,7 +91,7 @@ Looking up a name always succeeds. If `lookup_symbol_value` does not find the na
 The execution function for a conditional calls the predicate’s execution function with a success continuation that tests the predicate’s value and goes on to the consequent or the alternative. If the predicate fails, the conditional’s own failure continuation is called.
 
 ```js
-const analyze_conditional = (component) => {
+const analyze_conditional = (component: Component): Execution => {
     const pfun = analyze(conditional_predicate(component));
     const cfun = analyze(conditional_consequent(component));
     const afun = analyze(conditional_alternative(component));
@@ -107,8 +111,8 @@ const analyze_conditional = (component) => {
 To execute `a` and then `b` in a sequence, we call `a` with a success continuation that calls `b`:
 
 ```js
-const analyze_sequence = (stmts) => {
-    const sequentially = (a, b) =>
+const analyze_sequence = (stmts: List<Component>): Execution => {
+    const sequentially = (a: Execution, b: Execution): Execution =>
         (env, succeed, fail) =>
                  a(env,
                    // success continuation for calling a
@@ -118,7 +122,7 @@ const analyze_sequence = (stmts) => {
                      : b(env, succeed, fail2),
                    // failure continuation for calling a
                    fail);
-    const loop = (first_fun, rest_funs) =>
+    const loop = (first_fun: Execution, rest_funs: List<Execution>): Execution =>
         is_null(rest_funs)
                ? first_fun
                : loop(sequentially(first_fun, head(rest_funs)),
@@ -137,7 +141,7 @@ The book returns `env => undefined` for an empty sequence, an execution function
 A declaration must evaluate its value expression before declaring the name. The value expression’s execution function is called with a success continuation that declares the name and propagates the success:
 
 ```js
-const analyze_declaration = (component) => {
+const analyze_declaration = (component: Component): Execution => {
     const symbol = declaration_symbol(component);
     const vfun = analyze(declaration_value_expression(component));
     return (env, succeed, fail) =>
@@ -153,7 +157,7 @@ const analyze_declaration = (component) => {
 Assignments are more interesting: this is the first place where the continuations are really used rather than just passed around. If the new value is obtained and the assignment made, this branch of the computation might still fail later, and backtracking must then undo the assignment. So the success continuation (marked *1*) saves the old value before assigning the new one, and the failure continuation that goes along with the assignment’s value (marked *2*) restores the old value before continuing the failure. Whatever failure would otherwise have called `fail2` calls this function instead.
 
 ```js
-const analyze_assignment = (component) => {
+const analyze_assignment = (component: Component): Execution => {
     const symbol = assignment_symbol(component);
     const vfun = analyze(assignment_value_expression(component));
     return (env, succeed, fail) =>
@@ -191,7 +195,7 @@ Declarations need no undoing: a name cannot be used before its declaration is ev
 A return statement wraps its value in a return value and passes it to the success continuation. A block calls its body’s execution function in an extended environment, with the same continuations.
 
 ```js
-const analyze_return_statement = (component) => {
+const analyze_return_statement = (component: Component): Execution => {
     const rfun = analyze(return_expression(component));
     return (env, succeed, fail) =>
              rfun(env,
@@ -200,7 +204,7 @@ const analyze_return_statement = (component) => {
                   fail);
 };
 
-const analyze_block = (component) => {
+const analyze_block = (component: Component): Execution => {
     const body = block_body(component);
     const locals = scan_out_declarations(body);
     const unassigneds = list_of_unassigned(locals);
@@ -215,7 +219,7 @@ const analyze_block = (component) => {
 Applications contain no new ideas, only the technical complexity of keeping track of the continuations while the argument expressions are evaluated. `get_args` walks down the list of argument execution functions, calling each with a success continuation that calls `get_args` on the rest, whose own success continuation adjoins the new argument to the arguments that follow:
 
 ```js
-const analyze_application = (component) => {
+const analyze_application = (component: Component): Execution => {
     const ffun = analyze(function_expression(component));
     const afuns = map(analyze, arg_expressions(component));
     return (env, succeed, fail) =>
@@ -232,7 +236,7 @@ const analyze_application = (component) => {
                   fail);
 };
 
-const get_args = (afuns, env, succeed, fail) =>
+const get_args = (afuns: List<Execution>, env: Environment, succeed: Succeed, fail: Fail): unknown =>
     is_null(afuns)
            ? succeed(null, fail)
            : head(afuns)(env,
@@ -248,7 +252,12 @@ const get_args = (afuns, env, succeed, fail) =>
                                     fail2),
                          fail);
 
-const execute_application = (fun, args, succeed, fail) =>
+const execute_application = (
+    fun: PrimitiveFunction | CompoundFunction,
+    args: List<unknown>,
+    succeed: Succeed,
+    fail: Fail
+): unknown =>
     is_primitive_function(fun)
            ? succeed(apply_primitive_function(fun, args),
                      fail)
@@ -273,10 +282,10 @@ const execute_application = (fun, args, succeed, fail) =>
 The `amb` syntactic form is the key element of the nondeterministic language. Here we see the essence of the interpretation process and the reason for keeping track of the continuations. The execution function for `amb` declares a loop `try_next` that cycles through the execution functions for the possible values. Each is called with a failure continuation that tries the next one. When there are no more alternatives, the whole `amb` expression fails.
 
 ```js
-const analyze_amb = (component) => {
+const analyze_amb = (component: Component): Execution => {
     const cfuns = map(analyze, amb_choices(component));
     return (env, succeed, fail) => {
-               const try_next = (choices) =>
+               const try_next = (choices: List<Execution>): unknown =>
                    is_null(choices)
                           ? fail()
                           : head(choices)(env,
@@ -293,9 +302,13 @@ const analyze_amb = (component) => {
 The driver loop is complex, because of `retry`. Its `internal_loop` takes a function `retry` and either calls it, when the input is `retry`, or starts a new problem by calling `ambeval`. The failure continuation of that call says that there are no more values and starts the driver loop again. The success continuation is more subtle: it prints the value and calls the internal loop again with a `retry` function that tries the next alternative. That function is the failure continuation that came with the value. Ordinarily it is used if the current branch later fails; here the branch has succeeded, and we invoke the failure alternative to search for more successful evaluations.
 
 ```js
-const driver_loop = (env, inputs) => {
+// A program is a string, or a list of programs that are its lines.
+type ProgramText = string | ProgramLines;
+type ProgramLines = null | [ProgramText, ProgramLines];
+
+const driver_loop = (env: Environment, inputs: List<ProgramText>): void => {
     let unread = inputs;
-    const user_read = (prompt_string) => {
+    const user_read = (prompt_string: string): string | null => {
         if (is_null(unread)) {
             return null;
         } else {
@@ -305,7 +318,7 @@ const driver_loop = (env, inputs) => {
             return input;
         }
     };
-    const internal_loop = (retry) => {
+    const internal_loop = (retry: Fail): void => {
         const input = user_read(input_prompt);
         if (is_null(input)) {
             display("evaluator terminated");
@@ -411,7 +424,7 @@ has the value `"all odd"`, and with `list(1, 3, 5, 8)` it has the value 8. Imple
 With the permanent assignment of exercise 4.49 and the construct of exercise 4.50, what will be the result of evaluating this program?
 
 ```js
-let pairs = null;
+let pairs: List<List<number>> = null;
 if (evaluation_succeeds_take) {
     const p = prime_sum_pair(list(1, 3, 5, 8), list(20, 35, 110));
     pairs = pair(p, pairs); // using permanent assignment

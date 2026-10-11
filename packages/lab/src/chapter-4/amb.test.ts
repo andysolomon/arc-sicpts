@@ -127,10 +127,10 @@ describe('section 4.3.1: amb and search', () => {
     );
   });
 
-  it('is about seven hundred lines of Source', () => {
+  it('is about 650 lines of Source', () => {
     const lines = ambEvaluator.split('\n').length;
-    expect(lines).toBeGreaterThan(650);
-    expect(lines).toBeLessThan(800);
+    expect(lines).toBeGreaterThan(600);
+    expect(lines).toBeLessThan(700);
   });
 });
 
@@ -171,7 +171,7 @@ describe('section 4.3.2: examples of nondeterministic programs', () => {
   });
 
   it('generates boring sentences when parse_word ignores its input (exercise 4.47)', () => {
-    const generator = 'function parse_word(word_list) { return list(head(word_list), an_element_of(tail(word_list))); }';
+    const generator = 'const parse_word = (word_list: List<string>): ParseTree => list(head(word_list), an_element_of(tail(word_list)));';
     const sentences = text(ambEvaluator, `amb_solutions(list(${JSON.stringify(ambSentenceParser)}, ${JSON.stringify(generator)}, "parse_sentence();"), 3);`);
     expect(sentences.startsWith('[["sentence", [["simple-noun-phrase", [["article", ["the", null]], [["noun", ["student", null]], null]]], [["verb", ["studies", null]], null]]]')).toBe(true);
     expect(sentences.match(/"for"/g)?.length).toBe(3);
@@ -250,16 +250,17 @@ describe('section 4.3.2: the answers to the discussion exercises', () => {
   });
 
   it('exercise 4.44: right-to-left arguments parse sentences backwards', () => {
+    const header = 'const get_args = (afuns: List<Execution>, env: Environment, succeed: Succeed, fail: Fail): unknown =>';
+    expect(ambParserPrelude).toContain(header);
     const rightToLeft = ambParserPrelude.replace(
-      'function get_args(afuns, env, succeed, fail) {',
-      `function get_args(afuns, env, succeed, fail) {
-    return is_null(afuns)
+      header,
+      `${header}
+    is_null(afuns)
            ? succeed(null, fail)
            : get_args(tail(afuns), env,
                       (args, fail2) => head(afuns)(env, (arg, fail3) => succeed(pair(arg, args), fail3), fail2),
                       fail);
-}
-function get_args_left_to_right(afuns, env, succeed, fail) {`,
+const get_args_left_to_right = (afuns: List<Execution>, env: Environment, succeed: Succeed, fail: Fail): unknown =>`,
     );
     expect(text(rightToLeft, 'amb_solutions(\'parse_input(list("the", "cat", "eats"));\', 1);')).toBe('null');
     expect(text(rightToLeft, 'amb_solutions(\'parse_input(list("eats", "cat", "the"));\', 2);')).toBe(
@@ -268,14 +269,12 @@ function get_args_left_to_right(afuns, env, succeed, fail) {`,
   });
 
   it('exercise 4.45: Louis’s verb phrases find one parse, then loop', () => {
-    const louis = `function parse_verb_phrase() {
-    return amb(parse_word(verbs),
-               list("verb-phrase", parse_verb_phrase(), parse_prepositional_phrase()));
-}`;
-    const swapped = `function parse_verb_phrase() {
-    return amb(list("verb-phrase", parse_verb_phrase(), parse_prepositional_phrase()),
-               parse_word(verbs));
-}`;
+    const louis = `const parse_verb_phrase = (): ParseTree =>
+    amb(parse_word(verbs),
+        list("verb-phrase", parse_verb_phrase(), parse_prepositional_phrase()));`;
+    const swapped = `const parse_verb_phrase = (): ParseTree =>
+    amb(list("verb-phrase", parse_verb_phrase(), parse_prepositional_phrase()),
+        parse_word(verbs));`;
     const query = (grammar: string, n: number) =>
       `amb_solutions(list(${JSON.stringify(ambSentenceParser)}, ${JSON.stringify(grammar)}, "parse_input(list('the', 'professor', 'lectures', 'to', 'the', 'student'));"), ${n});`;
     expect(text(ambEvaluator, query(louis, 1))).toBe(text(ambParserPrelude, 'amb_solutions("parse_input(list(\'the\', \'professor\', \'lectures\', \'to\', \'the\', \'student\'));", 1);'));
