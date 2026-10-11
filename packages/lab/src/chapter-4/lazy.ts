@@ -9,7 +9,7 @@ import { declaredNames, omit } from './source.ts';
  */
 
 /** `evaluate` with the one clause that changes: applications pass argument expressions and the environment. */
-export const lazyEvaluate = `const evaluate = (component, env) =>
+export const lazyEvaluate = `const evaluate = (component: Component, env: Environment): unknown =>
     is_literal(component)
            ? literal_value(component)
            : is_name(component)
@@ -41,10 +41,10 @@ export const lazyEvaluate = `const evaluate = (component, env) =>
 `;
 
 /** `actual_value`, the new `apply` and the two ways of handling arguments. */
-export const lazyApply = `const actual_value = (exp, env) =>
+export const lazyApply = `const actual_value = (exp: Component, env: Environment): unknown =>
     force_it(evaluate(exp, env));
 
-const apply = (fun, args, env) => {
+const apply = (fun: PrimitiveFunction | CompoundFunction, args: List<Component>, env: Environment): unknown => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(
                    fun,
@@ -64,32 +64,36 @@ const apply = (fun, args, env) => {
     }
 };
 
-const list_of_arg_values = (exps, env) =>
+const list_of_arg_values = (exps: List<Component>, env: Environment): List<unknown> =>
     map(exp => actual_value(exp, env), exps);
-const list_of_delayed_args = (exps, env) =>
+const list_of_delayed_args = (exps: List<Component>, env: Environment): List<Thunk> =>
     map(exp => delay_it(exp, env), exps);
 
-const eval_conditional = (component, env) =>
+const eval_conditional = (component: Component, env: Environment): unknown =>
     is_truthy(actual_value(conditional_predicate(component), env))
            ? evaluate(conditional_consequent(component), env)
            : evaluate(conditional_alternative(component), env);
 `;
 
 /** Thunks: an expression with its environment, replaced by its value when first forced. */
-export const thunks = `const delay_it = (exp, env) =>
+export const thunks = `// A thunk: an expression and its environment, tagged "thunk";
+// once forced, the tag "evaluated_thunk" and the value.
+type Thunk = List<unknown>;
+
+const delay_it = (exp: Component, env: Environment): Thunk =>
     list("thunk", exp, env);
-const is_thunk = (obj) =>
+const is_thunk = (obj: unknown): boolean =>
     is_tagged_list(obj, "thunk");
-const thunk_exp = (thunk) => head(tail(thunk));
+const thunk_exp = (thunk: Thunk): Component => head(tail(thunk));
 
-const thunk_env = (thunk) => head(tail(tail(thunk)));
+const thunk_env = (thunk: Thunk): Environment => head(tail(tail(thunk)));
 
-const is_evaluated_thunk = (obj) =>
+const is_evaluated_thunk = (obj: unknown): boolean =>
     is_tagged_list(obj, "evaluated_thunk");
-const thunk_value = (evaluated_thunk) =>
+const thunk_value = (evaluated_thunk: Thunk): unknown =>
     head(tail(evaluated_thunk));
 
-const force_it = (obj) => {
+const force_it = (obj: unknown): unknown => {
     if (is_thunk(obj)) {
         const result = actual_value(thunk_exp(obj), thunk_env(obj));
         set_head(obj, "evaluated_thunk");
@@ -105,7 +109,7 @@ const force_it = (obj) => {
 `;
 
 /** The first `force_it` of §4.2.2, which evaluates a thunk's expression every time it is forced. */
-export const unmemoizedForceIt = `const force_it = (obj) =>
+export const unmemoizedForceIt = `const force_it = (obj: unknown): unknown =>
     is_thunk(obj)
            ? actual_value(thunk_exp(obj), thunk_env(obj))
            : obj;
@@ -115,7 +119,7 @@ export const unmemoizedForceIt = `const force_it = (obj) =>
 export const lazyDriverLoop = `const input_prompt = "L-evaluate input:";
 const output_prompt = "L-evaluate value:";
 
-const driver_loop = (env, inputs) => {
+const driver_loop = (env: Environment, inputs: List<string>): void => {
     if (is_null(inputs)) {
         display("evaluator terminated");
     } else {
@@ -130,7 +134,7 @@ const driver_loop = (env, inputs) => {
 };
 
 // One program, evaluated as the driver loop would, giving its value.
-const evaluate_program = (input) => {
+const evaluate_program = (input: string): unknown => {
     const program = parse(input);
     const locals = scan_out_declarations(program);
     const program_env = extend_environment(
@@ -190,7 +194,7 @@ export const unmemoizedLazyEvaluator = `${lazyEvaluatorWithout('force_it')}
 ${unmemoizedForceIt}`;
 
 /** §4.2.1: in ordinary, applicative-order Source, `head(null)` is evaluated before `try_me` is entered. */
-export const tryMeStrictProgram = `const try_me = (a, b) =>
+export const tryMeStrictProgram = `const try_me = (a: number, b: number): number =>
     a === 0 ? 1 : b;
 
 try_me(0, head(null));
@@ -198,17 +202,15 @@ try_me(0, head(null));
 
 /** §4.2.1 and §4.2.2: the same function in the lazy evaluator, where `b` is never needed. */
 export const tryMeProgram = `driver_loop(the_global_environment,
-            list("function try_me(a, b) {" +
-                 "    return a === 0 ? 1 : b;" +
-                 "}",
+            list(\`const try_me = (a: number, b: number): number =>
+                      a === 0 ? 1 : b;\`,
                  "try_me(0, head(null));"));
 `;
 
 /** §4.2.1: `unless` as an ordinary function, usable only because its arguments are delayed. */
 export const unlessProgram = `driver_loop(the_global_environment,
-            list("function unless(condition, usual_value, exceptional_value) {" +
-                 "    return condition ? exceptional_value : usual_value;" +
-                 "}",
+            list(\`const unless = <T>(condition: boolean, usual_value: T, exceptional_value: T): T =>
+                      condition ? exceptional_value : usual_value;\`,
                  "const xs = null;",
                  'unless(is_null(xs), head(xs), display("error: xs should not be null"));',
                  "unless(is_null(list(7)), head(list(7)), head(null));"));
@@ -226,13 +228,12 @@ t;
 /** §4.2.2: `x * x` forces the thunk for `id(10)` once, then reuses its value. */
 export const memoProgram = `driver_loop(the_global_environment,
             list("let count = 0;",
-                 "function id(x) {" +
-                 "    count = count + 1;" +
-                 "    return x;" +
-                 "}",
-                 "function square(x) {" +
-                 "    return x * x;" +
-                 "}",
+                 \`const id = <T>(x: T): T => {
+                      count = count + 1;
+                      return x;
+                  };\`,
+                 \`const square = (x: number): number =>
+                      x * x;\`,
                  "square(id(10));",
                  "count;"));
 `;
@@ -241,39 +242,39 @@ export const memoProgram = `driver_loop(the_global_environment,
  * §4.2.3: pairs as functions, so that `pair` is non-strict and lists are
  * streams. A Source string expression, to be placed before a lazy program.
  */
-export const lazyPairs = `"function pair(x, y) {" +
-"    return m => m(x, y);" +
-"}" +
-"function head(z) {" +
-"    return z((p, q) => p);" +
-"}" +
-"function tail(z) {" +
-"    return z((p, q) => q);" +
-"}"`;
+export const lazyPairs = `\`
+type Pair<H, T> = <R>(m: (x: H, y: T) => R) => R;
+type List<T> = null | (<R>(m: (x: T, y: List<T>) => R) => R);
+
+const pair = <H, T>(x: H, y: T): Pair<H, T> =>
+    m => m(x, y);
+const head = <H, T>(z: Pair<H, T>): H =>
+    z((p, q) => p);
+const tail = <H, T>(z: Pair<H, T>): T =>
+    z((p, q) => q);
+\``;
 
 /** §4.2.3: the list operations of chapter 2, unchanged, as a Source string expression. */
-export const lazyListOperations = `"function list_ref(items, n) {" +
-"    return n === 0" +
-"           ? head(items)" +
-"           : list_ref(tail(items), n - 1);" +
-"}" +
-"function map(fun, items) {" +
-"    return is_null(items)" +
-"           ? null" +
-"           : pair(fun(head(items))," +
-"                  map(fun, tail(items)));" +
-"}" +
-"function scale_list(items, factor) {" +
-"    return map(x => x * factor, items);" +
-"}" +
-"function add_lists(list1, list2) {" +
-"    return is_null(list1)" +
-"           ? list2" +
-"           : is_null(list2)" +
-"           ? list1" +
-"           : pair(head(list1) + head(list2)," +
-"                  add_lists(tail(list1), tail(list2)));" +
-"}"`;
+export const lazyListOperations = `\`
+const list_ref = <T>(items: List<T>, n: number): T =>
+    n === 0
+           ? head(items)
+           : list_ref(tail(items), n - 1);
+const map = <A, B>(fun: (x: A) => B, items: List<A>): List<B> =>
+    is_null(items)
+           ? null
+           : pair(fun(head(items)),
+                  map(fun, tail(items)));
+const scale_list = (items: List<number>, factor: number): List<number> =>
+    map(x => x * factor, items);
+const add_lists = (list1: List<number>, list2: List<number>): List<number> =>
+    is_null(list1)
+           ? list2
+           : is_null(list2)
+           ? list1
+           : pair(head(list1) + head(list2),
+                  add_lists(tail(list1), tail(list2)));
+\``;
 
 /**
  * The lazy evaluator, with §4.2.3's lazy pairs and list operations as the
@@ -302,17 +303,18 @@ export const lazierProgram = `driver_loop(the_global_environment,
 `;
 
 /** §4.2.3: `integral` and `solve` as §3.5.4 first wanted them, with no explicit delays. */
-export const solveProgram = `const solver =
-    "function integral(integrand, initial_value, dt) {" +
-    "    const int = pair(initial_value," +
-    "                     add_lists(scale_list(integrand, dt), int));" +
-    "    return int;" +
-    "}" +
-    "function solve(f, y0, dt) {" +
-    "    const y = integral(dy, y0, dt);" +
-    "    const dy = map(f, y);" +
-    "    return y;" +
-    "}";
+export const solveProgram = `const solver = \`
+const integral = (integrand: List<number>, initial_value: number, dt: number): List<number> => {
+    const int = pair(initial_value,
+                     add_lists(scale_list(integrand, dt), int));
+    return int;
+};
+const solve = (f: (y: number) => number, y0: number, dt: number): List<number> => {
+    const y = integral(dy, y0, dt);
+    const dy = map(f, y);
+    return y;
+};
+\`;
 
 driver_loop(the_global_environment,
             list(lazy_pairs,

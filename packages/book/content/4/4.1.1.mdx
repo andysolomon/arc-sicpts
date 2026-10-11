@@ -17,10 +17,10 @@ The evaluator does not depend on how programs are written down. It tests a compo
 
 ## The function `evaluate`
 
-`evaluate` takes a program *component*, a statement or an expression, and an environment. It is a case analysis on the syntactic type of the component.
+`evaluate` takes a program *component*, a statement or an expression, and an environment. It is a case analysis on the syntactic type of the component. The types `Component` and `Environment` name the representations that §4.1.2 and §4.1.3 describe; the result is `unknown` because a program may compute any value.
 
 ```js
-const evaluate = (component, env) =>
+const evaluate = (component: Component, env: Environment): unknown =>
     is_literal(component)
            ? literal_value(component)
            : is_name(component)
@@ -60,7 +60,7 @@ This dispatch is a chain of conditionals, so a new syntactic form means editing 
 `apply` takes a function and a list of arguments. A primitive is handed to `apply_primitive_function`. A compound function has its body evaluated in its own environment extended by a frame for its parameters:
 
 ```js
-const apply = (fun, args) => {
+const apply = (fun: PrimitiveFunction | CompoundFunction, args: List<unknown>): unknown => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(fun, args);
     } else if (is_compound_function(fun)) {
@@ -95,14 +95,14 @@ The whole evaluator of this section, with its syntax functions and data structur
 `list_of_values` evaluates the argument expressions of an application and returns the list of their values:
 
 ```js
-const list_of_values = (exps, env) =>
+const list_of_values = (exps: List<Component>, env: Environment): List<unknown> =>
     map(arg => evaluate(arg, env), exps);
 ```
 
 `eval_conditional` evaluates the predicate, and then only one of the branches. The predicate’s value belongs to the language being implemented; `is_truthy` turns it into a value the implementation language can test. Here the two languages are the same, but they need not be.
 
 ```js
-const eval_conditional = (component, env) =>
+const eval_conditional = (component: Component, env: Environment): unknown =>
     is_truthy(evaluate(conditional_predicate(component), env))
            ? evaluate(conditional_consequent(component), env)
            : evaluate(conditional_alternative(component), env);
@@ -111,7 +111,7 @@ const eval_conditional = (component, env) =>
 `eval_sequence` evaluates the statements of a program or a block in order. The value is that of the last statement, unless some statement produces a return value: then that value is the result, and the statements after it are never evaluated.
 
 ```js
-const eval_sequence = (stmts, env) => {
+const eval_sequence = (stmts: List<Component>, env: Environment): unknown => {
     if (is_empty_sequence(stmts)) {
         return undefined;
     } else if (is_last_statement(stmts)) {
@@ -133,7 +133,7 @@ const eval_sequence = (stmts, env) => {
 The names declared in a block have the whole block as their scope, so `eval_block` scans them out first and evaluates the body in a new frame that binds each of them to the placeholder `"*unassigned*"`. Evaluating a declaration later replaces the placeholder with the declared value.
 
 ```js
-const eval_block = (component, env) => {
+const eval_block = (component: Component, env: Environment): unknown => {
     const body = block_body(component);
     const locals = scan_out_declarations(body);
     const unassigneds = list_of_unassigned(locals);
@@ -141,9 +141,9 @@ const eval_block = (component, env) => {
                                              unassigneds,
                                              env));
 };
-const list_of_unassigned = (symbols) =>
+const list_of_unassigned = (symbols: List<string>): List<"*unassigned*"> =>
     map(symbol => "*unassigned*", symbols);
-const scan_out_declarations = (component) =>
+const scan_out_declarations = (component: Component): List<string> =>
     is_sequence(component)
            ? accumulate(append,
                         null,
@@ -157,16 +157,16 @@ const scan_out_declarations = (component) =>
 Declarations inside nested blocks are left for those blocks; and declarations in conditionals, function bodies and lambda expressions are always inside a nested block.
 
 ```js
-const eval_return_statement = (component, env) =>
+const eval_return_statement = (component: Component, env: Environment): ReturnValue =>
     make_return_value(evaluate(return_expression(component),
                                       env));
-const eval_assignment = (component, env) => {
+const eval_assignment = (component: Component, env: Environment): unknown => {
     const value = evaluate(assignment_value_expression(component),
                            env);
     assign_symbol_value(assignment_symbol(component), value, env);
     return value;
 };
-const eval_declaration = (component, env) => {
+const eval_declaration = (component: Component, env: Environment): undefined => {
     assign_symbol_value(
         declaration_symbol(component),
         evaluate(declaration_value_expression(component), env),
@@ -187,7 +187,7 @@ An assignment’s value is the value assigned. To keep the evaluator short, `eva
 
 <UnderTheHood file="packages/lab/src/chapter-4/metacircular.ts">
 
-The evaluator is a Source program, `evaluatorCore` and its neighbours in `chapter-4/metacircular.ts`, run by the Laboratory’s own evaluator: an evaluator inside an evaluator. `parse` is a Laboratory primitive (`syntax/taggedList.ts`), and the cycle above is drawn by asking the worker to log the calls of the Source functions `evaluate` and `apply` (`inspect/callLog.ts`). The test `chapter-4/metacircular.test.ts` asserts that `square(3) + 1` makes 17 calls of `evaluate` and 3 of `apply` (one for `square`, two for the primitives `*` and `+`), and that the return-statement example displays its message once and returns 12.
+The evaluator is a Source program, `evaluatorCore` and its neighbours in `chapter-4/metacircular.ts`, run by the Laboratory’s own evaluator: an evaluator inside an evaluator. `parse` is a Laboratory primitive (`syntax/taggedList.ts`), and the cycle above is drawn by asking the worker to log the calls of the Source functions `evaluate` and `apply` (`inspect/callLog.ts`). The test `chapter-4/metacircular.test.ts` asserts that `square(3) + 1` makes 16 calls of `evaluate` and 3 of `apply` (one for `square`, two for the primitives `*` and `+`), and that the return-statement example displays its message once and returns 12.
 
 </UnderTheHood>
 

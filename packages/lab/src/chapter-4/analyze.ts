@@ -7,10 +7,13 @@ import { omit } from './source.ts';
  * data structures and setup of §4.1.2–§4.1.4 and replaces the core of §4.1.1.
  */
 
-export const analyzingCore = `const evaluate = (component, env) =>
+export const analyzingCore = `// What analysis makes of a component: a function that only needs an environment.
+type Execution = (env: Environment) => unknown;
+
+const evaluate = (component: Component, env: Environment): unknown =>
     analyze(component)(env);
 
-const analyze = (component) =>
+const analyze = (component: Component): Execution =>
     is_literal(component)
            ? analyze_literal(component)
            : is_name(component)
@@ -37,19 +40,19 @@ const analyze = (component) =>
            ? analyze_assignment(component)
            : error(component, "unknown syntax -- analyze");
 
-const analyze_literal = (component) =>
+const analyze_literal = (component: Component): Execution =>
     env => literal_value(component);
 
-const analyze_name = (component) =>
+const analyze_name = (component: Component): Execution =>
     env => lookup_symbol_value(symbol_of_name(component), env);
 
-const analyze_application = (component) => {
+const analyze_application = (component: Component): Execution => {
     const ffun = analyze(function_expression(component));
     const afuns = map(analyze, arg_expressions(component));
     return env => execute_application(ffun(env),
                                       map(afun => afun(env), afuns));
 };
-const execute_application = (fun, args) => {
+const execute_application = (fun: PrimitiveFunction | CompoundFunction, args: List<unknown>): unknown => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(fun, args);
     } else if (is_compound_function(fun)) {
@@ -65,28 +68,28 @@ const execute_application = (fun, args) => {
     }
 };
 
-const analyze_conditional = (component) => {
+const analyze_conditional = (component: Component): Execution => {
     const pfun = analyze(conditional_predicate(component));
     const cfun = analyze(conditional_consequent(component));
     const afun = analyze(conditional_alternative(component));
     return env => is_truthy(pfun(env)) ? cfun(env) : afun(env);
 };
 
-const analyze_lambda_expression = (component) => {
+const analyze_lambda_expression = (component: Component): Execution => {
     const params = lambda_parameter_symbols(component);
     const bfun = analyze(lambda_body(component));
     return env => make_function(params, bfun, env);
 };
 
-const analyze_sequence = (stmts) => {
-    const sequentially = (fun1, fun2) =>
+const analyze_sequence = (stmts: List<Component>): Execution => {
+    const sequentially = (fun1: Execution, fun2: Execution): Execution =>
         env => {
                    const fun1_val = fun1(env);
                    return is_return_value(fun1_val)
                           ? fun1_val
                           : fun2(env);
                };
-    const loop = (first_fun, rest_funs) =>
+    const loop = (first_fun: Execution, rest_funs: List<Execution>): Execution =>
         is_null(rest_funs)
                ? first_fun
                : loop(sequentially(first_fun, head(rest_funs)),
@@ -97,7 +100,7 @@ const analyze_sequence = (stmts) => {
            : loop(head(funs), tail(funs));
 };
 
-const analyze_block = (component) => {
+const analyze_block = (component: Component): Execution => {
     const body = block_body(component);
     const bfun = analyze(body);
     const locals = scan_out_declarations(body);
@@ -105,12 +108,12 @@ const analyze_block = (component) => {
     return env => bfun(extend_environment(locals, unassigneds, env));
 };
 
-const analyze_return_statement = (component) => {
+const analyze_return_statement = (component: Component): Execution => {
     const rfun = analyze(return_expression(component));
     return env => make_return_value(rfun(env));
 };
 
-const analyze_assignment = (component) => {
+const analyze_assignment = (component: Component): Execution => {
     const symbol = assignment_symbol(component);
     const vfun = analyze(assignment_value_expression(component));
     return env => {
@@ -119,7 +122,7 @@ const analyze_assignment = (component) => {
                return value;
            };
 };
-const analyze_declaration = (component) => {
+const analyze_declaration = (component: Component): Execution => {
     const symbol = declaration_symbol(component);
     const vfun = analyze(declaration_value_expression(component));
     return env => {

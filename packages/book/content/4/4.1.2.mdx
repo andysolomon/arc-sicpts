@@ -4,7 +4,7 @@ import { metacircularPrelude, parseProgram, selectorsProgram } from '@sicp/lab';
 
 Programs are written as text. To run our evaluator on a program we need the text as a JavaScript value, and a string is not enough: in `"const size = 2; 5 * size;"` the parts `size = 2` and `5 * size` look alike but mean different things, and selectors such as `declaration_value_expression` would be hard to write, and easy to get wrong, if they had to pick the string apart.
 
-So we use a function `parse` that translates program text into a *tagged-list representation*, much like the tagged data of §2.4.2. Each component becomes a list whose first element, its tag, says what kind of component it is.
+So we use a function `parse` that translates program text into a *tagged-list representation*, much like the tagged data of §2.4.2. Each component becomes a list whose first element, its tag, says what kind of component it is. In the evaluator's annotations such a list has the type `Component`, declared as `type Component = List<unknown>;`.
 
 </Prose>
 
@@ -23,16 +23,16 @@ The evaluator resembles the symbolic differentiation program of §2.3.2: both op
 A literal expression is parsed into a list with the tag `"literal"` and the value it denotes: `parse("1;")` is `list("literal", 1)` and `parse("null;")` is `list("literal", null)`. The predicate and selector are
 
 ```js
-const is_literal = (component) =>
+const is_literal = (component: Component): boolean =>
     is_tagged_list(component, "literal");
-const literal_value = (component) =>
+const literal_value = (component: Component): unknown =>
     head(tail(component));
 ```
 
 in terms of `is_tagged_list`, which identifies lists that begin with a given string:
 
 ```js
-const is_tagged_list = (component, the_tag) =>
+const is_tagged_list = (component: unknown, the_tag: string): boolean =>
     is_pair(component) && head(component) === the_tag;
 ```
 
@@ -55,7 +55,7 @@ with predicate `is_application`, selectors `function_expression` and `arg_expres
 A lambda expression is `list("lambda_expression", list(⟨name⟩, …), ⟨body⟩)`. A body that is an expression is parsed as if it were a block holding a single return statement of that expression. `lambda_parameter_symbols` also takes the symbols out of the names:
 
 ```js
-const lambda_parameter_symbols = (component) =>
+const lambda_parameter_symbols = (component: Component): List<string> =>
     map(symbol_of_name, head(tail(component)));
 ```
 
@@ -63,7 +63,15 @@ A sequence of statements is `list("sequence", list(⟨statement⟩, …))`, with
 
 ## Return statements, assignments and declarations
 
-`return e;` is `list("return_statement", ⟨e⟩)`. `x = e` is `list("assignment", ⟨x⟩, ⟨e⟩)`, whose name is unwrapped by `assignment_symbol`. `const x = e;` and `let x = e;` are tagged `"constant_declaration"` and `"variable_declaration"`, and share the selectors `declaration_symbol` and `declaration_value_expression`. A function declaration is
+`return e;` is `list("return_statement", ⟨e⟩)`. `x = e` is `list("assignment", ⟨x⟩, ⟨e⟩)`, whose name is unwrapped by `assignment_symbol`. `const x = e;` and `let x = e;` are tagged `"constant_declaration"` and `"variable_declaration"`, and share the selectors `declaration_symbol` and `declaration_value_expression`. JavaScript also has *function declarations*, which declare a function and its name in one statement:
+
+```js
+function square(x: number): number {
+    return x * x;
+}
+```
+
+A function declaration is
 
 ```js
 list("function_declaration", ⟨name⟩, list(⟨parameter⟩, …), ⟨block⟩)
@@ -73,10 +81,10 @@ and `is_declaration` is true for all three kinds of declaration.
 
 ## Derived components
 
-Some syntactic forms can be expressed in terms of others instead of being implemented directly. A function declaration is turned by `evaluate` into a constant declaration whose value expression is a lambda expression:
+Some syntactic forms can be expressed in terms of others instead of being implemented directly. A function declaration is turned by `evaluate` into a constant declaration whose value expression is a lambda expression, as if `square` above had been declared with `const`:
 
 ```js
-const function_decl_to_constant_decl = (component) =>
+const function_decl_to_constant_decl = (component: Component): Component =>
     make_constant_declaration(
                function_declaration_name(component),
                make_lambda_expression(
@@ -87,7 +95,7 @@ const function_decl_to_constant_decl = (component) =>
 Operator combinations carry their operator as the second element: `list("binary_operator_combination", "*", ⟨left⟩, ⟨right⟩)`, and `list("unary_operator_combination", "-unary", ⟨operand⟩)` for numeric negation (`"!"` for logical negation). `evaluate` turns them into applications of a function whose name is the operator:
 
 ```js
-const operator_combination_to_application = (component) => {
+const operator_combination_to_application = (component: Component): Component => {
     const operator = operator_symbol(component);
     return is_unary_operator_combination(component)
            ? make_application(make_name(operator),

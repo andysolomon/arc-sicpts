@@ -5,7 +5,7 @@ import { dataAsProgramProgram, factorialMachineProgram, metacircularPrelude } fr
 One way to see what a program means is as the description of an abstract machine, perhaps an infinitely large one. The familiar factorial
 
 ```js
-const factorial = (n) =>
+const factorial = (n: number): number =>
     n === 1
            ? 1
            : factorial(n - 1) * n;
@@ -51,9 +51,9 @@ The programs of these pages are in `chapter-4/metacircularPrograms.ts`. The test
 Given a one-argument function `f` and an object `a`, `f` is said to *halt* on `a` if evaluating `f(a)` returns a value (as opposed to terminating with an error message or running forever). Show that it is impossible to write a function `halts` that correctly determines whether `f` halts on `a` for any function `f` and object `a`. Use the following reasoning: if you had such a function `halts`, you could implement the following program:
 
 ```js
-const run_forever = () => run_forever();
+const run_forever = (): never => run_forever();
 
-const strange = (f) =>
+const strange = (f: (x: unknown) => unknown): "halted" =>
     halts(f, f)
            ? run_forever()
            : "halted";

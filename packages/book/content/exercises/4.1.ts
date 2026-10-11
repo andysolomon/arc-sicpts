@@ -31,20 +31,23 @@ export const exercise_4_1: ExerciseSpec = {
   id: '4.1',
   postlude: `${rest('list_of_values')}
 let list_of_values_in_use = list_of_values_left_to_right;
-const list_of_values = (exps, env) =>
+const list_of_values = (exps: List<Component>, env: Environment): List<unknown> =>
     list_of_values_in_use(exps, env);
-const evaluate_in_order = (order, program) => {
+const evaluate_in_order = (
+    order: (exps: List<Component>, env: Environment) => List<unknown>,
+    program: string
+): unknown => {
     list_of_values_in_use = order;
     return evaluate_program(program);
 };`,
   starter: `// The rest of the evaluator is provided; both functions are used in place
 // of list_of_values. evaluate, head, tail, pair and is_null are available.
 
-const list_of_values_left_to_right = (exps, env) => {
+const list_of_values_left_to_right = (exps: List<Component>, env: Environment): List<unknown> => {
     // your answer
 };
 
-const list_of_values_right_to_left = (exps, env) => {
+const list_of_values_right_to_left = (exps: List<Component>, env: Environment): List<unknown> => {
     // your answer
 };
 `,
@@ -52,25 +55,25 @@ const list_of_values_right_to_left = (exps, env) => {
     {
       name: 'left to right',
       kind: 'value',
-      expr: `equal(evaluate_in_order(list_of_values_left_to_right, "let x = 1; const f = (a, b) => list(a, b); f(x = x + 1, x = x * 10);"), list(2, 20))`,
+      expr: `equal(evaluate_in_order(list_of_values_left_to_right, "let x = 1; const f = (a: number, b: number): List<number> => list(a, b); f(x = x + 1, x = x * 10);"), list(2, 20))`,
       expected: true,
     },
     {
       name: 'right to left',
       kind: 'value',
-      expr: `equal(evaluate_in_order(list_of_values_right_to_left, "let x = 1; const f = (a, b) => list(a, b); f(x = x + 1, x = x * 10);"), list(11, 10))`,
+      expr: `equal(evaluate_in_order(list_of_values_right_to_left, "let x = 1; const f = (a: number, b: number): List<number> => list(a, b); f(x = x + 1, x = x * 10);"), list(11, 10))`,
       expected: true,
     },
     {
       name: 'right to left still applies functions to their arguments in order',
       kind: 'value',
-      expr: `evaluate_in_order(list_of_values_right_to_left, "const f = (a, b, c) => a - b * c; f(10, 2, 3);")`,
+      expr: `evaluate_in_order(list_of_values_right_to_left, "const f = (a: number, b: number, c: number): number => a - b * c; f(10, 2, 3);")`,
       expected: 4,
     },
     { name: 'no arguments', kind: 'value', expr: `evaluate_in_order(list_of_values_right_to_left, "(() => 7)();")`, expected: 7 },
   ],
   budget: BUDGET,
-  solution: `const list_of_values_left_to_right = (exps, env) => {
+  solution: `const list_of_values_left_to_right = (exps: List<Component>, env: Environment): List<unknown> => {
     if (is_null(exps)) {
         return null;
     } else {
@@ -80,7 +83,7 @@ const list_of_values_right_to_left = (exps, env) => {
     }
 };
 
-const list_of_values_right_to_left = (exps, env) => {
+const list_of_values_right_to_left = (exps: List<Component>, env: Environment): List<unknown> => {
     if (is_null(exps)) {
         return null;
     } else {
@@ -93,7 +96,7 @@ const list_of_values_right_to_left = (exps, env) => {
 };
 
 /** True when `unparse` turns a program back into text that parses to the same tagged list. */
-const roundTrip = `const round_trips = (text) => {
+const roundTrip = `const round_trips = (text: string): boolean => {
     const component = parse(text);
     const statement = is_sequence(component) || is_block(component) ||
                       is_declaration(component) || is_return_statement(component) ||
@@ -112,7 +115,7 @@ export const exercise_4_2: ExerciseSpec = {
 // A lambda expression whose body is a return statement was written with an
 // expression as its body.
 
-const unparse = (component) => {
+const unparse = (component: Component): string => {
     // your answer
 };
 `,
@@ -123,19 +126,19 @@ const unparse = (component) => {
     {
       name: 'functions, conditionals and returns',
       kind: 'value',
-      expr: 'round_trips("const f = (x) => { if (x > 0) { return x; } else { return x === 0 ? 1 : -x; } }; f(3);")',
+      expr: 'round_trips("function f(x: number): number { if (x > 0) { return x; } else { return x === 0 ? 1 : -x; } } f(3);")',
       expected: true,
     },
     { name: 'lambda expressions and applications', kind: 'value', expr: 'round_trips("(x => x * x)(f(1, 2)) && (() => { const y = 1; return y; })();")', expected: true },
   ],
-  solution: `const comma_separated = (strings) =>
+  solution: `const comma_separated = (strings: List<string>): string =>
     is_null(strings)
            ? ""
            : is_null(tail(strings))
            ? head(strings)
            : head(strings) + ", " + comma_separated(tail(strings));
 
-const unparse_statement = (component) => {
+const unparse_statement = (component: Component): string => {
     const is_statement = is_sequence(component) || is_block(component) ||
                          is_declaration(component) || is_return_statement(component) ||
                          is_tagged_list(component, "conditional_statement");
@@ -143,12 +146,12 @@ const unparse_statement = (component) => {
 };
 
 // A body or branch in braces: parse leaves out the block when it declares nothing.
-const unparse_body = (component) =>
+const unparse_body = (component: Component): string =>
     is_block(component)
            ? unparse(component)
            : "{ " + unparse_statement(component) + " }";
 
-const unparse = (component) =>
+const unparse = (component: Component): string =>
     is_literal(component)
            ? stringify(literal_value(component))
            : is_name(component)
@@ -202,12 +205,15 @@ const unparse = (component) =>
 `,
 };
 
-const table = `let the_table = null;
-const put = (op, type, item) => {
+const table = `// An entry of the table: pair(pair(op, type), item).
+type Entry = Pair<Pair<string, string>, unknown>;
+
+let the_table: List<Entry> = null;
+const put = (op: string, type: string, item: unknown): void => {
     the_table = pair(pair(pair(op, type), item), the_table);
 };
-const get = (op, type) => {
-    const find = (entries) =>
+const get = (op: string, type: string): unknown => {
+    const find = (entries: List<Entry>): unknown =>
         is_null(entries)
                ? undefined
                : head(head(head(entries))) === op &&
@@ -221,7 +227,7 @@ export const exercise_4_3: ExerciseSpec = {
   id: '4.3',
   prelude: `${table}`,
   postlude: `${rest('evaluate')}
-const evaluate_double = (n) => {
+const evaluate_double = (n: number): number => {
     put("evaluate", "double",
         (component, env) => 2 * evaluate(head(tail(component)), env));
     return evaluate(list("double", make_literal(n)), the_global_environment);
@@ -239,19 +245,19 @@ ${book('evaluate')}`,
     {
       name: 'declarations, conditionals, recursion',
       kind: 'value',
-      expr: run('const fact = (n) => n === 0 ? 1 : n * fact(n - 1); fact(5);'),
+      expr: run('const fact = (n: number): number => n === 0 ? 1 : n * fact(n - 1); fact(5);'),
       expected: 120,
     },
     {
       name: 'blocks, assignment and conditional statements',
       kind: 'value',
-      expr: run('let k = 0; const f = (x) => { if (x > 0) { k = k + x; return k; } else { return -1; } }; f(2); f(3);'),
+      expr: run('let k = 0; const f = (x: number): number => { if (x > 0) { k = k + x; return k; } else { return -1; } }; f(2); f(3);'),
       expected: 5,
     },
     { name: 'a new syntactic form needs no change to evaluate', kind: 'value', expr: 'evaluate_double(21)', expected: 42 },
   ],
   budget: BUDGET,
-  solution: `const evaluate = (component, env) => {
+  solution: `const evaluate = (component: Component, env: Environment): unknown => {
     const handler = get("evaluate", head(component));
     return is_undefined(handler)
            ? error(component, "unknown syntax -- evaluate")
@@ -307,7 +313,7 @@ ${book('evaluate')}`,
     { name: 'nested', kind: 'value', expr: run('const a = true; const b = false; (a && !b) || (!a && b);'), expected: true },
   ],
   budget: BUDGET,
-  solution: `const evaluate = (component, env) =>
+  solution: `const evaluate = (component: Component, env: Environment): unknown =>
     is_literal(component)
            ? literal_value(component)
            : is_name(component)
@@ -341,17 +347,17 @@ ${book('evaluate')}`,
            ? eval_assignment(component, env)
            : error(component, "unknown syntax -- evaluate");
 
-const is_logical_composition = (component) =>
+const is_logical_composition = (component: Component): boolean =>
     is_tagged_list(component, "logical_composition");
-const logical_operation = (component) => list_ref(component, 1);
-const first_conjunct = (component) => list_ref(component, 2);
-const second_conjunct = (component) => list_ref(component, 3);
+const logical_operation = (component: Component): string => list_ref(component, 1);
+const first_conjunct = (component: Component): Component => list_ref(component, 2);
+const second_conjunct = (component: Component): Component => list_ref(component, 3);
 
-const eval_and = (component, env) =>
+const eval_and = (component: Component, env: Environment): unknown =>
     is_truthy(evaluate(first_conjunct(component), env))
            ? evaluate(second_conjunct(component), env)
            : false;
-const eval_or = (component, env) =>
+const eval_or = (component: Component, env: Environment): unknown =>
     is_truthy(evaluate(first_conjunct(component), env))
            ? true
            : evaluate(second_conjunct(component), env);
@@ -368,24 +374,24 @@ export const exercise_4_5: ExerciseSpec = {
 // declaration in the component has two equal parameters, or a parameter
 // that is also declared directly in its body block; false otherwise.
 
-const verify = (component) => {
+const verify = (component: unknown): boolean => {
     // your answer
 };
 `,
   tests: [
-    { name: 'a correct program', kind: 'value', expr: 'verify(parse("const f = (x, y) => x + y; f(1, (a, b) => a);"))', expected: true },
+    { name: 'a correct program', kind: 'value', expr: 'verify(parse("function f(x: number, y: number): number { return x + y; } f(1, (a, b) => a);"))', expected: true },
     { name: 'duplicate parameters', kind: 'value', expr: `verify(${duplicateLambda})`, expected: false },
     { name: 'duplicate parameters deep inside an application', kind: 'value', expr: `verify(make_application(make_name("g"), list(make_literal(1), ${duplicateLambda})))`, expected: false },
-    { name: 'a parameter declared again in the body', kind: 'value', expr: 'verify(parse("const f = (x) => { const x = 1; return x; };"))', expected: false },
-    { name: 'the same in a lambda expression', kind: 'value', expr: 'verify(parse("const g = (a, b) => { let b = 2; return a; };"))', expected: false },
-    { name: 'an inner block may reuse the name', kind: 'value', expr: 'verify(parse("const f = (x) => { if (x > 0) { const x = 1; return x; } else { return x; } };"))', expected: true },
+    { name: 'a parameter declared again in the body', kind: 'value', expr: 'verify(parse("function f(x: number): number { const x = 1; return x; }"))', expected: false },
+    { name: 'the same in a lambda expression', kind: 'value', expr: 'verify(parse("const g = (a: number, b: number): number => { let b = 2; return a; };"))', expected: false },
+    { name: 'an inner block may reuse the name', kind: 'value', expr: 'verify(parse("const f = (x: number): number => { if (x > 0) { const x = 1; return x; } else { return x; } };"))', expected: true },
   ],
-  solution: `const has_duplicates = (symbols) =>
+  solution: `const has_duplicates = (symbols: List<string>): boolean =>
     !is_null(symbols) &&
            (!is_null(member(head(symbols), tail(symbols))) ||
             has_duplicates(tail(symbols)));
 
-const verify_function = (parameters, body) => {
+const verify_function = (parameters: List<Component>, body: Component): boolean => {
     const symbols = map(symbol_of_name, parameters);
     const declared = is_block(body) ? scan_out_declarations(block_body(body)) : null;
     return !has_duplicates(symbols) &&
@@ -396,7 +402,7 @@ const verify_function = (parameters, body) => {
 // Checking the whole program before evaluating it finds every mistake,
 // including those in functions that are never applied; checking in apply
 // finds them late, and again at every application.
-const verify = (component) =>
+const verify = (component: unknown): boolean =>
     is_lambda_expression(component)
            ? verify_function(head(tail(component)), lambda_body(component))
            : is_function_declaration(component)
@@ -408,8 +414,8 @@ const verify = (component) =>
 `,
 };
 
-const letStar = `const let_star = (text) => {
-    const convert = (component) =>
+const letStar = `const let_star = (text: string): Component => {
+    const convert = (component: unknown): unknown =>
         !is_pair(component)
                ? component
                : head(component) === "variable_declaration"
@@ -417,7 +423,7 @@ const letStar = `const let_star = (text) => {
                : pair(convert(head(component)), convert(tail(component)));
     return convert(parse(text));
 };
-const evaluate_let_star = (text) => {
+const evaluate_let_star = (text: string): unknown => {
     const program = let_star_to_nested_let(let_star(text));
     const locals = scan_out_declarations(program);
     const output = evaluate(program,
@@ -436,31 +442,31 @@ export const exercise_4_6: ExerciseSpec = {
 // provided. Return a program in which each let* has become a let at the
 // start of a new block holding the rest of its statement sequence.
 
-const let_star_to_nested_let = (component) => {
+const let_star_to_nested_let = (component: unknown): unknown => {
     // your answer
 };
 `,
   tests: [
     { name: 'the program of the text displays 39', kind: 'value', expr: 'evaluate_let_star("let x = 3; let y = x + 2; let z = x + y + 5; x * z;")', expected: 39 },
-    { name: 'inside a function body', kind: 'value', expr: 'evaluate_let_star("const f = (a) => { let b = a + 1; let c = b * 2; return c; }; f(3);")', expected: 8 },
+    { name: 'inside a function body', kind: 'value', expr: 'evaluate_let_star("const f = (a: number): number => { let b = a + 1; let c = b * 2; return c; }; f(3);")', expected: 8 },
     {
       name: 'a later let* shadows, so earlier functions keep the earlier binding',
       kind: 'value',
-      expr: 'evaluate_let_star("let x = 1; const get = () => x; let x = 2; get() * 10 + x;")',
+      expr: 'evaluate_let_star("let x = 1; const get = (): number => x; let x = 2; get() * 10 + x;")',
       expected: 12,
     },
   ],
   budget: BUDGET,
-  solution: `const is_let_star = (component) =>
+  solution: `const is_let_star = (component: Component): boolean =>
     is_tagged_list(component, "let_star_declaration");
 
-const let_star_to_let = (component) =>
+const let_star_to_let = (component: Component): Component =>
     list("variable_declaration",
                 head(tail(component)),
                 let_star_to_nested_let(head(tail(tail(component)))));
 
 // A let* and the statements after it become a block.
-const nest_statements = (stmts) =>
+const nest_statements = (stmts: List<Component>): List<Component> =>
     is_null(stmts)
            ? null
            : is_let_star(head(stmts))
@@ -471,7 +477,7 @@ const nest_statements = (stmts) =>
            : pair(let_star_to_nested_let(head(stmts)),
                   nest_statements(tail(stmts)));
 
-const let_star_to_nested_let = (component) =>
+const let_star_to_nested_let = (component: unknown): unknown =>
     is_sequence(component)
            ? list("sequence", nest_statements(sequence_statements(component)))
            : is_let_star(component)
@@ -487,11 +493,11 @@ export const exercise_4_7: ExerciseSpec = {
   id: '4.7',
   starter: `// while_loop(predicate, body) applies body as long as predicate()
 // is true, and should generate an iterative process.
-const while_loop = (predicate, body) => {
+const while_loop = (predicate: () => boolean, body: () => void): void => {
     // your answer
 };
 
-const factorial = (n) => {
+const factorial = (n: number): number => {
     let product = 1;
     let counter = 1;
     while_loop(() => counter <= n,
@@ -508,7 +514,7 @@ const factorial = (n) => {
     { name: 'a sum', kind: 'value', expr: '(() => { let i = 0; let s = 0; while_loop(() => i < 100, () => { i = i + 1; s = s + i; }); return s; })()', expected: 5050 },
     { name: 'an iterative process', kind: 'shape', expr: '"iterative"', call: 'factorial(40)' },
   ],
-  solution: `const while_loop = (predicate, body) => {
+  solution: `const while_loop = (predicate: () => boolean, body: () => void): void => {
     if (predicate()) {
         body();
         return while_loop(predicate, body);
@@ -517,7 +523,7 @@ const factorial = (n) => {
     }
 };
 
-const factorial = (n) => {
+const factorial = (n: number): number => {
     let product = 1;
     let counter = 1;
     while_loop(() => counter <= n,
@@ -548,7 +554,7 @@ ${book('eval_sequence')}`,
     { name: 'nor does a block of declarations', kind: 'value', expr: run('1; { const y = 2; } const z = 3;'), expected: 1 },
     { name: 'a conditional statement does', kind: 'value', expr: `is_undefined(${run('1; { if (true) {} else { 2; } }')})`, expected: true },
     { name: 'the last value-producing statement wins', kind: 'value', expr: run('1; { let x = 2; { x = x + 3; } }'), expected: 5 },
-    { name: 'functions still return what they return', kind: 'value', expr: run('const f = () => { 1; return 2; }; const g = () => { 3; }; f() + (g() === undefined ? 10 : 20);'), expected: 12 },
+    { name: 'functions still return what they return', kind: 'value', expr: run('const f = (): number => { 1; return 2; }; const g = (): void => { 3; }; f() + (g() === undefined ? 10 : 20);'), expected: 12 },
   ],
   budget: BUDGET,
   solution: `const value_1 = 3;
@@ -556,7 +562,7 @@ const value_2 = undefined;
 const value_3 = 1;
 const value_4 = 5;
 
-const is_value_producing = (component) =>
+const is_value_producing = (component: Component): boolean =>
     is_declaration(component)
            ? false
            : is_block(component)
@@ -566,8 +572,8 @@ const is_value_producing = (component) =>
                         false, sequence_statements(component))
            : true;
 
-const eval_sequence = (stmts, env) => {
-    const loop = (stmts, last) => {
+const eval_sequence = (stmts: List<Component>, env: Environment): unknown => {
+    const loop = (stmts: List<Component>, last: unknown): unknown => {
         if (is_empty_sequence(stmts)) {
             return last;
         } else {
@@ -589,7 +595,7 @@ const environmentFunctions = ['make_frame', 'frame_symbols', 'frame_values', 'ex
 const recursion: TestSpec = {
   name: 'recursion',
   kind: 'value',
-  expr: run('const fact = (n) => n === 0 ? 1 : n * fact(n - 1); fact(6);'),
+  expr: run('const fact = (n: number): number => n === 0 ? 1 : n * fact(n - 1); fact(6);'),
   expected: 720,
 };
 const correctness: TestSpec[] = [
@@ -597,7 +603,7 @@ const correctness: TestSpec[] = [
   {
     name: 'assignment and closures',
     kind: 'value',
-    expr: run('let count = 0; const inc = () => { count = count + 1; return count; }; inc(); inc(); inc();'),
+    expr: run('let count = 0; const inc = (): number => { count = count + 1; return count; }; inc(); inc(); inc();'),
     expected: 3,
   },
 ];
@@ -620,16 +626,19 @@ ${book(...environmentFunctions)}`,
     },
   ],
   budget: BUDGET,
-  solution: `const make_frame = (symbols, values) =>
+  solution: `// A frame is now a list of bindings.
+type Binding = Pair<string, unknown>;
+
+const make_frame = (symbols: List<string>, values: List<unknown>): List<Binding> =>
     is_null(symbols)
            ? null
            : pair(pair(head(symbols), head(values)),
                   make_frame(tail(symbols), tail(values)));
-const frame_symbols = (frame) => map(head, frame);
+const frame_symbols = (frame: List<Binding>): List<string> => map(head, frame);
 
-const frame_values = (frame) => map(tail, frame);
+const frame_values = (frame: List<Binding>): List<unknown> => map(tail, frame);
 
-const extend_environment = (symbols, vals, base_env) =>
+const extend_environment = (symbols: List<string>, vals: List<unknown>, base_env: Environment): Environment =>
     length(symbols) === length(vals)
            ? pair(make_frame(symbols, vals), base_env)
            : error(pair(symbols, vals),
@@ -637,14 +646,14 @@ const extend_environment = (symbols, vals, base_env) =>
                    ? "too many arguments supplied"
                    : "too few arguments supplied");
 
-const find_binding = (symbol, frame) =>
+const find_binding = (symbol: string, frame: List<Binding>): Binding | null =>
     is_null(frame)
            ? null
            : head(head(frame)) === symbol
            ? head(frame)
            : find_binding(symbol, tail(frame));
 
-const lookup_symbol_value = (symbol, env) => {
+const lookup_symbol_value = (symbol: string, env: Environment): unknown => {
     if (env === the_empty_environment) {
         return error(symbol, "unbound name");
     } else {
@@ -655,7 +664,7 @@ const lookup_symbol_value = (symbol, env) => {
     }
 };
 
-const assign_symbol_value = (symbol, val, env) => {
+const assign_symbol_value = (symbol: string, val: unknown, env: Environment): void => {
     if (env === the_empty_environment) {
         return error(symbol, "unbound name -- assignment");
     } else {
@@ -677,7 +686,12 @@ export const exercise_4_10: ExerciseSpec = {
 // binds symbol, it signals an error with unbound_message. Then declare
 // lookup_symbol_value and assign_symbol_value with it.
 
-const scan_environment = (symbol, env, found, unbound_message) => {
+const scan_environment = (
+    symbol: string,
+    env: Environment,
+    found: (vals: List<unknown>) => unknown,
+    unbound_message: string
+): unknown => {
     // your answer
 };
 
@@ -695,9 +709,14 @@ ${book('lookup_symbol_value', 'assign_symbol_value')}`,
     { name: 'unbound names are still errors', kind: 'error', call: run('no_such_name;'), message: 'unbound name' },
   ],
   budget: BUDGET,
-  solution: `const scan_environment = (symbol, env, found, unbound_message) => {
-    const env_loop = (env) => {
-        const scan = (symbols, vals) =>
+  solution: `const scan_environment = (
+    symbol: string,
+    env: Environment,
+    found: (vals: List<unknown>) => unknown,
+    unbound_message: string
+): unknown => {
+    const env_loop = (env: Environment): unknown => {
+        const scan = (symbols: List<string>, vals: List<unknown>): unknown =>
             is_null(symbols)
                    ? env_loop(enclosing_environment(env))
                    : symbol === head(symbols)
@@ -713,10 +732,10 @@ ${book('lookup_symbol_value', 'assign_symbol_value')}`,
     return env_loop(env);
 };
 
-const lookup_symbol_value = (symbol, env) =>
+const lookup_symbol_value = (symbol: string, env: Environment): unknown =>
     scan_environment(symbol, env, vals => head(vals), "unbound name");
 
-const assign_symbol_value = (symbol, val, env) =>
+const assign_symbol_value = (symbol: string, val: unknown, env: Environment): void =>
     scan_environment(symbol, env, vals => set_head(vals, val),
                             "unbound name -- assignment");
 `,
@@ -736,15 +755,17 @@ export const exercise_4_11: ExerciseSpec = {
 ${book(...constantFunctions)}`,
   tests: [
     { name: 'assignment to a constant', kind: 'error', call: run('const x = 1; x = 2;') },
-    { name: 'function names are constants', kind: 'error', call: run('const g = () => 1; g = 5;') },
-    { name: 'constants in a function body', kind: 'error', call: run('const h = () => { const c = 1; c = 2; return c; }; h();') },
+    { name: 'function names are constants', kind: 'error', call: run('function g(): number { return 1; } g = 5;') },
+    { name: 'constants in a function body', kind: 'error', call: run('const h = (): number => { const c = 1; c = 2; return c; }; h();') },
     { name: 'variables can be assigned', kind: 'value', expr: run('let y = 1; y = y + 1; y;'), expected: 2 },
-    { name: 'parameters can be assigned', kind: 'value', expr: run('const f = (x) => { x = x + 1; return x; }; f(1);'), expected: 2 },
+    { name: 'parameters can be assigned', kind: 'value', expr: run('const f = (x: number): number => { x = x + 1; return x; }; f(1);'), expected: 2 },
     recursion,
   ],
   budget: BUDGET,
   solution: `// A declared name is either a string (a variable) or pair("const", string).
-const scan_out_declarations = (component) =>
+type DeclaredName = string | Pair<"const", string>;
+
+const scan_out_declarations = (component: Component): List<DeclaredName> =>
     is_sequence(component)
            ? accumulate(append,
                         null,
@@ -757,19 +778,22 @@ const scan_out_declarations = (component) =>
            : null;
 
 // A frame keeps the kind of each name beside the names.
-const make_frame = (symbols, values) =>
+type Kind = "const" | "let";
+type KindedFrame = Pair<Pair<List<string>, List<Kind>>, List<unknown>>;
+
+const make_frame = (symbols: List<DeclaredName>, values: List<unknown>): KindedFrame =>
     pair(pair(map(s => is_pair(s) ? tail(s) : s, symbols),
                      map(s => is_pair(s) ? "const" : "let", symbols)),
                 values);
-const frame_symbols = (frame) => head(head(frame));
+const frame_symbols = (frame: KindedFrame): List<string> => head(head(frame));
 
-const frame_kinds = (frame) => tail(head(frame));
+const frame_kinds = (frame: KindedFrame): List<Kind> => tail(head(frame));
 
-const frame_values = (frame) => tail(frame);
+const frame_values = (frame: KindedFrame): List<unknown> => tail(frame);
 
-const assign_in_frames = (symbol, val, env, check) => {
-    const env_loop = (env) => {
-        const scan = (symbols, kinds, vals) =>
+const assign_in_frames = (symbol: string, val: unknown, env: Environment, check: boolean): void => {
+    const env_loop = (env: Environment): void => {
+        const scan = (symbols: List<string>, kinds: List<Kind>, vals: List<unknown>): void =>
             is_null(symbols)
                    ? env_loop(enclosing_environment(env))
                    : symbol === head(symbols)
@@ -787,13 +811,13 @@ const assign_in_frames = (symbol, val, env, check) => {
     return env_loop(env);
 };
 
-const assign_symbol_value = (symbol, val, env) =>
+const assign_symbol_value = (symbol: string, val: unknown, env: Environment): void =>
     assign_in_frames(symbol, val, env, true);
 
-const assign_constant_value = (symbol, val, env) =>
+const assign_constant_value = (symbol: string, val: unknown, env: Environment): void =>
     assign_in_frames(symbol, val, env, false);
 
-const eval_declaration = (component, env) => {
+const eval_declaration = (component: Component, env: Environment): undefined => {
     assign_constant_value(
         declaration_symbol(component),
         evaluate(declaration_value_expression(component), env),
@@ -814,7 +838,7 @@ ${book('lookup_symbol_value', 'eval_assignment')}`,
     {
       name: 'using a name before its declaration',
       kind: 'error',
-      call: run('const a = 1; const f = (x) => { const b = a + x; const a = 5; return a + b; }; f(10);'),
+      call: run('const a = 1; const f = (x: number): number => { const b = a + x; const a = 5; return a + b; }; f(10);'),
       message: 'unassigned',
     },
     { name: 'assigning before the let declaration', kind: 'error', call: run('x = 1; let x = 2;'), message: 'unassigned' },
@@ -822,9 +846,9 @@ ${book('lookup_symbol_value', 'eval_assignment')}`,
     recursion,
   ],
   budget: BUDGET,
-  solution: `const lookup_symbol_value = (symbol, env) => {
-    const env_loop = (env) => {
-        const scan = (symbols, vals) =>
+  solution: `const lookup_symbol_value = (symbol: string, env: Environment): unknown => {
+    const env_loop = (env: Environment): unknown => {
+        const scan = (symbols: List<string>, vals: List<unknown>): unknown =>
             is_null(symbols)
                    ? env_loop(enclosing_environment(env))
                    : symbol === head(symbols)
@@ -843,7 +867,7 @@ ${book('lookup_symbol_value', 'eval_assignment')}`,
 };
 
 // Looking the name up first signals the error for a name still unassigned.
-const eval_assignment = (component, env) => {
+const eval_assignment = (component: Component, env: Environment): unknown => {
     lookup_symbol_value(assignment_symbol(component), env);
     const value = evaluate(assignment_value_expression(component),
                            env);
@@ -864,14 +888,14 @@ export const exercise_4_13: ExerciseSpec = {
 
 ${book(...varFunctions)}`,
   tests: [
-    { name: 'a declaration in a block is visible in the whole function', kind: 'value', expr: run('const f = () => { { const y = 2; } return y; }; f();'), expected: 2 },
+    { name: 'a declaration in a block is visible in the whole function', kind: 'value', expr: run('const f = (): number => { { const y = 2; } return y; }; f();'), expected: 2 },
     { name: 'blocks do not shadow', kind: 'value', expr: run('const x = 1; { const x = 2; } x;'), expected: 2 },
-    { name: 'assignment to an undeclared name declares it globally', kind: 'value', expr: run('const g = () => { z = 5; return 1; }; g() + z;'), expected: 6 },
+    { name: 'assignment to an undeclared name declares it globally', kind: 'value', expr: run('const g = (): number => { z = 5; return 1; }; g() + z;'), expected: 6 },
     recursion,
   ],
   budget: BUDGET,
   solution: `// Declarations anywhere in a function body, but not in nested functions.
-const scan_out_declarations = (component) =>
+const scan_out_declarations = (component: Component): List<string> =>
     is_sequence(component)
            ? accumulate(append,
                         null,
@@ -887,11 +911,11 @@ const scan_out_declarations = (component) =>
            : null;
 
 // A block no longer has a frame of its own.
-const eval_block = (component, env) =>
+const eval_block = (component: Component, env: Environment): unknown =>
     evaluate(block_body(component), env);
 
 // The function's frame holds its parameters and every name in its body.
-const apply = (fun, args) => {
+const apply = (fun: PrimitiveFunction | CompoundFunction, args: List<unknown>): unknown => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(fun, args);
     } else if (is_compound_function(fun)) {
@@ -910,9 +934,9 @@ const apply = (fun, args) => {
     }
 };
 
-const assign_symbol_value = (symbol, val, env) => {
-    const env_loop = (env) => {
-        const scan = (symbols, vals) =>
+const assign_symbol_value = (symbol: string, val: unknown, env: Environment): void => {
+    const env_loop = (env: Environment): void => {
+        const scan = (symbols: List<string>, vals: List<unknown>): void =>
             is_null(symbols)
                    ? env_loop(enclosing_environment(env))
                    : symbol === head(symbols)
@@ -944,15 +968,15 @@ ${book('apply')}`,
     {
       name: 'one frame fewer',
       kind: 'value',
-      expr: `length(function_environment(${run('const f = (x) => { const y = x + 1; return () => x * y; }; f(1);')}))`,
+      expr: `length(function_environment(${run('const f = (x: number): (() => number) => { const y = x + 1; return () => x * y; }; f(1);')}))`,
       expected: 3,
     },
-    { name: 'parameters and local names are both visible', kind: 'value', expr: run('const f = (x) => { const y = x + 1; return x * y; }; f(3);'), expected: 12 },
+    { name: 'parameters and local names are both visible', kind: 'value', expr: run('const f = (x: number): number => { const y = x + 1; return x * y; }; f(3);'), expected: 12 },
     { name: 'lambda expressions with expression bodies', kind: 'value', expr: run('(x => x + 1)(2);'), expected: 3 },
     recursion,
   ],
   budget: BUDGET,
-  solution: `const apply = (fun, args) => {
+  solution: `const apply = (fun: PrimitiveFunction | CompoundFunction, args: List<unknown>): unknown => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(fun, args);
     } else if (is_compound_function(fun)) {
@@ -983,16 +1007,16 @@ export const exercise_4_17: ExerciseSpec = {
 
 ${book('evaluate')}`,
   tests: [
-    { name: 'a function used before its declaration', kind: 'value', expr: run('const a = f(2); const f = (x) => x * 10; a;'), expected: 20 },
-    { name: 'in a block', kind: 'value', expr: run('const g = () => { const r = h(); const h = () => 7; return r; }; g();'), expected: 7 },
+    { name: 'a function used before its declaration', kind: 'value', expr: run('const a = f(2); function f(x: number): number { return x * 10; } a;'), expected: 20 },
+    { name: 'in a block', kind: 'value', expr: run('const g = (): number => { const r = h(); function h(): number { return 7; } return r; }; g();'), expected: 7 },
     recursion,
   ],
   budget: BUDGET,
-  solution: `const hoist = (stmts) =>
+  solution: `const hoist = (stmts: List<Component>): List<Component> =>
     append(filter(is_function_declaration, stmts),
                   filter(stmt => !is_function_declaration(stmt), stmts));
 
-const evaluate = (component, env) =>
+const evaluate = (component: Component, env: Environment): unknown =>
     is_literal(component)
            ? literal_value(component)
            : is_name(component)
@@ -1028,9 +1052,9 @@ export const exercise_4_18: ExerciseSpec = {
   id: '4.18',
   starter: `// Fibonacci numbers, in the manner of the factorial expression above:
 // no declarations or assignments inside.
-const fib = n => /* your answer */ undefined;
+const fib = (n: number): number => /* your answer */ undefined;
 
-const f = (x) =>
+const f = (x: number): boolean =>
     ((is_even, is_odd) => is_even(is_even, is_odd, x))
            ((is_ev, is_od, n) => n === 0 ? true : is_od(/* ?? */),
             (is_ev, is_od, n) => n === 0 ? false : is_ev(/* ?? */));
@@ -1043,10 +1067,10 @@ const f = (x) =>
     { name: 'f of an odd number', kind: 'value', expr: 'f(7)', expected: false },
   ],
   budget: 3_000_000,
-  solution: `const fib = n => (fib => fib(fib, n))
-                ((fb, k) => k < 2 ? k : fb(fb, k - 1) + fb(fb, k - 2));
+  solution: `const fib = (n: number): number => (fib => fib(fib, n))
+                                   ((fb, k) => k < 2 ? k : fb(fb, k - 1) + fb(fb, k - 2));
 
-const f = (x) =>
+const f = (x: number): boolean =>
     ((is_even, is_odd) => is_even(is_even, is_odd, x))
            ((is_ev, is_od, n) => n === 0 ? true : is_od(is_ev, is_od, n - 1),
             (is_ev, is_od, n) => n === 0 ? false : is_ev(is_ev, is_od, n - 1));
@@ -1054,7 +1078,7 @@ const f = (x) =>
 };
 
 const whileHelpers = `// loop_while(predicate, () => { body }) is parsed as a while loop.
-const with_while_loops = (component) =>
+const with_while_loops = (component: unknown): unknown =>
     is_application(component) &&
            is_name(function_expression(component)) &&
            symbol_of_name(function_expression(component)) === "loop_while"
@@ -1064,7 +1088,7 @@ const with_while_loops = (component) =>
            : is_pair(component)
            ? pair(with_while_loops(head(component)), with_while_loops(tail(component)))
            : component;
-const evaluate_with_while = (input) => {
+const evaluate_with_while = (input: string): unknown => {
     const program = with_while_loops(parse(input));
     const locals = scan_out_declarations(program);
     const output = evaluate(program,
@@ -1093,7 +1117,7 @@ ${pick(analyzingEvaluator, 'analyze')}
     {
       name: 'return from inside a loop',
       kind: 'value',
-      expr: 'evaluate_with_while("const f = () => { let i = 0; loop_while(true, () => { if (i === 3) { return i; } else {} i = i + 1; }); return 99; }; f();")',
+      expr: 'evaluate_with_while("const f = (): number => { let i = 0; loop_while(true, () => { if (i === 3) { return i; } else {} i = i + 1; }); return 99; }; f();")',
       expected: 3,
     },
     {
@@ -1104,7 +1128,7 @@ ${pick(analyzingEvaluator, 'analyze')}
     },
   ],
   budget: 20_000_000,
-  solution: `const analyze = (component) =>
+  solution: `const analyze = (component: Component): Execution =>
     is_literal(component)
            ? analyze_literal(component)
            : is_name(component)
@@ -1133,16 +1157,16 @@ ${pick(analyzingEvaluator, 'analyze')}
            ? analyze_assignment(component)
            : error(component, "unknown syntax -- analyze");
 
-const is_while_loop = (component) =>
+const is_while_loop = (component: Component): boolean =>
     is_tagged_list(component, "while_loop");
-const while_predicate = (component) => list_ref(component, 1);
+const while_predicate = (component: Component): Component => list_ref(component, 1);
 
-const while_body = (component) => list_ref(component, 2);
+const while_body = (component: Component): Component => list_ref(component, 2);
 
-const analyze_while_loop = (component) => {
+const analyze_while_loop = (component: Component): Execution => {
     const pfun = analyze(while_predicate(component));
     const bfun = analyze(while_body(component));
-    const loop = (env) => {
+    const loop = (env: Environment): unknown => {
         if (is_truthy(pfun(env))) {
             const result = bfun(env);
             return is_return_value(result) ? result : loop(env);
@@ -1166,7 +1190,7 @@ const louis_map_receives = "";
 
 // Then repair Louis's idea: return env extended by a primitive map that
 // works for both compound and primitive function arguments.
-const install_map = (env) => {
+const install_map = (env: Environment): Environment => {
     // your answer
 };
 `,
@@ -1190,7 +1214,7 @@ const install_map = (env) => {
 
 // The implementation applies its argument with the evaluator's apply, which
 // knows both representations of functions.
-const install_map = (env) =>
+const install_map = (env: Environment): Environment =>
     extend_environment(
                list("map"),
                list(list("primitive",
@@ -1204,12 +1228,12 @@ export const exercise_4_15: ExerciseSpec = {
   starter: `// Suppose halts(f, a) existed, and consider strange(strange).
 // outcome(answer) is what strange(strange) does when halts(strange, strange)
 // returns answer: "runs forever" or "halts".
-const outcome = (answer) => {
+const outcome = (answer: boolean): "runs forever" | "halts" => {
     // your answer
 };
 
 // Does that outcome agree with the answer halts gave? true or false.
-const agrees = (answer) => {
+const agrees = (answer: boolean): boolean => {
     // your answer
 };
 
@@ -1221,10 +1245,10 @@ const halts_can_exist = true;
     { name: 'if halts says strange runs forever', kind: 'value', expr: 'outcome(false) === "halts" && agrees(false) === false', expected: true },
     { name: 'the conclusion', kind: 'value', expr: 'halts_can_exist', expected: false },
   ],
-  solution: `const outcome = (answer) =>
+  solution: `const outcome = (answer: boolean): "runs forever" | "halts" =>
     answer ? "runs forever" : "halts";
 
-const agrees = (answer) =>
+const agrees = (answer: boolean): boolean =>
     (outcome(answer) === "halts") === answer;
 
 const halts_can_exist = false;
@@ -1245,7 +1269,7 @@ const javascript = "";
 // do not call functions: evaluate them in an order in which each comes
 // after the declarations it uses. Given a list of pairs (name, list of the
 // names its value expression uses), return the names in such an order.
-const declaration_order = (uses) => {
+const declaration_order = (uses: List<Pair<string, List<string>>>): List<string> => {
     // your answer
 };
 `,
@@ -1272,13 +1296,13 @@ const eva = 20;
 const javascript = "alyssa";
 
 // Repeatedly take a declaration none of whose names is still waiting.
-const declaration_order = (uses) => {
+const declaration_order = (uses: List<Pair<string, List<string>>>): List<string> => {
     const names = map(head, uses);
-    const ready = (entry, waiting) =>
+    const ready = (entry: Pair<string, List<string>>, waiting: List<string>): boolean =>
         is_null(filter(name => !is_null(member(name, waiting)) &&
                                       name !== head(entry),
                               tail(entry)));
-    const order = (waiting_entries) => {
+    const order = (waiting_entries: List<Pair<string, List<string>>>): List<string> => {
         if (is_null(waiting_entries)) {
             return null;
         } else {
@@ -1299,11 +1323,11 @@ export const exercise_4_21: ExerciseSpec = {
   starter: `// Each time a function whose body is a sequence of n statements is
 // applied (n at least 2; parse gives a single statement as itself):
 // how many times does Alyssa's version apply execute_sequence?
-const alyssa_calls = (n) => {
+const alyssa_calls = (n: number): number => {
     // your answer
 };
 // How many of the functions made by sequentially does the text's apply?
-const text_calls = (n) => {
+const text_calls = (n: number): number => {
     // your answer
 };
 // Which version tests is_null and takes head and tail at execution time:
@@ -1315,9 +1339,9 @@ const loops_at_execution = "";
     { name: 'ten statements', kind: 'value', expr: 'alyssa_calls(10) === 10 && text_calls(10) === 9', expected: true },
     { name: 'the work left to execution', kind: 'value', expr: 'loops_at_execution', expected: 'alyssa' },
   ],
-  solution: `const alyssa_calls = (n) =>
+  solution: `const alyssa_calls = (n: number): number =>
     n;
-const text_calls = (n) =>
+const text_calls = (n: number): number =>
     n - 1;
 const loops_at_execution = "alyssa";
 `,
@@ -1329,7 +1353,7 @@ export const exercise_4_22: ExerciseSpec = {
 // read the steps from their output headers. The share of the original
 // evaluator's steps that analysis saves estimates the fraction of its time
 // spent in analysis.
-const analysis_fraction = (original_steps, analyzing_steps) => {
+const analysis_fraction = (original_steps: number, analyzing_steps: number): number => {
     // your answer
 };
 const fraction_for_10 = analysis_fraction(0, 0); // your measurements
@@ -1340,14 +1364,14 @@ const grows = undefined;
 `,
   tests: [
     { name: 'the formula', kind: 'value', expr: 'analysis_fraction(100, 60)', expected: 0.4 },
-    { name: 'factorial(10)', kind: 'value', expr: 'math_abs(fraction_for_10 - 0.382) < 0.02', expected: true },
-    { name: 'factorial(20)', kind: 'value', expr: 'math_abs(fraction_for_20 - 0.421) < 0.02', expected: true },
+    { name: 'factorial(10)', kind: 'value', expr: 'math_abs(fraction_for_10 - 0.374) < 0.02', expected: true },
+    { name: 'factorial(20)', kind: 'value', expr: 'math_abs(fraction_for_20 - 0.409) < 0.02', expected: true },
     { name: 'growth', kind: 'value', expr: 'grows', expected: true },
   ],
-  solution: `const analysis_fraction = (original_steps, analyzing_steps) =>
+  solution: `const analysis_fraction = (original_steps: number, analyzing_steps: number): number =>
     (original_steps - analyzing_steps) / original_steps;
-const fraction_for_10 = analysis_fraction(76076, 46980);
-const fraction_for_20 = analysis_fraction(152836, 88540);
+const fraction_for_10 = analysis_fraction(68277, 42747);
+const fraction_for_20 = analysis_fraction(137917, 81447);
 
 const grows = true;
 `,

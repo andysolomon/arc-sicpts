@@ -7,29 +7,32 @@ In section 3.5.1, we showed how to implement streams as delayed lists. We used a
 With lazy evaluation, streams and lists can be identical, so there is no need for separate list and stream operations. All we need to do is to arrange matters so that `pair` is non-strict. One way to accomplish this is to extend the lazy evaluator to allow for non-strict primitives, and to implement `pair` as one of these. An easier way is to recall (section 2.1.3) that there is no fundamental need to implement `pair` as a primitive at all. Instead, we can represent pairs as functions:
 
 ```js
-const pair = (x, y) =>
+type Pair<H, T> = <R>(m: (x: H, y: T) => R) => R;
+type List<T> = null | (<R>(m: (x: T, y: List<T>) => R) => R);
+
+const pair = <H, T>(x: H, y: T): Pair<H, T> =>
     m => m(x, y);
-const head = (z) =>
+const head = <H, T>(z: Pair<H, T>): H =>
     z((p, q) => p);
-const tail = (z) =>
+const tail = <H, T>(z: Pair<H, T>): T =>
     z((p, q) => q);
 ```
 
-We can install these declarations simply by typing them at the driver loop: the primitive `pair`, `head` and `tail` of the global environment are shadowed by them. In terms of these basic operations, the standard declarations of the list operations work with infinite lists, streams, as well as finite ones, and the stream operations can be implemented as list operations:
+The type declarations say the same: a pair is now a function that hands both of its parts to the function it is given, and a list is made of such pairs. We can install these declarations simply by typing them at the driver loop: the primitive `pair`, `head` and `tail` of the global environment are shadowed by them. In terms of these basic operations, the standard declarations of the list operations work with infinite lists, streams, as well as finite ones, and the stream operations can be implemented as list operations:
 
 ```js
-const list_ref = (items, n) =>
+const list_ref = <T>(items: List<T>, n: number): T =>
     n === 0
            ? head(items)
            : list_ref(tail(items), n - 1);
-const map = (fun, items) =>
+const map = <A, B>(fun: (x: A) => B, items: List<A>): List<B> =>
     is_null(items)
            ? null
            : pair(fun(head(items)),
                   map(fun, tail(items)));
-const scale_list = (items, factor) =>
+const scale_list = (items: List<number>, factor: number): List<number> =>
     map(x => x * factor, items);
-const add_lists = (list1, list2) =>
+const add_lists = (list1: List<number>, list2: List<number>): List<number> =>
     is_null(list1)
            ? list2
            : is_null(list2)
@@ -65,13 +68,13 @@ The head of `p` is `head(null)`, and nothing goes wrong as long as nobody asks f
 Lazy pairs also help with the problem that arose with streams in section 3.5.4, where we found that formulating stream models of systems with loops may require us to sprinkle our programs with additional lambda expressions for delays, beyond the ones required to construct a stream pair. With lazy evaluation, all arguments to functions are delayed uniformly. For instance, we can implement functions to integrate lists and solve differential equations as we originally intended in section 3.5.4:
 
 ```js
-const integral = (integrand, initial_value, dt) => {
+const integral = (integrand: List<number>, initial_value: number, dt: number): List<number> => {
     const int = pair(initial_value,
                      add_lists(scale_list(integrand, dt),
                                int));
     return int;
 };
-const solve = (f, y0, dt) => {
+const solve = (f: (y: number) => number, y0: number, dt: number): List<number> => {
     const y = integral(dy, y0, dt);
     const dy = map(f, y);
     return y;

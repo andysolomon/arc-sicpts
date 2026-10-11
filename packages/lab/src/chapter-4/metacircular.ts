@@ -7,7 +7,7 @@
  */
 
 /** §4.1.1: `evaluate`, `apply` and the functions they hand work to. */
-export const evaluatorCore = `const evaluate = (component, env) =>
+export const evaluatorCore = `const evaluate = (component: Component, env: Environment): unknown =>
     is_literal(component)
            ? literal_value(component)
            : is_name(component)
@@ -37,7 +37,7 @@ export const evaluatorCore = `const evaluate = (component, env) =>
            ? eval_assignment(component, env)
            : error(component, "unknown syntax -- evaluate");
 
-const apply = (fun, args) => {
+const apply = (fun: PrimitiveFunction | CompoundFunction, args: List<unknown>): unknown => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(fun, args);
     } else if (is_compound_function(fun)) {
@@ -54,15 +54,15 @@ const apply = (fun, args) => {
     }
 };
 
-const list_of_values = (exps, env) =>
+const list_of_values = (exps: List<Component>, env: Environment): List<unknown> =>
     map(arg => evaluate(arg, env), exps);
 
-const eval_conditional = (component, env) =>
+const eval_conditional = (component: Component, env: Environment): unknown =>
     is_truthy(evaluate(conditional_predicate(component), env))
            ? evaluate(conditional_consequent(component), env)
            : evaluate(conditional_alternative(component), env);
 
-const eval_sequence = (stmts, env) => {
+const eval_sequence = (stmts: List<Component>, env: Environment): unknown => {
     if (is_empty_sequence(stmts)) {
         return undefined;
     } else if (is_last_statement(stmts)) {
@@ -78,7 +78,7 @@ const eval_sequence = (stmts, env) => {
     }
 };
 
-const eval_block = (component, env) => {
+const eval_block = (component: Component, env: Environment): unknown => {
     const body = block_body(component);
     const locals = scan_out_declarations(body);
     const unassigneds = list_of_unassigned(locals);
@@ -86,10 +86,10 @@ const eval_block = (component, env) => {
                                              unassigneds,
                                              env));
 };
-const list_of_unassigned = (symbols) =>
+const list_of_unassigned = (symbols: List<string>): List<"*unassigned*"> =>
     map(symbol => "*unassigned*", symbols);
 
-const scan_out_declarations = (component) =>
+const scan_out_declarations = (component: Component): List<string> =>
     is_sequence(component)
            ? accumulate(append,
                         null,
@@ -99,18 +99,18 @@ const scan_out_declarations = (component) =>
            ? list(declaration_symbol(component))
            : null;
 
-const eval_return_statement = (component, env) =>
+const eval_return_statement = (component: Component, env: Environment): ReturnValue =>
     make_return_value(evaluate(return_expression(component),
                                       env));
 
-const eval_assignment = (component, env) => {
+const eval_assignment = (component: Component, env: Environment): unknown => {
     const value = evaluate(assignment_value_expression(component),
                            env);
     assign_symbol_value(assignment_symbol(component), value, env);
     return value;
 };
 
-const eval_declaration = (component, env) => {
+const eval_declaration = (component: Component, env: Environment): undefined => {
     assign_symbol_value(
         declaration_symbol(component),
         evaluate(declaration_value_expression(component), env),
@@ -120,110 +120,113 @@ const eval_declaration = (component, env) => {
 `;
 
 /** §4.1.2: predicates, selectors and constructors over `parse`'s tagged lists. */
-export const evaluatorSyntax = `const is_tagged_list = (component, the_tag) =>
+export const evaluatorSyntax = `// A component of a program: a tagged list made by parse.
+type Component = List<unknown>;
+
+const is_tagged_list = (component: unknown, the_tag: string): boolean =>
     is_pair(component) && head(component) === the_tag;
 
 // literals
-const is_literal = (component) =>
+const is_literal = (component: Component): boolean =>
     is_tagged_list(component, "literal");
-const literal_value = (component) =>
+const literal_value = (component: Component): unknown =>
     head(tail(component));
-const make_literal = (value) =>
+const make_literal = (value: unknown): Component =>
     list("literal", value);
 
 // names
-const is_name = (component) =>
+const is_name = (component: Component): boolean =>
     is_tagged_list(component, "name");
-const symbol_of_name = (component) =>
+const symbol_of_name = (component: Component): string =>
     head(tail(component));
-const make_name = (symbol) =>
+const make_name = (symbol: string): Component =>
     list("name", symbol);
 
 // function applications
-const is_application = (component) =>
+const is_application = (component: Component): boolean =>
     is_tagged_list(component, "application");
-const function_expression = (component) =>
+const function_expression = (component: Component): Component =>
     head(tail(component));
-const arg_expressions = (component) =>
+const arg_expressions = (component: Component): List<Component> =>
     head(tail(tail(component)));
-const make_application = (function_expression, argument_expressions) =>
+const make_application = (function_expression: Component, argument_expressions: List<Component>): Component =>
     list("application",
                 function_expression, argument_expressions);
 
 // conditionals
-const is_conditional = (component) =>
+const is_conditional = (component: Component): boolean =>
     is_tagged_list(component, "conditional_expression") ||
            is_tagged_list(component, "conditional_statement");
-const conditional_predicate = (component) =>
+const conditional_predicate = (component: Component): Component =>
     list_ref(component, 1);
-const conditional_consequent = (component) =>
+const conditional_consequent = (component: Component): Component =>
     list_ref(component, 2);
-const conditional_alternative = (component) =>
+const conditional_alternative = (component: Component): Component =>
     list_ref(component, 3);
 
 // lambda expressions
-const is_lambda_expression = (component) =>
+const is_lambda_expression = (component: Component): boolean =>
     is_tagged_list(component, "lambda_expression");
-const lambda_parameter_symbols = (component) =>
+const lambda_parameter_symbols = (component: Component): List<string> =>
     map(symbol_of_name, head(tail(component)));
-const lambda_body = (component) =>
+const lambda_body = (component: Component): Component =>
     head(tail(tail(component)));
-const make_lambda_expression = (parameters, body) =>
+const make_lambda_expression = (parameters: List<Component>, body: Component): Component =>
     list("lambda_expression", parameters, body);
 
 // sequences
-const is_sequence = (stmt) =>
+const is_sequence = (stmt: Component): boolean =>
     is_tagged_list(stmt, "sequence");
-const sequence_statements = (stmt) =>
+const sequence_statements = (stmt: Component): List<Component> =>
     head(tail(stmt));
-const first_statement = (stmts) => head(stmts);
+const first_statement = (stmts: List<Component>): Component => head(stmts);
 
-const rest_statements = (stmts) => tail(stmts);
+const rest_statements = (stmts: List<Component>): List<Component> => tail(stmts);
 
-const is_empty_sequence = (stmts) => is_null(stmts);
+const is_empty_sequence = (stmts: List<Component>): boolean => is_null(stmts);
 
-const is_last_statement = (stmts) => is_null(tail(stmts));
+const is_last_statement = (stmts: List<Component>): boolean => is_null(tail(stmts));
 
 // blocks
-const is_block = (component) =>
+const is_block = (component: Component): boolean =>
     is_tagged_list(component, "block");
-const block_body = (component) =>
+const block_body = (component: Component): Component =>
     head(tail(component));
 
 // return statements
-const is_return_statement = (component) =>
+const is_return_statement = (component: Component): boolean =>
     is_tagged_list(component, "return_statement");
-const return_expression = (component) =>
+const return_expression = (component: Component): Component =>
     head(tail(component));
 
 // assignments
-const is_assignment = (component) =>
+const is_assignment = (component: Component): boolean =>
     is_tagged_list(component, "assignment");
-const assignment_symbol = (component) =>
+const assignment_symbol = (component: Component): string =>
     symbol_of_name(head(tail(component)));
-const assignment_value_expression = (component) =>
+const assignment_value_expression = (component: Component): Component =>
     head(tail(tail(component)));
 
 // constant, variable and function declarations
-const is_declaration = (component) =>
+const is_declaration = (component: Component): boolean =>
     is_tagged_list(component, "constant_declaration") ||
            is_tagged_list(component, "variable_declaration") ||
            is_tagged_list(component, "function_declaration");
-const declaration_symbol = (component) =>
+const declaration_symbol = (component: Component): string =>
     symbol_of_name(head(tail(component)));
-const declaration_value_expression = (component) =>
+const declaration_value_expression = (component: Component): Component =>
     head(tail(tail(component)));
-const make_constant_declaration = (name, value_expression) =>
+const make_constant_declaration = (name: Component, value_expression: Component): Component =>
     list("constant_declaration", name, value_expression);
-const is_function_declaration = (component) =>
+const is_function_declaration = (component: Component): boolean =>
     is_tagged_list(component, "function_declaration");
-const function_declaration_name = (component) =>
+const function_declaration_name = (component: Component): Component =>
     list_ref(component, 1);
-const function_declaration_parameters = (component) =>
+const function_declaration_parameters = (component: Component): List<Component> =>
     list_ref(component, 2);
-const function_declaration_body = (component) =>
+const function_declaration_body = (component: Component): Component =>
     list_ref(component, 3);
-const function_decl_to_constant_decl = (component) =>
+const function_decl_to_constant_decl = (component: Component): Component =>
     make_constant_declaration(
                function_declaration_name(component),
                make_lambda_expression(
@@ -231,20 +234,20 @@ const function_decl_to_constant_decl = (component) =>
                    function_declaration_body(component)));
 
 // operator combinations, as derived components
-const is_operator_combination = (component) =>
+const is_operator_combination = (component: Component): boolean =>
     is_unary_operator_combination(component) ||
            is_binary_operator_combination(component);
-const is_unary_operator_combination = (component) =>
+const is_unary_operator_combination = (component: Component): boolean =>
     is_tagged_list(component, "unary_operator_combination");
-const is_binary_operator_combination = (component) =>
+const is_binary_operator_combination = (component: Component): boolean =>
     is_tagged_list(component, "binary_operator_combination");
-const operator_symbol = (component) =>
+const operator_symbol = (component: Component): string =>
     list_ref(component, 1);
-const first_operand = (component) =>
+const first_operand = (component: Component): Component =>
     list_ref(component, 2);
-const second_operand = (component) =>
+const second_operand = (component: Component): Component =>
     list_ref(component, 3);
-const operator_combination_to_application = (component) => {
+const operator_combination_to_application = (component: Component): Component => {
     const operator = operator_symbol(component);
     return is_unary_operator_combination(component)
            ? make_application(make_name(operator),
@@ -256,42 +259,51 @@ const operator_combination_to_application = (component) => {
 `;
 
 /** §4.1.3: truth, functions, return values and environments. */
-export const evaluatorData = `const is_truthy = (x) =>
+export const evaluatorData = `const is_truthy = (x: unknown): boolean =>
     is_boolean(x)
            ? x
            : error(x, "boolean expected, received");
-const is_falsy = (x) => ! is_truthy(x);
+const is_falsy = (x: unknown): boolean => ! is_truthy(x);
 
-const make_function = (parameters, body, env) =>
+// A compound function: its parameters, body and environment, tagged.
+type CompoundFunction = List<unknown>;
+
+const make_function = (parameters: List<string>, body: Component, env: Environment): CompoundFunction =>
     list("compound_function", parameters, body, env);
-const is_compound_function = (f) =>
+const is_compound_function = (f: unknown): boolean =>
     is_tagged_list(f, "compound_function");
-const function_parameters = (f) => list_ref(f, 1);
+const function_parameters = (f: CompoundFunction): List<string> => list_ref(f, 1);
 
-const function_body = (f) => list_ref(f, 2);
+const function_body = (f: CompoundFunction): Component => list_ref(f, 2);
 
-const function_environment = (f) => list_ref(f, 3);
+const function_environment = (f: CompoundFunction): Environment => list_ref(f, 3);
 
-const make_return_value = (content) =>
+type ReturnValue = List<unknown>;
+
+const make_return_value = (content: unknown): ReturnValue =>
     list("return_value", content);
-const is_return_value = (value) =>
+const is_return_value = (value: unknown): boolean =>
     is_tagged_list(value, "return_value");
-const return_value_content = (value) =>
+const return_value_content = (value: ReturnValue): unknown =>
     head(tail(value));
 
-const enclosing_environment = (env) => tail(env);
+// A frame pairs a list of names with the list of their values.
+type Frame = Pair<List<string>, List<unknown>>;
+type Environment = List<Frame>;
 
-const first_frame = (env) => head(env);
+const enclosing_environment = (env: Environment): Environment => tail(env);
+
+const first_frame = (env: Environment): Frame => head(env);
 
 const the_empty_environment = null;
 
-const make_frame = (symbols, values) => pair(symbols, values);
+const make_frame = (symbols: List<string>, values: List<unknown>): Frame => pair(symbols, values);
 
-const frame_symbols = (frame) => head(frame);
+const frame_symbols = (frame: Frame): List<string> => head(frame);
 
-const frame_values = (frame) => tail(frame);
+const frame_values = (frame: Frame): List<unknown> => tail(frame);
 
-const extend_environment = (symbols, vals, base_env) =>
+const extend_environment = (symbols: List<string>, vals: List<unknown>, base_env: Environment): Environment =>
     length(symbols) === length(vals)
            ? pair(make_frame(symbols, vals), base_env)
            : error(pair(symbols, vals),
@@ -299,9 +311,9 @@ const extend_environment = (symbols, vals, base_env) =>
                    ? "too many arguments supplied"
                    : "too few arguments supplied");
 
-const lookup_symbol_value = (symbol, env) => {
-    const env_loop = (env) => {
-        const scan = (symbols, vals) =>
+const lookup_symbol_value = (symbol: string, env: Environment): unknown => {
+    const env_loop = (env: Environment): unknown => {
+        const scan = (symbols: List<string>, vals: List<unknown>): unknown =>
             is_null(symbols)
                    ? env_loop(enclosing_environment(env))
                    : symbol === head(symbols)
@@ -317,9 +329,9 @@ const lookup_symbol_value = (symbol, env) => {
     return env_loop(env);
 };
 
-const assign_symbol_value = (symbol, val, env) => {
-    const env_loop = (env) => {
-        const scan = (symbols, vals) =>
+const assign_symbol_value = (symbol: string, val: unknown, env: Environment): void => {
+    const env_loop = (env: Environment): void => {
+        const scan = (symbols: List<string>, vals: List<unknown>): void =>
             is_null(symbols)
                    ? env_loop(enclosing_environment(env))
                    : symbol === head(symbols)
@@ -337,10 +349,13 @@ const assign_symbol_value = (symbol, val, env) => {
 `;
 
 /** §4.1.4: primitives, the global environment and a driver loop. */
-export const evaluatorSetup = `const is_primitive_function = (fun) =>
+export const evaluatorSetup = `// A primitive function: the tag "primitive" and its implementation.
+type PrimitiveFunction = List<unknown>;
+
+const is_primitive_function = (fun: unknown): boolean =>
     is_tagged_list(fun, "primitive");
 
-const primitive_implementation = (fun) => head(tail(fun));
+const primitive_implementation = (fun: PrimitiveFunction): unknown => head(tail(fun));
 
 const primitive_functions = list(
        list("head",    head             ),
@@ -380,11 +395,11 @@ const primitive_constant_symbols =
 const primitive_constant_values =
     map(c => head(tail(c)), primitive_constants);
 
-const apply_primitive_function = (fun, arglist) =>
+const apply_primitive_function = (fun: PrimitiveFunction, arglist: List<unknown>): unknown =>
     apply_in_underlying_javascript(
                primitive_implementation(fun), arglist);
 
-const setup_environment = () =>
+const setup_environment = (): Environment =>
     extend_environment(append(primitive_function_symbols,
                                      primitive_constant_symbols),
                               append(primitive_function_objects,
@@ -395,7 +410,7 @@ const input_prompt = "M-evaluate input:";
 const output_prompt = "M-evaluate value:";
 
 // The inputs come from a list, one program each, instead of from a prompt.
-const driver_loop = (env, inputs) => {
+const driver_loop = (env: Environment, inputs: List<string>): void => {
     if (is_null(inputs)) {
        display("evaluator terminated");
     } else {
@@ -409,8 +424,8 @@ const driver_loop = (env, inputs) => {
     }
 };
 
-const user_print = (string, object) => {
-    const prepare = (object) =>
+const user_print = (string: string, object: unknown): void => {
+    const prepare = (object: unknown): unknown =>
         is_compound_function(object)
                ? "< compound-function >"
                : is_primitive_function(object)
@@ -423,7 +438,7 @@ const user_print = (string, object) => {
 };
 
 // One program, evaluated as the driver loop would, giving its value.
-const evaluate_program = (input) => {
+const evaluate_program = (input: string): unknown => {
     const program = parse(input);
     const locals = scan_out_declarations(program);
     const program_env = extend_environment(
