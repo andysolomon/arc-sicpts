@@ -16,7 +16,7 @@ Delayed streams give us much of what local state and assignment gave us in §3.1
 In §1.2.1 an iterative process was a handful of state variables updated over and over. We can now picture that state differently: not as variables that change, but as one stream that lists every value they ever take. Take the square-root method of §1.1.7 again. It improves a guess for √*x* by averaging it with *x* divided by it,
 
 ```js
-const sqrt_improve = (guess, x) =>
+const sqrt_improve = (guess: number, x: number): number =>
   average(guess, x / guess);
 ```
 
@@ -41,7 +41,7 @@ Another iteration fits the same mould. In §1.3.1 we summed the alternating seri
 As a stream, this is three steps: the stream of summands (the reciprocals of the odd numbers with alternating signs), the stream of its partial sums (`partial_sums` from exercise 3.55), and that stream scaled by 4:
 
 ```js
-const pi_summands = (n) =>
+const pi_summands = (n: number): Stream<number> =>
   pair(1 / n, () => stream_map(x => -x, pi_summands(n + 2)));
 const pi_stream = scale_stream(partial_sums(pi_summands(1)), 4);
 ```
@@ -55,7 +55,7 @@ So far a stream of states has been just another way to write a loop. But because
 Since each term needs three neighbouring elements of the original, `euler_transform` reads them with `stream_ref` and moves along by one:
 
 ```js
-const euler_transform = (s) => {
+const euler_transform = (s: Stream<number>): Stream<number> => {
   const s0 = stream_ref(s, 0); // S(n-1)
   const s1 = stream_ref(s, 1); // S(n)
   const s2 = stream_ref(s, 2); // S(n+1)
@@ -69,7 +69,7 @@ The tail is memoized (§3.5.1), because what comes next reads the transformed st
 Nothing stops us from accelerating the accelerated sequence, and then accelerating that. `make_tableau` builds a stream of streams, each the transform of the one before:
 
 ```js
-const make_tableau = (transform, s) =>
+const make_tableau = <T>(transform: (s: Stream<T>) => Stream<T>, s: Stream<T>): Stream<Stream<T>> =>
   pair(s, () => make_tableau(transform, transform(s)));
 ```
 
@@ -85,7 +85,7 @@ s00  s01  s02  s03  s04  ...
 and the first element of each row, taken in turn, is a new sequence:
 
 ```js
-const accelerated_sequence = (transform, s) =>
+const accelerated_sequence = <T>(transform: (s: Stream<T>) => Stream<T>, s: Stream<T>): Stream<T> =>
   stream_map(head, make_tableau(transform, s));
 ```
 
@@ -122,7 +122,7 @@ The interesting part is `int_pairs`. More generally, take two streams *S* and *T
 That gives a function with one decision left open, how to combine the second and third parts:
 
 ```js
-const pairs = (s, t) =>
+const pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   pair(list(head(s), head(t)),
               () => combine_in_some_way(
                       stream_map(x => list(head(s), x), stream_tail(t)),
@@ -132,7 +132,7 @@ const pairs = (s, t) =>
 An obvious candidate is `stream_append`, the stream version of `append` (it is in the library):
 
 ```js
-const stream_append = (s1, s2) =>
+const stream_append = <T>(s1: Stream<T>, s2: Stream<T>): Stream<T> =>
   is_null(s1)
     ? s2
     : pair(head(s1), () => stream_append(stream_tail(s1), s2));
@@ -153,7 +153,7 @@ Thirty-one pairs, and every one of them is (1, *j*): the grid on the left fills 
 We need a way of combining two streams that is guaranteed to reach every element of both, however long we wait for it. A neat one is to take elements from the two streams alternately:
 
 ```js
-const interleave = (s1, s2) =>
+const interleave = <T>(s1: Stream<T>, s2: Stream<T>): Stream<T> =>
   is_null(s1)
     ? s2
     : pair(head(s1), () => interleave(s2, stream_tail(s1)));
@@ -162,7 +162,7 @@ const interleave = (s1, s2) =>
 Each call puts one element from its first argument out front and then swaps the roles of the two streams, so the second stream gets every other turn even if the first is infinite. (The precise property we need is that the pair of element *i* of one stream and element *j* of the other lands at some definite position *f*(*i*, *j*) of the result. David Turner used interleaving this way in his language KRC.) With it, `pairs` is complete:
 
 ```js
-const pairs = (s, t) =>
+const pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   pair(list(head(s), head(t)),
               () => interleave(stream_map(x => list(head(s), x),
                                           stream_tail(t)),
@@ -200,7 +200,7 @@ We first described streams as the programming counterpart of signals in signal-p
 as the stream *S* = (*S*ᵢ). Written the way §3.5.2 wrote `integers`, implicitly, in terms of itself:
 
 ```js
-const integral = (integrand, initial_value, dt) => {
+const integral = (integrand: Stream<number>, initial_value: number, dt: number): Stream<number> => {
   const integ = pair(initial_value,
                      () => add_streams(scale_stream(integrand, dt),
                                        integ));
@@ -230,7 +230,7 @@ The programs on this page are exported from `chapter-3/streamParadigm.ts`. Each 
 Louis Reasoner finds `sqrt_stream` slow and memoizes it:
 
 ```js
-const sqrt_stream_optimized = (x) =>
+const sqrt_stream_optimized = (x: number): Stream<number> =>
   pair(1,
               memo(() => stream_map_optimized(guess => sqrt_improve(guess, x),
                                               sqrt_stream_optimized(x))));
@@ -239,7 +239,7 @@ const sqrt_stream_optimized = (x) =>
 Alyssa P. Hacker suggests naming the stream instead, so that it refers to itself:
 
 ```js
-const sqrt_stream_optimized_2 = (x) => {
+const sqrt_stream_optimized_2 = (x: number): Stream<number> => {
   const guesses = pair(1,
                        memo(() => stream_map_optimized(guess => sqrt_improve(guess, x),
                                                        guesses)));
@@ -260,7 +260,7 @@ She says Louis's version does redundant work and hers does not. Write her versio
 Write a function `stream_limit` that takes a stream and a tolerance, looks along the stream for the first two neighbouring elements that differ by less than the tolerance in absolute value, and returns the second of them. With it, square roots to any tolerance are
 
 ```js
-const sqrt = (x, tolerance) =>
+const sqrt = (x: number, tolerance: number): number =>
   stream_limit(sqrt_stream(x), tolerance);
 ```
 
@@ -309,7 +309,7 @@ Change `pairs` so that `all_pairs(integers, integers)` produces every pair of po
 Louis Reasoner thinks three parts are one too many. He leaves (*S*₀, *T*₀) in the first row and writes
 
 ```js
-const pairs = (s, t) =>
+const pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   interleave(stream_map(x => list(head(s), x), t),
                     pairs(stream_tail(s), stream_tail(t)));
 ```
@@ -389,7 +389,7 @@ zero crossings:  ... 0  0  0    0  0    -1    0   0   0   0     1    0  0 ...
 With a function `sign_change_detector(value, last_value)` that compares two signs, she writes
 
 ```js
-const make_zero_crossings = (input_stream, last_value) =>
+const make_zero_crossings = (input_stream: Stream<number>, last_value: number): Stream<number> =>
   pair(sign_change_detector(head(input_stream), last_value),
               () => make_zero_crossings(stream_tail(input_stream),
                                         head(input_stream)));
@@ -417,7 +417,7 @@ Supply the *expression*.
 The sensor turns out to be noisy, and the noise produces spurious zero crossings. Lem E. Tweakit, a hardware specialist, suggests smoothing the signal before looking for crossings, and Alyssa decides to average each value with the previous value. Louis Reasoner implements it like this:
 
 ```js
-const make_zero_crossings = (input_stream, last_value) => {
+const make_zero_crossings = (input_stream: Stream<number>, last_value: number): Stream<number> => {
   const avpt = (head(input_stream) + last_value) / 2;
   return pair(sign_change_detector(avpt, last_value),
               () => make_zero_crossings(stream_tail(input_stream), avpt));

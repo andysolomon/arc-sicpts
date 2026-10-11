@@ -43,7 +43,7 @@ Five final values, as SICP predicts. 101 and 121 are the two serial orders. 110:
 
 A *serializer* is made by `make_serializer()`. It takes a function and returns a function that behaves the same way but is serialized: functions returned by the same serializer belong to one serialized set. With one serializer `s` for both threads, the program can only end with 101 or 121.
 
-Source has no rest parameters (`...args`), so our serializers protect functions *of no arguments*, which is exactly what `concurrent_execute` wants. To protect a call that does take arguments, wrap it in a function of none and call that: `protect(() => withdraw(amount))()`. The serializer's code is at the top of the program below; how it works is the subject of "Implementing serializers", further down.
+Our serializers protect functions *of no arguments*, which is exactly what `concurrent_execute` wants. Their type, `Serializer` in the program below, says so: `<T>(f: () => T) => () => T`. To protect a call that does take arguments, wrap it in a function of none and call that: `protect(() => withdraw(amount))()`. The serializer's code is at the top of the program below; how it works is the subject of "Implementing serializers", further down.
 
 </Prose>
 
@@ -70,7 +70,7 @@ Peter's and Paul's withdrawals from the same serialized account. Whichever threa
 **Complexity of using multiple shared resources.** Serializers make concurrent programs manageable, but only as long as each operation touches one shared resource. Suppose we want to swap the balances of two accounts:
 
 ```js
-const exchange = (account1, account2) => {
+const exchange = (account1: Account, account2: Account): void => {
     const difference = account1("balance") - account2("balance");
     account1("withdraw")(difference);
     account2("deposit")(difference);
@@ -92,7 +92,7 @@ Accounts *a*, *b* and *c* hold $10, $20 and $30. In sixty runs every outcome is 
 One fix is to let the accounts' serializers out: each account answers the message `"serializer"` with the serializer that protects its balance, and leaves withdrawals and deposits unserialized. Code that uses one account must then serialize its operations itself. A deposit, for example, becomes:
 
 ```js
-const deposit = (account, amount) => {
+const deposit = (account: Account, amount: number): void => {
     const s = account("serializer");
     const d = account("deposit");
     s(() => d(amount))();
@@ -232,7 +232,7 @@ To check your reasoning, write `check_balances(a, b, c)`, which classifies three
 Transferring an amount from one account to another needs no exchange of balances:
 
 ```js
-const transfer = (from_account, to_account, amount) => {
+const transfer = (from_account: Account, to_account: Account, amount: number): void => {
     from_account("withdraw")(amount);
     to_account("deposit")(amount);
 };
@@ -275,7 +275,7 @@ What happens when `serialized_exchange` is called?
 Suppose `test_and_set` were an ordinary function, as SICP first writes it:
 
 ```js
-const test_and_set = (cell) => {
+const test_and_set = (cell: List<boolean>): boolean => {
     if (head(cell)) {
         return true;
     } else {

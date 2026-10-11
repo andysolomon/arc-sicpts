@@ -154,25 +154,27 @@ describe('section 3.4.2: mechanisms for controlling concurrency', () => {
 
   it("exercise 3.45: Louis's automatically serialized account deadlocks even alone", () => {
     const louis = `${serializerDefinitions}
-      function make_account_and_serializer(balance) {
-          function withdraw(amount) { balance = balance - amount; return balance; }
-          function deposit(amount) { balance = balance + amount; return balance; }
+      type Transaction = (amount: number) => number;
+      type Account = (m: "withdraw" | "deposit" | "balance" | "serializer") => Transaction | number | Serializer;
+      const make_account_and_serializer = (balance: number): Account => {
+          const withdraw = (amount: number): number => { balance = balance - amount; return balance; };
+          const deposit = (amount: number): number => { balance = balance + amount; return balance; };
           const balance_serializer = make_serializer();
           return m => m === "withdraw" ? amount => balance_serializer(() => withdraw(amount))()
                     : m === "deposit" ? amount => balance_serializer(() => deposit(amount))()
                     : m === "balance" ? balance
                     : balance_serializer;
-      }
-      function exchange(account1, account2) {
+      };
+      const exchange = (account1: Account, account2: Account): void => {
           const difference = account1("balance") - account2("balance");
           account1("withdraw")(difference);
           account2("deposit")(difference);
-      }
-      function serialized_exchange(account1, account2) {
+      };
+      const serialized_exchange = (account1: Account, account2: Account): void => {
           const serializer1 = account1("serializer");
           const serializer2 = account2("serializer");
           return serializer1(serializer2(() => exchange(account1, account2)))();
-      }
+      };
       serialized_exchange(make_account_and_serializer(10), make_account_and_serializer(20));`;
     expect(evaluate(louis, { budget: 50_000 }).status).toBe('budget-exhausted');
   });

@@ -13,7 +13,7 @@ import {
 A stream computes only as much of itself as anyone reads, so a very long sequence costs no more than the part we look at. Taken one step further, a stream can be *infinitely* long. Here are the positive integers:
 
 ```js
-const integers_starting_from = (n) =>
+const integers_starting_from = (n: number): Stream<number> =>
   pair(n, () => integers_starting_from(n + 1));
 
 const integers = integers_starting_from(1);
@@ -46,7 +46,7 @@ The Fibonacci numbers come out of a generator in the same way. `fibgen(a, b)` is
 **The sieve of Eratosthenes.** A more striking infinite stream is the stream of all primes, produced by a sieve. Start with the integers from 2; the first, 2, is prime. Remove the multiples of 2 from the rest: what is left starts with 3, the next prime. Remove the multiples of 3 from that: what is left starts with 5. In general, to *sieve* a stream, keep its first element, and sieve what remains of the rest once the multiples of that first element are filtered out. In streams that description is the program:
 
 ```js
-const sieve = (stream) =>
+const sieve = (stream: Stream<number>): Stream<number> =>
   pair(head(stream),
               () => sieve(stream_filter(
                               x => ! is_divisible(x, head(stream)),
@@ -84,7 +84,7 @@ const ones = pair(1, () => ones);
 This works much as a recursive function declaration does: `ones` is a pair whose head is 1 and whose tail promises `ones`, which gives a 1 and the same promise again. With an operation on whole streams such as `add_streams`, which adds two streams element by element using the `stream_map_2` of exercise 3.50,
 
 ```js
-const add_streams = (s1, s2) =>
+const add_streams = (s1: Stream<number>, s2: Stream<number>): Stream<number> =>
   stream_map_2((x1, x2) => x1 + x2, s1, s2);
 ```
 
@@ -128,7 +128,7 @@ Here each addition prints its sum, so the animation counts additions. Element 8,
 `scale_stream` is another useful operation for such definitions; it multiplies every element of a stream by a constant:
 
 ```js
-const scale_stream = (stream, factor) =>
+const scale_stream = (stream: Stream<number>, factor: number): Stream<number> =>
   stream_map(x => x * factor,
                     stream);
 ```
@@ -148,8 +148,8 @@ With it, the powers of 2 are a stream that starts with 1 and continues with itse
 The primes, too, can be defined implicitly: start from 2 and keep the integers from 3 on that pass a primality test. The test is the interesting part. To decide whether *n* is prime it is enough to try dividing *n* by the *primes* up to √*n*, and it takes those primes from the very stream being defined:
 
 ```js
-const is_prime = (n) => {
-  const iter = (ps) =>
+const is_prime = (n: number): boolean => {
+  const iter = (ps: Stream<number>): boolean =>
     square(head(ps)) > n
       ? true
       : is_divisible(n, head(ps))
@@ -165,7 +165,7 @@ So `primes` uses `is_prime`, which uses `primes`. The definition works because e
 
 <Example index={6} file="primes.sicp" source={primesFromPrimesProgram} budget={1000000}>
 
-The same 233 as the sieve, and each candidate meets only the primes up to its square root. Without memoization it is still slow: every call of `is_prime` walks `primes` from the start, which re-runs the filter over the integers already seen. Add `memo` around the tail of `primes` (and use a memoizing `stream_filter`) and the step count falls from about 197,000 to about 56,000.
+The same 233 as the sieve, and each candidate meets only the primes up to its square root. Without memoization it is still slow: every call of `is_prime` walks `primes` from the start, which re-runs the filter over the integers already seen. Add `memo` around the tail of `primes` (and use a memoizing `stream_filter`) and the step count falls from about 180,000 to about 51,000.
 
 </Example>
 
@@ -256,7 +256,7 @@ Answer with two functions of *n*.
 Interpret the stream computed by
 
 ```js
-const expand = (num, den, radix) =>
+const expand = (num: number, den: number, radix: number): Stream<number> =>
   pair(math_trunc((num * radix) / den),
               () => expand((num * radix) % den, den, radix));
 ```
@@ -296,7 +296,7 @@ b. The derivative of sine is cosine and the derivative of cosine is minus sine. 
 With series as streams of coefficients, `add_streams` adds two series. Complete
 
 ```js
-const mul_series = (s1, s2) =>
+const mul_series = (s1: Stream<number>, s2: Stream<number>): Stream<number> =>
   pair(??, () => add_streams(??, ??));
 ```
 

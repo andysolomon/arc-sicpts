@@ -28,11 +28,11 @@ export const exercise_3_50: ExerciseSpec = {
 ${integersStartingFromDefinition}`,
   starter: `// memo and integers_starting_from are provided.
 
-const stream_map_2 = (f, s1, s2) => {
+const stream_map_2 = <A, B, C>(f: (x: A, y: B) => C, s1: Stream<A>, s2: Stream<B>): Stream<C> => {
   // your answer
 };
 
-const stream_map_2_optimized = (f, s1, s2) => {
+const stream_map_2_optimized = <A, B, C>(f: (x: A, y: B) => C, s1: Stream<A>, s2: Stream<B>): Stream<C> => {
   // your answer: like stream_map_2, with a memoized tail
 };
 `,
@@ -66,13 +66,13 @@ n`,
       expected: 6,
     },
   ],
-  solution: `const stream_map_2 = (f, s1, s2) =>
+  solution: `const stream_map_2 = <A, B, C>(f: (x: A, y: B) => C, s1: Stream<A>, s2: Stream<B>): Stream<C> =>
   is_null(s1) || is_null(s2)
     ? null
     : pair(f(head(s1), head(s2)),
            () => stream_map_2(f, stream_tail(s1), stream_tail(s2)));
 
-const stream_map_2_optimized = (f, s1, s2) =>
+const stream_map_2_optimized = <A, B, C>(f: (x: A, y: B) => C, s1: Stream<A>, s2: Stream<B>): Stream<C> =>
   is_null(s1) || is_null(s2)
     ? null
     : pair(f(head(s1), head(s2)),
@@ -125,26 +125,26 @@ export const exercise_3_52: ExerciseSpec = {
   prelude: `${streamMemoDefinition}
 ${streamMapOptimizedDefinition}
 ${streamEnumerateIntervalDefinition}
-const stream_filter_optimized = (pred, s) =>
+const stream_filter_optimized = <T>(pred: (x: T) => boolean, s: Stream<T>): Stream<T> =>
   is_null(s)
     ? null
     : pred(head(s))
     ? pair(head(s), memo(() => stream_filter_optimized(pred, stream_tail(s))))
     : stream_filter_optimized(pred, stream_tail(s));
 
-const is_even = (n) =>
+const is_even = (n: number): boolean =>
   n % 2 === 0;
 
-const display_stream = (s) =>
+const display_stream = <T>(s: Stream<T>): true =>
   stream_for_each(display, s);
 `,
   starter: `// The statements:
 //
 //   let sum = 0;
-//   function accum(x) {
+//   const accum = (x: number): number => {
 //     sum = x + sum;
 //     return sum;
-//   }
+//   };
 //   const seq = stream_map(accum, stream_enumerate_interval(1, 20));
 //   const y = stream_filter(is_even, seq);
 //   const z = stream_filter(x => x % 5 === 0, seq);
@@ -194,7 +194,7 @@ const s = pair(1, () => add_streams(s, s));
 
 // Without running anything: the element of s at position n (counting from 0),
 // as a formula in n.
-const element_of_s = (n) => {
+const element_of_s = (n: number): number => {
   // your answer
 };
 `,
@@ -207,7 +207,7 @@ const element_of_s = (n) => {
   solution: `const s = pair(1, () => add_streams(s, s));
 
 // Each element is the previous one added to itself: the powers of 2.
-const element_of_s = (n) =>
+const element_of_s = (n: number): number =>
   math_pow(2, n);
 `,
 };
@@ -217,7 +217,7 @@ export const exercise_3_54: ExerciseSpec = {
   prelude: implicitPrelude,
   starter: `// stream_map_2, add_streams and integers are provided.
 
-const mul_streams = (s1, s2) => {
+const mul_streams = (s1: Stream<number>, s2: Stream<number>): Stream<number> => {
   // your answer
 };
 
@@ -230,7 +230,7 @@ const factorials = pair(1, () => mul_streams(null, null));
     { name: 'element 1 is 2! = 2', kind: 'value', expr: 'stream_ref(factorials, 1)', expected: 2 },
     { name: 'element 5 is 6! = 720', kind: 'value', expr: 'stream_ref(factorials, 5)', expected: 720 },
   ],
-  solution: `const mul_streams = (s1, s2) =>
+  solution: `const mul_streams = (s1: Stream<number>, s2: Stream<number>): Stream<number> =>
   stream_map_2((x1, x2) => x1 * x2, s1, s2);
 
 const factorials = pair(1, () => mul_streams(factorials, stream_tail(integers)));
@@ -242,7 +242,7 @@ export const exercise_3_55: ExerciseSpec = {
   prelude: implicitPrelude,
   starter: `// add_streams, scale_stream, ones and integers are provided.
 
-const partial_sums = (s) => {
+const partial_sums = (s: Stream<number>): Stream<number> => {
   // your answer
 };
 `,
@@ -261,7 +261,7 @@ const partial_sums = (s) => {
       expected: true,
     },
   ],
-  solution: `const partial_sums = (s) =>
+  solution: `const partial_sums = (s: Stream<number>): Stream<number> =>
   pair(head(s),
               () => add_streams(stream_tail(s), partial_sums(s)));
 `,
@@ -300,12 +300,12 @@ export const exercise_3_57: ExerciseSpec = {
 // in add_streams, but the answers should not build any streams.
 
 // With add_streams on stream_map_2_optimized and fibs declared with memo:
-const additions_memoized = (n) => {
+const additions_memoized = (n: number): number => {
   // your answer
 };
 
 // With the plain, unmemoized stream_map_2 and fibs of section 3.5.2:
-const additions_unmemoized = (n) => {
+const additions_unmemoized = (n: number): number => {
   // your answer
 };
 `,
@@ -319,12 +319,12 @@ const additions_unmemoized = (n) => {
     { name: 'unmemoized, n = 10', kind: 'value', expr: 'additions_unmemoized(10)', expected: 221 },
     { name: 'unmemoized, n = 16', kind: 'value', expr: 'additions_unmemoized(16)', expected: 4163 },
   ],
-  solution: `const additions_memoized = (n) =>
+  solution: `const additions_memoized = (n: number): number =>
   n <= 1 ? 0 : n - 1;
 
 // A(n) = A(n - 1) + A(n - 2) + (n - 1), which is fib(n + 3) - n - 2.
-const additions_unmemoized = (n) => {
-  const fib_iter = (a, b, k) =>
+const additions_unmemoized = (n: number): number => {
+  const fib_iter = (a: number, b: number, k: number): number =>
     k === 0 ? a : fib_iter(b, a + b, k - 1);
   return fib_iter(0, 1, n + 3) - n - 2;
 };
@@ -333,7 +333,7 @@ const additions_unmemoized = (n) => {
 
 export const exercise_3_58: ExerciseSpec = {
   id: '3.58',
-  starter: `const expand = (num, den, radix) =>
+  starter: `const expand = (num: number, den: number, radix: number): Stream<number> =>
   pair(math_trunc((num * radix) / den),
               () => expand((num * radix) % den, den, radix));
 
@@ -345,7 +345,7 @@ const expand_3_8 = list();
     { name: 'expand(1, 7, 10)', kind: 'value', expr: 'equal(expand_1_7, list(1, 4, 2, 8, 5, 7, 1, 4))', expected: true },
     { name: 'expand(3, 8, 10)', kind: 'value', expr: 'equal(expand_3_8, list(3, 7, 5, 0, 0, 0, 0, 0))', expected: true },
   ],
-  solution: `const expand = (num, den, radix) =>
+  solution: `const expand = (num: number, den: number, radix: number): Stream<number> =>
   pair(math_trunc((num * radix) / den),
               () => expand((num * radix) % den, den, radix));
 
@@ -356,7 +356,7 @@ const expand_3_8 = list(3, 7, 5, 0, 0, 0, 0, 0);
 };
 
 /** The series of exercise 3.59 for the exercises after it. */
-const seriesSolution = `const integrate_series = (s) =>
+const seriesSolution = `const integrate_series = (s: Stream<number>): Stream<number> =>
   stream_map_2((a, n) => a / n, s, integers);
 
 const exp_series = pair(1, () => integrate_series(exp_series));
@@ -365,13 +365,13 @@ const cosine_series = pair(1, () => scale_stream(integrate_series(sine_series), 
 const sine_series = pair(0, () => integrate_series(cosine_series));
 `;
 
-const mulSeriesSolution = `const mul_series = (s1, s2) =>
+const mulSeriesSolution = `const mul_series = (s1: Stream<number>, s2: Stream<number>): Stream<number> =>
   pair(head(s1) * head(s2),
               () => add_streams(scale_stream(stream_tail(s2), head(s1)),
                                 mul_series(stream_tail(s1), s2)));
 `;
 
-const invertSolution = `const invert_unit_series = (s) =>
+const invertSolution = `const invert_unit_series = (s: Stream<number>): Stream<number> =>
   pair(1, () => scale_stream(mul_series(stream_tail(s), invert_unit_series(s)), -1));
 `;
 
@@ -385,7 +385,7 @@ export const exercise_3_59: ExerciseSpec = {
   starter: `// stream_map_2, add_streams, scale_stream, ones and integers are provided.
 
 // a. a0, a1 / 2, a2 / 3, ...
-const integrate_series = (s) => {
+const integrate_series = (s: Stream<number>): Stream<number> => {
   // your answer
 };
 
@@ -419,7 +419,7 @@ ${seriesSolution}`,
   starter: `// add_streams, scale_stream, exp_series, sine_series and cosine_series
 // (exercise 3.59) are provided.
 
-const mul_series = (s1, s2) => {
+const mul_series = (s1: Stream<number>, s2: Stream<number>): Stream<number> => {
   // your answer: pair(..., () => add_streams(..., ...))
 };
 `,
@@ -441,7 +441,7 @@ ${mulSeriesSolution}`,
   starter: `// mul_series (exercise 3.60), scale_stream, exp_series and cosine_series
 // are provided.
 
-const invert_unit_series = (s) => {
+const invert_unit_series = (s: Stream<number>): Stream<number> => {
   // your answer
 };
 `,
@@ -464,7 +464,7 @@ ${invertSolution}`,
   starter: `// mul_series, invert_unit_series, scale_stream and the series of
 // exercise 3.59 are provided.
 
-const div_series = (s1, s2) => {
+const div_series = (s1: Stream<number>, s2: Stream<number>): Stream<number> => {
   // your answer
 };
 
@@ -482,7 +482,7 @@ const tangent_series = null; // replace null
     { name: 'tangent: the coefficient of x³ is 1/3', kind: 'value', expr: close('stream_ref(tangent_series, 3)', 1 / 3, 1e-12), expected: true },
     { name: 'tangent: the coefficient of x⁵ is 2/15', kind: 'value', expr: close('stream_ref(tangent_series, 5)', 2 / 15, 1e-12), expected: true },
   ],
-  solution: `const div_series = (s1, s2) => {
+  solution: `const div_series = (s1: Stream<number>, s2: Stream<number>): Stream<number> => {
   const c = head(s2);
   return c === 0
     ? error("div_series: the denominator has a zero constant term")

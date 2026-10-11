@@ -91,14 +91,12 @@ describe('section 3.5.2: infinite streams', () => {
     const count = (memoized: boolean, n: number): unknown =>
       run(`${streamMemoDefinition}${streamMap2Definition}
 let adds = 0;
-function stream_map_2_optimized(f, s1, s2) {
-  return is_null(s1) || is_null(s2)
+const stream_map_2_optimized = <A, B, C>(f: (x: A, y: B) => C, s1: Stream<A>, s2: Stream<B>): Stream<C> =>
+  is_null(s1) || is_null(s2)
     ? null
     : pair(f(head(s1), head(s2)), memo(() => stream_map_2_optimized(f, stream_tail(s1), stream_tail(s2))));
-}
-function add_streams(s1, s2) {
-  return ${memoized ? 'stream_map_2_optimized' : 'stream_map_2'}((x, y) => { adds = adds + 1; return x + y; }, s1, s2);
-}
+const add_streams = (s1: Stream<number>, s2: Stream<number>): Stream<number> =>
+  ${memoized ? 'stream_map_2_optimized' : 'stream_map_2'}((x, y) => { adds = adds + 1; return x + y; }, s1, s2);
 const fibs = pair(0, ${memoized ? 'memo(' : ''}() => pair(1, ${memoized ? 'memo(' : ''}() => add_streams(stream_tail(fibs), fibs))${memoized ? ')' : ''})${memoized ? ')' : ''};
 stream_ref(fibs, ${n});
 adds;`).value;

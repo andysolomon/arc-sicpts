@@ -51,8 +51,8 @@ test('§3.5.3 checks exercise 3.64 against the hidden tests', async ({ page }) =
   await editor.click();
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type(
-    'function stream_limit(s, tol) { const a = head(s); const b = head(stream_tail(s)); return math_abs(b - a) < tol ? b : stream_limit(stream_tail(s), tol); } ' +
-      'function sqrt(x, tolerance) { return stream_limit(sqrt_stream(x), tolerance); }',
+    'const stream_limit = (s: Stream<number>, tol: number): number => { const a = head(s); const b = head(stream_tail(s)); return math_abs(b - a) < tol ? b : stream_limit(stream_tail(s), tol); }; ' +
+      'const sqrt = (x: number, tolerance: number): number => stream_limit(sqrt_stream(x), tolerance);',
   );
   await exercise.getByRole('button', { name: 'Check' }).click();
   await expect(status).toHaveText('4 / 4 hidden tests pass');

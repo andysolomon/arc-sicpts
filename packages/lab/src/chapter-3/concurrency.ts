@@ -1,15 +1,15 @@
 /**
  * Programs of §3.4, shared by the Book's examples and the Laboratory's tests.
  *
- * Source has no rest parameters (`...args`), so the serializers here protect
- * functions of no arguments: a call with arguments is protected by wrapping it
+ * The serializers here protect functions of no arguments, which is what
+ * `concurrent_execute` takes: a call with arguments is protected by wrapping it
  * in a function of none, as in `protect(() => withdraw(amount))()`.
  */
 
 /** §3.4.1: Peter and Paul withdraw from a joint account at the same time. */
 export const jointAccountProgram = `let balance = 100;
 
-const withdraw = (amount) => {
+const withdraw = (amount: number): number | string => {
     if (balance >= amount) {
         balance = balance - amount;
         return balance;
@@ -32,7 +32,7 @@ balance;
 `;
 
 /** §3.4.2: every way to interleave two processes of three steps each. */
-export const interleavingCountProgram = `const interleave = (xs, ys) =>
+export const interleavingCountProgram = `const interleave = <T>(xs: List<T>, ys: List<T>): List<List<T>> =>
     is_null(xs)
            ? list(ys)
            : is_null(ys)
@@ -55,9 +55,11 @@ x;
 `;
 
 /** §3.4.2: a mutex built on the atomic test_and_set. */
-export const mutexDefinitions = `const make_mutex = () => {
+export const mutexDefinitions = `type Mutex = (m: "acquire" | "release") => void;
+
+const make_mutex = (): Mutex => {
     const cell = list(false);
-    const the_mutex = (m) =>
+    const the_mutex = (m: "acquire" | "release"): true | void =>
         m === "acquire"
                ? test_and_set(cell)
                  ? the_mutex("acquire")  // retry
@@ -68,17 +70,19 @@ export const mutexDefinitions = `const make_mutex = () => {
     return the_mutex;
 };
 
-const clear = (cell) => {
+const clear = (cell: List<boolean>): void => {
     set_head(cell, false);
 };
 `;
 
 /** §3.4.2: a serializer is a mutex shared by every function it protects. */
 export const serializerDefinitions = `${mutexDefinitions}
-const make_serializer = () => {
+type Serializer = <T>(f: () => T) => () => T;
+
+const make_serializer = (): Serializer => {
     const mutex = make_mutex();
-    return f => {
-               const serialized_f = () => {
+    return <T>(f: () => T): (() => T) => {
+               const serialized_f = (): T => {
                    mutex("acquire");
                    const val = f();
                    mutex("release");
@@ -100,8 +104,11 @@ x;
 `;
 
 /** §3.4.2: a bank account whose withdrawals and deposits are serialized. */
-export const serializedAccountDefinitions = `const make_account = (balance) => {
-    const withdraw = (amount) => {
+export const serializedAccountDefinitions = `type Transaction = (amount: number) => number | string;
+type Account = (m: "withdraw" | "deposit" | "balance") => Transaction | number;
+
+const make_account = (balance: number): Account => {
+    const withdraw = (amount: number): number | string => {
         if (balance >= amount) {
             balance = balance - amount;
             return balance;
@@ -109,12 +116,12 @@ export const serializedAccountDefinitions = `const make_account = (balance) => {
             return "Insufficient funds";
         }
     };
-    const deposit = (amount) => {
+    const deposit = (amount: number): number => {
         balance = balance + amount;
         return balance;
     };
     const protect = make_serializer();
-    const dispatch = (m) =>
+    const dispatch = (m: "withdraw" | "deposit" | "balance"): Transaction | number =>
         m === "withdraw"
                ? amount => protect(() => withdraw(amount))()
                : m === "deposit"
@@ -136,7 +143,7 @@ account("balance");
 `;
 
 /** §3.4.2: exchanging the balances of two accounts, serialized only account by account. */
-export const accountExchangeDefinitions = `const exchange = (account1, account2) => {
+export const accountExchangeDefinitions = `const exchange = (account1: Account, account2: Account): void => {
     const difference = account1("balance") - account2("balance");
     account1("withdraw")(difference);
     account2("deposit")(difference);
@@ -159,8 +166,11 @@ ${balancesOf}
 `;
 
 /** §3.4.2: an account that exports its serializer, so that exchange can hold both accounts. */
-export const accountSerializerDefinitions = `const make_account_and_serializer = (balance) => {
-    const withdraw = (amount) => {
+export const accountSerializerDefinitions = `type Transaction = (amount: number) => number | string;
+type Account = (m: "withdraw" | "deposit" | "balance" | "serializer") => Transaction | number | Serializer;
+
+const make_account_and_serializer = (balance: number): Account => {
+    const withdraw = (amount: number): number | string => {
         if (balance >= amount) {
             balance = balance - amount;
             return balance;
@@ -168,7 +178,7 @@ export const accountSerializerDefinitions = `const make_account_and_serializer =
             return "Insufficient funds";
         }
     };
-    const deposit = (amount) => {
+    const deposit = (amount: number): number => {
         balance = balance + amount;
         return balance;
     };
@@ -184,7 +194,7 @@ export const accountSerializerDefinitions = `const make_account_and_serializer =
                 : error(m, "unknown request -- make_account");
 };
 
-const serialized_exchange = (account1, account2) => {
+const serialized_exchange = (account1: Account, account2: Account): void => {
     const serializer1 = account1("serializer");
     const serializer2 = account2("serializer");
     return serializer1(serializer2(() => exchange(account1, account2)))();
@@ -207,7 +217,7 @@ ${balancesOf}
 export const mutexCounterProgram = `${serializerDefinitions}
 let count = 0;
 const s = make_serializer();
-const increment = () => {
+const increment = (): void => {
     count = count + 1;
 };
 

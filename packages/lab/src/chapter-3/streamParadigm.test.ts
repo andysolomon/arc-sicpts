@@ -97,9 +97,8 @@ describe('section 3.5.3: infinite streams of pairs', () => {
   it('places (i, j) after 2^i (j - i) + 2^(i-1) - 2 others, and (i, i) after 2^i - 2', () => {
     const position = (i: number, j: number) =>
       run(`${paradigmPairsDefinitions}
-function position(s, n) {
-  return head(head(s)) === ${i} && head(tail(head(s))) === ${j} ? n : position(stream_tail(s), n + 1);
-}
+const position = (s: Stream<List<number>>, n: number): number =>
+  head(head(s)) === ${i} && head(tail(head(s))) === ${j} ? n : position(stream_tail(s), n + 1);
 position(pairs(integers, integers), 0);`).value;
     expect(position(1, 100)).toBe(197);
     expect(position(4, 4)).toBe(14);

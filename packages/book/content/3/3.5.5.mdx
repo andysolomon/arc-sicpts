@@ -12,7 +12,7 @@ One of the big arguments for assignment in §3.1.2 was modularity: a random-numb
 The hidden state there was the generator's current value. We started from a function `rand_update` whose successive values supply the random numbers, and wrapped it in an object that remembered the last one:
 
 ```js
-const make_rand = () => {
+const make_rand = (): (() => number) => {
   let x = random_init;
   return () => {
     x = rand_update(x);
@@ -34,7 +34,7 @@ For `rand_update` we use a linear congruential generator, *x* ↦ 48271 *x* mod 
 Cesàro's experiment from §3.1.2 asks whether two random integers have no common factor. Applied to consecutive pairs of `random_numbers`, it gives a stream of outcomes, `true` or `false`. A helper, `map_successive_pairs`, applies a function to elements 0 and 1, then 2 and 3, and so on:
 
 ```js
-const map_successive_pairs = (f, s) =>
+const map_successive_pairs = <T, R>(f: (a: T, b: T) => R, s: Stream<T>): Stream<R> =>
   pair(f(head(s), head(stream_tail(s))),
               memo(() => map_successive_pairs(f, stream_tail(stream_tail(s)))));
 const dirichlet_stream =
@@ -54,8 +54,8 @@ The first five random numbers, and the outcomes of the first twenty experiments.
 The stream of outcomes now goes into a `monte_carlo` function that produces a stream of estimates of the probability of success, one more experiment per element. Since the probability that two random integers are coprime is 6/π², each estimate *p* turns into an estimate √(6/*p*) of π:
 
 ```js
-const monte_carlo = (experiment_stream, passed, failed) => {
-  const next = (passed, failed) =>
+const monte_carlo = (experiment_stream: Stream<boolean>, passed: number, failed: number): Stream<number> => {
+  const next = (passed: number, failed: number): Stream<number> =>
     pair(passed / (passed + failed),
                 memo(() => monte_carlo(stream_tail(experiment_stream),
                                        passed, failed)));
@@ -90,7 +90,7 @@ Streams offer another way. A changing quantity, such as the state of some object
 To compare the two approaches, recall the simplified withdrawal processor of §3.1.3:
 
 ```js
-const make_simplified_withdraw = (balance) =>
+const make_simplified_withdraw = (balance: number): ((amount: number) => number) =>
   amount => {
     balance = balance - amount;
     return balance;
@@ -100,7 +100,7 @@ const make_simplified_withdraw = (balance) =>
 Each call of `make_simplified_withdraw` creates an object with a state variable `balance` that successive calls decrease. Picture someone typing amounts into such an object and watching the balances it returns. The stream alternative is a function from a starting balance and a stream of amounts to the stream of balances:
 
 ```js
-const stream_withdraw = (balance, amount_stream) =>
+const stream_withdraw = (balance: number, amount_stream: Stream<number>): Stream<number> =>
   pair(balance,
               () => stream_withdraw(balance - head(amount_stream),
                                     stream_tail(amount_stream)));

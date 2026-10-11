@@ -15,39 +15,39 @@ import { close, type ExerciseSpec } from './spec.ts';
 const streams = `${paradigmStreamOperations}
 ${paradigmMemoStreamMap}`;
 
-const sqrtImprove = `const average = (x, y) =>
+const sqrtImprove = `const average = (x: number, y: number): number =>
   (x + y) / 2;
 
 let improvement_count = 0;
 
-const sqrt_improve = (guess, x) => {
+const sqrt_improve = (guess: number, x: number): number => {
   improvement_count = improvement_count + 1;
   return average(guess, x / guess);
 };
 
 /** How many times sqrt_improve is applied while thunk runs. */
-const improvements = (thunk) => {
+const improvements = (thunk: () => unknown): number => {
   const before = improvement_count;
   thunk();
   return improvement_count - before;
 };
 `;
 
-const sqrtStream = `const sqrt_stream = (x) =>
+const sqrtStream = `const sqrt_stream = (x: number): Stream<number> =>
   pair(1, () => stream_map(guess => sqrt_improve(guess, x),
                                   sqrt_stream(x)));
 `;
 
 const piDefinitions = `${streams}
-const square = (x) =>
+const square = (x: number): number =>
   x * x;
 
-const partial_sums = (s) => {
+const partial_sums = (s: Stream<number>): Stream<number> => {
   const sums = pair(head(s), memo(() => add_streams(stream_tail(s), sums)));
   return sums;
 };
 
-const euler_transform = (s) => {
+const euler_transform = (s: Stream<number>): Stream<number> => {
   const s0 = stream_ref(s, 0);
   const s1 = stream_ref(s, 1);
   const s2 = stream_ref(s, 2);
@@ -55,37 +55,37 @@ const euler_transform = (s) => {
               memo(() => euler_transform(stream_tail(s))));
 };
 
-const make_tableau = (transform, s) =>
+const make_tableau = <T>(transform: (s: Stream<T>) => Stream<T>, s: Stream<T>): Stream<Stream<T>> =>
   pair(s, () => make_tableau(transform, transform(s)));
 
-const accelerated_sequence = (transform, s) =>
+const accelerated_sequence = <T>(transform: (s: Stream<T>) => Stream<T>, s: Stream<T>): Stream<T> =>
   stream_map(head, make_tableau(transform, s));
 `;
 
 /** Helpers the hidden tests of the pair exercises use on lists of tuples. */
-const tupleChecks = `const is_member = (x, xs) =>
+const tupleChecks = `const is_member = <T>(x: T, xs: List<T>): boolean =>
   !is_null(xs) && (equal(x, head(xs)) || is_member(x, tail(xs)));
 
-const all_distinct = (xs) =>
+const all_distinct = <T>(xs: List<T>): boolean =>
   is_null(xs) || (!is_member(head(xs), tail(xs)) && all_distinct(tail(xs)));
 
-const all_ordered = (xs) => {
-  const ordered = (t) =>
+const all_ordered = (xs: List<List<number>>): boolean => {
+  const ordered = (t: List<number>): boolean =>
     is_null(tail(t)) || (head(t) <= head(tail(t)) && ordered(tail(t)));
   return accumulate((t, rest) => ordered(t) && rest, true, xs);
 };
 
 /** Every pair (i, j) with 1 <= i, j <= n, and i <= j when upper is true, is in xs. */
-const has_all_pairs = (xs, n, upper) => {
-  const row = (i, j) =>
+const has_all_pairs = (xs: List<List<number>>, n: number, upper: boolean): boolean => {
+  const row = (i: number, j: number): boolean =>
     j > n || (is_member(list(i, j), xs) && row(i, j + 1));
-  const rows = (i) =>
+  const rows = (i: number): boolean =>
     i > n || (row(i, upper ? i : 1) && rows(i + 1));
   return rows(1);
 };
 `;
 
-const weightedPairs = `const merge_weighted = (s1, s2, weight) => {
+const weightedPairs = `const merge_weighted = <T>(s1: Stream<T>, s2: Stream<T>, weight: (x: T) => number): Stream<T> => {
   if (is_null(s1)) {
     return s2;
   } else if (is_null(s2)) {
@@ -99,7 +99,7 @@ const weightedPairs = `const merge_weighted = (s1, s2, weight) => {
   }
 };
 
-const weighted_pairs = (s, t, weight) =>
+const weighted_pairs = <T>(s: Stream<T>, t: Stream<T>, weight: (p: List<T>) => number): Stream<List<T>> =>
   pair(list(head(s), head(t)),
               memo(() => merge_weighted(
                            stream_map(x => list(head(s), x), stream_tail(t)),
@@ -107,7 +107,7 @@ const weighted_pairs = (s, t, weight) =>
                            weight)));
 `;
 
-const zeroCrossings = `const sign_change_detector = (value, last_value) =>
+const zeroCrossings = `const sign_change_detector = (value: number, last_value: number): number =>
   last_value < 0 && value >= 0
     ? 1
     : last_value >= 0 && value < 0
@@ -119,7 +119,7 @@ const noisyData = `const sense_data =
   list_to_stream(list(1, 0.4, -0.2, 0.6, 1.2, 0.9, -0.3, -1, -0.4, -1.2, 0.3, -0.2, 0.8, 1.5));
 `;
 
-const alyssaZeroCrossings = `const make_zero_crossings = (input_stream, last_value) =>
+const alyssaZeroCrossings = `const make_zero_crossings = (input_stream: Stream<number>, last_value: number): Stream<number> =>
   is_null(input_stream)
     ? null
     : pair(sign_change_detector(head(input_stream), last_value),
@@ -137,7 +137,7 @@ export const exercise_3_63: ExerciseSpec = {
   id: '3.63',
   prelude: `${sqrtImprove}
 ${paradigmMemoDefinition}
-const stream_map_optimized = (f, s) =>
+const stream_map_optimized = <A, B>(f: (x: A) => B, s: Stream<A>): Stream<B> =>
   is_null(s)
     ? null
     : pair(f(head(s)), memo(() => stream_map_optimized(f, stream_tail(s))));
@@ -146,18 +146,18 @@ const stream_map_optimized = (f, s) =>
 // with memo on every tail) are provided.
 
 // Louis's attempt:
-const sqrt_stream_optimized = (x) =>
+const sqrt_stream_optimized = (x: number): Stream<number> =>
   pair(1,
               memo(() => stream_map_optimized(guess => sqrt_improve(guess, x),
                                               sqrt_stream_optimized(x))));
 
 // Alyssa's proposal: share one stream of guesses.
-const sqrt_stream_optimized_2 = (x) => {
+const sqrt_stream_optimized_2 = (x: number): Stream<number> => {
   // your answer
 };
 
 // How many times does stream_ref(sqrt_stream_optimized(2), n) apply sqrt_improve?
-const louis_applications = (n) => {
+const louis_applications = (n: number): number => {
   // your answer
 };
 
@@ -172,12 +172,12 @@ const alyssa_without_memo_is_faster = undefined;
     { name: 'Louis’s cost in general', kind: 'value', expr: 'louis_applications(30) === 465 && louis_applications(17) === improvements(() => stream_ref(sqrt_stream_optimized(2), 17))', expected: true },
     { name: 'without memoization', kind: 'value', expr: 'alyssa_without_memo_is_faster', expected: false },
   ],
-  solution: `const sqrt_stream_optimized = (x) =>
+  solution: `const sqrt_stream_optimized = (x: number): Stream<number> =>
   pair(1,
               memo(() => stream_map_optimized(guess => sqrt_improve(guess, x),
                                               sqrt_stream_optimized(x))));
 
-const sqrt_stream_optimized_2 = (x) => {
+const sqrt_stream_optimized_2 = (x: number): Stream<number> => {
   const guesses = pair(1,
                        memo(() => stream_map_optimized(guess => sqrt_improve(guess, x),
                                                        guesses)));
@@ -186,7 +186,7 @@ const sqrt_stream_optimized_2 = (x) => {
 
 // Each call of sqrt_stream_optimized builds a new stream, so memo never
 // gets a second chance: guess k is recomputed from scratch, k improvements.
-const louis_applications = (n) =>
+const louis_applications = (n: number): number =>
   n * (n + 1) / 2;
 
 // Without memo, every tail of guesses is recomputed, and the count is
@@ -201,11 +201,11 @@ export const exercise_3_64: ExerciseSpec = {
 ${sqrtStream}`,
   starter: `// sqrt_improve and sqrt_stream are provided.
 
-const stream_limit = (s, tolerance) => {
+const stream_limit = (s: Stream<number>, tolerance: number): number => {
   // your answer
 };
 
-const sqrt = (x, tolerance) =>
+const sqrt = (x: number, tolerance: number): number =>
   stream_limit(sqrt_stream(x), tolerance);
 `,
   tests: [
@@ -214,7 +214,7 @@ const sqrt = (x, tolerance) =>
     { name: '√2 to ten places', kind: 'value', expr: close('sqrt(2, 1e-10)', Math.SQRT2, 1e-12), expected: true },
     { name: '√9 roughly', kind: 'value', expr: close('sqrt(9, 0.5)', 3.023529411764706, 1e-12), expected: true },
   ],
-  solution: `const stream_limit = (s, tolerance) => {
+  solution: `const stream_limit = (s: Stream<number>, tolerance: number): number => {
   const s0 = head(s);
   const s1 = head(stream_tail(s));
   return math_abs(s1 - s0) < tolerance
@@ -222,7 +222,7 @@ const sqrt = (x, tolerance) =>
     : stream_limit(stream_tail(s), tolerance);
 };
 
-const sqrt = (x, tolerance) =>
+const sqrt = (x: number, tolerance: number): number =>
   stream_limit(sqrt_stream(x), tolerance);
 `,
 };
@@ -234,7 +234,7 @@ export const exercise_3_65: ExerciseSpec = {
 // with memoized stream_map, add_streams and scale_stream.
 
 // The summands 1, -1/2, 1/3, -1/4, ...
-const ln2_summands = (n) => {
+const ln2_summands = (n: number): Stream<number> => {
   // your answer
 };
 
@@ -248,7 +248,7 @@ const ln2_accelerated = null; // your answer: the tableau's first terms
     { name: 'the accelerated sequence', kind: 'value', expr: close('stream_ref(ln2_accelerated, 7)', Math.LN2, 1e-12), expected: true },
   ],
   budget: 300_000,
-  solution: `const ln2_summands = (n) =>
+  solution: `const ln2_summands = (n: number): Stream<number> =>
   pair(1 / n, () => stream_map(x => -x, ln2_summands(n + 1)));
 
 const ln2_stream = partial_sums(ln2_summands(1));
@@ -260,8 +260,8 @@ const ln2_accelerated = accelerated_sequence(euler_transform, ln2_stream);
 export const exercise_3_66: ExerciseSpec = {
   id: '3.66',
   prelude: `${paradigmPairsDefinitions}
-const index_of_pair = (i, j) => {
-  const search = (s, n) =>
+const index_of_pair = (i: number, j: number): number => {
+  const search = (s: Stream<List<number>>, n: number): number =>
     head(head(s)) === i && head(tail(head(s))) === j
       ? n
       : search(stream_tail(s), n + 1);
@@ -271,7 +271,7 @@ const index_of_pair = (i, j) => {
   starter: `// pairs, interleave and integers are provided.
 
 // How many pairs come before (i, j), i <= j, in pairs(integers, integers)?
-const preceding = (i, j) => {
+const preceding = (i: number, j: number): number => {
   // your answer
 };
 `,
@@ -281,7 +281,7 @@ const preceding = (i, j) => {
     { name: 'before (100, 100)', kind: 'value', expr: 'preceding(100, 100) === math_pow(2, 100) - 2', expected: true },
     { name: 'agrees with the stream', kind: 'value', expr: 'preceding(3, 7) === index_of_pair(3, 7) && preceding(4, 4) === index_of_pair(4, 4) && preceding(2, 9) === index_of_pair(2, 9) && preceding(1, 1) === 0', expected: true },
   ],
-  solution: `const preceding = (i, j) =>
+  solution: `const preceding = (i: number, j: number): number =>
   i === j
     ? math_pow(2, i) - 2
     : math_pow(2, i) * (j - i) + math_pow(2, i - 1) - 2;
@@ -297,7 +297,7 @@ ${tupleChecks}`,
   starter: `// integers, interleave and pairs are provided.
 
 // Every pair (i, j) of positive integers, without the condition i <= j.
-const all_pairs = (s, t) => {
+const all_pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> => {
   // your answer
 };
 `,
@@ -307,7 +307,7 @@ const all_pairs = (s, t) => {
     { name: 'no pair twice', kind: 'value', expr: 'all_distinct(eval_stream(all_pairs(integers, integers), 60))', expected: true },
   ],
   budget: 400_000,
-  solution: `const all_pairs = (s, t) =>
+  solution: `const all_pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   pair(list(head(s), head(t)),
               () => interleave(
                       stream_map(x => list(head(s), x), stream_tail(t)),
@@ -323,7 +323,7 @@ export const exercise_3_68: ExerciseSpec = {
 ${paradigmMemoStreamMap}
 ${paradigmPairsDefinitions}
 ${tupleChecks}
-const louis_pairs = (s, t) =>
+const louis_pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   interleave(stream_map(x => list(head(s), x), t),
                     louis_pairs(stream_tail(s), stream_tail(t)));
 `,
@@ -334,12 +334,12 @@ const louis_pairs_returns = undefined;
 
 // Like interleave, but its second argument is a function that returns
 // the stream, so that the stream is not needed until it is used.
-const interleave_delayed = (s1, delayed_s2) => {
+const interleave_delayed = <T>(s1: Stream<T>, delayed_s2: () => Stream<T>): Stream<T> => {
   // your answer
 };
 
 // Louis's idea, mended: the whole first row, interleaved with the rest.
-const mended_pairs = (s, t) =>
+const mended_pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   interleave_delayed(stream_map(x => list(head(s), x), t),
                             () => mended_pairs(stream_tail(s), stream_tail(t)));
 `,
@@ -354,13 +354,13 @@ const mended_pairs = (s, t) =>
 // that call calls itself again: the recursion never bottoms out.
 const louis_pairs_returns = false;
 
-const interleave_delayed = (s1, delayed_s2) =>
+const interleave_delayed = <T>(s1: Stream<T>, delayed_s2: () => Stream<T>): Stream<T> =>
   is_null(s1)
     ? delayed_s2()
     : pair(head(s1),
            () => interleave_delayed(delayed_s2(), () => stream_tail(s1)));
 
-const mended_pairs = (s, t) =>
+const mended_pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   interleave_delayed(stream_map(x => list(head(s), x), t),
                             () => mended_pairs(stream_tail(s), stream_tail(t)));
 `,
@@ -372,7 +372,7 @@ export const exercise_3_69: ExerciseSpec = {
 ${paradigmMemoStreamMap}
 ${paradigmPairsDefinitions}
 ${tupleChecks}
-const is_pythagorean = (t) => {
+const is_pythagorean = (t: List<number>): boolean => {
   const i = list_ref(t, 0);
   const j = list_ref(t, 1);
   const k = list_ref(t, 2);
@@ -382,7 +382,7 @@ const is_pythagorean = (t) => {
   starter: `// integers, interleave and pairs are provided.
 
 // The triples list(S_i, T_j, U_k) with i <= j <= k.
-const triples = (s, t, u) => {
+const triples = <T>(s: Stream<T>, t: Stream<T>, u: Stream<T>): Stream<List<T>> => {
   // your answer
 };
 
@@ -396,7 +396,7 @@ const pythagorean_triples = null; // your answer
     { name: 'a second, different one', kind: 'value', expr: 'is_pythagorean(stream_ref(pythagorean_triples, 1)) && !equal(stream_ref(pythagorean_triples, 1), list(3, 4, 5))', expected: true },
   ],
   budget: 3_000_000,
-  solution: `const triples = (s, t, u) =>
+  solution: `const triples = <T>(s: Stream<T>, t: Stream<T>, u: Stream<T>): Stream<List<T>> =>
   pair(list(head(s), head(t), head(u)),
               () => interleave(
                       stream_map(p => pair(head(s), p),
@@ -423,11 +423,11 @@ ${tupleChecks}`,
   starter: `// integers, memo and a memoized stream_map are provided.
 // A weight function takes a pair as a list, list(i, j).
 
-const merge_weighted = (s1, s2, weight) => {
+const merge_weighted = <T>(s1: Stream<T>, s2: Stream<T>, weight: (x: T) => number): Stream<T> => {
   // your answer
 };
 
-const weighted_pairs = (s, t, weight) => {
+const weighted_pairs = <T>(s: Stream<T>, t: Stream<T>, weight: (p: List<T>) => number): Stream<List<T>> => {
   // your answer
 };
 
@@ -440,7 +440,7 @@ const by_2i_3j_5ij = null;     // your answer: (b)
     { name: '(b) the first ten', kind: 'value', expr: 'equal(eval_stream(by_2i_3j_5ij, 10), list(list(1, 1), list(1, 7), list(1, 11), list(1, 13), list(1, 17), list(1, 19), list(1, 23), list(1, 29), list(1, 31), list(7, 7)))', expected: true },
   ],
   budget: 400_000,
-  solution: `const merge_weighted = (s1, s2, weight) => {
+  solution: `const merge_weighted = <T>(s1: Stream<T>, s2: Stream<T>, weight: (x: T) => number): Stream<T> => {
   if (is_null(s1)) {
     return s2;
   } else if (is_null(s2)) {
@@ -454,7 +454,7 @@ const by_2i_3j_5ij = null;     // your answer: (b)
   }
 };
 
-const weighted_pairs = (s, t, weight) =>
+const weighted_pairs = <T>(s: Stream<T>, t: Stream<T>, weight: (p: List<T>) => number): Stream<List<T>> =>
   pair(list(head(s), head(t)),
               memo(() => merge_weighted(
                            stream_map(x => list(head(s), x), stream_tail(t)),
@@ -491,16 +491,16 @@ const next_five = null;
     { name: 'the next five', kind: 'value', expr: 'equal(next_five, list(4104, 13832, 20683, 32832, 39312))', expected: true },
   ],
   budget: 2_000_000,
-  solution: `const cube = (x) =>
+  solution: `const cube = (x: number): number =>
   x * x * x;
 
-const cube_weight = (p) =>
+const cube_weight = (p: List<number>): number =>
   cube(head(p)) + cube(head(tail(p)));
 
 const by_cubes = weighted_pairs(integers, integers, cube_weight);
 
 // Two neighbours with the same weight: a sum of two cubes in two ways.
-const same_weight_neighbours = (s) => {
+const same_weight_neighbours = (s: Stream<List<number>>): Stream<number> => {
   const w1 = cube_weight(head(s));
   const w2 = cube_weight(head(stream_tail(s)));
   return w1 === w2
@@ -520,10 +520,10 @@ export const exercise_3_72: ExerciseSpec = {
 ${paradigmMemoStreamMap}
 const integers = integers_from(1);
 ${weightedPairs}
-const ways_ok = (entry) => {
+const ways_ok = (entry: Pair<number, List<List<number>>>): boolean => {
   const n = head(entry);
   const ways = tail(entry);
-  const squares = (p) =>
+  const squares = (p: List<number>): number =>
     head(p) * head(p) + head(tail(p)) * head(tail(p));
   return length(ways) === 3
     && accumulate((p, ok) => ok && head(p) <= head(tail(p)) && squares(p) === n, true, ways)
@@ -544,12 +544,12 @@ const three_square_ways = null; // your answer
     { name: 'the second is 425, in three ways', kind: 'value', expr: 'head(stream_ref(three_square_ways, 1)) === 425 && ways_ok(stream_ref(three_square_ways, 1))', expected: true },
   ],
   budget: 2_000_000,
-  solution: `const square_weight = (p) =>
+  solution: `const square_weight = (p: List<number>): number =>
   head(p) * head(p) + head(tail(p)) * head(tail(p));
 
 const by_squares = weighted_pairs(integers, integers, square_weight);
 
-const three_in_a_row = (s) => {
+const three_in_a_row = (s: Stream<List<number>>): Stream<Pair<number, List<List<number>>>> => {
   const p1 = head(s);
   const p2 = head(stream_tail(s));
   const p3 = head(stream_tail(stream_tail(s)));
@@ -574,7 +574,7 @@ const integers = integers_from(1);
   starter: `// integral (§3.5.3), add_streams, scale_stream, ones and integers are provided.
 
 // v = R i + v0 + (1 / C) ∫ i dt
-const RC = (R, C, dt) => {
+const RC = (R: number, C: number, dt: number): ((i: Stream<number>, v0: number) => Stream<number>) => {
   // your answer
 };
 `,
@@ -582,7 +582,7 @@ const RC = (R, C, dt) => {
     { name: 'a constant current', kind: 'value', expr: `stream_ref(RC(5, 1, 0.5)(ones, 0), 0) === 5 && ${close('stream_ref(RC(5, 1, 0.5)(ones, 0), 10)', 10, 1e-9)}`, expected: true },
     { name: 'a rising current', kind: 'value', expr: close('stream_ref(RC(2, 4, 0.1)(integers, 2), 10)', 25.375, 1e-9), expected: true },
   ],
-  solution: `const RC = (R, C, dt) =>
+  solution: `const RC = (R: number, C: number, dt: number): ((i: Stream<number>, v0: number) => Stream<number>) =>
   (i, v0) => add_streams(scale_stream(i, R),
                                 integral(scale_stream(i, 1 / C), v0, dt));
 `,
@@ -621,7 +621,7 @@ ${noisyData}`,
 // Mend Louis's function; it should be called as
 // make_zero_crossings(sense_data, 0, 0).
 
-const make_zero_crossings = (input_stream, last_value) => {
+const make_zero_crossings = (input_stream: Stream<number>, last_value: number): Stream<number> => {
   if (is_null(input_stream)) {
     return null;
   } else {
@@ -637,7 +637,11 @@ const make_zero_crossings = (input_stream, last_value) => {
   ],
   solution: `// Louis averages each value with the previous average, not the previous
 // value, and compares with the previous value, not the previous average.
-const make_zero_crossings = (input_stream, last_value, last_avpt) => {
+const make_zero_crossings = (
+  input_stream: Stream<number>,
+  last_value: number,
+  last_avpt: number
+): Stream<number> => {
   if (is_null(input_stream)) {
     return null;
   } else {
@@ -661,11 +665,11 @@ ${noisyData}`,
 
 // Each element is the average of an input element and the one before it;
 // the one before the first counts as 0.
-const smooth = (s) => {
+const smooth = (s: Stream<number>): Stream<number> => {
   // your answer
 };
 
-const smoothed_zero_crossings = (s) => {
+const smoothed_zero_crossings = (s: Stream<number>): Stream<number> => {
   // your answer, from smooth and make_zero_crossings
 };
 `,
@@ -674,12 +678,12 @@ const smoothed_zero_crossings = (s) => {
     { name: 'smooth is lazy', kind: 'value', expr: 'stream_ref(smooth(integers_from(1)), 9)', expected: 9.5 },
     { name: 'the crossings of the smoothed signal', kind: 'value', expr: 'equal(stream_to_list(smoothed_zero_crossings(sense_data)), list(0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 1, 0, 0))', expected: true },
   ],
-  solution: `const smooth = (s) =>
+  solution: `const smooth = (s: Stream<number>): Stream<number> =>
   stream_map_2((x, previous) => (x + previous) / 2,
                       s,
                       pair(0, () => s));
 
-const smoothed_zero_crossings = (s) =>
+const smoothed_zero_crossings = (s: Stream<number>): Stream<number> =>
   make_zero_crossings(smooth(s), 0);
 `,
 };
@@ -693,7 +697,7 @@ export const exercise_3_77: ExerciseSpec = {
 
 // Change integral so that it takes its integrand delayed, as a function
 // of no arguments, and solve works.
-const integral = (integrand, initial_value, dt) =>
+const integral = (integrand: Stream<number>, initial_value: number, dt: number): Stream<number> =>
   pair(initial_value,
               is_null(integrand)
               ? null
@@ -701,7 +705,7 @@ const integral = (integrand, initial_value, dt) =>
                          dt * head(integrand) + initial_value,
                          dt));
 
-const solve = (f, y0, dt) => {
+const solve = (f: (y: number) => number, y0: number, dt: number): Stream<number> => {
   const y = integral(() => dy, y0, dt);
   const dy = stream_map(f, y);
   return y;
@@ -713,7 +717,7 @@ const solve = (f, y0, dt) => {
     { name: 'solves dy/dt = y', kind: 'value', expr: close('stream_ref(solve(y => y, 1, 0.01), 100)', 1.01 ** 100, 1e-9), expected: true },
   ],
   budget: 300_000,
-  solution: `const integral = (delayed_integrand, initial_value, dt) =>
+  solution: `const integral = (delayed_integrand: () => Stream<number>, initial_value: number, dt: number): Stream<number> =>
   pair(initial_value,
               memo(() => {
                 const integrand = delayed_integrand();
@@ -724,7 +728,7 @@ const solve = (f, y0, dt) => {
                              dt);
               }));
 
-const solve = (f, y0, dt) => {
+const solve = (f: (y: number) => number, y0: number, dt: number): Stream<number> => {
   const y = integral(() => dy, y0, dt);
   const dy = stream_map(f, y);
   return y;
@@ -742,7 +746,7 @@ export const exercise_3_78: ExerciseSpec = {
 // a memoized stream_map are provided.
 
 // The stream of y for  d²y/dt² - a dy/dt - b y = 0.
-const solve_2nd = (a, b, dt, y0, dy0) => {
+const solve_2nd = (a: number, b: number, dt: number, y0: number, dy0: number): Stream<number> => {
   // your answer
 };
 `,
@@ -751,7 +755,7 @@ const solve_2nd = (a, b, dt, y0, dy0) => {
     { name: 'y″ = y′ is e^t', kind: 'value', expr: close('stream_ref(solve_2nd(1, 0, 0.001, 1, 1), 1000)', 2.716923932235896, 1e-9), expected: true },
   ],
   budget: 2_000_000,
-  solution: `const solve_2nd = (a, b, dt, y0, dy0) => {
+  solution: `const solve_2nd = (a: number, b: number, dt: number, y0: number, dy0: number): Stream<number> => {
   const y = integral(() => dy, y0, dt);
   const dy = integral(() => ddy, dy0, dt);
   const ddy = add_streams(scale_stream(dy, a), scale_stream(y, b));
@@ -767,7 +771,7 @@ export const exercise_3_79: ExerciseSpec = {
 // scale_stream and a memoized stream_map are provided.
 
 // The stream of y for  d²y/dt² = f(dy/dt, y).
-const solve_2nd = (f, dt, y0, dy0) => {
+const solve_2nd = (f: (dy: number, y: number) => number, dt: number, y0: number, dy0: number): Stream<number> => {
   // your answer
 };
 `,
@@ -776,7 +780,7 @@ const solve_2nd = (f, dt, y0, dy0) => {
     { name: 'y″ = y′ is e^t', kind: 'value', expr: close('stream_ref(solve_2nd((dy, y) => dy, 0.001, 1, 1), 1000)', 2.716923932235896, 1e-9), expected: true },
   ],
   budget: 2_000_000,
-  solution: `const solve_2nd = (f, dt, y0, dy0) => {
+  solution: `const solve_2nd = (f: (dy: number, y: number) => number, dt: number, y0: number, dy0: number): Stream<number> => {
   const y = integral(() => dy, y0, dt);
   const dy = integral(() => ddy, dy0, dt);
   const ddy = stream_map_2(f, dy, y);
@@ -793,7 +797,9 @@ export const exercise_3_80: ExerciseSpec = {
 
 // RLC(R, L, C, dt) returns a function of (v_C0, i_L0) that returns
 // pair(stream of v_C, stream of i_L).
-const RLC = (R, L, C, dt) => {
+type Circuit = (v_C0: number, i_L0: number) => Pair<Stream<number>, Stream<number>>;
+
+const RLC = (R: number, L: number, C: number, dt: number): Circuit => {
   // your answer
 };
 
@@ -806,7 +812,9 @@ const states = null; // your answer: i_L0 = 0 amps, v_C0 = 10 volts
     { name: 'i_L after 5 seconds', kind: 'value', expr: close('stream_ref(tail(states), 50)', -1.2231501590473288, 1e-9), expected: true },
   ],
   budget: 300_000,
-  solution: `const RLC = (R, L, C, dt) =>
+  solution: `type Circuit = (v_C0: number, i_L0: number) => Pair<Stream<number>, Stream<number>>;
+
+const RLC = (R: number, L: number, C: number, dt: number): Circuit =>
   (v_C0, i_L0) => {
     const v_C = integral(() => dv_C, v_C0, dt);
     const i_L = integral(() => di_L, i_L0, dt);
@@ -831,7 +839,9 @@ export const exercise_3_81: ExerciseSpec = {
 // requests is a stream whose elements are "generate" or list("reset", x).
 // "generate" answers with the next random number; list("reset", x) starts
 // the sequence again from x, and answers with x.
-const random_stream = (requests) => {
+type Request = "generate" | List<"reset" | number>;
+
+const random_stream = (requests: Stream<Request>): Stream<number> => {
   // your answer
 };
 `,
@@ -841,8 +851,10 @@ const random_stream = (requests) => {
     { name: 'resetting twice repeats the sequence', kind: 'value', expr: 'equal(stream_to_list(random_stream(list_to_stream(list(list("reset", 7), "generate", list("reset", 7), "generate")))), list(7, rand_update(7), 7, rand_update(7)))', expected: true },
     { name: 'an endless stream of requests', kind: 'value', expr: '(() => { const gen = pair("generate", () => gen); return stream_ref(random_stream(gen), 2) === rand_update(rand_update(rand_update(random_init))); })()', expected: true },
   ],
-  solution: `const random_stream = (requests) => {
-  const from = (x, requests) => {
+  solution: `type Request = "generate" | List<"reset" | number>;
+
+const random_stream = (requests: Stream<Request>): Stream<number> => {
+  const from = (x: number, requests: Stream<Request>): Stream<number> => {
     if (is_null(requests)) {
       return null;
     } else {
@@ -864,8 +876,8 @@ export const exercise_3_82: ExerciseSpec = {
 const random_numbers =
   pair(random_init, memo(() => stream_map(rand_update, random_numbers)));
 
-const monte_carlo = (experiment_stream, passed, failed) => {
-  const next = (passed, failed) =>
+const monte_carlo = (experiment_stream: Stream<boolean>, passed: number, failed: number): Stream<number> => {
+  const next = (passed: number, failed: number): Stream<number> =>
     pair(passed / (passed + failed),
                 memo(() => monte_carlo(stream_tail(experiment_stream),
                                        passed, failed)));
@@ -879,7 +891,13 @@ const monte_carlo = (experiment_stream, passed, failed) => {
 
 // The stream of estimates of the area of the region where P(x, y) holds,
 // inside the rectangle from x1 to x2 and y1 to y2.
-const estimate_integral = (P, x1, x2, y1, y2) => {
+const estimate_integral = (
+  P: (x: number, y: number) => boolean,
+  x1: number,
+  x2: number,
+  y1: number,
+  y2: number
+): Stream<number> => {
   // your answer
 };
 `,
@@ -890,11 +908,17 @@ const estimate_integral = (P, x1, x2, y1, y2) => {
     { name: 'the unit circle', kind: 'value', expr: close('stream_ref(estimate_integral((x, y) => x * x + y * y <= 1, -1, 1, -1, 1), 1000)', Math.PI, 0.3), expected: true },
   ],
   budget: 2_000_000,
-  solution: `const map_successive_pairs = (f, s) =>
+  solution: `const map_successive_pairs = <T, R>(f: (a: T, b: T) => R, s: Stream<T>): Stream<R> =>
   pair(f(head(s), head(stream_tail(s))),
               memo(() => map_successive_pairs(f, stream_tail(stream_tail(s)))));
 
-const estimate_integral = (P, x1, x2, y1, y2) => {
+const estimate_integral = (
+  P: (x: number, y: number) => boolean,
+  x1: number,
+  x2: number,
+  y1: number,
+  y2: number
+): Stream<number> => {
   const area = (x2 - x1) * (y2 - y1);
   const trials = map_successive_pairs(
                    (rx, ry) => P(x1 + (rx / 2147483647) * (x2 - x1),

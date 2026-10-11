@@ -22,7 +22,7 @@ Some loops need more delay than the stream pattern so far provides. Consider a s
 Given the initial value *y*₀, the obvious transcription of the diagram is
 
 ```js
-const solve = (f, y0, dt) => {
+const solve = (f: (y: number) => number, y0: number, dt: number): Stream<number> => {
   const y = integral(dy, y0, dt);
   const dy = stream_map(f, y);
   return y;
@@ -46,7 +46,7 @@ Yet what we meant does make sense. `integral` can produce the first element of i
 To use that, `integral` must accept its integrand *delayed*, as a function of no arguments, and call that function only when it needs more than the first element:
 
 ```js
-const integral = (delayed_integrand, initial_value, dt) => {
+const integral = (delayed_integrand: () => Stream<number>, initial_value: number, dt: number): Stream<number> => {
   const integ =
     pair(initial_value,
          memo(() => {
@@ -60,7 +60,7 @@ const integral = (delayed_integrand, initial_value, dt) => {
 Now `solve` delays `dy` where it passes it to `integral`:
 
 ```js
-const solve = (f, y0, dt) => {
+const solve = (f: (y: number) => number, y0: number, dt: number): Stream<number> => {
   const y = integral(() => dy, y0, dt);
   const dy = stream_map(f, y);
   return y;
@@ -81,9 +81,9 @@ The program takes 1000 steps of 0.001 and prints 2.716923932235896, as the book 
 
 ## Normal-order evaluation
 
-The examples of this section show what delayed evaluation buys and also what it costs. `integral` can now take part in loops, but whoever calls it has to remember that its first argument is delayed, and so does every function that calls `integral` on someone else's behalf. We now have two kinds of functions, ordinary ones and ones that take delayed arguments, and two kinds force two kinds of higher-order functions in turn: a `stream_map` for ordinary functions and another for the delaying kind.
+The examples of this section show what delayed evaluation buys and also what it costs. `integral` can now take part in loops, but whoever calls it has to remember that its first argument is delayed, and so does every function that calls `integral` on someone else's behalf. We now have two kinds of functions, ordinary ones and ones that take delayed arguments, and two kinds force two kinds of higher-order functions in turn: a `stream_map` for ordinary functions and another for the delaying kind. The annotations show the difference: the `integral` of §3.5.3 takes a `Stream<number>`, the new one a `() => Stream<number>`.
 
-This is a small version of a problem that early statically typed languages such as Pascal had with higher-order functions. There every function had to declare the types of its arguments and result, so a single `stream_map` could not serve every combination of types; one needed a separate mapping function for each. ML (Gordon, Milner and Wadsworth 1979) answered with parametrically polymorphic types and type inference, so that most functions never state their types at all; today's typed languages generally offer both, in various strengths, and Haskell couples a rich type system with powerful inference.
+This is a small version of a problem that early statically typed languages such as Pascal had with higher-order functions. There every function had to declare the types of its arguments and result, so a single `stream_map` could not serve every combination of types; one needed a separate mapping function for each. ML (Gordon, Milner and Wadsworth 1979) answered with parametrically polymorphic types and type inference, so that most functions never state their types at all; today's typed languages generally offer both, in various strengths, and Haskell couples a rich type system with powerful inference. The annotations in this book are TypeScript's, and the `<A, B>` in the type of `stream_map` is such a polymorphic type: one `stream_map` serves streams of every element type.
 
 We could avoid two kinds of function by making every function take delayed arguments: delay every argument automatically, and force it only when its value is really needed, for instance by a primitive operation. That is *normal-order* evaluation, which we met with the substitution model in §1.1.5. It would be a uniform and elegant way to get delayed evaluation everywhere, and a natural choice for a language used only for stream processing. Section 4.2 builds exactly such a language, by changing the evaluator.
 
@@ -103,7 +103,7 @@ A declaration's name is bound in its frame as soon as the block is entered, but 
 The `integral` above mirrors the implicit declaration of `integers` in §3.5.2. It could instead be written recursively, in the style of `integers_starting_from`:
 
 ```js
-const integral = (integrand, initial_value, dt) =>
+const integral = (integrand: Stream<number>, initial_value: number, dt: number): Stream<number> =>
   pair(initial_value,
               is_null(integrand)
               ? null

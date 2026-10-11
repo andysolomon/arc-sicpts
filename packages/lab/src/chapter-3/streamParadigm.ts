@@ -10,9 +10,9 @@
  */
 
 /** `memo` of §3.5.1: a function of no arguments that runs `fun` once and then remembers. */
-export const paradigmMemoDefinition = `const memo = (fun) => {
+export const paradigmMemoDefinition = `const memo = <T>(fun: () => T): (() => T) => {
   let already_run = false;
-  let result = undefined;
+  let result: T | undefined = undefined;
   return () => {
     if (!already_run) {
       result = fun();
@@ -25,29 +25,29 @@ export const paradigmMemoDefinition = `const memo = (fun) => {
 
 /** `stream_map_2` of exercise 3.50 with memoized tails, and the two operations built on it and on `stream_map`. */
 export const paradigmStreamOperations = `${paradigmMemoDefinition}
-const stream_map_2 = (f, s1, s2) =>
+const stream_map_2 = <A, B, C>(f: (x: A, y: B) => C, s1: Stream<A>, s2: Stream<B>): Stream<C> =>
   is_null(s1) || is_null(s2)
     ? null
     : pair(f(head(s1), head(s2)),
            memo(() => stream_map_2(f, stream_tail(s1), stream_tail(s2))));
 
-const add_streams = (s1, s2) =>
+const add_streams = (s1: Stream<number>, s2: Stream<number>): Stream<number> =>
   stream_map_2((x1, x2) => x1 + x2, s1, s2);
 
-const scale_stream = (stream, factor) =>
+const scale_stream = (stream: Stream<number>, factor: number): Stream<number> =>
   stream_map(x => x * factor, stream);
 `;
 
 /** A memoized `stream_map`, declared in the program so that it shadows the library's. */
 export const paradigmMemoStreamMap = `// stream_map with memoized tails; it replaces the library's.
-const stream_map = (f, s) =>
+const stream_map = <A, B>(f: (x: A) => B, s: Stream<A>): Stream<B> =>
   is_null(s)
     ? null
     : pair(f(head(s)), memo(() => stream_map(f, stream_tail(s))));
 `;
 
 /** Our streams are infinite, so `display_stream` takes how many elements to show. */
-export const paradigmDisplayStream = `const display_stream = (s, n) => {
+export const paradigmDisplayStream = `const display_stream = <T>(s: Stream<T>, n: number): true => {
   if (n > 0) {
     display(head(s));
     return display_stream(stream_tail(s), n - 1);
@@ -58,19 +58,19 @@ export const paradigmDisplayStream = `const display_stream = (s, n) => {
 `;
 
 /** Plots of long streams display every k-th element, n of them in all. */
-export const paradigmDisplayEvery = `const stream_drop = (s, k) =>
+export const paradigmDisplayEvery = `const stream_drop = <T>(s: Stream<T>, k: number): Stream<T> =>
   k === 0 ? s : stream_drop(stream_tail(s), k - 1);
 
-const display_every = (k, s, n) => {
+const display_every = <T>(k: number, s: Stream<T>, n: number): true => {
   display(head(s));
   return n === 1 ? true : display_every(k, stream_drop(s, k), n - 1);
 };
 `;
 
-const sqrtImprove = `const average = (x, y) =>
+const sqrtImprove = `const average = (x: number, y: number): number =>
   (x + y) / 2;
 
-const sqrt_improve = (guess, x) =>
+const sqrt_improve = (guess: number, x: number): number =>
   average(guess, x / guess);
 `;
 
@@ -78,7 +78,7 @@ const sqrt_improve = (guess, x) =>
 
 /** Square roots as a stream of guesses. */
 export const paradigmSqrtStreamProgram = `${sqrtImprove}
-const sqrt_stream = (x) =>
+const sqrt_stream = (x: number): Stream<number> =>
   pair(1, () => stream_map(guess => sqrt_improve(guess, x),
                                   sqrt_stream(x)));
 
@@ -88,20 +88,20 @@ display_stream(sqrt_stream(2), 6);
 
 /** Summands of π/4, their partial sums, and the transformations that accelerate them. */
 export const paradigmPiDefinitions = `${paradigmStreamOperations}
-const square = (x) =>
+const square = (x: number): number =>
   x * x;
 
-const partial_sums = (s) => {
+const partial_sums = (s: Stream<number>): Stream<number> => {
   const sums = pair(head(s), memo(() => add_streams(stream_tail(s), sums)));
   return sums;
 };
 
-const pi_summands = (n) =>
+const pi_summands = (n: number): Stream<number> =>
   pair(1 / n, () => stream_map(x => -x, pi_summands(n + 2)));
 
 const pi_stream = scale_stream(partial_sums(pi_summands(1)), 4);
 
-const euler_transform = (s) => {
+const euler_transform = (s: Stream<number>): Stream<number> => {
   const s0 = stream_ref(s, 0); // S(n-1)
   const s1 = stream_ref(s, 1); // S(n)
   const s2 = stream_ref(s, 2); // S(n+1)
@@ -109,10 +109,10 @@ const euler_transform = (s) => {
               memo(() => euler_transform(stream_tail(s))));
 };
 
-const make_tableau = (transform, s) =>
+const make_tableau = <T>(transform: (s: Stream<T>) => Stream<T>, s: Stream<T>): Stream<Stream<T>> =>
   pair(s, () => make_tableau(transform, transform(s)));
 
-const accelerated_sequence = (transform, s) =>
+const accelerated_sequence = <T>(transform: (s: Stream<T>) => Stream<T>, s: Stream<T>): Stream<T> =>
   stream_map(head, make_tableau(transform, s));
 `;
 
@@ -130,19 +130,19 @@ display_stream(accelerated_sequence(euler_transform, pi_stream), 8);
 /** `interleave` and `pairs`, the order in which pairs of integers come out. */
 export const paradigmPairsDefinitions = `const integers = integers_from(1);
 
-const interleave = (s1, s2) =>
+const interleave = <T>(s1: Stream<T>, s2: Stream<T>): Stream<T> =>
   is_null(s1)
     ? s2
     : pair(head(s1), () => interleave(s2, stream_tail(s1)));
 
-const pairs = (s, t) =>
+const pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   pair(list(head(s), head(t)),
               () => interleave(stream_map(x => list(head(s), x),
                                           stream_tail(t)),
                                pairs(stream_tail(s), stream_tail(t))));
 `;
 
-const displayListStream = `const display_pairs = (s, n) => {
+const displayListStream = `const display_pairs = <T>(s: Stream<List<T>>, n: number): true => {
   if (n > 0) {
     display_list(head(s));
     return display_pairs(stream_tail(s), n - 1);
@@ -160,8 +160,8 @@ display_pairs(pairs(integers, integers), 31);
 
 /** Pairs whose sum is prime: the nested loop of §2.2.3 over an infinite set. */
 export const paradigmPrimeSumPairsProgram = `${paradigmPairsDefinitions}
-const is_prime = (n) => {
-  const divides_from = (d) =>
+const is_prime = (n: number): boolean => {
+  const divides_from = (d: number): boolean =>
     d * d > n ? false : n % d === 0 || divides_from(d + 1);
   return n > 1 && !divides_from(2);
 };
@@ -177,7 +177,7 @@ eval_stream(prime_sum_pairs, 8);
 /** The pairs with `stream_append` instead of `interleave`: row 1 never ends. */
 export const paradigmAppendPairsProgram = `const integers = integers_from(1);
 
-const pairs = (s, t) =>
+const pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   pair(list(head(s), head(t)),
               () => stream_append(stream_map(x => list(head(s), x),
                                              stream_tail(t)),
@@ -188,7 +188,7 @@ display_pairs(pairs(integers, integers), 31);
 `;
 
 /** `integral` of §3.5.3: an integrand stream in, the running sum out. */
-export const paradigmIntegralDefinition = `const integral = (integrand, initial_value, dt) => {
+export const paradigmIntegralDefinition = `const integral = (integrand: Stream<number>, initial_value: number, dt: number): Stream<number> => {
   const integ = pair(initial_value,
                      memo(() => add_streams(scale_stream(integrand, dt),
                                             integ)));
@@ -198,7 +198,7 @@ export const paradigmIntegralDefinition = `const integral = (integrand, initial_
 
 export const paradigmIntegralProgram = `${paradigmStreamOperations}
 ${paradigmIntegralDefinition}
-const numbers_starting_from = (t, dt) =>
+const numbers_starting_from = (t: number, dt: number): Stream<number> =>
   pair(t, () => numbers_starting_from(t + dt, dt));
 
 const dt = 0.01;
@@ -221,7 +221,7 @@ stream_ref(linear_integral, math_round(3 / dt));
 /** `solve` with the first `integral`: it asks for `dy` before `dy` exists. */
 export const paradigmSolveUndelayedProgram = `${paradigmStreamOperations}
 ${paradigmIntegralDefinition}
-const solve = (f, y0, dt) => {
+const solve = (f: (y: number) => number, y0: number, dt: number): Stream<number> => {
   const y = integral(dy, y0, dt);
   const dy = stream_map(f, y);
   return y;
@@ -231,7 +231,7 @@ stream_ref(solve(y => y, 1, 0.001), 1000);
 `;
 
 /** `integral` with a delayed integrand, memoized as SICP's footnote asks. */
-export const paradigmDelayedIntegralDefinition = `const integral = (delayed_integrand, initial_value, dt) => {
+export const paradigmDelayedIntegralDefinition = `const integral = (delayed_integrand: () => Stream<number>, initial_value: number, dt: number): Stream<number> => {
   const integ =
     pair(initial_value,
          memo(() => {
@@ -244,7 +244,7 @@ export const paradigmDelayedIntegralDefinition = `const integral = (delayed_inte
 
 export const paradigmSolveDefinitions = `${paradigmStreamOperations}
 ${paradigmDelayedIntegralDefinition}
-const solve = (f, y0, dt) => {
+const solve = (f: (y: number) => number, y0: number, dt: number): Stream<number> => {
   const y = integral(() => dy, y0, dt);
   const dy = stream_map(f, y);
   return y;
@@ -257,7 +257,7 @@ const y = solve(y => y, 1, 0.001);
 
 // y every 0.1 from t = 0 to t = 1, and e^t at the same times.
 ${paradigmDisplayEvery}
-const plot_exp = (t, n) => {
+const plot_exp = (t: number, n: number): true => {
   display(math_exp(t));
   return n === 1 ? true : plot_exp(t + 0.1, n - 1);
 };
@@ -275,7 +275,7 @@ stream_ref(y, 1000);
 export const paradigmRandDefinitions = `const random_init = 20220301;
 
 // x(n+1) = 48271 x(n) mod (2^31 - 1), the "minimal standard" generator.
-const rand_update = (x) =>
+const rand_update = (x: number): number =>
   (48271 * x) % 2147483647;
 `;
 
@@ -285,10 +285,10 @@ ${paradigmRandDefinitions}
 const random_numbers =
   pair(random_init, memo(() => stream_map(rand_update, random_numbers)));
 
-const gcd = (a, b) =>
+const gcd = (a: number, b: number): number =>
   b === 0 ? a : gcd(b, a % b);
 
-const map_successive_pairs = (f, s) =>
+const map_successive_pairs = <T, R>(f: (a: T, b: T) => R, s: Stream<T>): Stream<R> =>
   pair(f(head(s), head(stream_tail(s))),
               memo(() => map_successive_pairs(f, stream_tail(stream_tail(s)))));
 
@@ -302,8 +302,8 @@ eval_stream(dirichlet_stream, 20);
 `;
 
 export const paradigmMonteCarloDefinitions = `${paradigmRandomStreamDefinitions}
-const monte_carlo = (experiment_stream, passed, failed) => {
-  const next = (passed, failed) =>
+const monte_carlo = (experiment_stream: Stream<boolean>, passed: number, failed: number): Stream<number> => {
+  const next = (passed: number, failed: number): Stream<number> =>
     pair(passed / (passed + failed),
                 memo(() => monte_carlo(stream_tail(experiment_stream),
                                        passed, failed)));
@@ -325,13 +325,13 @@ stream_ref(pi, 500);
 `;
 
 /** The withdrawal processor twice: an object with state, and a function from streams to streams. */
-export const paradigmWithdrawProgram = `const make_simplified_withdraw = (balance) =>
+export const paradigmWithdrawProgram = `const make_simplified_withdraw = (balance: number): ((amount: number) => number) =>
   amount => {
     balance = balance - amount;
     return balance;
   };
 
-const stream_withdraw = (balance, amount_stream) =>
+const stream_withdraw = (balance: number, amount_stream: Stream<number>): Stream<number> =>
   pair(balance,
               () => is_null(amount_stream)
                     ? null
@@ -349,7 +349,7 @@ stream_to_list(my_account_stream);
 `;
 
 /** Peter and Paul's requests merged by strict alternation: Peter waits for Paul. */
-export const paradigmJointAccountProgram = `const stream_withdraw = (balance, amount_stream) =>
+export const paradigmJointAccountProgram = `const stream_withdraw = (balance: number, amount_stream: Stream<number>): Stream<number> =>
   pair(balance,
               () => is_null(amount_stream)
                     ? null
@@ -357,7 +357,7 @@ export const paradigmJointAccountProgram = `const stream_withdraw = (balance, am
                                       stream_tail(amount_stream)));
 
 // Alternate strictly: one request from each, in turn.
-const alternate = (s1, s2) =>
+const alternate = <T>(s1: Stream<T>, s2: Stream<T>): Stream<T> =>
   is_null(s1)
     ? null
     : pair(head(s1), () => alternate(s2, stream_tail(s1)));
