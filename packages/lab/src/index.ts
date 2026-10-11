@@ -1,5 +1,5 @@
 export type * from './syntax/ast.ts';
-export { isDeclaration } from './syntax/ast.ts';
+export { argumentExpression, functionBinding, isDeclaration } from './syntax/ast.ts';
 export { SourceError, type ErrorPhase } from './syntax/errors.ts';
 export { tokenize, KEYWORDS, type Token, type TokenType } from './syntax/tokenize.ts';
 export { parse } from './syntax/parse.ts';

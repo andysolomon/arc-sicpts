@@ -39,6 +39,10 @@ export interface Spread {
 
 export type Argument = Expression | Spread;
 
+/** The expression an argument evaluates: for `...xs`, the list `xs`. */
+export const argumentExpression = (argument: Argument): Expression =>
+  argument.kind === 'spread' ? argument.argument : argument;
+
 export interface Application {
   kind: 'application';
   fun: Expression;
@@ -192,4 +196,18 @@ export type Node = Statement | Program;
 
 export function isDeclaration(node: Node): node is Declaration {
   return node.kind === 'const' || node.kind === 'let' || node.kind === 'function';
+}
+
+/** A declaration that names a function: `function f() {}`, or `const f = () => …`. */
+export interface FunctionBinding {
+  symbol: string;
+  lambda: Lambda;
+  loc: Loc;
+}
+
+/** The function a statement declares, in either form, or `null` when it declares none. */
+export function functionBinding(node: Node): FunctionBinding | null {
+  if (node.kind === 'function') return node;
+  if (node.kind === 'const' && node.init.kind === 'lambda') return { symbol: node.symbol, lambda: node.init, loc: node.loc };
+  return null;
 }

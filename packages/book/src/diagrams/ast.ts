@@ -1,4 +1,4 @@
-import { parse, type Expression, type FunctionDeclaration, type Lambda, type Node, type Program, type Statement } from '@sicp/lab';
+import { argumentExpression, functionBinding, parse, type Expression, type FunctionBinding, type Lambda, type Node, type Program, type Statement } from '@sicp/lab';
 
 /** Small walks over the syntax tree that the diagrams share. */
 
@@ -8,7 +8,7 @@ export function children(node: Node): Node[] {
     case 'name':
       return [];
     case 'application':
-      return [node.fun, ...node.args];
+      return [node.fun, ...node.args.map(argumentExpression)];
     case 'unary':
       return [node.operand];
     case 'binary':
@@ -20,6 +20,8 @@ export function children(node: Node): Node[] {
       return [node.body];
     case 'assignment':
       return [node.value];
+    case 'await':
+      return [node.argument];
     case 'const':
     case 'let':
       return [node.init];
@@ -78,14 +80,13 @@ export function localNames(lambda: Lambda): Set<string> {
   return names;
 }
 
-export function innerFunctions(lambda: Lambda): FunctionDeclaration[] {
-  if (lambda.body.kind !== 'block') return [];
-  return lambda.body.body.filter((statement): statement is FunctionDeclaration => statement.kind === 'function');
-}
+const functionsIn = (statements: readonly Statement[]): FunctionBinding[] =>
+  statements.flatMap((statement) => functionBinding(statement) ?? []);
 
-export function topLevelFunctions(program: Program): FunctionDeclaration[] {
-  return program.body.filter((statement): statement is FunctionDeclaration => statement.kind === 'function');
-}
+/** The functions declared directly in a function body, as `function` declarations or named lambdas. */
+export const innerFunctions = (lambda: Lambda): FunctionBinding[] => (lambda.body.kind === 'block' ? functionsIn(lambda.body.body) : []);
+
+export const topLevelFunctions = (program: Program): FunctionBinding[] => functionsIn(program.body);
 
 export const isExpression = (statement: Statement): statement is Expression =>
   statement.kind !== 'const' &&

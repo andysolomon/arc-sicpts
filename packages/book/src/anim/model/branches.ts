@@ -1,4 +1,4 @@
-import { parse, type Expression, type FunctionDeclaration, type Lambda, type Loc, type Statement } from '@sicp/lab';
+import { functionBinding, parse, type Expression, type Lambda, type Loc, type Statement } from '@sicp/lab';
 import type { Trace } from '../useTrace.ts';
 import type { TreeInput } from './layout.ts';
 import { locKey } from './tree.ts';
@@ -35,13 +35,16 @@ export function branchTree(source: string, expr: Expression): TreeInput<BranchNo
         children: [branchTree(source, expr.consequent), branchTree(source, expr.alternative)],
       };
     case 'logical':
+      // `??` decides on null and undefined, not on a boolean: the tree draws it as a leaf.
+      if (expr.operator === '??') break;
       return {
         data: { id: locKey(expr.loc), kind: 'gate', label: expr.operator, operator: expr.operator, loc: expr.loc },
         children: [branchTree(source, expr.left), branchTree(source, expr.right)],
       };
     default:
-      return { data: { id: locKey(expr.loc), kind: 'leaf', label: text(source, expr.loc), loc: expr.loc }, children: [] };
+      break;
   }
+  return { data: { id: locKey(expr.loc), kind: 'leaf', label: text(source, expr.loc), loc: expr.loc }, children: [] };
 }
 
 export interface FunctionBranches {
@@ -66,8 +69,8 @@ export function functionBranches(source: string): FunctionBranches[] {
     return [];
   }
   return statements.flatMap((statement) => {
-    if (statement.kind !== 'function') return [];
-    const declaration: FunctionDeclaration = statement;
+    const declaration = functionBinding(statement);
+    if (declaration === null) return [];
     const body = returnExpression(declaration.lambda);
     if (body === null) return [];
     return [{ name: declaration.symbol, params: [...declaration.lambda.params], loc: declaration.lambda.loc, root: branchTree(source, body) }];

@@ -1,7 +1,7 @@
 import {
+  argumentExpression,
   isDeclaration,
   type Application,
-  type Argument,
   type Assignment,
   type Await,
   type Binary,
@@ -173,9 +173,6 @@ interface Job {
   /** True when the job resumes the program itself, after a top-level `await`. */
   program: boolean;
 }
-
-/** The argument an argument node evaluates: for `...xs`, the list `xs`. */
-const expressionOf = (argument: Argument): Node => (argument.kind === 'spread' ? argument.argument : argument);
 
 const isNullish = (value: Value): value is null | undefined => value === null || value === undefined;
 
@@ -475,7 +472,7 @@ export class Machine {
           return;
         }
         this.stack.push({ k: 'arg', node: frame.node, env: frame.env, fn: value, args: [], i: 0 });
-        this.setEval(expressionOf(first), frame.env);
+        this.setEval(argumentExpression(first), frame.env);
         return;
       }
 
@@ -495,7 +492,7 @@ export class Machine {
           return;
         }
         this.stack.push(frame);
-        this.setEval(expressionOf(following), frame.env);
+        this.setEval(argumentExpression(following), frame.env);
         return;
       }
 

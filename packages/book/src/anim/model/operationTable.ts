@@ -1,4 +1,4 @@
-import { parse, type Expression } from '@sicp/lab';
+import { argumentExpression, parse, type Expression } from '@sicp/lab';
 import { listItems, listNotation, parseValue, type Datum } from './pairs.ts';
 import type { Trace } from '../useTrace.ts';
 
@@ -75,7 +75,8 @@ function itemOf(source: string, loc: { start: number; end: number }, fallback: s
     try {
       const statement = parse(`${text};`).body[0];
       if (statement?.kind === 'application') {
-        const label = labelOf(statement.args[2], text);
+        const item = statement.args[2];
+        const label = labelOf(item === undefined ? undefined : argumentExpression(item), text);
         if (label !== null) return label;
       }
     } catch {

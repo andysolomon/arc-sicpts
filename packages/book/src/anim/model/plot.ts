@@ -35,7 +35,7 @@ export function findMethodCall(source: string, callee: string): MethodCall | nul
     if (node.kind !== 'application' || node.fun.kind !== 'name' || node.fun.symbol !== callee) continue;
     const [fn, ...rest] = node.args;
     if (fn === undefined) continue;
-    return { fn: source.slice(fn.loc.start, fn.loc.end), args: rest.map(numberOf), statement };
+    return { fn: source.slice(fn.loc.start, fn.loc.end), args: rest.map((arg) => (arg.kind === 'spread' ? null : numberOf(arg))), statement };
   }
   return null;
 }

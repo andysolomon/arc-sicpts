@@ -1,4 +1,4 @@
-import { parse } from '@sicp/lab';
+import { functionBinding, parse } from '@sicp/lab';
 import type { Trace } from '../useTrace.ts';
 
 /**
@@ -20,7 +20,10 @@ export function newtonModel(source: string, trace: Trace | null): NewtonModel {
   try {
     const program = parse(source);
     const params = new Map(
-      program.body.flatMap((statement) => (statement.kind === 'function' ? [[statement.symbol, statement.lambda.params] as const] : [])),
+      program.body.flatMap((statement) => {
+        const fn = functionBinding(statement);
+        return fn === null ? [] : [[fn.symbol, fn.lambda.params] as const];
+      }),
     );
     for (const statement of program.body) {
       if (statement.kind !== 'application' || statement.fun.kind !== 'name') continue;
