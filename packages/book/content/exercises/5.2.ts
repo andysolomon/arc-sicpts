@@ -288,8 +288,7 @@ ${simulatorFunctions(['make_operation_exp_ef'])}
                            ? error(e, "label as an operand -- assemble")
                            : make_primitive_exp_ef(e, machine, labels),
                       operation_exp_operands(exp));
-    return () => apply_in_underlying_javascript(
-                     op, map(f => f(), afuns));
+    return () => op(...map(f => f(), afuns));
 };
 `,
 };

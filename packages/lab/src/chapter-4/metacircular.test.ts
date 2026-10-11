@@ -113,7 +113,7 @@ describe('the analyzing evaluator (§4.1.7)', () => {
     expect(analyzed.text).toBe('3628800');
     expect(plain.text).toBe('3628800');
     // The numbers of the page and of exercise 4.22.
-    expect([plain.steps, analyzed.steps]).toEqual([68_277, 42_747]);
+    expect([plain.steps, analyzed.steps]).toEqual([68_221, 42_691]);
     expect(analyzed.steps / plain.steps).toBeGreaterThan(0.55);
     expect(analyzed.steps / plain.steps).toBeLessThan(0.7);
   });

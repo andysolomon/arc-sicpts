@@ -337,8 +337,7 @@ const make_operation_exp_ef = (
     const op = lookup_prim(operation_exp_op(exp), operations);
     const afuns = map(e => make_primitive_exp_ef(e, machine, labels),
                       operation_exp_operands(exp));
-    return () => apply_in_underlying_javascript(
-                     op, map(f => f(), afuns));
+    return () => op(...map(f => f(), afuns));
 };
 ```
 
@@ -355,12 +354,12 @@ const operation_exp_op = (op_exp: Instruction): string => head(tail(head(op_exp)
 const operation_exp_operands = (op_exp: Instruction): List<Instruction> => tail(op_exp);
 ```
 
-Observe that the treatment of operation expressions is very much like the treatment of function applications by `analyze_application` in the evaluator of §4.1.7, in that we generate an execution function for each operand. At simulation time, we call the operand functions and apply the JavaScript function that simulates the operation to the resulting values. We use `apply_in_underlying_javascript`, as `apply_primitive_function` did in §4.1.4, to apply `op` to all the elements of the argument list as if they were separate arguments. Without it, `op` would be restricted to be a function of one argument.
+Observe that the treatment of operation expressions is very much like the treatment of function applications by `analyze_application` in the evaluator of §4.1.7, in that we generate an execution function for each operand. At simulation time, we call the operand functions and apply the JavaScript function that simulates the operation to the resulting values. We spread the list of their values into the call, `op(...map(f => f(), afuns))`, as `apply_primitive_function` did in §4.1.4, so that `op` receives all the elements of the list as separate arguments. Without the spread, `op` would be restricted to be a function of one argument.
 
 The simulation function is found by looking up the operation name in the operation table for the machine:
 
 ```js
-const lookup_prim = (symbol: string, operations: Operations): unknown => {
+const lookup_prim = (symbol: string, operations: Operations): ((...args: List<unknown>) => unknown) => {
     const val = assoc(symbol, operations);
     return is_undefined(val)
            ? error(symbol, "unknown operation -- assemble")

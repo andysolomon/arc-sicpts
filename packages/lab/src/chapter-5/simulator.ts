@@ -501,8 +501,7 @@ const make_operation_exp_ef = (
     const op = lookup_prim(operation_exp_op(exp), operations);
     const afuns = map(e => make_primitive_exp_ef(e, machine, labels),
                       operation_exp_operands(exp));
-    return () => apply_in_underlying_javascript(
-                     op, map(f => f(), afuns));
+    return () => op(...map(f => f(), afuns));
 };
 
 const op = (name: string): Instruction => list("op", name);
@@ -511,7 +510,7 @@ const is_operation_exp = (exp: Instruction): boolean =>
 const operation_exp_op = (op_exp: Instruction): string => head(tail(head(op_exp)));
 const operation_exp_operands = (op_exp: Instruction): List<Instruction> => tail(op_exp);
 
-const lookup_prim = (symbol: string, operations: Operations): unknown => {
+const lookup_prim = (symbol: string, operations: Operations): ((...args: List<unknown>) => unknown) => {
     const val = assoc(symbol, operations);
     return is_undefined(val)
            ? error(symbol, "unknown operation -- assemble")

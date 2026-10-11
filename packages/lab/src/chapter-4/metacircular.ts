@@ -355,7 +355,8 @@ type PrimitiveFunction = List<unknown>;
 const is_primitive_function = (fun: unknown): boolean =>
     is_tagged_list(fun, "primitive");
 
-const primitive_implementation = (fun: PrimitiveFunction): unknown => head(tail(fun));
+const primitive_implementation = (fun: PrimitiveFunction): ((...args: List<unknown>) => unknown) =>
+    head(tail(fun));
 
 const primitive_functions = list(
        list("head",    head             ),
@@ -396,8 +397,7 @@ const primitive_constant_values =
     map(c => head(tail(c)), primitive_constants);
 
 const apply_primitive_function = (fun: PrimitiveFunction, arglist: List<unknown>): unknown =>
-    apply_in_underlying_javascript(
-               primitive_implementation(fun), arglist);
+    primitive_implementation(fun)(...arglist);
 
 const setup_environment = (): Environment =>
     extend_environment(append(primitive_function_symbols,

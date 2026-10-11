@@ -1370,8 +1370,8 @@ const grows = undefined;
   ],
   solution: `const analysis_fraction = (original_steps: number, analyzing_steps: number): number =>
     (original_steps - analyzing_steps) / original_steps;
-const fraction_for_10 = analysis_fraction(68277, 42747);
-const fraction_for_20 = analysis_fraction(137917, 81447);
+const fraction_for_10 = analysis_fraction(68221, 42691);
+const fraction_for_20 = analysis_fraction(137801, 81331);
 
 const grows = true;
 `,

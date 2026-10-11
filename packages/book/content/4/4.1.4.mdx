@@ -24,7 +24,8 @@ type PrimitiveFunction = List<unknown>;
 const is_primitive_function = (fun: unknown): boolean =>
     is_tagged_list(fun, "primitive");
 
-const primitive_implementation = (fun: PrimitiveFunction): unknown => head(tail(fun));
+const primitive_implementation = (fun: PrimitiveFunction): ((...args: List<unknown>) => unknown) =>
+    head(tail(fun));
 
 const primitive_functions = list(list("head",    head             ),
                                  list("tail",    tail             ),
@@ -40,15 +41,14 @@ const primitive_function_objects =
         primitive_functions);
 ```
 
-The constants are set up the same way from `primitive_constants`. To apply a primitive we apply its implementation with the underlying system:
+The constants are set up the same way from `primitive_constants`. To apply a primitive we apply its implementation with the underlying system, spreading the list of arguments into the call:
 
 ```js
 const apply_primitive_function = (fun: PrimitiveFunction, arglist: List<unknown>): unknown =>
-    apply_in_underlying_javascript(
-               primitive_implementation(fun), arglist);
+    primitive_implementation(fun)(...arglist);
 ```
 
-`apply_in_underlying_javascript` takes a function and a *list* of arguments; in JavaScript it turns the list into an array and uses the function’s `apply` method.
+`...arglist` passes the elements of the list as separate arguments. The book's JavaScript, whose Source had no spread syntax, writes `apply_in_underlying_javascript(primitive_implementation(fun), arglist)`, a primitive that does the same; the Laboratory still provides it.
 
 ## A driver loop
 
@@ -94,7 +94,7 @@ Any function of the underlying language can be made a primitive, under any name.
 
 <UnderTheHood file="packages/lab/src/evaluator/machine.ts">
 
-`apply_in_underlying_javascript` is the one primitive the Laboratory’s machine (`evaluator/machine.ts`) treats specially: it spreads the list into arguments and applies the function in place, so that it can apply lambda expressions such as `(x, y) => x + y`, which no ordinary primitive could call. The setup and the driver loop are `evaluatorSetup` in `chapter-4/metacircular.ts`. The test `chapter-4/metacircular.test.ts` asserts the driver loop’s three lines of output, and that the second example prints 26 and then fails to apply a `"compound_function"`.
+A spread argument is the Laboratory machine's own work (`evaluator/machine.ts`): it evaluates the list and passes its elements as arguments, so the evaluator can apply lambda expressions such as `(x, y) => x + y` found in its primitive table, as well as primitives. The setup and the driver loop are `evaluatorSetup` in `chapter-4/metacircular.ts`. The test `chapter-4/metacircular.test.ts` asserts the driver loop’s three lines of output, and that the second example prints 26 and then fails to apply a `"compound_function"`.
 
 </UnderTheHood>
 

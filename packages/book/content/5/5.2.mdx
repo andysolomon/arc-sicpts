@@ -47,7 +47,7 @@ The machines of §5.1 already ran: the Laboratory has a simulator of its own, wr
 
 <Example index={0} file="gcd_machine.sicp" source={simulatorGcdProgram} prelude={simulatorSource}>
 
-The GCD machine on the simulator of this section. The answer is 2, as before, but look at the step count under the editor: about 10 000 evaluator steps for 26 machine instructions, because every instruction is carried out by Source functions that look up registers, follow the program counter and apply operations through `apply_in_underlying_javascript`. The same machine on the Laboratory's simulator, below, takes fewer than 500.
+The GCD machine on the simulator of this section. The answer is 2, as before, but look at the step count under the editor: about 10 000 evaluator steps for 26 machine instructions, because every instruction is carried out by Source functions that look up registers, follow the program counter and spread operands into operations. The same machine on the Laboratory's simulator, below, takes fewer than 500.
 
 </Example>
 
