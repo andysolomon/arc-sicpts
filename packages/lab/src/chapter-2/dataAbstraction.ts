@@ -23,19 +23,19 @@ head(tail(z));
  */
 export const ratOperationsDefinitions = `const add_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y) + numer(y) * denom(x),
-                  denom(x) * denom(y));
+           denom(x) * denom(y));
 
 const sub_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y) - numer(y) * denom(x),
-                  denom(x) * denom(y));
+           denom(x) * denom(y));
 
 const mul_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * numer(y),
-                  denom(x) * denom(y));
+           denom(x) * denom(y));
 
 const div_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y),
-                  denom(x) * numer(y));
+           denom(x) * numer(y));
 
 const equal_rat = (x: Rational, y: Rational): boolean =>
   numer(x) * denom(y) === numer(y) * denom(x);
@@ -47,14 +47,11 @@ const print_rat = (x: Rational): string =>
 /** §2.1.1: a rational number is a pair of integers. */
 export const ratPairDefinitions = `type Rational = Pair<number, number>;
 
-const make_rat = (n: number, d: number): Rational =>
-  pair(n, d);
+const make_rat = (n: number, d: number): Rational => pair(n, d);
 
-const numer = (x: Rational): number =>
-  head(x);
+const numer = (x: Rational): number => head(x);
 
-const denom = (x: Rational): number =>
-  tail(x);
+const denom = (x: Rational): number => tail(x);
 `;
 
 const ratUses = `const one_half = make_rat(1, 2);
@@ -79,11 +76,9 @@ const make_rat = (n: number, d: number): Rational => {
   return pair(n / g, d / g);
 };
 
-const numer = (x: Rational): number =>
-  head(x);
+const numer = (x: Rational): number => head(x);
 
-const denom = (x: Rational): number =>
-  tail(x);
+const denom = (x: Rational): number => tail(x);
 `;
 
 export const ratLowestTermsProgram = `${ratOperationsDefinitions}
@@ -95,8 +90,7 @@ export const ratAccessReductionProgram = `${ratOperationsDefinitions}
 ${gcdDefinitions}
 type Rational = Pair<number, number>;
 
-const make_rat = (n: number, d: number): Rational =>
-  pair(n, d);
+const make_rat = (n: number, d: number): Rational => pair(n, d);
 
 const numer = (x: Rational): number => {
   const g = gcd(head(x), tail(x));
@@ -120,11 +114,11 @@ two_thirds;
 export const ratLayersProgram = `${ratPairDefinitions}
 const add_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y) + numer(y) * denom(x),
-                  denom(x) * denom(y));
+           denom(x) * denom(y));
 
 const mul_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * numer(y),
-                  denom(x) * denom(y));
+           denom(x) * denom(y));
 
 const equal_rat = (x: Rational, y: Rational): boolean =>
   numer(x) * denom(y) === numer(y) * denom(x);
@@ -152,11 +146,9 @@ const pair = <H, T>(x: H, y: T): Pair<H, T> => {
   return dispatch;
 };
 
-const head = <H, T>(z: Pair<H, T>): H | T =>
-  z(0);
+const head = <H, T>(z: Pair<H, T>): H | T => z(0);
 
-const tail = <H, T>(z: Pair<H, T>): H | T =>
-  z(1);
+const tail = <H, T>(z: Pair<H, T>): H | T => z(1);
 `;
 
 export const functionalPairProgram = `${functionalPairDefinitions}
@@ -179,20 +171,17 @@ print_rat(add_rat(one_half, one_third));
 /** §2.1.4: the interval constructor and selectors (Exercise 2.7). */
 export const intervalRepresentationDefinitions = `type Interval = Pair<number, number>;
 
-const make_interval = (x: number, y: number): Interval =>
-  pair(x, y);
+const make_interval = (x: number, y: number): Interval => pair(x, y);
 
-const lower_bound = (i: Interval): number =>
-  head(i);
+const lower_bound = (i: Interval): number => head(i);
 
-const upper_bound = (i: Interval): number =>
-  tail(i);
+const upper_bound = (i: Interval): number => tail(i);
 `;
 
 /** §2.1.4: Alyssa's arithmetic on intervals. */
 export const intervalDefinitions = `const add_interval = (x: Interval, y: Interval): Interval =>
   make_interval(lower_bound(x) + lower_bound(y),
-                       upper_bound(x) + upper_bound(y));
+                upper_bound(x) + upper_bound(y));
 
 const mul_interval = (x: Interval, y: Interval): Interval => {
   const p1 = lower_bound(x) * lower_bound(y);
@@ -205,7 +194,7 @@ const mul_interval = (x: Interval, y: Interval): Interval => {
 
 const div_interval = (x: Interval, y: Interval): Interval =>
   mul_interval(x, make_interval(1 / upper_bound(y),
-                                       1 / lower_bound(y)));
+                                1 / lower_bound(y)));
 `;
 
 /** Example 0 of §2.1.4; the prelude is `intervalRepresentationDefinitions`. */
@@ -225,17 +214,15 @@ mul_interval(r1, r2);
 export const centerWidthDefinitions = `const make_center_width = (c: number, w: number): Interval =>
   make_interval(c - w, c + w);
 
-const center = (i: Interval): number =>
-  (lower_bound(i) + upper_bound(i)) / 2;
+const center = (i: Interval): number => (lower_bound(i) + upper_bound(i)) / 2;
 
-const width = (i: Interval): number =>
-  (upper_bound(i) - lower_bound(i)) / 2;
+const width = (i: Interval): number => (upper_bound(i) - lower_bound(i)) / 2;
 `;
 
 /** Lem's two formulas for resistors in parallel. */
 export const parallelDefinitions = `const par1 = (r1: Interval, r2: Interval): Interval =>
   div_interval(mul_interval(r1, r2),
-                      add_interval(r1, r2));
+               add_interval(r1, r2));
 
 const par2 = (r1: Interval, r2: Interval): Interval => {
   const one = make_interval(1, 1);

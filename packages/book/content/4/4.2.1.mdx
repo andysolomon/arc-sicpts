@@ -7,8 +7,7 @@ Now that we have an evaluator expressed as a JavaScript program, we can experime
 In section 1.1, where we began our discussion of models of evaluation, we noted that JavaScript is an *applicative-order* language: all the arguments to a function are evaluated when the function is applied. In contrast, *normal-order* languages delay evaluating arguments until their values are actually needed. Delaying evaluation of arguments until the last possible moment, for example until a primitive operation needs them, is called *lazy evaluation*. Consider the function
 
 ```js
-const try_me = (a: number, b: number): number =>
-    a === 0 ? 1 : b;
+const try_me = (a: number, b: number): number => a === 0 ? 1 : b;
 ```
 
 Evaluating `try_me(0, head(null))` signals an error in JavaScript, and in this Laboratory:

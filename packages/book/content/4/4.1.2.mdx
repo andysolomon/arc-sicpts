@@ -25,8 +25,7 @@ A literal expression is parsed into a list with the tag `"literal"` and the valu
 ```js
 const is_literal = (component: Component): boolean =>
     is_tagged_list(component, "literal");
-const literal_value = (component: Component): unknown =>
-    head(tail(component));
+const literal_value = (component: Component): unknown => head(tail(component));
 ```
 
 in terms of `is_tagged_list`, which identifies lists that begin with a given string:
@@ -86,10 +85,10 @@ Some syntactic forms can be expressed in terms of others instead of being implem
 ```js
 const function_decl_to_constant_decl = (component: Component): Component =>
     make_constant_declaration(
-               function_declaration_name(component),
-               make_lambda_expression(
-                   function_declaration_parameters(component),
-                   function_declaration_body(component)));
+        function_declaration_name(component),
+        make_lambda_expression(
+            function_declaration_parameters(component),
+            function_declaration_body(component)));
 ```
 
 Operator combinations carry their operator as the second element: `list("binary_operator_combination", "*", ⟨left⟩, ⟨right⟩)`, and `list("unary_operator_combination", "-unary", ⟨operand⟩)` for numeric negation (`"!"` for logical negation). `evaluate` turns them into applications of a function whose name is the operator:

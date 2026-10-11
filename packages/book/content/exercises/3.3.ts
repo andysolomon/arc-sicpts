@@ -13,17 +13,17 @@ const makeCycleDefinition = `const make_cycle = <T>(x: List<T>): List<T> => {
 const structureHelpers = `const pairs_reached = (x: unknown): number => {
   const walk = (x: unknown, seen: List<unknown>): List<unknown> =>
     !is_pair(x) || !is_null(member(x, seen))
-           ? seen
-           : walk(tail(x), walk(head(x), pair(x, seen)));
+    ? seen
+    : walk(tail(x), walk(head(x), pair(x, seen)));
   return length(walk(x, null));
 };
 
 const reaches_itself = (x: unknown): boolean => {
   const walk = (x: unknown, path: List<unknown>): boolean =>
     is_pair(x) &&
-           (!is_null(member(x, path)) ||
-            walk(head(x), pair(x, path)) ||
-            walk(tail(x), pair(x, path)));
+    (!is_null(member(x, path)) ||
+     walk(head(x), pair(x, path)) ||
+     walk(tail(x), pair(x, path)));
   return walk(x, null);
 };
 `;
@@ -197,8 +197,8 @@ export const exercise_3_16: ExerciseSpec = {
   prelude: structureHelpers,
   starter: `const count_pairs = (x: unknown): number =>
   ! is_pair(x)
-         ? 0
-         : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
+  ? 0
+  : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
 
 // Each structure must be made of exactly three pairs.
 const returns_3 = undefined;
@@ -214,8 +214,8 @@ const never_returns = undefined; // don't call count_pairs on this one!
   ],
   solution: `const count_pairs = (x: unknown): number =>
   ! is_pair(x)
-         ? 0
-         : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
+  ? 0
+  : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
 
 const returns_3 = list("a", "b", "c");
 
@@ -284,10 +284,10 @@ const contains_cycle = <T>(x: List<T>): boolean => {
   solution: `const contains_cycle = <T>(x: List<T>): boolean => {
   const walk = (x: List<T>, seen: List<List<T>>): boolean =>
     !is_pair(x)
-           ? false
-           : !is_null(member(x, seen))
-           ? true
-           : walk(tail(x), pair(x, seen));
+    ? false
+    : !is_null(member(x, seen))
+    ? true
+    : walk(tail(x), pair(x, seen));
   return walk(x, null);
 };
 `,
@@ -332,10 +332,10 @@ const contains_cycle = <T>(x: List<T>): boolean => {
 const contains_cycle = <T>(x: List<T>): boolean => {
   const race = (tortoise: List<T>, hare: List<T>): boolean =>
     !is_pair(hare) || !is_pair(tail(hare))
-           ? false
-           : tail(tortoise) === tail(tail(hare))
-           ? true
-           : race(tail(tortoise), tail(tail(hare)));
+    ? false
+    : tail(tortoise) === tail(tail(hare))
+    ? true
+    : race(tail(tortoise), tail(tail(hare)));
   return race(x, x);
 };
 `,
@@ -363,10 +363,8 @@ const pair = (x: unknown, y: unknown): FunctionalPair => {
               ? set_y
               : error(m, "undefined operation -- pair");
 };
-const head = (z: FunctionalPair): unknown =>
-  z("head");
-const tail = (z: FunctionalPair): unknown =>
-  z("tail");
+const head = (z: FunctionalPair): unknown => z("head");
+const tail = (z: FunctionalPair): unknown => z("tail");
 const set_head = (z: FunctionalPair, new_value: unknown): FunctionalPair => {
   z("set_head")(new_value);
   return z;
@@ -439,10 +437,8 @@ export const exercise_3_22: ExerciseSpec = {
 
 const insert_queue = (queue: LocalQueue, item: unknown): LocalQueue =>
   queue("insert_queue")(item);
-const delete_queue = (queue: LocalQueue): LocalQueue =>
-  queue("delete_queue")();
-const front_queue = (queue: LocalQueue): unknown =>
-  queue("front_queue")();
+const delete_queue = (queue: LocalQueue): LocalQueue => queue("delete_queue")();
+const front_queue = (queue: LocalQueue): unknown => queue("front_queue")();
 const is_empty_queue = (queue: LocalQueue): boolean =>
   queue("is_empty_queue")();
 `,
@@ -485,8 +481,7 @@ const make_queue = (): LocalQueue => {
 const make_queue = (): LocalQueue => {
   let front_ptr: List<unknown> = null;
   let rear_ptr: List<unknown> = null;
-  const is_empty_queue = (): boolean =>
-    is_null(front_ptr);
+  const is_empty_queue = (): boolean => is_null(front_ptr);
   const insert_queue = (item: unknown): LocalQueue => {
     const new_pair = pair(item, null);
     if (is_empty_queue()) {
@@ -508,18 +503,18 @@ const make_queue = (): LocalQueue => {
   };
   const front_queue = (): unknown =>
     is_empty_queue()
-           ? error("front_queue called with an empty queue")
-           : head(front_ptr);
+    ? error("front_queue called with an empty queue")
+    : head(front_ptr);
   const dispatch = (m: "insert_queue" | "delete_queue" | "front_queue" | "is_empty_queue"): unknown =>
     m === "insert_queue"
-           ? insert_queue
-           : m === "delete_queue"
-           ? delete_queue
-           : m === "front_queue"
-           ? front_queue
-           : m === "is_empty_queue"
-           ? is_empty_queue
-           : error(m, "unknown operation -- queue");
+    ? insert_queue
+    : m === "delete_queue"
+    ? delete_queue
+    : m === "front_queue"
+    ? front_queue
+    : m === "is_empty_queue"
+    ? is_empty_queue
+    : error(m, "unknown operation -- queue");
   return dispatch;
 };
 `,
@@ -587,12 +582,9 @@ type Deque<T> = Pair<Link<T>, Link<T>>;
 
 const make_node = <T>(item: T, prev: Link<T>, next: Link<T>): DequeNode<T> =>
   pair(item, pair(prev, next));
-const node_item = <T>(node: DequeNode<T>): T =>
-  head(node);
-const node_prev = <T>(node: DequeNode<T>): Link<T> =>
-  head(tail(node));
-const node_next = <T>(node: DequeNode<T>): Link<T> =>
-  tail(tail(node));
+const node_item = <T>(node: DequeNode<T>): T => head(node);
+const node_prev = <T>(node: DequeNode<T>): Link<T> => head(tail(node));
+const node_next = <T>(node: DequeNode<T>): Link<T> => tail(tail(node));
 const set_prev = <T>(node: DequeNode<T>, prev: Link<T>): void => {
   set_head(tail(node), prev);
 };
@@ -600,18 +592,16 @@ const set_next = <T>(node: DequeNode<T>, next: Link<T>): void => {
   set_tail(tail(node), next);
 };
 
-const make_deque = <T>(): Deque<T> =>
-  pair(null, null);
-const is_empty_deque = <T>(deque: Deque<T>): boolean =>
-  is_null(head(deque));
+const make_deque = <T>(): Deque<T> => pair(null, null);
+const is_empty_deque = <T>(deque: Deque<T>): boolean => is_null(head(deque));
 const front_deque = <T>(deque: Deque<T>): T =>
   is_empty_deque(deque)
-         ? error("front_deque called with an empty deque")
-         : node_item(head(deque));
+  ? error("front_deque called with an empty deque")
+  : node_item(head(deque));
 const rear_deque = <T>(deque: Deque<T>): T =>
   is_empty_deque(deque)
-         ? error("rear_deque called with an empty deque")
-         : node_item(tail(deque));
+  ? error("rear_deque called with an empty deque")
+  : node_item(tail(deque));
 const front_insert_deque = <T>(deque: Deque<T>, item: T): Deque<T> => {
   const node = make_node(item, null, head(deque));
   if (is_empty_deque(deque)) {
@@ -698,10 +688,10 @@ const make_table = (same_key: (a: unknown, b: unknown) => boolean): LocalTable =
   };
   const dispatch = (m: "lookup" | "insert"): unknown =>
     m === "lookup"
-           ? lookup
-           : m === "insert"
-           ? insert
-           : error(m, "unknown operation -- table");
+    ? lookup
+    : m === "insert"
+    ? insert
+    : error(m, "unknown operation -- table");
   return dispatch;
 };
 `,
@@ -731,10 +721,10 @@ const make_table = (same_key: (a: unknown, b: unknown) => boolean): LocalTable =
   const local_table = list("*table*");
   const assoc = (key: unknown, records: List<unknown>): Pair<unknown, unknown> | undefined =>
     is_null(records)
-           ? undefined
-           : same_key(key, head(head(records)))
-           ? head(records)
-           : assoc(key, tail(records));
+    ? undefined
+    : same_key(key, head(head(records)))
+    ? head(records)
+    : assoc(key, tail(records));
   const lookup = (key_1: unknown, key_2: unknown): unknown => {
     const subtable = assoc(key_1, tail(local_table));
     if (is_undefined(subtable)) {
@@ -760,10 +750,10 @@ const make_table = (same_key: (a: unknown, b: unknown) => boolean): LocalTable =
   };
   const dispatch = (m: "lookup" | "insert"): unknown =>
     m === "lookup"
-           ? lookup
-           : m === "insert"
-           ? insert
-           : error(m, "unknown operation -- table");
+    ? lookup
+    : m === "insert"
+    ? insert
+    : error(m, "unknown operation -- table");
   return dispatch;
 };
 `,
@@ -774,8 +764,7 @@ export const exercise_3_25: ExerciseSpec = {
   starter: `// Tables whose values are stored under any number of keys, given as a list.
 type Table = List<unknown>;
 
-const make_table = (): Table =>
-  list("*table*");
+const make_table = (): Table => list("*table*");
 const lookup = (keys: List<unknown>, table: Table): unknown => {
   // your answer
 };
@@ -819,14 +808,13 @@ const insert = (keys: List<unknown>, value: unknown, table: Table): "ok" => {
 // out; the value sits in the tail of the last record.
 type Table = List<unknown>;
 
-const make_table = (): Table =>
-  list("*table*");
+const make_table = (): Table => list("*table*");
 const assoc = (key: unknown, records: List<unknown>): Pair<unknown, unknown> | undefined =>
   is_null(records)
-         ? undefined
-         : equal(key, head(head(records)))
-         ? head(records)
-         : assoc(key, tail(records));
+  ? undefined
+  : equal(key, head(head(records)))
+  ? head(records)
+  : assoc(key, tail(records));
 const lookup = (keys: List<unknown>, table: Table): unknown => {
   const record = assoc(head(keys), tail(table));
   return is_undefined(record)
@@ -905,17 +893,13 @@ const insert = (key: number, value: unknown, table: Table): "ok" => {
 type Tree = List<unknown>;
 type Table = Pair<string, Tree>;
 
-const make_table = (): Table =>
-  pair("*table*", null);
+const make_table = (): Table => pair("*table*", null);
 const make_tree = (record: Pair<number, unknown>): Tree =>
   list(record, null, null);
-const tree_record = (tree: Tree): Pair<number, unknown> =>
-  head(tree);
+const tree_record = (tree: Tree): Pair<number, unknown> => head(tree);
 // A branch is a pair whose head holds a subtree.
-const left_branch = (tree: Tree): Pair<Tree, unknown> =>
-  tail(tree);
-const right_branch = (tree: Tree): Pair<Tree, unknown> =>
-  tail(tail(tree));
+const left_branch = (tree: Tree): Pair<Tree, unknown> => tail(tree);
+const right_branch = (tree: Tree): Pair<Tree, unknown> => tail(tail(tree));
 const find = (key: number, tree: Tree): Pair<number, unknown> | undefined => {
   if (is_null(tree)) {
     return undefined;

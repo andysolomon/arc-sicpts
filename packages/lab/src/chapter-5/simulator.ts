@@ -12,8 +12,7 @@ type Operations = List<List<unknown>>;        // list(name, function) for each o
 
 const make_machine = (register_names: List<string>, ops: Operations, controller: Controller): Machine => {
     const machine = make_new_machine();
-    for_each(register_name =>
-               machine("allocate_register")(register_name),
+    for_each(register_name => machine("allocate_register")(register_name),
              register_names);
     machine("install_operations")(ops);
     machine("install_instruction_sequence")
@@ -25,15 +24,14 @@ const make_register = (name: string): Register => {
     let contents: unknown = "*unassigned*";
     const dispatch = (message: string): unknown =>
         message === "get"
-               ? contents
-               : message === "set"
-               ? value => { contents = value; }
-               : error(message, "unknown request -- make_register");
+        ? contents
+        : message === "set"
+        ? value => { contents = value; }
+        : error(message, "unknown request -- make_register");
     return dispatch;
 };
 
-const get_contents = (register: Register): unknown =>
-    register("get");
+const get_contents = (register: Register): unknown => register("get");
 
 const set_contents = (register: Register, value: unknown): unknown =>
     register("set")(value);
@@ -87,32 +85,28 @@ const make_stack = (): Stack => {
     };
     const dispatch = (message: string): unknown =>
         message === "push"
-               ? push
-               : message === "pop"
-               ? pop()
-               : message === "push_marker"
-               ? push_marker()
-               : message === "pop_marker"
-               ? pop_marker()
-               : message === "initialize"
-               ? initialize()
-               : message === "print_statistics"
-               ? print_statistics()
-               : error(message, "unknown request -- stack");
+        ? push
+        : message === "pop"
+        ? pop()
+        : message === "push_marker"
+        ? push_marker()
+        : message === "pop_marker"
+        ? pop_marker()
+        : message === "initialize"
+        ? initialize()
+        : message === "print_statistics"
+        ? print_statistics()
+        : error(message, "unknown request -- stack");
     return dispatch;
 };
 
-const pop = (stack: Stack): unknown =>
-    stack("pop");
+const pop = (stack: Stack): unknown => stack("pop");
 
-const push = (stack: Stack, value: unknown): unknown =>
-    stack("push")(value);
+const push = (stack: Stack, value: unknown): unknown => stack("push")(value);
 
-const push_marker = (stack: Stack): unknown =>
-    stack("push_marker");
+const push_marker = (stack: Stack): unknown => stack("push_marker");
 
-const pop_marker = (stack: Stack): unknown =>
-    stack("pop_marker");
+const pop_marker = (stack: Stack): unknown => stack("pop_marker");
 
 const make_new_machine = (): Machine => {
     const pc = make_register("pc");
@@ -172,8 +166,7 @@ const make_new_machine = (): Machine => {
     return dispatch;
 };
 
-const start = (machine: Machine): unknown =>
-    machine("start");
+const start = (machine: Machine): unknown => machine("start");
 
 const get_register_contents = (machine: Machine, register_name: string): unknown =>
     get_contents(get_register(machine, register_name));
@@ -189,30 +182,30 @@ const get_register = (machine: Machine, reg_name: string): Register =>
 
 export const assemblerSource = `const assemble = (controller: Controller, machine: Machine): List<MachineInstruction> =>
     extract_labels(controller,
-                          (insts, labels) => {
-                              update_insts(insts, labels, machine);
-                              return insts;
-                          });
+                   (insts, labels) => {
+                       update_insts(insts, labels, machine);
+                       return insts;
+                   });
 
 const extract_labels = <R>(
     controller: Controller,
     receive: (insts: List<MachineInstruction>, labels: List<LabelEntry>) => R
 ): R =>
     is_null(controller)
-           ? receive(null, null)
-           : extract_labels(
-                 tail(controller),
-                 (insts, labels) => {
-                     const next_element = head(controller);
-                     return is_string(next_element)
-                            ? receive(insts,
-                                      pair(make_label_entry(next_element,
-                                                            insts),
-                                           labels))
-                            : receive(pair(make_inst(next_element),
-                                           insts),
-                                      labels);
-                 });
+    ? receive(null, null)
+    : extract_labels(
+          tail(controller),
+          (insts, labels) => {
+              const next_element = head(controller);
+              return is_string(next_element)
+                     ? receive(insts,
+                               pair(make_label_entry(next_element,
+                                                     insts),
+                                    labels))
+                     : receive(pair(make_inst(next_element),
+                                    insts),
+                               labels);
+          });
 
 const update_insts = (insts: List<MachineInstruction>, labels: List<LabelEntry>, machine: Machine): true => {
     const pc = get_register(machine, "pc");
@@ -267,24 +260,24 @@ export const executionSource = `const make_execution_function = (
     ops: Operations
 ): ExecutionFunction =>
     type(inst) === "assign"
-           ? make_assign_ef(inst, machine, labels, ops, pc)
-           : type(inst) === "test"
-           ? make_test_ef(inst, machine, labels, ops, flag, pc)
-           : type(inst) === "branch"
-           ? make_branch_ef(inst, machine, labels, flag, pc)
-           : type(inst) === "go_to"
-           ? make_go_to_ef(inst, machine, labels, pc)
-           : type(inst) === "save"
-           ? make_save_ef(inst, machine, stack, pc)
-           : type(inst) === "restore"
-           ? make_restore_ef(inst, machine, stack, pc)
-           : type(inst) === "push_marker_to_stack"
-           ? make_push_marker_to_stack_ef(machine, stack, pc)
-           : type(inst) === "revert_stack_to_marker"
-           ? make_revert_stack_to_marker_ef(machine, stack, pc)
-           : type(inst) === "perform"
-           ? make_perform_ef(inst, machine, labels, ops, pc)
-           : error(inst, "unknown instruction type -- assemble");
+    ? make_assign_ef(inst, machine, labels, ops, pc)
+    : type(inst) === "test"
+    ? make_test_ef(inst, machine, labels, ops, flag, pc)
+    : type(inst) === "branch"
+    ? make_branch_ef(inst, machine, labels, flag, pc)
+    : type(inst) === "go_to"
+    ? make_go_to_ef(inst, machine, labels, pc)
+    : type(inst) === "save"
+    ? make_save_ef(inst, machine, stack, pc)
+    : type(inst) === "restore"
+    ? make_restore_ef(inst, machine, stack, pc)
+    : type(inst) === "push_marker_to_stack"
+    ? make_push_marker_to_stack_ef(machine, stack, pc)
+    : type(inst) === "revert_stack_to_marker"
+    ? make_revert_stack_to_marker_ef(machine, stack, pc)
+    : type(inst) === "perform"
+    ? make_perform_ef(inst, machine, labels, ops, pc)
+    : error(inst, "unknown instruction type -- assemble");
 
 const type = (instruction: Instruction): string => head(instruction);
 
@@ -425,15 +418,15 @@ const stack_inst_reg_name = (stack_instruction: Instruction): string =>
 
 const make_push_marker_to_stack_ef = (machine: Machine, stack: Stack, pc: Register): ExecutionFunction =>
     () => {
-               push_marker(stack);
-               advance_pc(pc);
-           };
+        push_marker(stack);
+        advance_pc(pc);
+    };
 
 const make_revert_stack_to_marker_ef = (machine: Machine, stack: Stack, pc: Register): ExecutionFunction =>
     () => {
-               pop_marker(stack);
-               advance_pc(pc);
-           };
+        pop_marker(stack);
+        advance_pc(pc);
+    };
 
 const push_marker_to_stack = (): Instruction => list("push_marker_to_stack");
 const revert_stack_to_marker = (): Instruction => list("revert_stack_to_marker");

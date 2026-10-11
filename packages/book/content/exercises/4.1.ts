@@ -133,10 +133,10 @@ const unparse = (component: Component): string => {
   ],
   solution: `const comma_separated = (strings: List<string>): string =>
     is_null(strings)
-           ? ""
-           : is_null(tail(strings))
-           ? head(strings)
-           : head(strings) + ", " + comma_separated(tail(strings));
+    ? ""
+    : is_null(tail(strings))
+    ? head(strings)
+    : head(strings) + ", " + comma_separated(tail(strings));
 
 const unparse_statement = (component: Component): string => {
     const is_statement = is_sequence(component) || is_block(component) ||
@@ -148,60 +148,60 @@ const unparse_statement = (component: Component): string => {
 // A body or branch in braces: parse leaves out the block when it declares nothing.
 const unparse_body = (component: Component): string =>
     is_block(component)
-           ? unparse(component)
-           : "{ " + unparse_statement(component) + " }";
+    ? unparse(component)
+    : "{ " + unparse_statement(component) + " }";
 
 const unparse = (component: Component): string =>
     is_literal(component)
-           ? stringify(literal_value(component))
-           : is_name(component)
-           ? symbol_of_name(component)
-           : is_application(component)
-           ? unparse(function_expression(component)) + "(" +
-             comma_separated(map(unparse, arg_expressions(component))) + ")"
-           : is_unary_operator_combination(component)
-           ? "(" + (operator_symbol(component) === "-unary" ? "-" : "!") +
-             unparse(first_operand(component)) + ")"
-           : is_binary_operator_combination(component) ||
-             is_tagged_list(component, "logical_composition")
-           ? "(" + unparse(first_operand(component)) + " " +
-             operator_symbol(component) + " " +
-             unparse(second_operand(component)) + ")"
-           : is_tagged_list(component, "conditional_expression")
-           ? "(" + unparse(conditional_predicate(component)) + " ? " +
-             unparse(conditional_consequent(component)) + " : " +
-             unparse(conditional_alternative(component)) + ")"
-           : is_tagged_list(component, "conditional_statement")
-           ? "if (" + unparse(conditional_predicate(component)) + ") " +
-             unparse_body(conditional_consequent(component)) + " else " +
-             (is_tagged_list(conditional_alternative(component), "conditional_statement")
-              ? unparse(conditional_alternative(component))
-              : unparse_body(conditional_alternative(component)))
-           : is_lambda_expression(component)
-           ? "((" + comma_separated(lambda_parameter_symbols(component)) + ") => " +
-             (is_return_statement(lambda_body(component))
-              ? unparse(return_expression(lambda_body(component)))
-              : unparse_body(lambda_body(component))) + ")"
-           : is_sequence(component)
-           ? accumulate((s, rest) => s + " " + rest, "",
-                        map(unparse_statement, sequence_statements(component)))
-           : is_block(component)
-           ? "{ " + unparse_statement(block_body(component)) + " }"
-           : is_return_statement(component)
-           ? "return " + unparse(return_expression(component)) + ";"
-           : is_function_declaration(component)
-           ? "function " + symbol_of_name(function_declaration_name(component)) +
-             "(" + comma_separated(map(symbol_of_name,
-                                       function_declaration_parameters(component))) +
-             ") " + unparse_body(function_declaration_body(component))
-           : is_declaration(component)
-           ? (is_tagged_list(component, "constant_declaration") ? "const " : "let ") +
-             declaration_symbol(component) + " = " +
-             unparse(declaration_value_expression(component)) + ";"
-           : is_assignment(component)
-           ? "(" + assignment_symbol(component) + " = " +
-             unparse(assignment_value_expression(component)) + ")"
-           : error(component, "unknown syntax -- unparse");
+    ? stringify(literal_value(component))
+    : is_name(component)
+    ? symbol_of_name(component)
+    : is_application(component)
+    ? unparse(function_expression(component)) + "(" +
+      comma_separated(map(unparse, arg_expressions(component))) + ")"
+    : is_unary_operator_combination(component)
+    ? "(" + (operator_symbol(component) === "-unary" ? "-" : "!") +
+      unparse(first_operand(component)) + ")"
+    : is_binary_operator_combination(component) ||
+      is_tagged_list(component, "logical_composition")
+    ? "(" + unparse(first_operand(component)) + " " +
+      operator_symbol(component) + " " +
+      unparse(second_operand(component)) + ")"
+    : is_tagged_list(component, "conditional_expression")
+    ? "(" + unparse(conditional_predicate(component)) + " ? " +
+      unparse(conditional_consequent(component)) + " : " +
+      unparse(conditional_alternative(component)) + ")"
+    : is_tagged_list(component, "conditional_statement")
+    ? "if (" + unparse(conditional_predicate(component)) + ") " +
+      unparse_body(conditional_consequent(component)) + " else " +
+      (is_tagged_list(conditional_alternative(component), "conditional_statement")
+       ? unparse(conditional_alternative(component))
+       : unparse_body(conditional_alternative(component)))
+    : is_lambda_expression(component)
+    ? "((" + comma_separated(lambda_parameter_symbols(component)) + ") => " +
+      (is_return_statement(lambda_body(component))
+       ? unparse(return_expression(lambda_body(component)))
+       : unparse_body(lambda_body(component))) + ")"
+    : is_sequence(component)
+    ? accumulate((s, rest) => s + " " + rest, "",
+                 map(unparse_statement, sequence_statements(component)))
+    : is_block(component)
+    ? "{ " + unparse_statement(block_body(component)) + " }"
+    : is_return_statement(component)
+    ? "return " + unparse(return_expression(component)) + ";"
+    : is_function_declaration(component)
+    ? "function " + symbol_of_name(function_declaration_name(component)) +
+      "(" + comma_separated(map(symbol_of_name,
+                                function_declaration_parameters(component))) +
+      ") " + unparse_body(function_declaration_body(component))
+    : is_declaration(component)
+    ? (is_tagged_list(component, "constant_declaration") ? "const " : "let ") +
+      declaration_symbol(component) + " = " +
+      unparse(declaration_value_expression(component)) + ";"
+    : is_assignment(component)
+    ? "(" + assignment_symbol(component) + " = " +
+      unparse(assignment_value_expression(component)) + ")"
+    : error(component, "unknown syntax -- unparse");
 `,
 };
 
@@ -215,11 +215,11 @@ const put = (op: string, type: string, item: unknown): void => {
 const get = (op: string, type: string): unknown => {
     const find = (entries: List<Entry>): unknown =>
         is_null(entries)
-               ? undefined
-               : head(head(head(entries))) === op &&
-                 tail(head(head(entries))) === type
-               ? tail(head(entries))
-               : find(tail(entries));
+        ? undefined
+        : head(head(head(entries))) === op &&
+          tail(head(head(entries))) === type
+        ? tail(head(entries))
+        : find(tail(entries));
     return find(the_table);
 };`;
 
@@ -315,37 +315,37 @@ ${book('evaluate')}`,
   budget: BUDGET,
   solution: `const evaluate = (component: Component, env: Environment): unknown =>
     is_literal(component)
-           ? literal_value(component)
-           : is_name(component)
-           ? lookup_symbol_value(symbol_of_name(component), env)
-           : is_application(component)
-           ? apply(evaluate(function_expression(component), env),
-                   list_of_values(arg_expressions(component), env))
-           : is_operator_combination(component)
-           ? evaluate(operator_combination_to_application(component),
-                      env)
-           : is_logical_composition(component)
-           ? (logical_operation(component) === "&&"
-              ? eval_and(component, env)
-              : eval_or(component, env))
-           : is_conditional(component)
-           ? eval_conditional(component, env)
-           : is_lambda_expression(component)
-           ? make_function(lambda_parameter_symbols(component),
-                           lambda_body(component), env)
-           : is_sequence(component)
-           ? eval_sequence(sequence_statements(component), env)
-           : is_block(component)
-           ? eval_block(component, env)
-           : is_return_statement(component)
-           ? eval_return_statement(component, env)
-           : is_function_declaration(component)
-           ? evaluate(function_decl_to_constant_decl(component), env)
-           : is_declaration(component)
-           ? eval_declaration(component, env)
-           : is_assignment(component)
-           ? eval_assignment(component, env)
-           : error(component, "unknown syntax -- evaluate");
+    ? literal_value(component)
+    : is_name(component)
+    ? lookup_symbol_value(symbol_of_name(component), env)
+    : is_application(component)
+    ? apply(evaluate(function_expression(component), env),
+            list_of_values(arg_expressions(component), env))
+    : is_operator_combination(component)
+    ? evaluate(operator_combination_to_application(component),
+               env)
+    : is_logical_composition(component)
+    ? (logical_operation(component) === "&&"
+       ? eval_and(component, env)
+       : eval_or(component, env))
+    : is_conditional(component)
+    ? eval_conditional(component, env)
+    : is_lambda_expression(component)
+    ? make_function(lambda_parameter_symbols(component),
+                    lambda_body(component), env)
+    : is_sequence(component)
+    ? eval_sequence(sequence_statements(component), env)
+    : is_block(component)
+    ? eval_block(component, env)
+    : is_return_statement(component)
+    ? eval_return_statement(component, env)
+    : is_function_declaration(component)
+    ? evaluate(function_decl_to_constant_decl(component), env)
+    : is_declaration(component)
+    ? eval_declaration(component, env)
+    : is_assignment(component)
+    ? eval_assignment(component, env)
+    : error(component, "unknown syntax -- evaluate");
 
 const is_logical_composition = (component: Component): boolean =>
     is_tagged_list(component, "logical_composition");
@@ -355,12 +355,12 @@ const second_conjunct = (component: Component): Component => list_ref(component,
 
 const eval_and = (component: Component, env: Environment): unknown =>
     is_truthy(evaluate(first_conjunct(component), env))
-           ? evaluate(second_conjunct(component), env)
-           : false;
+    ? evaluate(second_conjunct(component), env)
+    : false;
 const eval_or = (component: Component, env: Environment): unknown =>
     is_truthy(evaluate(first_conjunct(component), env))
-           ? true
-           : evaluate(second_conjunct(component), env);
+    ? true
+    : evaluate(second_conjunct(component), env);
 `,
 };
 
@@ -388,8 +388,8 @@ const verify = (component: unknown): boolean => {
   ],
   solution: `const has_duplicates = (symbols: List<string>): boolean =>
     !is_null(symbols) &&
-           (!is_null(member(head(symbols), tail(symbols))) ||
-            has_duplicates(tail(symbols)));
+    (!is_null(member(head(symbols), tail(symbols))) ||
+     has_duplicates(tail(symbols)));
 
 const verify_function = (parameters: List<Component>, body: Component): boolean => {
     const symbols = map(symbol_of_name, parameters);
@@ -404,23 +404,23 @@ const verify_function = (parameters: List<Component>, body: Component): boolean 
 // finds them late, and again at every application.
 const verify = (component: unknown): boolean =>
     is_lambda_expression(component)
-           ? verify_function(head(tail(component)), lambda_body(component))
-           : is_function_declaration(component)
-           ? verify_function(function_declaration_parameters(component),
-                             function_declaration_body(component))
-           : is_pair(component)
-           ? verify(head(component)) && verify(tail(component))
-           : true;
+    ? verify_function(head(tail(component)), lambda_body(component))
+    : is_function_declaration(component)
+    ? verify_function(function_declaration_parameters(component),
+                      function_declaration_body(component))
+    : is_pair(component)
+    ? verify(head(component)) && verify(tail(component))
+    : true;
 `,
 };
 
 const letStar = `const let_star = (text: string): Component => {
     const convert = (component: unknown): unknown =>
         !is_pair(component)
-               ? component
-               : head(component) === "variable_declaration"
-               ? pair("let_star_declaration", convert(tail(component)))
-               : pair(convert(head(component)), convert(tail(component)));
+        ? component
+        : head(component) === "variable_declaration"
+        ? pair("let_star_declaration", convert(tail(component)))
+        : pair(convert(head(component)), convert(tail(component)));
     return convert(parse(text));
 };
 const evaluate_let_star = (text: string): unknown => {
@@ -462,30 +462,30 @@ const let_star_to_nested_let = (component: unknown): unknown => {
 
 const let_star_to_let = (component: Component): Component =>
     list("variable_declaration",
-                head(tail(component)),
-                let_star_to_nested_let(head(tail(tail(component)))));
+         head(tail(component)),
+         let_star_to_nested_let(head(tail(tail(component)))));
 
 // A let* and the statements after it become a block.
 const nest_statements = (stmts: List<Component>): List<Component> =>
     is_null(stmts)
-           ? null
-           : is_let_star(head(stmts))
-           ? list(list("block",
-                       list("sequence",
-                            pair(let_star_to_let(head(stmts)),
-                                 nest_statements(tail(stmts))))))
-           : pair(let_star_to_nested_let(head(stmts)),
-                  nest_statements(tail(stmts)));
+    ? null
+    : is_let_star(head(stmts))
+    ? list(list("block",
+                list("sequence",
+                     pair(let_star_to_let(head(stmts)),
+                          nest_statements(tail(stmts))))))
+    : pair(let_star_to_nested_let(head(stmts)),
+           nest_statements(tail(stmts)));
 
 const let_star_to_nested_let = (component: unknown): unknown =>
     is_sequence(component)
-           ? list("sequence", nest_statements(sequence_statements(component)))
-           : is_let_star(component)
-           ? list("block", let_star_to_let(component))
-           : is_pair(component)
-           ? pair(let_star_to_nested_let(head(component)),
-                  let_star_to_nested_let(tail(component)))
-           : component;
+    ? list("sequence", nest_statements(sequence_statements(component)))
+    : is_let_star(component)
+    ? list("block", let_star_to_let(component))
+    : is_pair(component)
+    ? pair(let_star_to_nested_let(head(component)),
+           let_star_to_nested_let(tail(component)))
+    : component;
 `,
 };
 
@@ -564,13 +564,13 @@ const value_4 = 5;
 
 const is_value_producing = (component: Component): boolean =>
     is_declaration(component)
-           ? false
-           : is_block(component)
-           ? is_value_producing(block_body(component))
-           : is_sequence(component)
-           ? accumulate((stmt, any) => is_value_producing(stmt) || any,
-                        false, sequence_statements(component))
-           : true;
+    ? false
+    : is_block(component)
+    ? is_value_producing(block_body(component))
+    : is_sequence(component)
+    ? accumulate((stmt, any) => is_value_producing(stmt) || any,
+                 false, sequence_statements(component))
+    : true;
 
 const eval_sequence = (stmts: List<Component>, env: Environment): unknown => {
     const loop = (stmts: List<Component>, last: unknown): unknown => {
@@ -631,27 +631,27 @@ type Binding = Pair<string, unknown>;
 
 const make_frame = (symbols: List<string>, values: List<unknown>): List<Binding> =>
     is_null(symbols)
-           ? null
-           : pair(pair(head(symbols), head(values)),
-                  make_frame(tail(symbols), tail(values)));
+    ? null
+    : pair(pair(head(symbols), head(values)),
+           make_frame(tail(symbols), tail(values)));
 const frame_symbols = (frame: List<Binding>): List<string> => map(head, frame);
 
 const frame_values = (frame: List<Binding>): List<unknown> => map(tail, frame);
 
 const extend_environment = (symbols: List<string>, vals: List<unknown>, base_env: Environment): Environment =>
     length(symbols) === length(vals)
-           ? pair(make_frame(symbols, vals), base_env)
-           : error(pair(symbols, vals),
-                   length(symbols) < length(vals)
-                   ? "too many arguments supplied"
-                   : "too few arguments supplied");
+    ? pair(make_frame(symbols, vals), base_env)
+    : error(pair(symbols, vals),
+            length(symbols) < length(vals)
+            ? "too many arguments supplied"
+            : "too few arguments supplied");
 
 const find_binding = (symbol: string, frame: List<Binding>): Binding | null =>
     is_null(frame)
-           ? null
-           : head(head(frame)) === symbol
-           ? head(frame)
-           : find_binding(symbol, tail(frame));
+    ? null
+    : head(head(frame)) === symbol
+    ? head(frame)
+    : find_binding(symbol, tail(frame));
 
 const lookup_symbol_value = (symbol: string, env: Environment): unknown => {
     if (env === the_empty_environment) {
@@ -718,10 +718,10 @@ ${book('lookup_symbol_value', 'assign_symbol_value')}`,
     const env_loop = (env: Environment): unknown => {
         const scan = (symbols: List<string>, vals: List<unknown>): unknown =>
             is_null(symbols)
-                   ? env_loop(enclosing_environment(env))
-                   : symbol === head(symbols)
-                   ? found(vals)
-                   : scan(tail(symbols), tail(vals));
+            ? env_loop(enclosing_environment(env))
+            : symbol === head(symbols)
+            ? found(vals)
+            : scan(tail(symbols), tail(vals));
         if (env === the_empty_environment) {
             return error(symbol, unbound_message);
         } else {
@@ -737,7 +737,7 @@ const lookup_symbol_value = (symbol: string, env: Environment): unknown =>
 
 const assign_symbol_value = (symbol: string, val: unknown, env: Environment): void =>
     scan_environment(symbol, env, vals => set_head(vals, val),
-                            "unbound name -- assignment");
+                     "unbound name -- assignment");
 `,
 };
 
@@ -767,15 +767,15 @@ type DeclaredName = string | Pair<"const", string>;
 
 const scan_out_declarations = (component: Component): List<DeclaredName> =>
     is_sequence(component)
-           ? accumulate(append,
-                        null,
-                        map(scan_out_declarations,
-                            sequence_statements(component)))
-           : is_tagged_list(component, "variable_declaration")
-           ? list(declaration_symbol(component))
-           : is_declaration(component)
-           ? list(pair("const", declaration_symbol(component)))
-           : null;
+    ? accumulate(append,
+                 null,
+                 map(scan_out_declarations,
+                     sequence_statements(component)))
+    : is_tagged_list(component, "variable_declaration")
+    ? list(declaration_symbol(component))
+    : is_declaration(component)
+    ? list(pair("const", declaration_symbol(component)))
+    : null;
 
 // A frame keeps the kind of each name beside the names.
 type Kind = "const" | "let";
@@ -783,8 +783,8 @@ type KindedFrame = Pair<Pair<List<string>, List<Kind>>, List<unknown>>;
 
 const make_frame = (symbols: List<DeclaredName>, values: List<unknown>): KindedFrame =>
     pair(pair(map(s => is_pair(s) ? tail(s) : s, symbols),
-                     map(s => is_pair(s) ? "const" : "let", symbols)),
-                values);
+              map(s => is_pair(s) ? "const" : "let", symbols)),
+         values);
 const frame_symbols = (frame: KindedFrame): List<string> => head(head(frame));
 
 const frame_kinds = (frame: KindedFrame): List<Kind> => tail(head(frame));
@@ -795,12 +795,12 @@ const assign_in_frames = (symbol: string, val: unknown, env: Environment, check:
     const env_loop = (env: Environment): void => {
         const scan = (symbols: List<string>, kinds: List<Kind>, vals: List<unknown>): void =>
             is_null(symbols)
-                   ? env_loop(enclosing_environment(env))
-                   : symbol === head(symbols)
-                   ? (check && head(kinds) === "const"
-                      ? error(symbol, "assignment to constant")
-                      : set_head(vals, val))
-                   : scan(tail(symbols), tail(kinds), tail(vals));
+            ? env_loop(enclosing_environment(env))
+            : symbol === head(symbols)
+            ? (check && head(kinds) === "const"
+               ? error(symbol, "assignment to constant")
+               : set_head(vals, val))
+            : scan(tail(symbols), tail(kinds), tail(vals));
         if (env === the_empty_environment) {
             return error(symbol, "unbound name -- assignment");
         } else {
@@ -850,12 +850,12 @@ ${book('lookup_symbol_value', 'eval_assignment')}`,
     const env_loop = (env: Environment): unknown => {
         const scan = (symbols: List<string>, vals: List<unknown>): unknown =>
             is_null(symbols)
-                   ? env_loop(enclosing_environment(env))
-                   : symbol === head(symbols)
-                   ? (head(vals) === "*unassigned*"
-                      ? error(symbol, "unassigned name")
-                      : head(vals))
-                   : scan(tail(symbols), tail(vals));
+            ? env_loop(enclosing_environment(env))
+            : symbol === head(symbols)
+            ? (head(vals) === "*unassigned*"
+               ? error(symbol, "unassigned name")
+               : head(vals))
+            : scan(tail(symbols), tail(vals));
         if (env === the_empty_environment) {
             return error(symbol, "unbound name");
         } else {
@@ -897,18 +897,18 @@ ${book(...varFunctions)}`,
   solution: `// Declarations anywhere in a function body, but not in nested functions.
 const scan_out_declarations = (component: Component): List<string> =>
     is_sequence(component)
-           ? accumulate(append,
-                        null,
-                        map(scan_out_declarations,
-                            sequence_statements(component)))
-           : is_declaration(component)
-           ? list(declaration_symbol(component))
-           : is_block(component)
-           ? scan_out_declarations(block_body(component))
-           : is_tagged_list(component, "conditional_statement")
-           ? append(scan_out_declarations(conditional_consequent(component)),
-                    scan_out_declarations(conditional_alternative(component)))
-           : null;
+    ? accumulate(append,
+                 null,
+                 map(scan_out_declarations,
+                     sequence_statements(component)))
+    : is_declaration(component)
+    ? list(declaration_symbol(component))
+    : is_block(component)
+    ? scan_out_declarations(block_body(component))
+    : is_tagged_list(component, "conditional_statement")
+    ? append(scan_out_declarations(conditional_consequent(component)),
+             scan_out_declarations(conditional_alternative(component)))
+    : null;
 
 // A block no longer has a frame of its own.
 const eval_block = (component: Component, env: Environment): unknown =>
@@ -938,10 +938,10 @@ const assign_symbol_value = (symbol: string, val: unknown, env: Environment): vo
     const env_loop = (env: Environment): void => {
         const scan = (symbols: List<string>, vals: List<unknown>): void =>
             is_null(symbols)
-                   ? env_loop(enclosing_environment(env))
-                   : symbol === head(symbols)
-                   ? set_head(vals, val)
-                   : scan(tail(symbols), tail(vals));
+            ? env_loop(enclosing_environment(env))
+            : symbol === head(symbols)
+            ? set_head(vals, val)
+            : scan(tail(symbols), tail(vals));
         if (env === the_empty_environment) {
             const frame = first_frame(the_global_environment);
             set_head(frame, pair(symbol, head(frame)));
@@ -1014,37 +1014,37 @@ ${book('evaluate')}`,
   budget: BUDGET,
   solution: `const hoist = (stmts: List<Component>): List<Component> =>
     append(filter(is_function_declaration, stmts),
-                  filter(stmt => !is_function_declaration(stmt), stmts));
+           filter(stmt => !is_function_declaration(stmt), stmts));
 
 const evaluate = (component: Component, env: Environment): unknown =>
     is_literal(component)
-           ? literal_value(component)
-           : is_name(component)
-           ? lookup_symbol_value(symbol_of_name(component), env)
-           : is_application(component)
-           ? apply(evaluate(function_expression(component), env),
-                   list_of_values(arg_expressions(component), env))
-           : is_operator_combination(component)
-           ? evaluate(operator_combination_to_application(component),
-                      env)
-           : is_conditional(component)
-           ? eval_conditional(component, env)
-           : is_lambda_expression(component)
-           ? make_function(lambda_parameter_symbols(component),
-                           lambda_body(component), env)
-           : is_sequence(component)
-           ? eval_sequence(hoist(sequence_statements(component)), env)
-           : is_block(component)
-           ? eval_block(component, env)
-           : is_return_statement(component)
-           ? eval_return_statement(component, env)
-           : is_function_declaration(component)
-           ? evaluate(function_decl_to_constant_decl(component), env)
-           : is_declaration(component)
-           ? eval_declaration(component, env)
-           : is_assignment(component)
-           ? eval_assignment(component, env)
-           : error(component, "unknown syntax -- evaluate");
+    ? literal_value(component)
+    : is_name(component)
+    ? lookup_symbol_value(symbol_of_name(component), env)
+    : is_application(component)
+    ? apply(evaluate(function_expression(component), env),
+            list_of_values(arg_expressions(component), env))
+    : is_operator_combination(component)
+    ? evaluate(operator_combination_to_application(component),
+               env)
+    : is_conditional(component)
+    ? eval_conditional(component, env)
+    : is_lambda_expression(component)
+    ? make_function(lambda_parameter_symbols(component),
+                    lambda_body(component), env)
+    : is_sequence(component)
+    ? eval_sequence(hoist(sequence_statements(component)), env)
+    : is_block(component)
+    ? eval_block(component, env)
+    : is_return_statement(component)
+    ? eval_return_statement(component, env)
+    : is_function_declaration(component)
+    ? evaluate(function_decl_to_constant_decl(component), env)
+    : is_declaration(component)
+    ? eval_declaration(component, env)
+    : is_assignment(component)
+    ? eval_assignment(component, env)
+    : error(component, "unknown syntax -- evaluate");
 `,
 };
 
@@ -1056,8 +1056,8 @@ const fib = (n: number): number => /* your answer */ undefined;
 
 const f = (x: number): boolean =>
     ((is_even, is_odd) => is_even(is_even, is_odd, x))
-           ((is_ev, is_od, n) => n === 0 ? true : is_od(/* ?? */),
-            (is_ev, is_od, n) => n === 0 ? false : is_ev(/* ?? */));
+    ((is_ev, is_od, n) => n === 0 ? true : is_od(/* ?? */),
+     (is_ev, is_od, n) => n === 0 ? false : is_ev(/* ?? */));
 `,
   tests: [
     { name: 'fib(1) and fib(2)', kind: 'value', expr: 'fib(1) + fib(2)', expected: 2 },
@@ -1072,22 +1072,22 @@ const f = (x: number): boolean =>
 
 const f = (x: number): boolean =>
     ((is_even, is_odd) => is_even(is_even, is_odd, x))
-           ((is_ev, is_od, n) => n === 0 ? true : is_od(is_ev, is_od, n - 1),
-            (is_ev, is_od, n) => n === 0 ? false : is_ev(is_ev, is_od, n - 1));
+    ((is_ev, is_od, n) => n === 0 ? true : is_od(is_ev, is_od, n - 1),
+     (is_ev, is_od, n) => n === 0 ? false : is_ev(is_ev, is_od, n - 1));
 `,
 };
 
 const whileHelpers = `// loop_while(predicate, () => { body }) is parsed as a while loop.
 const with_while_loops = (component: unknown): unknown =>
     is_application(component) &&
-           is_name(function_expression(component)) &&
-           symbol_of_name(function_expression(component)) === "loop_while"
-           ? list("while_loop",
-                  with_while_loops(head(arg_expressions(component))),
-                  with_while_loops(lambda_body(head(tail(arg_expressions(component))))))
-           : is_pair(component)
-           ? pair(with_while_loops(head(component)), with_while_loops(tail(component)))
-           : component;
+    is_name(function_expression(component)) &&
+    symbol_of_name(function_expression(component)) === "loop_while"
+    ? list("while_loop",
+           with_while_loops(head(arg_expressions(component))),
+           with_while_loops(lambda_body(head(tail(arg_expressions(component))))))
+    : is_pair(component)
+    ? pair(with_while_loops(head(component)), with_while_loops(tail(component)))
+    : component;
 const evaluate_with_while = (input: string): unknown => {
     const program = with_while_loops(parse(input));
     const locals = scan_out_declarations(program);
@@ -1130,32 +1130,32 @@ ${pick(analyzingEvaluator, 'analyze')}
   budget: 20_000_000,
   solution: `const analyze = (component: Component): Execution =>
     is_literal(component)
-           ? analyze_literal(component)
-           : is_name(component)
-           ? analyze_name(component)
-           : is_application(component)
-           ? analyze_application(component)
-           : is_operator_combination(component)
-           ? analyze(operator_combination_to_application(component))
-           : is_conditional(component)
-           ? analyze_conditional(component)
-           : is_while_loop(component)
-           ? analyze_while_loop(component)
-           : is_lambda_expression(component)
-           ? analyze_lambda_expression(component)
-           : is_sequence(component)
-           ? analyze_sequence(sequence_statements(component))
-           : is_block(component)
-           ? analyze_block(component)
-           : is_return_statement(component)
-           ? analyze_return_statement(component)
-           : is_function_declaration(component)
-           ? analyze(function_decl_to_constant_decl(component))
-           : is_declaration(component)
-           ? analyze_declaration(component)
-           : is_assignment(component)
-           ? analyze_assignment(component)
-           : error(component, "unknown syntax -- analyze");
+    ? analyze_literal(component)
+    : is_name(component)
+    ? analyze_name(component)
+    : is_application(component)
+    ? analyze_application(component)
+    : is_operator_combination(component)
+    ? analyze(operator_combination_to_application(component))
+    : is_conditional(component)
+    ? analyze_conditional(component)
+    : is_while_loop(component)
+    ? analyze_while_loop(component)
+    : is_lambda_expression(component)
+    ? analyze_lambda_expression(component)
+    : is_sequence(component)
+    ? analyze_sequence(sequence_statements(component))
+    : is_block(component)
+    ? analyze_block(component)
+    : is_return_statement(component)
+    ? analyze_return_statement(component)
+    : is_function_declaration(component)
+    ? analyze(function_decl_to_constant_decl(component))
+    : is_declaration(component)
+    ? analyze_declaration(component)
+    : is_assignment(component)
+    ? analyze_assignment(component)
+    : error(component, "unknown syntax -- analyze");
 
 const is_while_loop = (component: Component): boolean =>
     is_tagged_list(component, "while_loop");
@@ -1216,10 +1216,10 @@ const install_map = (env: Environment): Environment => {
 // knows both representations of functions.
 const install_map = (env: Environment): Environment =>
     extend_environment(
-               list("map"),
-               list(list("primitive",
-                         (f, xs) => map(x => apply(f, list(x)), xs))),
-               env);
+        list("map"),
+        list(list("primitive",
+                  (f, xs) => map(x => apply(f, list(x)), xs))),
+        env);
 `,
 };
 
@@ -1300,8 +1300,8 @@ const declaration_order = (uses: List<Pair<string, List<string>>>): List<string>
     const names = map(head, uses);
     const ready = (entry: Pair<string, List<string>>, waiting: List<string>): boolean =>
         is_null(filter(name => !is_null(member(name, waiting)) &&
-                                      name !== head(entry),
-                              tail(entry)));
+                               name !== head(entry),
+                       tail(entry)));
     const order = (waiting_entries: List<Pair<string, List<string>>>): List<string> => {
         if (is_null(waiting_entries)) {
             return null;
@@ -1339,10 +1339,8 @@ const loops_at_execution = "";
     { name: 'ten statements', kind: 'value', expr: 'alyssa_calls(10) === 10 && text_calls(10) === 9', expected: true },
     { name: 'the work left to execution', kind: 'value', expr: 'loops_at_execution', expected: 'alyssa' },
   ],
-  solution: `const alyssa_calls = (n: number): number =>
-    n;
-const text_calls = (n: number): number =>
-    n - 1;
+  solution: `const alyssa_calls = (n: number): number => n;
+const text_calls = (n: number): number => n - 1;
 const loops_at_execution = "alyssa";
 `,
 };

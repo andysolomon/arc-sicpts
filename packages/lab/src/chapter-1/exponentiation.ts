@@ -8,11 +8,9 @@ export const exptDefinitions = `const expt = (b: number, n: number): number =>
     ? 1
     : b * expt(b, n - 1);
 
-const is_even = (n: number): boolean =>
-  n % 2 === 0;
+const is_even = (n: number): boolean => n % 2 === 0;
 
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
 const fast_expt = (b: number, n: number): number =>
   n === 0
@@ -34,11 +32,9 @@ fast_expt(2, 32);
 fast_expt(2, 64);
 `;
 
-export const fastExptProgram = `const is_even = (n: number): boolean =>
-  n % 2 === 0;
+export const fastExptProgram = `const is_even = (n: number): boolean => n % 2 === 0;
 
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
 const fast_expt = (b: number, n: number): number =>
   n === 0

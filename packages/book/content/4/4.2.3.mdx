@@ -10,12 +10,9 @@ With lazy evaluation, streams and lists can be identical, so there is no need fo
 type Pair<H, T> = <R>(m: (x: H, y: T) => R) => R;
 type List<T> = null | (<R>(m: (x: T, y: List<T>) => R) => R);
 
-const pair = <H, T>(x: H, y: T): Pair<H, T> =>
-    m => m(x, y);
-const head = <H, T>(z: Pair<H, T>): H =>
-    z((p, q) => p);
-const tail = <H, T>(z: Pair<H, T>): T =>
-    z((p, q) => q);
+const pair = <H, T>(x: H, y: T): Pair<H, T> => m => m(x, y);
+const head = <H, T>(z: Pair<H, T>): H => z((p, q) => p);
+const tail = <H, T>(z: Pair<H, T>): T => z((p, q) => q);
 ```
 
 The type declarations say the same: a pair is now a function that hands both of its parts to the function it is given, and a list is made of such pairs. We can install these declarations simply by typing them at the driver loop: the primitive `pair`, `head` and `tail` of the global environment are shadowed by them. In terms of these basic operations, the standard declarations of the list operations work with infinite lists, streams, as well as finite ones, and the stream operations can be implemented as list operations:
@@ -23,22 +20,22 @@ The type declarations say the same: a pair is now a function that hands both of 
 ```js
 const list_ref = <T>(items: List<T>, n: number): T =>
     n === 0
-           ? head(items)
-           : list_ref(tail(items), n - 1);
+    ? head(items)
+    : list_ref(tail(items), n - 1);
 const map = <A, B>(fun: (x: A) => B, items: List<A>): List<B> =>
     is_null(items)
-           ? null
-           : pair(fun(head(items)),
-                  map(fun, tail(items)));
+    ? null
+    : pair(fun(head(items)),
+           map(fun, tail(items)));
 const scale_list = (items: List<number>, factor: number): List<number> =>
     map(x => x * factor, items);
 const add_lists = (list1: List<number>, list2: List<number>): List<number> =>
     is_null(list1)
-           ? list2
-           : is_null(list2)
-           ? list1
-           : pair(head(list1) + head(list2),
-                  add_lists(tail(list1), tail(list2)));
+    ? list2
+    : is_null(list2)
+    ? list1
+    : pair(head(list1) + head(list2),
+           add_lists(tail(list1), tail(list2)));
 const ones = pair(1, ones);
 const integers = pair(1, add_lists(ones, integers));
 ```

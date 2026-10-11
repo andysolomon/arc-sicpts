@@ -166,8 +166,8 @@ If no return statement is encountered during evaluation of the function body, ev
 ```js
 const sqrt_iter = (guess: number, x: number): number =>
     is_good_enough(guess, x)
-           ? guess
-           : sqrt_iter(improve(guess, x), x);
+    ? guess
+    : sqrt_iter(improve(guess, x), x);
 ```
 
 is an iterative process. Even though the function is syntactically recursive (defined in terms of itself), it is not logically necessary for an evaluator to save information in passing from one call to `sqrt_iter` to the next. (In §5.1 we implemented such a process with a register machine that had no stack at all.) An evaluator that can execute a function such as `sqrt_iter` without requiring increasing storage as the function continues to call itself is called a *tail-recursive* evaluator.

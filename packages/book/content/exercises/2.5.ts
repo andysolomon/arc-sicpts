@@ -386,8 +386,7 @@ const install_integer_package = (): "done" => {
   return "done";
 };
 
-const make_integer = (n: number): Tagged<number> =>
-  get("make", "integer")(n);
+const make_integer = (n: number): Tagged<number> => get("make", "integer")(n);
 
 const install_real_package = (): "done" => {
   const tag = (x: number): Tagged<number> => attach_tag("real", x);
@@ -399,8 +398,7 @@ const install_real_package = (): "done" => {
   return "done";
 };
 
-const make_real = (x: number): Tagged<number> =>
-  get("make", "real")(x);
+const make_real = (x: number): Tagged<number> => get("make", "real")(x);
 
 ${rationalPackage}
 ${complexRepresentationPackages}
@@ -421,8 +419,7 @@ const towerComment = `// The prelude is a generic arithmetic system for the towe
 // make_complex_from_real_imag and the complex selectors. A rational
 // number's contents are pair(numer, denom).`;
 
-const raiseSolution = `const raise = (x: unknown): unknown =>
-  apply_generic("raise", x);
+const raiseSolution = `const raise = (x: unknown): unknown => apply_generic("raise", x);
 
 const integer_to_rational = (n: number): Tagged<Rational> =>
   make_rational(n, 1);
@@ -443,8 +440,7 @@ export const exercise_2_83: ExerciseSpec = {
   prelude: towerSystem,
   starter: `${towerComment}
 
-const raise = (x: unknown): unknown =>
-  apply_generic("raise", x);
+const raise = (x: unknown): unknown => apply_generic("raise", x);
 
 // your answer: a raising function for integer, rational and real,
 // each installed in the table as "raise"
@@ -523,8 +519,7 @@ put("is_equal", list("complex", "complex"),
 // raise (Exercise 2.83) and is_equal (Exercise 2.79) are installed for
 // every level, and apply_generic raises as in Exercise 2.84.
 
-const project = (x: unknown): unknown =>
-  apply_generic("project", x);
+const project = (x: unknown): unknown => apply_generic("project", x);
 
 // your answer: install "project" for complex, real and rational
 // (math_round gives the nearest integer), then write drop.
@@ -543,8 +538,7 @@ ${genericOperationDefinitions}`,
     { name: 'answers that cannot drop stay put', kind: 'value', expr: 'equal(mul(make_rational(1, 2), make_integer(3)), make_rational(3, 2)) && equal(add(make_real(0.5), make_rational(1, 2)), make_integer(1))', expected: true },
   ],
   budget: 1_000_000,
-  solution: `const project = (x: unknown): unknown =>
-  apply_generic("project", x);
+  solution: `const project = (x: unknown): unknown => apply_generic("project", x);
 
 put("project", list("complex"),
     z => make_real(real_part(z)));
@@ -685,8 +679,7 @@ type Rectangular = Pair<unknown, unknown>; // real part and imaginary part
 type Polar = Pair<unknown, unknown>;       // magnitude and angle
 type Complex = Tagged<Rectangular | Polar>;
 
-const square = (x: unknown): unknown =>
-  mul(x, x);
+const square = (x: unknown): unknown => mul(x, x);
 
 const install_rectangular_package = (): "done" => {
   const real_part = (z: Rectangular): unknown => head(z);
@@ -694,8 +687,7 @@ const install_rectangular_package = (): "done" => {
   const make_from_real_imag = (x: unknown, y: unknown): Rectangular => pair(x, y);
   const magnitude = (z: Rectangular): number =>
     square_root(add(square(real_part(z)), square(imag_part(z))));
-  const angle = (z: Rectangular): number =>
-    arctan(imag_part(z), real_part(z));
+  const angle = (z: Rectangular): number => arctan(imag_part(z), real_part(z));
   const make_from_mag_ang = (r: unknown, a: unknown): Rectangular =>
     pair(mul(r, cosine(a)), mul(r, sine(a)));
   const tag = (x: Rectangular): Complex => attach_tag("rectangular", x);
@@ -714,10 +706,8 @@ const install_polar_package = (): "done" => {
   const magnitude = (z: Polar): unknown => head(z);
   const angle = (z: Polar): unknown => tail(z);
   const make_from_mag_ang = (r: unknown, a: unknown): Polar => pair(r, a);
-  const real_part = (z: Polar): unknown =>
-    mul(magnitude(z), cosine(angle(z)));
-  const imag_part = (z: Polar): unknown =>
-    mul(magnitude(z), sine(angle(z)));
+  const real_part = (z: Polar): unknown => mul(magnitude(z), cosine(angle(z)));
+  const imag_part = (z: Polar): unknown => mul(magnitude(z), sine(angle(z)));
   const make_from_real_imag = (x: unknown, y: unknown): Polar =>
     pair(square_root(add(square(x), square(y))), arctan(y, x));
   const tag = (x: Polar): Complex => attach_tag("polar", x);

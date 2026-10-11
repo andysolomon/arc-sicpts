@@ -9,8 +9,7 @@ const derivSupport = `${operationTableDefinitions}
 type Expression = number | string | ExpressionList;
 type ExpressionList = null | [Expression, ExpressionList];
 
-const is_variable = (x: Expression): boolean =>
-  is_string(x);
+const is_variable = (x: Expression): boolean => is_string(x);
 
 const is_same_variable = (v1: Expression, v2: Expression): boolean =>
   is_variable(v1) && is_variable(v2) && v1 === v2;
@@ -40,8 +39,7 @@ const make_product = (m1: Expression, m2: Expression): Expression =>
 
 // The value of an expression in x and y at the given point; the checker's own tool.
 const value_at = (exp: Expression, x: number, y: number): number => {
-  const arg = (n: number): number =>
-    value_at(list_ref(exp, n), x, y);
+  const arg = (n: number): number => value_at(list_ref(exp, n), x, y);
   return is_number(exp)
     ? exp
     : exp === "x"
@@ -227,8 +225,7 @@ const install_london_package = (): "done" => {
       : head(head(file)) === name
       ? head(file)
       : get_record(name, tail(file));
-  const get_salary = (record: LondonRecord): number =>
-    head(tail(tail(record)));
+  const get_salary = (record: LondonRecord): number => head(tail(tail(record)));
   put("get_record", list("london"), get_record);
   put("get_salary", list("london"), get_salary);
   return "done";
@@ -404,8 +401,7 @@ const lagos_file = attach_tag("lagos", lagos_records);
 const messagePassingSupport = `// A complex number is a function that answers the name of an operation.
 type Complex = (op: string) => number;
 
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
 const make_from_real_imag = (x: number, y: number): Complex => {
   const dispatch = (op: string): number =>

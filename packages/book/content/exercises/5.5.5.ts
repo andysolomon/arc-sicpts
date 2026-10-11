@@ -78,11 +78,9 @@ const iterative_depth = (n: number): number => {
     { name: 'iterative, n = 2', kind: 'value', expr: 'iterative_depth(2)', expected: 3 },
     { name: 'iterative, n = 10', kind: 'value', expr: 'iterative_depth(10)', expected: 3 },
   ],
-  solution: `const recursive_depth = (n: number): number =>
-    3 * n - 1;
+  solution: `const recursive_depth = (n: number): number => 3 * n - 1;
 
-const iterative_depth = (n: number): number =>
-    3;
+const iterative_depth = (n: number): number => 3;
 `,
 };
 
@@ -230,10 +228,10 @@ ${compileFunction}
   ],
   solution: `const is_open_coded = (component: Component): boolean =>
     is_application(component) &&
-           is_name(function_expression(component)) &&
-           ! is_null(member(symbol_of_name(function_expression(component)),
-                            list("===", "*", "-", "+"))) &&
-           length(arg_expressions(component)) === 2;
+    is_name(function_expression(component)) &&
+    ! is_null(member(symbol_of_name(function_expression(component)),
+                     list("===", "*", "-", "+"))) &&
+    length(arg_expressions(component)) === 2;
 
 const spread_arguments = (argument_expressions: List<Component>): InstructionSequence => {
     const arg1_code = compile(head(argument_expressions), "arg1", "next");
@@ -260,35 +258,35 @@ const compile_open_coded = (component: Component, target: Target, linkage: Linka
 
 const compile = (component: Component, target: Target, linkage: Linkage): InstructionSequence =>
     is_literal(component)
-           ? compile_literal(component, target, linkage)
-           : is_name(component)
-           ? compile_name(component, target, linkage)
-           : is_open_coded(component)
-           ? compile_open_coded(component, target, linkage)
-           : is_application(component)
-           ? compile_application(component, target, linkage)
-           : is_operator_combination(component)
-           ? compile(operator_combination_to_application(component),
-                     target, linkage)
-           : is_conditional(component)
-           ? compile_conditional(component, target, linkage)
-           : is_lambda_expression(component)
-           ? compile_lambda_expression(component, target, linkage)
-           : is_sequence(component)
-           ? compile_sequence(sequence_statements(component),
-                              target, linkage)
-           : is_block(component)
-           ? compile_block(component, target, linkage)
-           : is_return_statement(component)
-           ? compile_return_statement(component, target, linkage)
-           : is_function_declaration(component)
-           ? compile(function_decl_to_constant_decl(component),
-                     target, linkage)
-           : is_declaration(component)
-           ? compile_declaration(component, target, linkage)
-           : is_assignment(component)
-           ? compile_assignment(component, target, linkage)
-           : error(component, "unknown component type -- compile");
+    ? compile_literal(component, target, linkage)
+    : is_name(component)
+    ? compile_name(component, target, linkage)
+    : is_open_coded(component)
+    ? compile_open_coded(component, target, linkage)
+    : is_application(component)
+    ? compile_application(component, target, linkage)
+    : is_operator_combination(component)
+    ? compile(operator_combination_to_application(component),
+              target, linkage)
+    : is_conditional(component)
+    ? compile_conditional(component, target, linkage)
+    : is_lambda_expression(component)
+    ? compile_lambda_expression(component, target, linkage)
+    : is_sequence(component)
+    ? compile_sequence(sequence_statements(component),
+                       target, linkage)
+    : is_block(component)
+    ? compile_block(component, target, linkage)
+    : is_return_statement(component)
+    ? compile_return_statement(component, target, linkage)
+    : is_function_declaration(component)
+    ? compile(function_decl_to_constant_decl(component),
+              target, linkage)
+    : is_declaration(component)
+    ? compile_declaration(component, target, linkage)
+    : is_assignment(component)
+    ? compile_assignment(component, target, linkage)
+    : error(component, "unknown component type -- compile");
 `,
 };
 
@@ -323,8 +321,8 @@ type LexicalAddress = List<number>;
 const lexical_address_values = (address: LexicalAddress, env: Environment): List<unknown> => {
     const frame = (n: number, env: Environment): Frame =>
         n === 0
-               ? first_frame(env)
-               : frame(n - 1, enclosing_environment(env));
+        ? first_frame(env)
+        : frame(n - 1, enclosing_environment(env));
     const drop = <T>(k: number, values: List<T>): List<T> =>
         k === 0 ? values : drop(k - 1, tail(values));
     return drop(head(tail(address)),
@@ -381,14 +379,14 @@ const find_symbol = (
         frames: CompileTimeEnvironment
     ): LexicalAddress | "not found" =>
         is_null(symbols)
-               ? search(tail(frames), frame_number + 1)
-               : head(symbols) === symbol
-               ? list(frame_number, displacement)
-               : scan(tail(symbols), frame_number, displacement + 1, frames);
+        ? search(tail(frames), frame_number + 1)
+        : head(symbols) === symbol
+        ? list(frame_number, displacement)
+        : scan(tail(symbols), frame_number, displacement + 1, frames);
     const search = (frames: CompileTimeEnvironment, frame_number: number): LexicalAddress | "not found" =>
         is_null(frames)
-               ? "not found"
-               : scan(head(frames), frame_number, 0, frames);
+        ? "not found"
+        : scan(head(frames), frame_number, 0, frames);
     return search(compile_time_environment, 0);
 };
 `,
@@ -428,11 +426,9 @@ const special_depth_ratio = 0;
     { name: 'special-purpose / interpreted pushes', kind: 'value', expr: close('special_pushes_ratio', 2 / 32, 1e-9), expected: true },
     { name: 'special-purpose / interpreted depth', kind: 'value', expr: close('special_depth_ratio', 2 / 5, 1e-9), expected: true },
   ],
-  solution: `const compiled_pushes = (n: number): number =>
-    7 * n + 1;
+  solution: `const compiled_pushes = (n: number): number => 7 * n + 1;
 
-const compiled_depth = (n: number): number =>
-    3 * n - 1;
+const compiled_depth = (n: number): number => 3 * n - 1;
 
 const compiled_pushes_ratio = 7 / 32;
 const compiled_depth_ratio = 3 / 5;
@@ -441,8 +437,7 @@ const special_depth_ratio = 2 / 5;
 `,
 };
 
-const fibDeclaration = `const fib = (n: number): number =>
-    n < 2 ? n : fib(n - 1) + fib(n - 2);
+const fibDeclaration = `const fib = (n: number): number => n < 2 ? n : fib(n - 1) + fib(n - 2);
 `;
 
 export const exercise_5_49: ExerciseSpec = {
@@ -472,11 +467,9 @@ const fib_pushes_ratio = 0;
     { name: 'depth for fib(15)', kind: 'value', expr: 'compiled_fib_depth(15)', expected: 44 },
     { name: 'compiled / interpreted pushes', kind: 'value', expr: close('fib_pushes_ratio', 12 / 56, 1e-9), expected: true },
   ],
-  solution: `const compiled_fib_pushes = (n: number): number =>
-    12 * fib(n + 1) - 4;
+  solution: `const compiled_fib_pushes = (n: number): number => 12 * fib(n + 1) - 4;
 
-const compiled_fib_depth = (n: number): number =>
-    3 * n - 1;
+const compiled_fib_depth = (n: number): number => 3 * n - 1;
 
 const fib_pushes_ratio = 12 / 56;
 `,

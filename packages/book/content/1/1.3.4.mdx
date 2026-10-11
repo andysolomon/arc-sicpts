@@ -19,8 +19,7 @@ Return to the fixed-point example of §1.3.3. The square-root search converged o
 Using `average_damp`, the square-root function of §1.3.3 becomes
 
 ```js
-const sqrt = (x: number): number =>
-  fixed_point(average_damp(y => x / y), 1);
+const sqrt = (x: number): number => fixed_point(average_damp(y => x / y), 1);
 ```
 
 This formulation makes three ideas explicit: fixed-point search, average damping, and the function *y* ↦ *x* / *y*. It computes the same thing as §1.1.7, but expressing the process in terms of these abstractions makes the method plainer, and each idea is reusable. The cube root of *x* is a fixed point of *y* ↦ *x* / *y*², so

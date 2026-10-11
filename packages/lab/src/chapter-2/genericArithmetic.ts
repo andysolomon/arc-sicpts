@@ -98,8 +98,7 @@ const div = (x: unknown, y: unknown): unknown => apply_generic("div", x, y);
 
 /** The ordinary-number package of §2.5.1. */
 export const javascriptNumberPackage = `const install_javascript_number_package = (): "done" => {
-  const tag = (x: number): Tagged<number> =>
-    attach_tag("javascript_number", x);
+  const tag = (x: number): Tagged<number> => attach_tag("javascript_number", x);
   put("add", list("javascript_number", "javascript_number"),
       (x, y) => tag(x + y));
   put("sub", list("javascript_number", "javascript_number"),
@@ -118,8 +117,7 @@ const make_javascript_number = (n: number): Tagged<number> =>
 `;
 
 /** The rational-number package of §2.5.1, with §2.1.1's functions inside it. */
-export const rationalPackage = `const gcd = (a: number, b: number): number =>
-  b === 0 ? a : gcd(b, a % b);
+export const rationalPackage = `const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
 
 type Rational = Pair<number, number>;
 
@@ -144,8 +142,7 @@ const install_rational_package = (): "done" => {
     make_rat(numer(x) * denom(y),
              denom(x) * numer(y));
   // interface to rest of the system
-  const tag = (x: Rational): Tagged<Rational> =>
-    attach_tag("rational", x);
+  const tag = (x: Rational): Tagged<Rational> => attach_tag("rational", x);
   put("add", list("rational", "rational"),
       (x, y) => tag(add_rat(x, y)));
   put("sub", list("rational", "rational"),
@@ -171,8 +168,7 @@ type Complex = Tagged<Rectangular | Polar>;
 
 /** The rectangular and polar packages of §2.4.3, and the generic selectors over them. */
 export const complexRepresentationPackages = `${complexTypeDefinitions}
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
 const install_rectangular_package = (): "done" => {
   // internal functions
@@ -203,10 +199,8 @@ const install_polar_package = (): "done" => {
   const magnitude = (z: Polar): number => head(z);
   const angle = (z: Polar): number => tail(z);
   const make_from_mag_ang = (r: number, a: number): Polar => pair(r, a);
-  const real_part = (z: Polar): number =>
-    magnitude(z) * math_cos(angle(z));
-  const imag_part = (z: Polar): number =>
-    magnitude(z) * math_sin(angle(z));
+  const real_part = (z: Polar): number => magnitude(z) * math_cos(angle(z));
+  const imag_part = (z: Polar): number => magnitude(z) * math_sin(angle(z));
   const make_from_real_imag = (x: number, y: number): Polar =>
     pair(math_sqrt(square(x) + square(y)), math_atan2(y, x));
   // interface to the rest of the system

@@ -234,11 +234,9 @@ type TimeSegment = Pair<number, Queue<Action>>;
 const make_time_segment = (time: number, queue: Queue<Action>): TimeSegment =>
   pair(time, queue);
 
-const segment_time = (s: TimeSegment): number =>
-  head(s);
+const segment_time = (s: TimeSegment): number => head(s);
 
-const segment_queue = (s: TimeSegment): Queue<Action> =>
-  tail(s);
+const segment_queue = (s: TimeSegment): Queue<Action> => tail(s);
 ```
 
 The segments are kept in order of increasing time. The agenda itself is a headed list: its head is the current time, and its tail is the list of segments. A new agenda is `list(0)`, with time 0 and no segments, and `current_time`, `set_current_time`, `segments` and `set_segments` read and change the two parts. The agenda is empty when it has no segments.

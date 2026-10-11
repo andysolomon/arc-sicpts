@@ -48,9 +48,9 @@ The Fibonacci numbers come out of a generator in the same way. `fibgen(a, b)` is
 ```js
 const sieve = (stream: Stream<number>): Stream<number> =>
   pair(head(stream),
-              () => sieve(stream_filter(
-                              x => ! is_divisible(x, head(stream)),
-                              stream_tail(stream))));
+       () => sieve(stream_filter(
+                       x => ! is_divisible(x, head(stream)),
+                       stream_tail(stream))));
 
 const primes = sieve(integers_starting_from(2));
 ```
@@ -130,7 +130,7 @@ Here each addition prints its sum, so the animation counts additions. Element 8,
 ```js
 const scale_stream = (stream: Stream<number>, factor: number): Stream<number> =>
   stream_map(x => x * factor,
-                    stream);
+             stream);
 ```
 
 With it, the powers of 2 are a stream that starts with 1 and continues with itself doubled.
@@ -258,7 +258,7 @@ Interpret the stream computed by
 ```js
 const expand = (num: number, den: number, radix: number): Stream<number> =>
   pair(math_trunc((num * radix) / den),
-              () => expand((num * radix) % den, den, radix));
+       () => expand((num * radix) % den, den, radix));
 ```
 
 where `math_trunc` drops the fractional part of its argument. Give the first eight elements of `expand(1, 7, 10)` and of `expand(3, 8, 10)`.

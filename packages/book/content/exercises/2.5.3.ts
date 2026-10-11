@@ -14,15 +14,13 @@ const zeroPolynomial = `const is_zero_terms = (L: TermList): boolean =>
   (is_equal_to_zero(coeff(first_term(L))) &&
    is_zero_terms(rest_terms(L)));
 
-const is_zero_poly = (p: Poly): boolean =>
-  is_zero_terms(term_list(p));
+const is_zero_poly = (p: Poly): boolean => is_zero_terms(term_list(p));
 
 put("is_equal_to_zero", list("polynomial"), is_zero_poly);
 `;
 
 /** Exercise 2.88: generic negation, and subtraction as adding the negation. */
-const polynomialSubtraction = `const negate = (x: unknown): unknown =>
-  apply_generic("negate", x);
+const polynomialSubtraction = `const negate = (x: unknown): unknown => apply_generic("negate", x);
 
 const negate_terms = (L: TermList): TermList => {
   if (is_empty_termlist(L)) {
@@ -37,8 +35,7 @@ const negate_terms = (L: TermList): TermList => {
 const negate_poly = (p: Poly): Poly =>
   make_poly(variable(p), negate_terms(term_list(p)));
 
-const sub_poly = (p1: Poly, p2: Poly): Poly =>
-  add_poly(p1, negate_poly(p2));
+const sub_poly = (p1: Poly, p2: Poly): Poly => add_poly(p1, negate_poly(p2));
 
 put("negate", list("javascript_number"), x => -x);
 put("negate", list("polynomial"),
@@ -267,8 +264,7 @@ put("is_equal_to_zero", list("polynomial"), is_zero_poly);
   (is_equal_to_zero(coeff(first_term(L))) &&
    is_zero_terms(rest_terms(L)));
 
-const is_zero_poly = (p: Poly): boolean =>
-  is_zero_terms(term_list(p));
+const is_zero_poly = (p: Poly): boolean => is_zero_terms(term_list(p));
 
 put("is_equal_to_zero", list("polynomial"), is_zero_poly);
 `,
@@ -281,8 +277,7 @@ export const exercise_2_88: ExerciseSpec = {
 // package of this section with its functions at the top level, and
 // is_equal_to_zero for polynomials (Exercise 2.87).
 
-const negate = (x: unknown): unknown =>
-  apply_generic("negate", x);
+const negate = (x: unknown): unknown => apply_generic("negate", x);
 
 // your answer: install negate for javascript_number and polynomial,
 // and sub for two polynomials
@@ -384,8 +379,7 @@ const coeff = (term: Term): unknown => head(tail(term));
 const first_term = (term_list: TermList): Term =>
   make_term(length(term_list) - 1, head(term_list));
 
-const rest_terms = (term_list: TermList): TermList =>
-  tail(term_list);
+const rest_terms = (term_list: TermList): TermList => tail(term_list);
 
 const adjoin_term = (term: Term, term_list: TermList): TermList =>
   is_equal_to_zero(coeff(term))
@@ -418,10 +412,8 @@ const the_empty_termlist = make_sparse(null);
 
 const is_empty_termlist = (L: TermList): boolean =>
   apply_generic("is_empty_termlist", L);
-const first_term = (L: TermList): Term =>
-  apply_generic("first_term", L);
-const rest_terms = (L: TermList): TermList =>
-  apply_generic("rest_terms", L);
+const first_term = (L: TermList): Term => apply_generic("first_term", L);
+const rest_terms = (L: TermList): TermList => apply_generic("rest_terms", L);
 const adjoin_term = (term: Term, L: TermList): TermList =>
   is_equal_to_zero(coeff(term))
     ? L
@@ -594,8 +586,7 @@ export const exercise_2_92: ExerciseSpec = {
 // Order the variables alphabetically: a polynomial in "x" may have
 // polynomials in "y" as coefficients, never the other way round.
 
-const variable_precedes = (v1: string, v2: string): boolean =>
-  v1 < v2;
+const variable_precedes = (v1: string, v2: string): boolean => v1 < v2;
 
 // your answer: install "add" and "mul" for two polynomials in any
 // variables, and for a polynomial and a number in either order
@@ -626,11 +617,9 @@ const variable_precedes = (v1: string, v2: string): boolean =>
       expected: 'list("polynomial", "x", list(1, 1), list(0, 4))',
     },
   ],
-  solution: `const variable_precedes = (v1: string, v2: string): boolean =>
-  v1 < v2;
+  solution: `const variable_precedes = (v1: string, v2: string): boolean => v1 < v2;
 
-const is_poly = (x: unknown): boolean =>
-  type_tag(x) === "polynomial";
+const is_poly = (x: unknown): boolean => type_tag(x) === "polynomial";
 
 // The variable that comes first among the polynomials x and y (tagged).
 const principal_variable = (x: unknown, y: unknown): string =>

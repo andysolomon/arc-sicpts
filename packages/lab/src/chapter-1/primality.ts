@@ -3,11 +3,9 @@
  * Θ(√n) steps and one that trusts Fermat in Θ(log n).
  */
 
-export const smallestDivisorDefinitions = `const square = (x: number): number =>
-  x * x;
+export const smallestDivisorDefinitions = `const square = (x: number): number => x * x;
 
-const smallest_divisor = (n: number): number =>
-  find_divisor(n, 2);
+const smallest_divisor = (n: number): number => find_divisor(n, 2);
 
 const find_divisor = (n: number, test_divisor: number): number =>
   square(test_divisor) > n
@@ -16,19 +14,16 @@ const find_divisor = (n: number, test_divisor: number): number =>
       ? test_divisor
       : find_divisor(n, test_divisor + 1);
 
-const divides = (a: number, b: number): boolean =>
-  b % a === 0;
+const divides = (a: number, b: number): boolean => b % a === 0;
 
-const is_prime = (n: number): boolean =>
-  n === smallest_divisor(n);
+const is_prime = (n: number): boolean => n === smallest_divisor(n);
 `;
 
 export const smallestDivisorProgram = `${smallestDivisorDefinitions}
 smallest_divisor(91);
 `;
 
-export const expmodDefinitions = `const is_even = (n: number): boolean =>
-  n % 2 === 0;
+export const expmodDefinitions = `const is_even = (n: number): boolean => n % 2 === 0;
 
 const expmod = (base: number, exp: number, m: number): number =>
   exp === 0
@@ -40,8 +35,7 @@ const expmod = (base: number, exp: number, m: number): number =>
 
 export const fermatDefinitions = `${expmodDefinitions}
 const fermat_test = (n: number): boolean => {
-  const try_it = (a: number): boolean =>
-    expmod(a, n, n) === a;
+  const try_it = (a: number): boolean => expmod(a, n, n) === a;
   return try_it(1 + math_floor(math_random() * (n - 1)));
 };
 
@@ -53,8 +47,7 @@ const fast_is_prime = (n: number, times: number): boolean =>
       : false;
 `;
 
-export const fermatProgram = `const square = (x: number): number =>
-  x * x;
+export const fermatProgram = `const square = (x: number): number => x * x;
 
 ${fermatDefinitions}
 display(fast_is_prime(1009, 10));

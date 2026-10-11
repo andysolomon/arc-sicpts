@@ -243,8 +243,7 @@ const make_account = (balance: number, password: string): Account => {
     balance = balance + amount;
     return balance;
   };
-  const refuse = (amount: number): string =>
-    "Incorrect password";
+  const refuse = (amount: number): string => "Incorrect password";
   const dispatch = (p: string, m: "withdraw" | "deposit"): Transaction => {
     if (p !== password) {
       wrong_attempts = wrong_attempts + 1;
@@ -312,8 +311,7 @@ const estimate_integral = (
   // your answer
 };
 
-const in_unit_circle = (x: number, y: number): boolean =>
-  x * x + y * y <= 1;
+const in_unit_circle = (x: number, y: number): boolean => x * x + y * y <= 1;
 
 estimate_integral(in_unit_circle, -1, 1, -1, 1, 1000);
 `,
@@ -362,8 +360,7 @@ estimate_integral(in_unit_circle, -1, 1, -1, 1, 1000);
   return monte_carlo(trials, experiment) * (x2 - x1) * (y2 - y1);
 };
 
-const in_unit_circle = (x: number, y: number): boolean =>
-  x * x + y * y <= 1;
+const in_unit_circle = (x: number, y: number): boolean => x * x + y * y <= 1;
 
 estimate_integral(in_unit_circle, -1, 1, -1, 1, 1000);
 `,

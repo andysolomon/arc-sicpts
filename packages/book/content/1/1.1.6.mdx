@@ -1,5 +1,4 @@
-export const conditionals = `const abs = (x: number): number =>
-  x >= 0 ? x : -x;
+export const conditionals = `const abs = (x: number): number => x >= 0 ? x : -x;
 
 const sign = (x: number): number =>
   x > 0
@@ -16,11 +15,9 @@ display(sign(-12));
 is_between(5, 1, 10);
 `;
 
-export const orderTest = `const p = (): number =>
-  p();
+export const orderTest = `const p = (): number => p();
 
-const test = (x: number, y: number): number =>
-  x === 0 ? 0 : y;
+const test = (x: number, y: number): number => x === 0 ? 0 : y;
 
 test(0, p());
 `;

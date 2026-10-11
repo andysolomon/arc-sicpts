@@ -15,30 +15,30 @@ const evaluate = (component: Component, env: Environment): unknown =>
 
 const analyze = (component: Component): Execution =>
     is_literal(component)
-           ? analyze_literal(component)
-           : is_name(component)
-           ? analyze_name(component)
-           : is_application(component)
-           ? analyze_application(component)
-           : is_operator_combination(component)
-           ? analyze(operator_combination_to_application(component))
-           : is_conditional(component)
-           ? analyze_conditional(component)
-           : is_lambda_expression(component)
-           ? analyze_lambda_expression(component)
-           : is_sequence(component)
-           ? analyze_sequence(sequence_statements(component))
-           : is_block(component)
-           ? analyze_block(component)
-           : is_return_statement(component)
-           ? analyze_return_statement(component)
-           : is_function_declaration(component)
-           ? analyze(function_decl_to_constant_decl(component))
-           : is_declaration(component)
-           ? analyze_declaration(component)
-           : is_assignment(component)
-           ? analyze_assignment(component)
-           : error(component, "unknown syntax -- analyze");
+    ? analyze_literal(component)
+    : is_name(component)
+    ? analyze_name(component)
+    : is_application(component)
+    ? analyze_application(component)
+    : is_operator_combination(component)
+    ? analyze(operator_combination_to_application(component))
+    : is_conditional(component)
+    ? analyze_conditional(component)
+    : is_lambda_expression(component)
+    ? analyze_lambda_expression(component)
+    : is_sequence(component)
+    ? analyze_sequence(sequence_statements(component))
+    : is_block(component)
+    ? analyze_block(component)
+    : is_return_statement(component)
+    ? analyze_return_statement(component)
+    : is_function_declaration(component)
+    ? analyze(function_decl_to_constant_decl(component))
+    : is_declaration(component)
+    ? analyze_declaration(component)
+    : is_assignment(component)
+    ? analyze_assignment(component)
+    : error(component, "unknown syntax -- analyze");
 
 const analyze_literal = (component: Component): Execution =>
     env => literal_value(component);
@@ -84,16 +84,16 @@ const analyze_lambda_expression = (component: Component): Execution => {
 const analyze_sequence = (stmts: List<Component>): Execution => {
     const sequentially = (fun1: Execution, fun2: Execution): Execution =>
         env => {
-                   const fun1_val = fun1(env);
-                   return is_return_value(fun1_val)
-                          ? fun1_val
-                          : fun2(env);
-               };
+            const fun1_val = fun1(env);
+            return is_return_value(fun1_val)
+                   ? fun1_val
+                   : fun2(env);
+        };
     const loop = (first_fun: Execution, rest_funs: List<Execution>): Execution =>
         is_null(rest_funs)
-               ? first_fun
-               : loop(sequentially(first_fun, head(rest_funs)),
-                      tail(rest_funs));
+        ? first_fun
+        : loop(sequentially(first_fun, head(rest_funs)),
+               tail(rest_funs));
     const funs = map(analyze, stmts);
     return is_null(funs)
            ? env => undefined

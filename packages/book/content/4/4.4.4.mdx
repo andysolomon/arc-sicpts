@@ -62,11 +62,11 @@ For each frame of the input, `simple_query` matches the pattern against all asse
 ```js
 const simple_query = (query_pattern: Pattern, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
-               frame =>
-                 stream_append_delayed(
-                     find_assertions(query_pattern, frame),
-                     () => apply_rules(query_pattern, frame)),
-               frame_stream);
+        frame =>
+          stream_append_delayed(
+              find_assertions(query_pattern, frame),
+              () => apply_rules(query_pattern, frame)),
+        frame_stream);
 ```
 
 `conjoin` handles `and` as a series combination: it finds the extensions that satisfy the first conjunct, and uses that stream as the input of the rest. `disjoin` handles `or` in parallel, merging the streams with `interleave_delayed`. `put` makes `evaluate_query` dispatch to them.
@@ -74,18 +74,18 @@ const simple_query = (query_pattern: Pattern, frame_stream: FrameStream): FrameS
 ```js
 const conjoin = (conjuncts: List<Query>, frame_stream: FrameStream): FrameStream =>
     is_empty_conjunction(conjuncts)
-           ? frame_stream
-           : conjoin(rest_conjuncts(conjuncts),
-                     evaluate_query(first_conjunct(conjuncts),
-                                    frame_stream));
+    ? frame_stream
+    : conjoin(rest_conjuncts(conjuncts),
+              evaluate_query(first_conjunct(conjuncts),
+                             frame_stream));
 put("and", "evaluate_query", conjoin);
 
 const disjoin = (disjuncts: List<Query>, frame_stream: FrameStream): FrameStream =>
     is_empty_disjunction(disjuncts)
-           ? null
-           : interleave_delayed(
-                 evaluate_query(first_disjunct(disjuncts), frame_stream),
-                 () => disjoin(rest_disjuncts(disjuncts), frame_stream));
+    ? null
+    : interleave_delayed(
+          evaluate_query(first_disjunct(disjuncts), frame_stream),
+          () => disjoin(rest_disjuncts(disjuncts), frame_stream));
 put("or", "evaluate_query", disjoin);
 ```
 
@@ -94,24 +94,24 @@ put("or", "evaluate_query", disjoin);
 ```js
 const negate = (exps: List<Query>, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
-               frame =>
-                 is_null(evaluate_query(negated_query(exps),
-                                        singleton_stream(frame)))
-                 ? singleton_stream(frame)
-                 : null,
-               frame_stream);
+        frame =>
+          is_null(evaluate_query(negated_query(exps),
+                                 singleton_stream(frame)))
+          ? singleton_stream(frame)
+          : null,
+        frame_stream);
 put("not", "evaluate_query", negate);
 
 const javascript_predicate = (exps: List<Component>, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
-               frame =>
-                 evaluate(instantiate_expression(
-                              javascript_predicate_expression(exps),
-                              frame),
-                          the_global_environment)
-                 ? singleton_stream(frame)
-                 : null,
-               frame_stream);
+        frame =>
+          evaluate(instantiate_expression(
+                       javascript_predicate_expression(exps),
+                       frame),
+                   the_global_environment)
+          ? singleton_stream(frame)
+          : null,
+        frame_stream);
 put("javascript_predicate", "evaluate_query", javascript_predicate);
 ```
 
@@ -122,18 +122,18 @@ put("javascript_predicate", "evaluate_query", javascript_predicate);
 ```js
 const pattern_match = (pattern: Pattern, data: Pattern, frame: QueryFrame | "failed"): QueryFrame | "failed" =>
     frame === "failed"
-           ? "failed"
-           : equal(pattern, data)
-           ? frame
-           : is_variable(pattern)
-           ? extend_if_consistent(pattern, data, frame)
-           : is_pair(pattern) && is_pair(data)
-           ? pattern_match(tail(pattern),
-                           tail(data),
-                           pattern_match(head(pattern),
-                                         head(data),
-                                         frame))
-           : "failed";
+    ? "failed"
+    : equal(pattern, data)
+    ? frame
+    : is_variable(pattern)
+    ? extend_if_consistent(pattern, data, frame)
+    : is_pair(pattern) && is_pair(data)
+    ? pattern_match(tail(pattern),
+                    tail(data),
+                    pattern_match(head(pattern),
+                                  head(data),
+                                  frame))
+    : "failed";
 
 const extend_if_consistent = (variable: Variable, data: Pattern, frame: QueryFrame): QueryFrame | "failed" => {
     const binding = binding_in_frame(variable, frame);
@@ -220,10 +220,10 @@ const stream_flatmap = <A, B>(fun: (x: A) => Stream<B>, s: Stream<A>): Stream<B>
     flatten_stream(stream_map(fun, s));
 const flatten_stream = <T>(stream: Stream<Stream<T>>): Stream<T> =>
     is_null(stream)
-           ? null
-           : interleave_delayed(
-                 head(stream),
-                 () => flatten_stream(stream_tail(stream)));
+    ? null
+    : interleave_delayed(
+          head(stream),
+          () => flatten_stream(stream_tail(stream)));
 ```
 
 The delays and the interleaving matter, in ways exercises 4.68 to 4.70 explore: without them, some queries that have answers never produce one.
@@ -281,16 +281,16 @@ Louis Reasoner wonders why `simple_query` and `disjoin` are implemented using de
 ```js
 const simple_query = (query_pattern: Pattern, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
-               frame =>
-                 stream_append(find_assertions(query_pattern, frame),
-                               apply_rules(query_pattern, frame)),
-               frame_stream);
+        frame =>
+          stream_append(find_assertions(query_pattern, frame),
+                        apply_rules(query_pattern, frame)),
+        frame_stream);
 const disjoin = (disjuncts: List<Query>, frame_stream: FrameStream): FrameStream =>
     is_empty_disjunction(disjuncts)
-           ? null
-           : interleave(
-                 evaluate_query(first_disjunct(disjuncts), frame_stream),
-                 disjoin(rest_disjuncts(disjuncts), frame_stream));
+    ? null
+    : interleave(
+          evaluate_query(first_disjunct(disjuncts), frame_stream),
+          disjoin(rest_disjuncts(disjuncts), frame_stream));
 ```
 
 Can you give examples of queries where these simpler definitions would lead to undesirable behaviour? The check runs your query in the real system, which must find an answer, and in Louis’s, which must give up without one after 100 rule applications.
@@ -318,9 +318,9 @@ Why does `flatten_stream` use a delayed expression in its body? What would be wr
 ```js
 const flatten_stream = <T>(stream: Stream<Stream<T>>): Stream<T> =>
     is_null(stream)
-           ? null
-           : interleave(head(stream),
-                        flatten_stream(stream_tail(stream)));
+    ? null
+    : interleave(head(stream),
+                 flatten_stream(stream_tail(stream)));
 ```
 
 Give a query that has an answer which this version cannot produce. The check runs it in the real system and in one with this `flatten_stream`, which gives up after 100 rule applications.

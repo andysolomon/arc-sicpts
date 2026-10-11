@@ -39,7 +39,7 @@ const officeSolution = (alyssa: number, ben: number, cy: number, lem: number, lo
 /** `analyze` of the amb evaluator with one more clause just before `before`. */
 function analyzeWith(clause: string, before: string): string {
   const analyze = pick(ambEvaluator, 'analyze');
-  const at = analyze.indexOf(`           : ${before}(component)`);
+  const at = analyze.indexOf(`    : ${before}(component)`);
   if (at < 0) throw new Error(`analyze has no clause for ${before}`);
   return `${analyze.slice(0, at)}${clause}${analyze.slice(at)}\n`;
 }
@@ -90,9 +90,9 @@ const an_integer_between = (low: number, high: number): number => {
 /** True when `triples` are n different Pythagorean triples (i, j, k) with i ≤ j. */
 const tripleChecks = `const is_triple = (t: unknown): boolean =>
     is_list(t) && length(t) === 3 &&
-           list_ref(t, 0) >= 1 && list_ref(t, 0) <= list_ref(t, 1) &&
-           list_ref(t, 0) * list_ref(t, 0) + list_ref(t, 1) * list_ref(t, 1)
-           === list_ref(t, 2) * list_ref(t, 2);
+    list_ref(t, 0) >= 1 && list_ref(t, 0) <= list_ref(t, 1) &&
+    list_ref(t, 0) * list_ref(t, 0) + list_ref(t, 1) * list_ref(t, 1)
+    === list_ref(t, 2) * list_ref(t, 2);
 const all_different = <T>(xs: List<T>): boolean => {
     const occurs = (x: T, ys: List<T>): boolean =>
         ! is_null(ys) && (equal(x, head(ys)) || occurs(x, tail(ys)));
@@ -346,11 +346,11 @@ office_move();
   solution: `// The permutations of a list, as in section 2.2.3.
 const permutations = <T>(s: List<T>): List<List<T>> =>
     is_null(s)
-           ? list(null)
-           : accumulate(append, null,
-                        map(x => map(p => pair(x, p),
-                                     permutations(remove(x, s))),
-                            s));
+    ? list(null)
+    : accumulate(append, null,
+                 map(x => map(p => pair(x, p),
+                              permutations(remove(x, s))),
+                     s));
 const remove = <T>(item: T, sequence: List<T>): List<T> =>
     filter(x => x !== item, sequence);
 
@@ -490,13 +490,13 @@ const solutions_without_alyssa_meta =
 const queensChecks = `const is_board = (rows: unknown, n: number): boolean => {
     const safe = (row: number, rest: List<number>, distance: number): boolean =>
         is_null(rest) ||
-               (head(rest) !== row &&
-                math_abs(head(rest) - row) !== distance &&
-                safe(row, tail(rest), distance + 1));
+        (head(rest) !== row &&
+         math_abs(head(rest) - row) !== distance &&
+         safe(row, tail(rest), distance + 1));
     const all_safe = (rows: List<number>): boolean =>
         is_null(rows) ||
-               (head(rows) >= 1 && head(rows) <= n &&
-                safe(head(rows), tail(rows), 1) && all_safe(tail(rows)));
+        (head(rows) >= 1 && head(rows) <= n &&
+         safe(head(rows), tail(rows), 1) && all_safe(tail(rows)));
     return is_list(rows) && length(rows) === n && all_safe(rows);
 };
 const are_boards = (boards: List<unknown>, n: number, count: number): boolean => {
@@ -504,8 +504,8 @@ const are_boards = (boards: List<unknown>, n: number, count: number): boolean =>
         ! is_null(ys) && (equal(x, head(ys)) || occurs(x, tail(ys)));
     const check = (bs: List<unknown>): boolean =>
         is_null(bs) ||
-               (is_board(head(bs), n) && ! occurs(head(bs), tail(bs)) &&
-                check(tail(bs)));
+        (is_board(head(bs), n) && ! occurs(head(bs), tail(bs)) &&
+         check(tail(bs)));
     return length(boards) === count && check(boards);
 };
 `;
@@ -645,15 +645,15 @@ const words_it_accepts = list();
   solution: `// Evaluate the rest of the arguments first, then this one.
 const get_args = (afuns: List<Execution>, env: Environment, succeed: Succeed, fail: Fail): unknown =>
     is_null(afuns)
-           ? succeed(null, fail)
-           : get_args(tail(afuns),
-                      env,
-                      (args, fail2) =>
-                        head(afuns)(env,
-                                    (arg, fail3) =>
-                                      succeed(pair(arg, args), fail3),
-                                    fail2),
-                      fail);
+    ? succeed(null, fail)
+    : get_args(tail(afuns),
+               env,
+               (args, fail2) =>
+                 head(afuns)(env,
+                             (arg, fail3) =>
+                               succeed(pair(arg, args), fail3),
+                             fail2),
+               fail);
 
 // parse_sentence now parses its verb phrase before its noun phrase, and
 // a simple noun phrase its noun before its article: the parser reads the
@@ -746,12 +746,12 @@ const parse_simple_noun_phrase = (): ParseTree =>
 /** True when the first n sentences generated are different and all parse. */
 const generationChecks = `const words_of = (tree: List<unknown>): List<string> =>
     is_string(head(tail(tree)))
-           ? tail(tree)
-           : accumulate(append, null, map(words_of, tail(tree)));
+    ? tail(tree)
+    : accumulate(append, null, map(words_of, tail(tree)));
 const quoted_words = (words: List<string>): string =>
     is_null(tail(words))
-           ? "\\"" + head(words) + "\\""
-           : "\\"" + head(words) + "\\", " + quoted_words(tail(words));
+    ? "\\"" + head(words) + "\\""
+    : "\\"" + head(words) + "\\", " + quoted_words(tail(words));
 const parses = (words: List<string>): boolean =>
     ! is_null(amb_solutions(list(book_grammar,
         "parse_input(list(" + quoted_words(words) + "));"), 1));
@@ -760,8 +760,8 @@ const generated_sentences_parse = (sentences: List<List<unknown>>, n: number): b
         ! is_null(ys) && (equal(x, head(ys)) || occurs(x, tail(ys)));
     const check = (ss: List<List<unknown>>): boolean =>
         is_null(ss) ||
-               (head(head(ss)) === "sentence" && parses(words_of(head(ss))) &&
-                ! occurs(head(ss), tail(ss)) && check(tail(ss)));
+        (head(head(ss)) === "sentence" && parses(words_of(head(ss))) &&
+         ! occurs(head(ss), tail(ss)) && check(tail(ss)));
     return length(sentences) === n && check(sentences);
 };
 `;
@@ -803,17 +803,17 @@ const ambEvaluatorWithout = (...names: string[]): string => omit(ambEvaluator, .
 
 const isApplicationOf = (name: string, fn: string): string => `const ${fn} = (component: Component): boolean =>
     is_tagged_list(component, "application") &&
-           is_name(function_expression(component)) &&
-           symbol_of_name(function_expression(component)) === "${name}";`;
+    is_name(function_expression(component)) &&
+    symbol_of_name(function_expression(component)) === "${name}";`;
 
 /** True when xs and ys hold the same numbers, in any order. */
 const sameNumbers = `const same_numbers = (xs: List<number>, ys: List<number>): boolean => {
     const remove_one = (x: number, zs: List<number>): List<number> =>
         is_null(zs)
-               ? null
-               : head(zs) === x
-               ? tail(zs)
-               : pair(head(zs), remove_one(x, tail(zs)));
+        ? null
+        : head(zs) === x
+        ? tail(zs)
+        : pair(head(zs), remove_one(x, tail(zs)));
     return is_null(xs)
            ? is_null(ys)
            : ! is_null(member(head(xs), ys)) &&
@@ -821,8 +821,8 @@ const sameNumbers = `const same_numbers = (xs: List<number>, ys: List<number>): 
 };
 `;
 
-const rambClause = `           : is_ramb(component)
-           ? analyze_ramb(component)
+const rambClause = `    : is_ramb(component)
+    ? analyze_ramb(component)
 `;
 
 export const exercise_4_48: ExerciseSpec = {
@@ -856,8 +856,8 @@ ${analyzeWith(rambClause, 'is_application')}
     const first = head(amb_solutions("ramb(1, 2, 3, 4, 5, 6, 7, 8);", 1));
     const differs = (k: number): boolean =>
         k > 0 &&
-               (head(amb_solutions("ramb(1, 2, 3, 4, 5, 6, 7, 8);", 1)) !== first ||
-                differs(k - 1));
+        (head(amb_solutions("ramb(1, 2, 3, 4, 5, 6, 7, 8);", 1)) !== first ||
+         differs(k - 1));
     return differs(15);
 })()`,
       expected: true,
@@ -956,13 +956,12 @@ const with_undoable_assignment = list(list("a", "b", 1), list("a", "c", 1));
 `,
 };
 
-const ifFailClause = `           : is_if_fail(component)
-           ? analyze_if_fail(component)
+const ifFailClause = `    : is_if_fail(component)
+    ? analyze_if_fail(component)
 `;
 
 const allOdd = (items: string): string =>
-  quoted(`const is_even = (n: number): boolean =>
-    n % 2 === 0;
+  quoted(`const is_even = (n: number): boolean => n % 2 === 0;
 if (evaluation_succeeds_take) {
     const x = an_element_of(list(${items}));
     require(is_even(x));
@@ -1000,9 +999,9 @@ ${analyzeWith(ifFailClause, 'is_conditional')}
   budget: 2_000_000,
   solution: `const is_if_fail = (component: Component): boolean =>
     is_tagged_list(component, "conditional_statement") &&
-           is_name(conditional_predicate(component)) &&
-           symbol_of_name(conditional_predicate(component)) ===
-             "evaluation_succeeds_take";
+    is_name(conditional_predicate(component)) &&
+    symbol_of_name(conditional_predicate(component)) ===
+      "evaluation_succeeds_take";
 
 // Run the consequent with a failure continuation that runs the
 // alternative instead of failing.

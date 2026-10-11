@@ -8,15 +8,12 @@ const tree = `// A list whose elements are leaves or trees.
 type Tree<T> = null | [T | Tree<T>, Tree<T>];
 `;
 
-const square = `const square = (x: number): number =>
-  x * x;
+const square = `const square = (x: number): number => x * x;
 `;
 
-const plusTimes = `const plus = (x: number, y: number): number =>
-  x + y;
+const plusTimes = `const plus = (x: number, y: number): number => x + y;
 
-const times = (x: number, y: number): number =>
-  x * y;
+const times = (x: number, y: number): number => x * y;
 `;
 
 // §2.2.1
@@ -116,8 +113,7 @@ const first_denomination = (coin_values: List<number>): number =>
 const except_first_denomination = (coin_values: List<number>): List<number> =>
   tail(coin_values);
 
-const no_more = (coin_values: List<number>): boolean =>
-  is_null(coin_values);
+const no_more = (coin_values: List<number>): boolean => is_null(coin_values);
 
 const order_matters = false;
 
@@ -125,8 +121,7 @@ cc(100, us_coins);
 `,
 };
 
-const plusCurried = `const plus_curried = (x: number): ((y: number) => number) =>
-  y => x + y;
+const plusCurried = `const plus_curried = (x: number): ((y: number) => number) => y => x + y;
 `;
 
 export const exercise_2_20: ExerciseSpec = {
@@ -334,11 +329,9 @@ const pick_c = (xs: Tree<number>): number => {
     { name: 'the third shape, another value', kind: 'value', expr: 'pick_c(list(1, list(2, list(3, list(4, list(5, list(6, 9)))))))', expected: 9 },
   ],
   solution: `${tree}
-const pick_a = (xs: Tree<number>): number =>
-  head(tail(head(tail(tail(xs)))));
+const pick_a = (xs: Tree<number>): number => head(tail(head(tail(tail(xs)))));
 
-const pick_b = (xs: Tree<number>): number =>
-  head(head(xs));
+const pick_b = (xs: Tree<number>): number => head(head(xs));
 
 const pick_c = (xs: Tree<number>): number =>
   head(tail(head(tail(head(tail(head(tail(head(tail(head(tail(xs))))))))))));
@@ -447,8 +440,7 @@ const mobiles = `// A mobile is list(left, right) and a branch is list(length, s
 type Mobile = [Branch, [Branch, null]];
 type Branch = [number, [number | Mobile, null]];
 
-const make_mobile = (left: Branch, right: Branch): Mobile =>
-  list(left, right);
+const make_mobile = (left: Branch, right: Branch): Mobile => list(left, right);
 
 const make_branch = (length: number, structure: number | Mobile): Branch =>
   list(length, structure);
@@ -512,14 +504,11 @@ const changes = null;
     },
   ],
   solution: `${mobiles}
-const left_branch = (mobile: Mobile): Branch =>
-  head(mobile);
+const left_branch = (mobile: Mobile): Branch => head(mobile);
 
-const right_branch = (mobile: Mobile): Branch =>
-  head(tail(mobile));
+const right_branch = (mobile: Mobile): Branch => head(tail(mobile));
 
-const branch_length = (branch: Branch): number =>
-  head(branch);
+const branch_length = (branch: Branch): number => head(branch);
 
 const branch_structure = (branch: Branch): number | Mobile =>
   head(tail(branch));
@@ -586,9 +575,9 @@ const square_tree = (tree: number | Tree<number>): number | Tree<number> =>
 
 const square_tree_map = (tree: Tree<number>): Tree<number> =>
   map(sub_tree => is_pair(sub_tree)
-                         ? square_tree_map(sub_tree)
-                         : square(sub_tree),
-             tree);
+                  ? square_tree_map(sub_tree)
+                  : square(sub_tree),
+      tree);
 
 square_tree(${sampleTree});
 `,
@@ -618,9 +607,9 @@ square_tree(${sampleTree});
   solution: `${tree}
 const tree_map = <A, B>(f: (x: A) => B, tree: Tree<A>): Tree<B> =>
   map(sub_tree => is_pair(sub_tree)
-                         ? tree_map(f, sub_tree)
-                         : f(sub_tree),
-             tree);
+                  ? tree_map(f, sub_tree)
+                  : f(sub_tree),
+      tree);
 
 const square_tree = (tree: Tree<number>): Tree<number> =>
   tree_map(square, tree);
@@ -706,8 +695,8 @@ export const exercise_2_34: ExerciseSpec = {
   starter: `// Coefficients from a_0 up to a_n. Replace undefined.
 const horner_eval = (x: number, coefficient_sequence: List<number>): number =>
   accumulate((this_coeff, higher_terms) => undefined,
-                    0,
-                    coefficient_sequence);
+             0,
+             coefficient_sequence);
 
 // 1 + 3x + 5x³ + x⁵ at x = 2
 horner_eval(2, list(1, 3, 0, 5, 0, 1));
@@ -719,8 +708,8 @@ horner_eval(2, list(1, 3, 0, 5, 0, 1));
   ],
   solution: `const horner_eval = (x: number, coefficient_sequence: List<number>): number =>
   accumulate((this_coeff, higher_terms) => this_coeff + x * higher_terms,
-                    0,
-                    coefficient_sequence);
+             0,
+             coefficient_sequence);
 
 horner_eval(2, list(1, 3, 0, 5, 0, 1));
 `,
@@ -831,8 +820,7 @@ matrix_times_vector(m, list(1, 2, 3, 4));
 const matrix_times_vector = (m: Matrix, v: List<number>): List<number> =>
   map(row => dot_product(row, v), m);
 
-const transpose = (mat: Matrix): Matrix =>
-  accumulate_n(pair, null, mat);
+const transpose = (mat: Matrix): Matrix => accumulate_n(pair, null, mat);
 
 const matrix_times_matrix = (m: Matrix, n: Matrix): Matrix => {
   const cols = transpose(n);
@@ -845,11 +833,9 @@ matrix_times_vector(m, list(1, 2, 3, 4));
 };
 
 const folds = `${plusTimes}
-const minus = (x: number, y: number): number =>
-  x - y;
+const minus = (x: number, y: number): number => x - y;
 
-const divide = (x: number, y: number): number =>
-  x / y;
+const divide = (x: number, y: number): number => x / y;
 
 const fold_right = <T, R>(op: (x: T, acc: R) => R, initial: R, sequence: List<T>): R =>
   accumulate(op, initial, sequence);
@@ -939,7 +925,7 @@ const primeSumParts = `const is_prime_sum = (pair: List<number>): boolean =>
 
 const make_pair_sum = (pair: List<number>): List<number> =>
   list(head(pair), head(tail(pair)),
-              head(pair) + head(tail(pair)));
+       head(pair) + head(tail(pair)));
 `;
 
 export const exercise_2_40: ExerciseSpec = {
@@ -973,12 +959,12 @@ prime_sum_pairs(6);
   ],
   solution: `const unique_pairs = (n: number): List<List<number>> =>
   flatmap(i => map(j => list(i, j),
-                          enumerate_interval(1, i - 1)),
-                 enumerate_interval(1, n));
+                   enumerate_interval(1, i - 1)),
+          enumerate_interval(1, n));
 
 const prime_sum_pairs = (n: number): List<List<number>> =>
   map(make_pair_sum,
-             filter(is_prime_sum, unique_pairs(n)));
+      filter(is_prime_sum, unique_pairs(n)));
 
 prime_sum_pairs(6);
 `,
@@ -1015,17 +1001,17 @@ triples_with_sum(6, 10);
   ],
   solution: `const unique_pairs = (n: number): List<List<number>> =>
   flatmap(i => map(j => list(i, j),
-                          enumerate_interval(1, i - 1)),
-                 enumerate_interval(1, n));
+                   enumerate_interval(1, i - 1)),
+          enumerate_interval(1, n));
 
 const unique_triples = (n: number): List<List<number>> =>
   flatmap(i => map(jk => pair(i, jk),
-                          unique_pairs(i - 1)),
-                 enumerate_interval(1, n));
+                   unique_pairs(i - 1)),
+          enumerate_interval(1, n));
 
 const triples_with_sum = (n: number, s: number): List<List<number>> =>
   filter(t => head(t) + head(tail(t)) + head(tail(tail(t))) === s,
-                unique_triples(n));
+         unique_triples(n));
 
 triples_with_sum(6, 10);
 `,
@@ -1116,8 +1102,7 @@ length(queens(4));
   solution: `${queensDefinition}
 // queen_cols(k) applies queen_cols(k - 1) once for each of the n rows,
 // so queen_cols(k) is applied n^(n - k) times: 1 + n + ... + n^n in all.
-const louis_calls = (n: number): number =>
-  (math_pow(n, n + 1) - 1) / (n - 1);
+const louis_calls = (n: number): number => (math_pow(n, n + 1) - 1) / (n - 1);
 
 // The original tries 15 720 positions on the 8 × 8 board; Louis's tries the
 // positions of column k again 8^(8 - k) times, about 51 million in all.

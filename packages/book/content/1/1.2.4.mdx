@@ -5,8 +5,7 @@ import { exptGrowthProgram, fastExptProgram } from '@sicp/lab';
 Consider computing the exponential of a number: given a base *b* and a non-negative integer exponent *n*, compute *b*ⁿ. The recursive definition *b*ⁿ = *b* · *b*ⁿ⁻¹, *b*⁰ = 1 translates into `expt` below, a linear recursive process with Θ(*n*) steps and Θ(*n*) space. As with factorial, an iterative version keeps a running product and needs Θ(*n*) steps but only Θ(1) space:
 
 ```js
-const expt = (b: number, n: number): number =>
-  expt_iter(b, n, 1);
+const expt = (b: number, n: number): number => expt_iter(b, n, 1);
 
 const expt_iter = (b: number, counter: number, product: number): number =>
   counter === 0

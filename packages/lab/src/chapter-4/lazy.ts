@@ -11,33 +11,33 @@ import { declaredNames, omit } from './source.ts';
 /** `evaluate` with the one clause that changes: applications pass argument expressions and the environment. */
 export const lazyEvaluate = `const evaluate = (component: Component, env: Environment): unknown =>
     is_literal(component)
-           ? literal_value(component)
-           : is_name(component)
-           ? lookup_symbol_value(symbol_of_name(component), env)
-           : is_application(component)
-           ? apply(actual_value(function_expression(component), env),
-                   arg_expressions(component), env)
-           : is_operator_combination(component)
-           ? evaluate(operator_combination_to_application(component),
-                      env)
-           : is_conditional(component)
-           ? eval_conditional(component, env)
-           : is_lambda_expression(component)
-           ? make_function(lambda_parameter_symbols(component),
-                           lambda_body(component), env)
-           : is_sequence(component)
-           ? eval_sequence(sequence_statements(component), env)
-           : is_block(component)
-           ? eval_block(component, env)
-           : is_return_statement(component)
-           ? eval_return_statement(component, env)
-           : is_function_declaration(component)
-           ? evaluate(function_decl_to_constant_decl(component), env)
-           : is_declaration(component)
-           ? eval_declaration(component, env)
-           : is_assignment(component)
-           ? eval_assignment(component, env)
-           : error(component, "unknown syntax -- evaluate");
+    ? literal_value(component)
+    : is_name(component)
+    ? lookup_symbol_value(symbol_of_name(component), env)
+    : is_application(component)
+    ? apply(actual_value(function_expression(component), env),
+            arg_expressions(component), env)
+    : is_operator_combination(component)
+    ? evaluate(operator_combination_to_application(component),
+               env)
+    : is_conditional(component)
+    ? eval_conditional(component, env)
+    : is_lambda_expression(component)
+    ? make_function(lambda_parameter_symbols(component),
+                    lambda_body(component), env)
+    : is_sequence(component)
+    ? eval_sequence(sequence_statements(component), env)
+    : is_block(component)
+    ? eval_block(component, env)
+    : is_return_statement(component)
+    ? eval_return_statement(component, env)
+    : is_function_declaration(component)
+    ? evaluate(function_decl_to_constant_decl(component), env)
+    : is_declaration(component)
+    ? eval_declaration(component, env)
+    : is_assignment(component)
+    ? eval_assignment(component, env)
+    : error(component, "unknown syntax -- evaluate");
 `;
 
 /** `actual_value`, the new `apply` and the two ways of handling arguments. */
@@ -71,8 +71,8 @@ const list_of_delayed_args = (exps: List<Component>, env: Environment): List<Thu
 
 const eval_conditional = (component: Component, env: Environment): unknown =>
     is_truthy(actual_value(conditional_predicate(component), env))
-           ? evaluate(conditional_consequent(component), env)
-           : evaluate(conditional_alternative(component), env);
+    ? evaluate(conditional_consequent(component), env)
+    : evaluate(conditional_alternative(component), env);
 `;
 
 /** Thunks: an expression with its environment, replaced by its value when first forced. */
@@ -82,8 +82,7 @@ type Thunk = List<unknown>;
 
 const delay_it = (exp: Component, env: Environment): Thunk =>
     list("thunk", exp, env);
-const is_thunk = (obj: unknown): boolean =>
-    is_tagged_list(obj, "thunk");
+const is_thunk = (obj: unknown): boolean => is_tagged_list(obj, "thunk");
 const thunk_exp = (thunk: Thunk): Component => head(tail(thunk));
 
 const thunk_env = (thunk: Thunk): Environment => head(tail(tail(thunk)));
@@ -111,8 +110,8 @@ const force_it = (obj: unknown): unknown => {
 /** The first `force_it` of §4.2.2, which evaluates a thunk's expression every time it is forced. */
 export const unmemoizedForceIt = `const force_it = (obj: unknown): unknown =>
     is_thunk(obj)
-           ? actual_value(thunk_exp(obj), thunk_env(obj))
-           : obj;
+    ? actual_value(thunk_exp(obj), thunk_env(obj))
+    : obj;
 `;
 
 /** The driver loop forces what it prints. Like §4.1.4's, it takes its inputs from a list. */
@@ -194,8 +193,7 @@ export const unmemoizedLazyEvaluator = `${lazyEvaluatorWithout('force_it')}
 ${unmemoizedForceIt}`;
 
 /** §4.2.1: in ordinary, applicative-order Source, `head(null)` is evaluated before `try_me` is entered. */
-export const tryMeStrictProgram = `const try_me = (a: number, b: number): number =>
-    a === 0 ? 1 : b;
+export const tryMeStrictProgram = `const try_me = (a: number, b: number): number => a === 0 ? 1 : b;
 
 try_me(0, head(null));
 `;

@@ -384,7 +384,7 @@ const sum_of = (variable: string, input: string): number => {
     };
     const is_seen = (answer: Pattern, seen: List<Pattern>): boolean =>
         ! is_null(seen) &&
-               (equal(answer, head(seen)) || is_seen(answer, tail(seen)));
+        (equal(answer, head(seen)) || is_seen(answer, tail(seen)));
     const frames = distinct(stream_to_list(query_frames(input)), null);
     return accumulate((frame, total) =>
                           instantiate_term(make_name(variable), frame) + total,
@@ -447,10 +447,10 @@ const canonical = (pattern: Pattern, frame: QueryFrame): Pattern => {
     let seen: List<Variable> = null;
     const number_of = (variable: Variable, vars: List<Variable>, n: number): number | undefined =>
         is_null(vars)
-               ? undefined
-               : equal(variable, head(vars))
-               ? n
-               : number_of(variable, tail(vars), n + 1);
+        ? undefined
+        : equal(variable, head(vars))
+        ? n
+        : number_of(variable, tail(vars), n + 1);
     const walk = (term: Pattern): Pattern => {
         if (is_variable(term)) {
             if (is_undefined(number_of(term, seen, 0))) {
@@ -468,7 +468,7 @@ const canonical = (pattern: Pattern, frame: QueryFrame): Pattern => {
 
 const is_in_progress = (key: Pattern, patterns: List<Pattern>): boolean =>
     ! is_null(patterns) &&
-           (equal(key, head(patterns)) || is_in_progress(key, tail(patterns)));
+    (equal(key, head(patterns)) || is_in_progress(key, tail(patterns)));
 
 const apply_a_rule = (rule: Rule, query_pattern: Pattern, query_frame: QueryFrame): FrameStream => {
     const key = canonical(query_pattern, query_frame);
@@ -594,7 +594,7 @@ const simple_flatten = <T>(stream: Stream<Stream<T>>): Stream<T> => {
     simple_flatten(stream_map(fun, s));
 const simple_flatten = <T>(stream: Stream<Stream<T>>): Stream<T> =>
     stream_map(s => head(s),
-                      stream_filter(s => ! is_null(s), stream));
+               stream_filter(s => ! is_null(s), stream));
 `,
 };
 
@@ -618,15 +618,15 @@ const supervises_one = ''; // your answer
   ],
   solution: `const uniquely_asserted = (exps: List<Query>, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
-               frame => {
-                   const extensions = evaluate_query(head(exps),
-                                                     singleton_stream(frame));
-                   return ! is_null(extensions) &&
-                          is_null(stream_tail(extensions))
-                          ? extensions
-                          : null;
-               },
-               frame_stream);
+        frame => {
+            const extensions = evaluate_query(head(exps),
+                                              singleton_stream(frame));
+            return ! is_null(extensions) &&
+                   is_null(stream_tail(extensions))
+                   ? extensions
+                   : null;
+        },
+        frame_stream);
 put("unique", "evaluate_query", uniquely_asserted);
 
 const supervises_one =
@@ -649,10 +649,10 @@ const merge_frames = (frame1: QueryFrame, frame2: QueryFrame | "failed"): QueryF
 // separately on the incoming frame, then merge the results.
 const conjoin = (conjuncts: List<Query>, frame_stream: FrameStream): FrameStream =>
     is_empty_conjunction(conjuncts)
-           ? frame_stream
-           : conjoin(rest_conjuncts(conjuncts),
-                     evaluate_query(first_conjunct(conjuncts),
-                                    frame_stream));
+    ? frame_stream
+    : conjoin(rest_conjuncts(conjuncts),
+              evaluate_query(first_conjunct(conjuncts),
+                             frame_stream));
 `,
   tests: [
     {
@@ -680,23 +680,23 @@ const conjoin = (conjuncts: List<Query>, frame_stream: FrameStream): FrameStream
   ],
   solution: `const merge_frames = (frame1: QueryFrame, frame2: QueryFrame | "failed"): QueryFrame | "failed" =>
     frame2 === "failed" || is_null(frame1)
-           ? frame2
-           : merge_frames(tail(frame1),
-                          unify_match(binding_variable(head(frame1)),
-                                      binding_value(head(frame1)),
-                                      frame2));
+    ? frame2
+    : merge_frames(tail(frame1),
+                   unify_match(binding_variable(head(frame1)),
+                               binding_value(head(frame1)),
+                               frame2));
 
 const conjoin = (conjuncts: List<Query>, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(frame => conjoin_from(conjuncts, frame),
-                          frame_stream);
+                   frame_stream);
 
 // Each conjunct extends the same frame; the extensions are then merged.
 const conjoin_from = (conjuncts: List<Query>, frame: QueryFrame): FrameStream =>
     is_empty_conjunction(conjuncts)
-           ? singleton_stream(frame)
-           : merge_streams(evaluate_query(first_conjunct(conjuncts),
-                                          singleton_stream(frame)),
-                           conjoin_from(rest_conjuncts(conjuncts), frame));
+    ? singleton_stream(frame)
+    : merge_streams(evaluate_query(first_conjunct(conjuncts),
+                                   singleton_stream(frame)),
+                    conjoin_from(rest_conjuncts(conjuncts), frame));
 
 // Every compatible pair of a frame from s1 and a frame from s2. The
 // frames of s2 are listed once, so that its queries are not re-run.
@@ -853,16 +853,16 @@ const example = 'married("Mickey", $who)';
 const appendingPostlude = variantPostlude(
   `const disjoin = (disjuncts: List<Query>, frame_stream: FrameStream): FrameStream =>
     is_empty_disjunction(disjuncts)
-           ? null
-           : stream_append_delayed(
-                 evaluate_query(first_disjunct(disjuncts), frame_stream),
-                 () => disjoin(rest_disjuncts(disjuncts), frame_stream));
+    ? null
+    : stream_append_delayed(
+          evaluate_query(first_disjunct(disjuncts), frame_stream),
+          () => disjoin(rest_disjuncts(disjuncts), frame_stream));
 const flatten_stream = <T>(stream: Stream<Stream<T>>): Stream<T> =>
     is_null(stream)
-           ? null
-           : stream_append_delayed(
-                 head(stream),
-                 () => flatten_stream(stream_tail(stream)));`,
+    ? null
+    : stream_append_delayed(
+          head(stream),
+          () => flatten_stream(stream_tail(stream)));`,
   'disjoin',
   'flatten_stream',
 );
@@ -911,14 +911,14 @@ const lost_value = "red";
 const eagerFlattenPostlude = variantPostlude(
   `const flatten_stream = <T>(stream: Stream<Stream<T>>): Stream<T> =>
     is_null(stream)
-           ? null
-           : interleave(head(stream),
-                        flatten_stream(stream_tail(stream)));
+    ? null
+    : interleave(head(stream),
+                 flatten_stream(stream_tail(stream)));
 const interleave = <T>(s1: Stream<T>, s2: Stream<T>): Stream<T> =>
     is_null(s1)
-           ? s2
-           : pair(head(s1),
-                  () => interleave(s2, stream_tail(s1)));
+    ? s2
+    : pair(head(s1),
+           () => interleave(s2, stream_tail(s1)));
 ${givingUpApplyARule}`,
   'flatten_stream',
   'apply_a_rule',
@@ -961,35 +961,35 @@ export const exercise_4_74: ExerciseSpec = {
 // Filters still waiting at the end of an and are checked there.
 const negate = (exps: List<Query>, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
-               frame =>
-                 is_null(evaluate_query(negated_query(exps),
-                                        singleton_stream(frame)))
-                 ? singleton_stream(frame)
-                 : null,
-               frame_stream);
+        frame =>
+          is_null(evaluate_query(negated_query(exps),
+                                 singleton_stream(frame)))
+          ? singleton_stream(frame)
+          : null,
+        frame_stream);
 const javascript_predicate = (exps: List<Component>, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
-               frame =>
-                 evaluate(instantiate_expression(
-                              javascript_predicate_expression(exps),
-                              frame),
-                          the_global_environment)
-                 ? singleton_stream(frame)
-                 : null,
-               frame_stream);
+        frame =>
+          evaluate(instantiate_expression(
+                       javascript_predicate_expression(exps),
+                       frame),
+                   the_global_environment)
+          ? singleton_stream(frame)
+          : null,
+        frame_stream);
 const simple_query = (query_pattern: Pattern, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
-               frame =>
-                 stream_append_delayed(
-                     find_assertions(query_pattern, frame),
-                     () => apply_rules(query_pattern, frame)),
-               frame_stream);
+        frame =>
+          stream_append_delayed(
+              find_assertions(query_pattern, frame),
+              () => apply_rules(query_pattern, frame)),
+        frame_stream);
 const conjoin = (conjuncts: List<Query>, frame_stream: FrameStream): FrameStream =>
     is_empty_conjunction(conjuncts)
-           ? frame_stream
-           : conjoin(rest_conjuncts(conjuncts),
-                     evaluate_query(first_conjunct(conjuncts),
-                                    frame_stream));
+    ? frame_stream
+    : conjoin(rest_conjuncts(conjuncts),
+              evaluate_query(first_conjunct(conjuncts),
+                             frame_stream));
 `,
   tests: [
     countIs('not before the pattern that binds it', `'and(not(job($x, list("computer", "programmer"))), supervisor($x, $y))'`, 6),
@@ -1008,32 +1008,32 @@ const pending = (frame: QueryFrame): List<Filter> => {
 
 const has_variable = (term: Pattern): boolean =>
     is_variable(term) ||
-           (is_pair(term) && (has_variable(head(term)) ||
-                              has_variable(tail(term))));
+    (is_pair(term) && (has_variable(head(term)) ||
+                       has_variable(tail(term))));
 
 // True when every variable in exp has a value without variables.
 const is_ready = (exp: Pattern, frame: QueryFrame): boolean =>
     is_variable(exp)
-           ? ! has_variable(instantiate_term(exp, frame))
-           : is_pair(exp)
-           ? is_ready(head(exp), frame) && is_ready(tail(exp), frame)
-           : true;
+    ? ! has_variable(instantiate_term(exp, frame))
+    : is_pair(exp)
+    ? is_ready(head(exp), frame) && is_ready(tail(exp), frame)
+    : true;
 
 // A filter is pair("not", query) or pair("javascript_predicate", expression).
 type Filter = Pair<"not" | "javascript_predicate", Pattern>;
 
 const passes = (filter: Filter, frame: QueryFrame): boolean =>
     head(filter) === "not"
-           ? is_null(evaluate_query(tail(filter), singleton_stream(frame)))
-           : evaluate(instantiate_expression(tail(filter), frame),
-                      the_global_environment);
+    ? is_null(evaluate_query(tail(filter), singleton_stream(frame)))
+    : evaluate(instantiate_expression(tail(filter), frame),
+               the_global_environment);
 
 const filter_or_wait = (filter: Filter, frame: QueryFrame): FrameStream =>
     is_ready(tail(filter), frame)
-           ? (passes(filter, frame) ? singleton_stream(frame) : null)
-           : singleton_stream(extend(pending_name,
-                                     pair(filter, pending(frame)),
-                                     frame));
+    ? (passes(filter, frame) ? singleton_stream(frame) : null)
+    : singleton_stream(extend(pending_name,
+                              pair(filter, pending(frame)),
+                              frame));
 
 // Check the waiting filters that have become ready, or with force all
 // of them, in the frame without them, so that none checks itself.
@@ -1053,31 +1053,31 @@ const check_pending = (frame: QueryFrame, force: boolean): FrameStream => {
 
 const negate = (exps: List<Query>, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
-               frame => filter_or_wait(pair("not", negated_query(exps)), frame),
-               frame_stream);
+        frame => filter_or_wait(pair("not", negated_query(exps)), frame),
+        frame_stream);
 const javascript_predicate = (exps: List<Component>, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
-               frame => filter_or_wait(
-                            pair("javascript_predicate",
-                                 javascript_predicate_expression(exps)),
-                            frame),
-               frame_stream);
+        frame => filter_or_wait(
+                     pair("javascript_predicate",
+                          javascript_predicate_expression(exps)),
+                     frame),
+        frame_stream);
 const simple_query = (query_pattern: Pattern, frame_stream: FrameStream): FrameStream =>
     stream_flatmap(
-               frame =>
-                 stream_flatmap(
-                     extended => check_pending(extended, false),
-                     stream_append_delayed(
-                         find_assertions(query_pattern, frame),
-                         () => apply_rules(query_pattern, frame))),
-               frame_stream);
+        frame =>
+          stream_flatmap(
+              extended => check_pending(extended, false),
+              stream_append_delayed(
+                  find_assertions(query_pattern, frame),
+                  () => apply_rules(query_pattern, frame))),
+        frame_stream);
 const conjoin = (conjuncts: List<Query>, frame_stream: FrameStream): FrameStream => {
     const conjoin_all = (conjuncts: List<Query>, frame_stream: FrameStream): FrameStream =>
         is_empty_conjunction(conjuncts)
-               ? frame_stream
-               : conjoin_all(rest_conjuncts(conjuncts),
-                             evaluate_query(first_conjunct(conjuncts),
-                                            frame_stream));
+        ? frame_stream
+        : conjoin_all(rest_conjuncts(conjuncts),
+                      evaluate_query(first_conjunct(conjuncts),
+                                     frame_stream));
     return stream_flatmap(frame => check_pending(frame, true),
                           conjoin_all(conjuncts, frame_stream));
 };
@@ -1135,7 +1135,7 @@ const streams_reach_red = true;
 `,
 };
 
-const noRenamingPostlude = variantPostlude('const rename_variables_in = (rule: Rule): Rule =>\n    rule;', 'rename_variables_in');
+const noRenamingPostlude = variantPostlude('const rename_variables_in = (rule: Rule): Rule => rule;', 'rename_variables_in');
 
 export const exercise_4_76: ExerciseSpec = {
   id: '4.76',

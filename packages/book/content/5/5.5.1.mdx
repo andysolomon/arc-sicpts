@@ -9,33 +9,33 @@ The function `compile` is the top-level dispatch in the compiler. It corresponds
 ```js
 const compile = (component: Component, target: Target, linkage: Linkage): InstructionSequence =>
     is_literal(component)
-           ? compile_literal(component, target, linkage)
-           : is_name(component)
-           ? compile_name(component, target, linkage)
-           : is_application(component)
-           ? compile_application(component, target, linkage)
-           : is_operator_combination(component)
-           ? compile(operator_combination_to_application(component),
-                     target, linkage)
-           : is_conditional(component)
-           ? compile_conditional(component, target, linkage)
-           : is_lambda_expression(component)
-           ? compile_lambda_expression(component, target, linkage)
-           : is_sequence(component)
-           ? compile_sequence(sequence_statements(component),
-                              target, linkage)
-           : is_block(component)
-           ? compile_block(component, target, linkage)
-           : is_return_statement(component)
-           ? compile_return_statement(component, target, linkage)
-           : is_function_declaration(component)
-           ? compile(function_decl_to_constant_decl(component),
-                     target, linkage)
-           : is_declaration(component)
-           ? compile_declaration(component, target, linkage)
-           : is_assignment(component)
-           ? compile_assignment(component, target, linkage)
-           : error(component, "unknown component type -- compile");
+    ? compile_literal(component, target, linkage)
+    : is_name(component)
+    ? compile_name(component, target, linkage)
+    : is_application(component)
+    ? compile_application(component, target, linkage)
+    : is_operator_combination(component)
+    ? compile(operator_combination_to_application(component),
+              target, linkage)
+    : is_conditional(component)
+    ? compile_conditional(component, target, linkage)
+    : is_lambda_expression(component)
+    ? compile_lambda_expression(component, target, linkage)
+    : is_sequence(component)
+    ? compile_sequence(sequence_statements(component),
+                       target, linkage)
+    : is_block(component)
+    ? compile_block(component, target, linkage)
+    : is_return_statement(component)
+    ? compile_return_statement(component, target, linkage)
+    : is_function_declaration(component)
+    ? compile(function_decl_to_constant_decl(component),
+              target, linkage)
+    : is_declaration(component)
+    ? compile_declaration(component, target, linkage)
+    : is_assignment(component)
+    ? compile_assignment(component, target, linkage)
+    : error(component, "unknown component type -- compile");
 ```
 
 ## Targets and linkages
@@ -127,8 +127,7 @@ const make_instruction_sequence = (
     needs: List<string>,
     modifies: List<string>,
     instructions: List<Instruction | string>
-): InstructionSequence =>
-    list(needs, modifies, instructions);
+): InstructionSequence => list(needs, modifies, instructions);
 ```
 
 For example, the two-instruction sequence that looks up the value of the symbol `"x"` in the current environment, assigns the result to `val`, and then proceeds to the continuation, requires registers `env` and `continue` to have been initialised, and modifies register `val`. This sequence would therefore be constructed as

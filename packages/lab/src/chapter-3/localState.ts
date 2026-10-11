@@ -106,8 +106,7 @@ acc("withdraw")(60);
  * Every product stays below 2⁵³, so the arithmetic is exact, and the same
  * `random_init` always gives the same sequence.
  */
-export const randUpdateDefinitions = `const rand_update = (x: number): number =>
-  (48271 * x) % 2147483647;
+export const randUpdateDefinitions = `const rand_update = (x: number): number => (48271 * x) % 2147483647;
 
 const random_init = 2026;
 `;
@@ -129,8 +128,7 @@ display(rand());
 rand();
 `;
 
-export const gcdForRandomDefinition = `const gcd = (a: number, b: number): number =>
-  b === 0 ? a : gcd(b, a % b);
+export const gcdForRandomDefinition = `const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
 `;
 
 export const monteCarloDefinition = `const monte_carlo = (trials: number, experiment: () => boolean): number => {
@@ -149,8 +147,7 @@ export const monteCarloProgram = `${randUpdateDefinitions}
 ${randDefinition}
 ${gcdForRandomDefinition}
 ${monteCarloDefinition}
-const cesaro_test = (): boolean =>
-  gcd(rand(), rand()) === 1;
+const cesaro_test = (): boolean => gcd(rand(), rand()) === 1;
 
 const estimate_pi = (trials: number): number =>
   math_sqrt(6 / monte_carlo(trials, cesaro_test));
@@ -165,8 +162,7 @@ estimate_pi(1000);
 export const monteCarloSeriesProgram = `${randUpdateDefinitions}
 ${randDefinition}
 ${gcdForRandomDefinition}
-const cesaro_test = (): boolean =>
-  gcd(rand(), rand()) === 1;
+const cesaro_test = (): boolean => gcd(rand(), rand()) === 1;
 
 // monte_carlo, reporting the estimate of π every 25 trials.
 const monte_carlo_reporting = (trials: number, experiment: () => boolean): number => {

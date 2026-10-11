@@ -149,8 +149,7 @@ The new `cc` has the same form as the old one, but it accesses its second argume
 In the presence of higher-order functions, functions need not have more than one parameter. If a function such as `plus` naturally takes two arguments, we can write a variant to which we pass the arguments one at a time: applying it to the first argument returns a function that we apply to the second, and so on. This practice is called *currying*, after the logician Haskell Brooks Curry, and is common in languages such as Haskell and OCaml. In JavaScript, a curried `plus` is
 
 ```js
-const plus_curried = (x: number): ((y: number) => number) =>
-  y => x + y;
+const plus_curried = (x: number): ((y: number) => number) => y => x + y;
 ```
 
 Write a function `brooks` that takes a curried function as its first argument and as its second a list of arguments, to which the curried function is applied one by one, in order. `brooks(plus_curried, list(3, 4))` should have the same effect as `plus_curried(3)(4)`.

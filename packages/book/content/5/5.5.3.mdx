@@ -299,10 +299,10 @@ The instructions to revert the stack using the marker and then restore `continue
 ```js
 const compile_return_statement = (stmt: Component, target: Target, linkage: Linkage): InstructionSequence =>
     append_instruction_sequences(
-               make_instruction_sequence(null, list("continue"),
-                   list(revert_stack_to_marker(),
-                        restore("continue"))),
-               compile(return_expression(stmt), "val", "return"));
+        make_instruction_sequence(null, list("continue"),
+            list(revert_stack_to_marker(),
+                 restore("continue"))),
+        compile(return_expression(stmt), "val", "return"));
 ```
 
 </Prose>

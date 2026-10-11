@@ -7,8 +7,8 @@ One way to see what a program means is as the description of an abstract machine
 ```js
 const factorial = (n: number): number =>
     n === 1
-           ? 1
-           : factorial(n - 1) * n;
+    ? 1
+    : factorial(n - 1) * n;
 ```
 
 describes a machine with parts that decrement, multiply and test for equality, a two-position switch, and another factorial machine inside it. The machine is infinite because it contains a copy of itself.
@@ -55,8 +55,8 @@ const run_forever = (): never => run_forever();
 
 const strange = (f: (x: unknown) => unknown): "halted" =>
     halts(f, f)
-           ? run_forever()
-           : "halted";
+    ? run_forever()
+    : "halted";
 ```
 
 Now consider evaluating `strange(strange)` and show that any possible outcome, either halting or running forever, violates the intended behavior of `halts`. The checker asks what `strange(strange)` does for each answer `halts` could give.

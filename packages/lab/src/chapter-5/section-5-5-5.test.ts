@@ -141,8 +141,7 @@ describe('section 5.5.7: interfacing compiled code to the evaluator', () => {
 
   it('exercise 5.49: fib compiled uses 12 Fib(n + 1) − 4 pushes and depth 3n − 1', () => {
     const sizes = [0, 1, 2, 3, 4, 5, 6, 8, 10, 15];
-    const fib = `const fib = (n: number): number =>
-    n < 2 ? n : fib(n - 1) + fib(n - 2);`;
+    const fib = 'const fib = (n: number): number => n < 2 ? n : fib(n - 1) + fib(n - 2);';
     expect(interfacingFibCompareProgram).toContain(fib);
     const compiled = runCompiled(fib, sizes.map((n) => `fib(${n});`)).results.slice(1);
     const machine = special(interfacingSpecialFib, sizes);

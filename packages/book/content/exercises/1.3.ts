@@ -5,17 +5,13 @@ import { close, type ExerciseSpec } from './spec.ts';
 
 const basics = `type NumFn = (x: number) => number;
 
-const inc = (n: number): number =>
-  n + 1;
+const inc = (n: number): number => n + 1;
 
-const identity = (x: number): number =>
-  x;
+const identity = (x: number): number => x;
 
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
-const cube = (x: number): number =>
-  x * x * x;
+const cube = (x: number): number => x * x * x;
 `;
 
 export const exercise_1_29: ExerciseSpec = {
@@ -38,8 +34,7 @@ const simpson = (f: NumFn, a: number, b: number, n: number): number => {
   ],
   solution: `const simpson = (f: NumFn, a: number, b: number, n: number): number => {
   const h = (b - a) / n;
-  const y = (k: number): number =>
-    f(a + k * h);
+  const y = (k: number): number => f(a + k * h);
   const term = (k: number): number =>
     (k === 0 || k === n ? 1 : k % 2 === 1 ? 4 : 2) * y(k);
   return (h / 3) * sum(term, 0, inc, n);
@@ -120,8 +115,7 @@ const product_iter = (term: NumFn, a: number, next: NumFn, b: number): number =>
   return iter(a, 1);
 };
 
-const factorial = (n: number): number =>
-  product(identity, 1, inc, n);
+const factorial = (n: number): number => product(identity, 1, inc, n);
 
 const wallis_pi = (n: number): number => {
   // The k-th factor is (2k)(2k + 2) / (2k + 1)².
@@ -148,11 +142,9 @@ const accumulate = (
   // your answer
 };
 
-const plus = (x: number, y: number): number =>
-  x + y;
+const plus = (x: number, y: number): number => x + y;
 
-const times = (x: number, y: number): number =>
-  x * y;
+const times = (x: number, y: number): number => x * y;
 
 const sum = (term: NumFn, a: number, next: NumFn, b: number): number => {
   // your answer, using accumulate
@@ -180,11 +172,9 @@ const product = (term: NumFn, a: number, next: NumFn, b: number): number => {
     ? null_value
     : combiner(term(a), accumulate(combiner, null_value, term, next(a), next, b));
 
-const plus = (x: number, y: number): number =>
-  x + y;
+const plus = (x: number, y: number): number => x + y;
 
-const times = (x: number, y: number): number =>
-  x * y;
+const times = (x: number, y: number): number => x * y;
 
 const sum = (term: NumFn, a: number, next: NumFn, b: number): number =>
   accumulate(plus, 0, term, a, next, b);
@@ -197,8 +187,7 @@ const product = (term: NumFn, a: number, next: NumFn, b: number): number =>
 export const exercise_1_33: ExerciseSpec = {
   id: '1.33',
   prelude: `${basics}
-const gcd = (a: number, b: number): number =>
-  b === 0 ? a : gcd(b, a % b);
+const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
 
 const is_prime = (n: number): boolean => {
   const find = (d: number): boolean =>
@@ -219,11 +208,9 @@ const filtered_accumulate = (
   // your answer
 };
 
-const plus = (x: number, y: number): number =>
-  x + y;
+const plus = (x: number, y: number): number => x + y;
 
-const times = (x: number, y: number): number =>
-  x * y;
+const times = (x: number, y: number): number => x * y;
 
 // The sum of the squares of the primes from a to b.
 const sum_of_prime_squares = (a: number, b: number): number => {
@@ -256,18 +243,15 @@ const product_of_coprimes = (n: number): number => {
       ? combiner(term(a), filtered_accumulate(combiner, null_value, term, next(a), next, b, filter))
       : filtered_accumulate(combiner, null_value, term, next(a), next, b, filter);
 
-const plus = (x: number, y: number): number =>
-  x + y;
+const plus = (x: number, y: number): number => x + y;
 
-const times = (x: number, y: number): number =>
-  x * y;
+const times = (x: number, y: number): number => x * y;
 
 const sum_of_prime_squares = (a: number, b: number): number =>
   filtered_accumulate(plus, 0, square, a, inc, b, is_prime);
 
 const product_of_coprimes = (n: number): number => {
-  const is_coprime = (i: number): boolean =>
-    gcd(i, n) === 1;
+  const is_coprime = (i: number): boolean => gcd(i, n) === 1;
   return filtered_accumulate(times, 1, identity, 1, inc, n - 1, is_coprime);
 };
 `,
@@ -275,11 +259,9 @@ const product_of_coprimes = (n: number): number => {
 
 export const exercise_1_34: ExerciseSpec = {
   id: '1.34',
-  starter: `const square = (x: number): number =>
-  x * x;
+  starter: `const square = (x: number): number => x * x;
 
-const f = (g: (x: number) => number): number =>
-  g(2);
+const f = (g: (x: number) => number): number => g(2);
 
 // Work out f(f) by substitution before running it. When the evaluator
 // gives up, what value is it trying to apply, and to what argument?
@@ -291,11 +273,9 @@ const argument_value = undefined;
     { name: 'the value being applied', kind: 'value', expr: 'operator_value', expected: 2 },
     { name: 'the argument it is applied to', kind: 'value', expr: 'argument_value', expected: 2 },
   ],
-  solution: `const square = (x: number): number =>
-  x * x;
+  solution: `const square = (x: number): number => x * x;
 
-const f = (g: (x: number) => number): number =>
-  g(2);
+const f = (g: (x: number) => number): number => g(2);
 
 // f(f) → f(2) → 2(2): the number 2 is not a function.
 const operator_value = 2;
@@ -339,8 +319,7 @@ const fixed_point = (f: NumFn, first_guess: number): number => {
 };
 
 // x^x = 1000 means x = log(1000) / log(x).
-const f = (x: number): number =>
-  math_log(1000) / math_log(x);
+const f = (x: number): number => math_log(1000) / math_log(x);
 
 // The same map with average damping.
 const damped = (x: number): number => {
@@ -372,26 +351,22 @@ const fixed_point = (f: NumFn, first_guess: number): number => {
   return try_with(first_guess);
 };
 
-const f = (x: number): number =>
-  math_log(1000) / math_log(x);
+const f = (x: number): number => math_log(1000) / math_log(x);
 
-const damped = (x: number): number =>
-  average(x, f(x));
+const damped = (x: number): number => average(x, f(x));
 
 display(fixed_point(f, 2));
 fixed_point(damped, 2);
 `,
 };
 
-const one = `const one = (i: number): number =>
-  1;`;
+const one = `const one = (i: number): number => 1;`;
 
 export const exercise_1_37: ExerciseSpec = {
   id: '1.37',
   prelude: `${one}
 
-const identity_n = (i: number): number =>
-  i;`,
+const identity_n = (i: number): number => i;`,
   starter: `// one(i) returns 1 and identity_n(i) returns i, for every i.
 
 // The k-term finite continued fraction N1 / (D1 + N2 / (D2 + ... Nk / Dk)).
@@ -457,8 +432,7 @@ const euler_d = (i: number): number => {
   // your answer
 };
 
-const e_approx = (k: number): number =>
-  2 + cont_frac(one, euler_d, k);
+const e_approx = (k: number): number => 2 + cont_frac(one, euler_d, k);
 `,
   tests: [
     { name: 'the first terms', kind: 'value', expr: 'euler_d(1) * 100 + euler_d(2) * 10 + euler_d(3)', expected: 121 },
@@ -468,8 +442,7 @@ const e_approx = (k: number): number =>
   solution: `const euler_d = (i: number): number =>
   (i + 1) % 3 === 0 ? (2 * (i + 1)) / 3 : 1;
 
-const e_approx = (k: number): number =>
-  2 + cont_frac(one, euler_d, k);
+const e_approx = (k: number): number => 2 + cont_frac(one, euler_d, k);
 `,
 };
 
@@ -489,10 +462,8 @@ const tan_cf = (x: number, k: number): number => {
     { name: 'tan π/4', kind: 'value', expr: close('tan_cf(math_PI / 4, 20)', 1, 1e-12), expected: true },
   ],
   solution: `const tan_cf = (x: number, k: number): number => {
-  const n = (i: number): number =>
-    i === 1 ? x : -x * x;
-  const d = (i: number): number =>
-    2 * i - 1;
+  const n = (i: number): number => i === 1 ? x : -x * x;
+  const d = (i: number): number => 2 * i - 1;
   return cont_frac(n, d, k);
 };
 `,
@@ -520,8 +491,7 @@ const cubic = (a: number, b: number, c: number): NumFn => {
 
 export const exercise_1_41: ExerciseSpec = {
   id: '1.41',
-  prelude: `const inc = (n: number): number =>
-  n + 1;`,
+  prelude: `const inc = (n: number): number => n + 1;`,
   starter: `// inc is provided.
 
 // A function that applies f twice.
@@ -537,19 +507,16 @@ const prediction = 0;
     { name: 'double(double(double))(inc)(5)', kind: 'value', expr: 'double(double(double))(inc)(5)', expected: 21 },
     { name: 'the prediction', kind: 'value', expr: 'prediction', expected: 21 },
   ],
-  solution: `const double = <T>(f: (x: T) => T): ((x: T) => T) =>
-  x => f(f(x));
+  solution: `const double = <T>(f: (x: T) => T): ((x: T) => T) => x => f(f(x));
 
 // double(double) applies f 4 times; double(double(double)) applies it 16 times.
 const prediction = 21;
 `,
 };
 
-const squareAndInc = `const square = (x: number): number =>
-  x * x;
+const squareAndInc = `const square = (x: number): number => x * x;
 
-const inc = (n: number): number =>
-  n + 1;`;
+const inc = (n: number): number => n + 1;`;
 
 export const exercise_1_42: ExerciseSpec = {
   id: '1.42',
@@ -630,11 +597,9 @@ const n_fold_smooth = (f: NumFn, n: number): NumFn => {
   ],
   solution: `const dx = 0.1;
 
-const smooth = (f: NumFn): NumFn =>
-  x => (f(x - dx) + f(x) + f(x + dx)) / 3;
+const smooth = (f: NumFn): NumFn => x => (f(x - dx) + f(x) + f(x + dx)) / 3;
 
-const n_fold_smooth = (f: NumFn, n: number): NumFn =>
-  repeated(smooth, n)(f);
+const n_fold_smooth = (f: NumFn, n: number): NumFn => repeated(smooth, n)(f);
 `,
 };
 
@@ -642,8 +607,7 @@ export const exercise_1_45: ExerciseSpec = {
   id: '1.45',
   prelude: `${fixedPointDefinitions}
 ${averageDefinition}
-const average_damp = (f: NumFn): NumFn =>
-  x => average(x, f(x));
+const average_damp = (f: NumFn): NumFn => x => average(x, f(x));
 
 const compose = <T>(f: (x: T) => T, g: (x: T) => T): ((x: T) => T) =>
   x => f(g(x));

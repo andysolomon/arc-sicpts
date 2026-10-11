@@ -89,8 +89,7 @@ const accumulate = <T, R>(f: (x: T, acc: R) => R, initial: R, xs: List<T>): R =>
 export const streamLibrary = `
 type Stream<T> = null | [T, () => Stream<T>];
 
-const stream_tail = <T>(s: Stream<T>): Stream<T> =>
-  tail(s)();
+const stream_tail = <T>(s: Stream<T>): Stream<T> => tail(s)();
 
 const is_stream = (s: unknown): boolean =>
   is_null(s) || (is_pair(s) && is_function(tail(s)) && is_stream(stream_tail(s)));
@@ -196,12 +195,10 @@ const revert_stack_to_marker = (): Instruction => list("revert_stack_to_marker")
 const controller = (sequence: List<Instruction | string>): Instruction => list("controller", sequence);
 const controller_sequence = (controller: Instruction): List<Instruction | string> => head(tail(controller));
 
-const start = (machine: Machine): unknown =>
-  machine("start");
+const start = (machine: Machine): unknown => machine("start");
 const get_register = (machine: Machine, reg_name: string): Register =>
   machine("get_register")(reg_name);
-const get_contents = (register: Register): unknown =>
-  register("get");
+const get_contents = (register: Register): unknown => register("get");
 const set_contents = (register: Register, value: unknown): unknown =>
   register("set")(value);
 const get_register_contents = (machine: Machine, register_name: string): unknown =>

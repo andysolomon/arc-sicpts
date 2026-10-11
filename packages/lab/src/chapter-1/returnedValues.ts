@@ -8,11 +8,9 @@ import { averageDefinition, fixedPointDefinitions } from './generalMethods.ts';
 export const averageDampProgram = `type NumFn = (x: number) => number;
 
 ${averageDefinition}
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
-const average_damp = (f: NumFn): NumFn =>
-  x => average(x, f(x));
+const average_damp = (f: NumFn): NumFn => x => average(x, f(x));
 
 const damped_square = average_damp(square);
 damped_square(10);
@@ -21,22 +19,18 @@ damped_square(10);
 export const newtonDefinitions = `${fixedPointDefinitions}
 const dx = 0.00001;
 
-const deriv = (g: NumFn): NumFn =>
-  x => (g(x + dx) - g(x)) / dx;
+const deriv = (g: NumFn): NumFn => x => (g(x + dx) - g(x)) / dx;
 
-const newton_transform = (g: NumFn): NumFn =>
-  x => x - g(x) / deriv(g)(x);
+const newton_transform = (g: NumFn): NumFn => x => x - g(x) / deriv(g)(x);
 
 const newtons_method = (g: NumFn, guess: number): number =>
   fixed_point(newton_transform(g), guess);
 `;
 
 export const newtonProgram = `${newtonDefinitions}
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
-const cube = (x: number): number =>
-  x * x * x;
+const cube = (x: number): number => x * x * x;
 
 display(deriv(cube)(5));
 newtons_method(y => square(y) - 2, 1);
@@ -44,11 +38,9 @@ newtons_method(y => square(y) - 2, 1);
 
 export const transformProgram = `${newtonDefinitions}
 ${averageDefinition}
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
-const average_damp = (f: NumFn): NumFn =>
-  x => average(x, f(x));
+const average_damp = (f: NumFn): NumFn => x => average(x, f(x));
 
 const fixed_point_of_transform = (g: NumFn, transform: (f: NumFn) => NumFn, guess: number): number =>
   fixed_point(transform(g), guess);

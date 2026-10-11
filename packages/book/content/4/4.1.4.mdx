@@ -9,10 +9,10 @@ Our evaluator reduces everything, in the end, to the application of primitive fu
 ```js
 const setup_environment = (): Environment =>
     extend_environment(append(primitive_function_symbols,
-                                     primitive_constant_symbols),
-                              append(primitive_function_objects,
-                                     primitive_constant_values),
-                              the_empty_environment);
+                              primitive_constant_symbols),
+                       append(primitive_function_objects,
+                              primitive_constant_values),
+                       the_empty_environment);
 const the_global_environment = setup_environment();
 ```
 

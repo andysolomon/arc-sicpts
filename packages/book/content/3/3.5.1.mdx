@@ -52,8 +52,7 @@ pair(h, () => t)
 and wrapping *t* in `() =>` keeps it from being evaluated now. The empty stream is `null`, as for lists. The library's type `Stream<T>` says just this: a stream of `T`s is either `null` or a pair of a `T` and a function of no arguments that returns a `Stream<T>`. The head of a stream is read with `head`, as for a list; to get the rest we have to call the function in the tail, which `stream_tail` does:
 
 ```js
-const stream_tail = <T>(stream: Stream<T>): Stream<T> =>
-  tail(stream)();
+const stream_tail = <T>(stream: Stream<T>): Stream<T> => tail(stream)();
 ```
 
 Applying that function *forces* the promise: it evaluates the delayed expression and returns the next pair of the stream, or `null`. With `stream_tail` in place of `tail`, the list operations of chapter 2 have stream analogues: `stream_ref`, `stream_map`, `stream_for_each`, and `display_stream` for looking at a (finite) stream. That we need a second copy of each list function suggests an abstraction we haven't captured yet; §4.2 comes back to it, with an evaluator in which lists and streams are the same thing.

@@ -93,20 +93,20 @@ const prepositions = list("prep", "for", "to", "in", "by", "with");
 
 const parse_prepositional_phrase = (): ParseTree =>
     list("prep-phrase",
-                parse_word(prepositions),
-                parse_noun_phrase());
+         parse_word(prepositions),
+         parse_noun_phrase());
 
 const parse_sentence = (): ParseTree =>
     list("sentence",
-                parse_noun_phrase(),
-                parse_verb_phrase());
+         parse_noun_phrase(),
+         parse_verb_phrase());
 
 const parse_verb_phrase = (): ParseTree => {
     const maybe_extend = (verb_phrase: ParseTree): ParseTree =>
         amb(verb_phrase,
-                   maybe_extend(list("verb-phrase",
-                                     verb_phrase,
-                                     parse_prepositional_phrase())));
+            maybe_extend(list("verb-phrase",
+                              verb_phrase,
+                              parse_prepositional_phrase())));
     return maybe_extend(parse_word(verbs));
 };
 ```
@@ -116,15 +116,15 @@ While we are at it, we let noun phrases grow too, to permit such things as “a 
 ```js
 const parse_simple_noun_phrase = (): ParseTree =>
     list("simple-noun-phrase",
-                parse_word(articles),
-                parse_word(nouns));
+         parse_word(articles),
+         parse_word(nouns));
 
 const parse_noun_phrase = (): ParseTree => {
     const maybe_extend = (noun_phrase: ParseTree): ParseTree =>
         amb(noun_phrase,
-                   maybe_extend(list("noun-phrase",
-                                     noun_phrase,
-                                     parse_prepositional_phrase())));
+            maybe_extend(list("noun-phrase",
+                              noun_phrase,
+                              parse_prepositional_phrase())));
     return maybe_extend(parse_simple_noun_phrase());
 };
 ```
@@ -269,9 +269,9 @@ Louis Reasoner suggests that, since a verb phrase is either a verb or a verb phr
 ```js
 const parse_verb_phrase = (): ParseTree =>
     amb(parse_word(verbs),
-               list("verb-phrase",
-                    parse_verb_phrase(),
-                    parse_prepositional_phrase()));
+        list("verb-phrase",
+             parse_verb_phrase(),
+             parse_prepositional_phrase()));
 ```
 
 Does this work? Parse “the professor lectures to the student” with it: is the first value right, and does a `retry` ever finish? Does the program’s behavior change if we interchange the order of expressions in the `amb`?

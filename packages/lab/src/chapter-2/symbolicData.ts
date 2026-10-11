@@ -37,29 +37,22 @@ member("apple", fruit);
 /* §2.3.2 Symbolic differentiation */
 
 /** The predicates and selectors of the prefix representation. */
-export const derivSelectorDefinitions = `const is_variable = (x: Expression): boolean =>
-  is_string(x);
+export const derivSelectorDefinitions = `const is_variable = (x: Expression): boolean => is_string(x);
 
 const is_same_variable = (v1: Expression, v2: Expression): boolean =>
   is_variable(v1) && is_variable(v2) && v1 === v2;
 
-const is_sum = (x: Expression): boolean =>
-  is_pair(x) && head(x) === "+";
+const is_sum = (x: Expression): boolean => is_pair(x) && head(x) === "+";
 
-const addend = (s: Expression): Expression =>
-  head(tail(s));
+const addend = (s: Expression): Expression => head(tail(s));
 
-const augend = (s: Expression): Expression =>
-  head(tail(tail(s)));
+const augend = (s: Expression): Expression => head(tail(tail(s)));
 
-const is_product = (x: Expression): boolean =>
-  is_pair(x) && head(x) === "*";
+const is_product = (x: Expression): boolean => is_pair(x) && head(x) === "*";
 
-const multiplier = (s: Expression): Expression =>
-  head(tail(s));
+const multiplier = (s: Expression): Expression => head(tail(s));
 
-const multiplicand = (s: Expression): Expression =>
-  head(tail(tail(s)));
+const multiplicand = (s: Expression): Expression => head(tail(tail(s)));
 `;
 
 export const derivDefinition = `type Expression = number | string | ExpressionList;
@@ -242,14 +235,11 @@ ordered(80);
 
 export const treeDefinitions = `type Tree<T> = null | [T | Tree<T>, Tree<T>];
 
-const entry = <T>(tree: Tree<T>): T =>
-  head(tree);
+const entry = <T>(tree: Tree<T>): T => head(tree);
 
-const left_branch = <T>(tree: Tree<T>): Tree<T> =>
-  head(tail(tree));
+const left_branch = <T>(tree: Tree<T>): Tree<T> => head(tail(tree));
 
-const right_branch = <T>(tree: Tree<T>): Tree<T> =>
-  head(tail(tail(tree)));
+const right_branch = <T>(tree: Tree<T>): Tree<T> => head(tail(tail(tree)));
 
 const make_tree = <T>(entry: T, left: Tree<T>, right: Tree<T>): Tree<T> =>
   list(entry, left, right);
@@ -280,8 +270,7 @@ const adjoin_set = (x: number, set: Tree<number>): Tree<number> =>
 `;
 
 /** The three trees of figure 2.16, each the set {1, 3, 5, 7, 9, 11}. */
-export const figureTreesDefinitions = `const leaf = (x: number): Tree<number> =>
-  make_tree(x, null, null);
+export const figureTreesDefinitions = `const leaf = (x: number): Tree<number> => make_tree(x, null, null);
 
 const tree_a = make_tree(7, make_tree(3, leaf(1), leaf(5)),
                             make_tree(9, null, leaf(11)));
@@ -322,8 +311,7 @@ export const lookupProgram = `type Record = List<number | string>;
 const make_record = (key: number, name: string, salary: number): Record =>
   list(key, name, salary);
 
-const key = (record: Record): number =>
-  head(record);
+const key = (record: Record): number => head(record);
 
 const lookup = (given_key: number, set_of_records: List<Record>): Record | false =>
   is_null(set_of_records)
@@ -349,25 +337,20 @@ type HuffmanTree = Leaf | CodeTree;
 const make_leaf = (symbol: string, weight: number): Leaf =>
   list("leaf", symbol, weight);
 
-const is_leaf = (object: HuffmanTree): boolean =>
-  head(object) === "leaf";
+const is_leaf = (object: HuffmanTree): boolean => head(object) === "leaf";
 
-const symbol_leaf = (x: Leaf): string =>
-  head(tail(x));
+const symbol_leaf = (x: Leaf): string => head(tail(x));
 
-const weight_leaf = (x: Leaf): number =>
-  head(tail(tail(x)));
+const weight_leaf = (x: Leaf): number => head(tail(tail(x)));
 
 const make_code_tree = (left: HuffmanTree, right: HuffmanTree): CodeTree =>
   list("code_tree", left, right,
-              append(symbols(left), symbols(right)),
-              weight(left) + weight(right));
+       append(symbols(left), symbols(right)),
+       weight(left) + weight(right));
 
-const left_branch = (tree: CodeTree): HuffmanTree =>
-  head(tail(tree));
+const left_branch = (tree: CodeTree): HuffmanTree => head(tail(tree));
 
-const right_branch = (tree: CodeTree): HuffmanTree =>
-  head(tail(tail(tree)));
+const right_branch = (tree: CodeTree): HuffmanTree => head(tail(tail(tree)));
 
 const symbols = (tree: HuffmanTree): List<string> =>
   is_leaf(tree)

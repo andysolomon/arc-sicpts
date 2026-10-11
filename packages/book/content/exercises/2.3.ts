@@ -264,14 +264,11 @@ const make_exp = (b: Expression, e: number): Expression => {
     { name: 'a power of another variable', kind: 'value', expr: 'deriv(list("**", "y", 5), "x")', expected: 0 },
   ],
   solution: `${derivWithExp}
-const is_exp = (x: Expression): boolean =>
-  is_pair(x) && head(x) === "**";
+const is_exp = (x: Expression): boolean => is_pair(x) && head(x) === "**";
 
-const base = (e: Expression): Expression =>
-  head(tail(e));
+const base = (e: Expression): Expression => head(tail(e));
 
-const exponent = (e: Expression): number =>
-  head(tail(tail(e)));
+const exponent = (e: Expression): number => head(tail(tail(e)));
 
 const make_exp = (b: Expression, e: number): Expression =>
   number_equal(e, 0)
@@ -308,14 +305,12 @@ ${simplifyingConstructorDefinitions}`,
 ${replaced(
   replaced(
     derivSelectorDefinitions,
-    `const augend = (s: Expression): Expression =>
-  head(tail(tail(s)));`,
+    `const augend = (s: Expression): Expression => head(tail(tail(s)));`,
     `// The sum of the rest of the terms.
 const augend = (s: Expression): Expression =>
   accumulate(make_sum, 0, tail(tail(s)));`,
   ),
-  `const multiplicand = (s: Expression): Expression =>
-  head(tail(tail(s)));`,
+  `const multiplicand = (s: Expression): Expression => head(tail(tail(s)));`,
   `// The product of the rest of the factors.
 const multiplicand = (s: Expression): Expression =>
   accumulate(make_product, 1, tail(tail(s)));`,
@@ -353,8 +348,7 @@ ${simplifyingConstructorDefinitions}`,
     { name: '(b) a longer product', kind: 'value', expr: 'value_at(deriv(list("x", "*", "y", "*", "x", "+", "y"), "x"), 3, 2)', expected: 12 },
   ],
   solution: `${derivDefinition}
-const is_variable = (x: Expression): boolean =>
-  is_string(x);
+const is_variable = (x: Expression): boolean => is_string(x);
 
 const is_same_variable = (v1: Expression, v2: Expression): boolean =>
   is_variable(v1) && is_variable(v2) && v1 === v2;
@@ -373,17 +367,14 @@ const unwrap = (items: List<Expression>): Expression =>
 const is_sum = (x: Expression): boolean =>
   is_pair(x) && !is_null(member("+", x));
 
-const addend = (s: Expression): Expression =>
-  unwrap(before("+", s));
+const addend = (s: Expression): Expression => unwrap(before("+", s));
 
-const augend = (s: Expression): Expression =>
-  unwrap(tail(member("+", s)));
+const augend = (s: Expression): Expression => unwrap(tail(member("+", s)));
 
 const is_product = (x: Expression): boolean =>
   is_pair(x) && !is_sum(x) && !is_null(member("*", x));
 
-const multiplier = (p: Expression): Expression =>
-  unwrap(before("*", p));
+const multiplier = (p: Expression): Expression => unwrap(before("*", p));
 
 const multiplicand = (p: Expression): Expression =>
   unwrap(tail(member("*", p)));
@@ -523,11 +514,9 @@ const is_element_of_set = <T>(x: T, set: Set<T>): boolean =>
       ? true
       : is_element_of_set(x, tail(set));
 
-const adjoin_set = <T>(x: T, set: Set<T>): Set<T> =>
-  pair(x, set);
+const adjoin_set = <T>(x: T, set: Set<T>): Set<T> => pair(x, set);
 
-const union_set = <T>(set1: Set<T>, set2: Set<T>): Set<T> =>
-  append(set1, set2);
+const union_set = <T>(set1: Set<T>, set2: Set<T>): Set<T> => append(set1, set2);
 
 const intersection_set = <T>(set1: Set<T>, set2: Set<T>): Set<T> =>
   is_null(set1) || is_null(set2)
@@ -740,8 +729,7 @@ const drawn = make_tree(5,
                                      make_tree(11, null, null)));
 
 // Each application with n > 0 makes two more, on n - 1 elements between them.
-const partial_tree_calls = (n: number): number =>
-  2 * n + 1;
+const partial_tree_calls = (n: number): number => 2 * n + 1;
 `,
 };
 
@@ -853,14 +841,11 @@ export const exercise_2_66: ExerciseSpec = {
 ${listToTreeDefinitions}
 type Record = Pair<number, unknown>;
 
-const make_record = (key: number, data: unknown): Record =>
-  pair(key, data);
+const make_record = (key: number, data: unknown): Record => pair(key, data);
 
-const key = (record: Record): number =>
-  head(record);
+const key = (record: Record): number => head(record);
 
-const data = (record: Record): unknown =>
-  tail(record);
+const data = (record: Record): unknown => tail(record);
 
 // 1000 records with keys 0, 3, 6, ..., 2997, as a balanced tree.
 const staff = list_to_tree(build_list(i => make_record(3 * i, i), 1000));
@@ -1094,11 +1079,9 @@ const least_frequent_bits = (n: number): number => {
       expected: true,
     },
   ],
-  solution: `const most_frequent_bits = (n: number): number =>
-  1;
+  solution: `const most_frequent_bits = (n: number): number => 1;
 
-const least_frequent_bits = (n: number): number =>
-  n - 1;
+const least_frequent_bits = (n: number): number => n - 1;
 `,
 };
 
@@ -1130,12 +1113,10 @@ const searches_for_least_frequent = (n: number): number => {
   solution: `${encodeDefinitions}
 // At the root, the search of the left branch's n - 1 symbols fails (n
 // applications), then the right branch, a single leaf, matches (one more).
-const searches_for_most_frequent = (n: number): number =>
-  n + 1;
+const searches_for_most_frequent = (n: number): number => n + 1;
 
 // The least frequent symbol is first in every left branch's list, so each of
 // the n - 1 nodes on the way down costs one application.
-const searches_for_least_frequent = (n: number): number =>
-  n - 1;
+const searches_for_least_frequent = (n: number): number => n - 1;
 `,
 };

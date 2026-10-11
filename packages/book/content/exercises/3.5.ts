@@ -132,11 +132,9 @@ const stream_filter_optimized = <T>(pred: (x: T) => boolean, s: Stream<T>): Stre
     ? pair(head(s), memo(() => stream_filter_optimized(pred, stream_tail(s))))
     : stream_filter_optimized(pred, stream_tail(s));
 
-const is_even = (n: number): boolean =>
-  n % 2 === 0;
+const is_even = (n: number): boolean => n % 2 === 0;
 
-const display_stream = <T>(s: Stream<T>): true =>
-  stream_for_each(display, s);
+const display_stream = <T>(s: Stream<T>): true => stream_for_each(display, s);
 `,
   starter: `// The statements:
 //
@@ -207,8 +205,7 @@ const element_of_s = (n: number): number => {
   solution: `const s = pair(1, () => add_streams(s, s));
 
 // Each element is the previous one added to itself: the powers of 2.
-const element_of_s = (n: number): number =>
-  math_pow(2, n);
+const element_of_s = (n: number): number => math_pow(2, n);
 `,
 };
 
@@ -263,7 +260,7 @@ const partial_sums = (s: Stream<number>): Stream<number> => {
   ],
   solution: `const partial_sums = (s: Stream<number>): Stream<number> =>
   pair(head(s),
-              () => add_streams(stream_tail(s), partial_sums(s)));
+       () => add_streams(stream_tail(s), partial_sums(s)));
 `,
 };
 
@@ -319,8 +316,7 @@ const additions_unmemoized = (n: number): number => {
     { name: 'unmemoized, n = 10', kind: 'value', expr: 'additions_unmemoized(10)', expected: 221 },
     { name: 'unmemoized, n = 16', kind: 'value', expr: 'additions_unmemoized(16)', expected: 4163 },
   ],
-  solution: `const additions_memoized = (n: number): number =>
-  n <= 1 ? 0 : n - 1;
+  solution: `const additions_memoized = (n: number): number => n <= 1 ? 0 : n - 1;
 
 // A(n) = A(n - 1) + A(n - 2) + (n - 1), which is fib(n + 3) - n - 2.
 const additions_unmemoized = (n: number): number => {
@@ -335,7 +331,7 @@ export const exercise_3_58: ExerciseSpec = {
   id: '3.58',
   starter: `const expand = (num: number, den: number, radix: number): Stream<number> =>
   pair(math_trunc((num * radix) / den),
-              () => expand((num * radix) % den, den, radix));
+       () => expand((num * radix) % den, den, radix));
 
 // The first eight elements of each stream:
 const expand_1_7 = list();
@@ -347,7 +343,7 @@ const expand_3_8 = list();
   ],
   solution: `const expand = (num: number, den: number, radix: number): Stream<number> =>
   pair(math_trunc((num * radix) / den),
-              () => expand((num * radix) % den, den, radix));
+       () => expand((num * radix) % den, den, radix));
 
 // The digits of num / den after the point, in base radix.
 const expand_1_7 = list(1, 4, 2, 8, 5, 7, 1, 4);
@@ -367,8 +363,8 @@ const sine_series = pair(0, () => integrate_series(cosine_series));
 
 const mulSeriesSolution = `const mul_series = (s1: Stream<number>, s2: Stream<number>): Stream<number> =>
   pair(head(s1) * head(s2),
-              () => add_streams(scale_stream(stream_tail(s2), head(s1)),
-                                mul_series(stream_tail(s1), s2)));
+       () => add_streams(scale_stream(stream_tail(s2), head(s1)),
+                         mul_series(stream_tail(s1), s2)));
 `;
 
 const invertSolution = `const invert_unit_series = (s: Stream<number>): Stream<number> =>

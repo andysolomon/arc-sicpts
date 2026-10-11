@@ -16,8 +16,8 @@ import { pick } from './source.ts';
 /** §4.3.3: recognizing `amb`, which `parse` reads as an application. */
 export const ambSyntax = `const is_amb = (component: Component): boolean =>
     is_tagged_list(component, "application") &&
-           is_name(function_expression(component)) &&
-           symbol_of_name(function_expression(component)) === "amb";
+    is_name(function_expression(component)) &&
+    symbol_of_name(function_expression(component)) === "amb";
 const amb_choices = (component: Component): List<Component> =>
     arg_expressions(component);
 
@@ -43,11 +43,11 @@ export const analyzeAmb = `const analyze_amb = (component: Component): Execution
     return (env, succeed, fail) => {
                const try_next = (choices: List<Execution>): unknown =>
                    is_null(choices)
-                          ? fail()
-                          : head(choices)(env,
-                                          succeed,
-                                          () =>
-                                            try_next(tail(choices)));
+                   ? fail()
+                   : head(choices)(env,
+                                   succeed,
+                                   () =>
+                                     try_next(tail(choices)));
                return try_next(cfuns);
            };
 };`;
@@ -65,44 +65,44 @@ const ambeval = (component: Component, env: Environment, succeed: Succeed, fail:
 
 const analyze = (component: Component): Execution =>
     is_literal(component)
-           ? analyze_literal(component)
-           : is_name(component)
-           ? analyze_name(component)
-           : is_amb(component)
-           ? analyze_amb(component)
-           : is_application(component)
-           ? analyze_application(component)
-           : is_operator_combination(component)
-           ? analyze(operator_combination_to_application(component))
-           : is_logical_composition(component)
-           ? analyze(logical_composition_to_conditional(component))
-           : is_conditional(component)
-           ? analyze_conditional(component)
-           : is_lambda_expression(component)
-           ? analyze_lambda_expression(component)
-           : is_sequence(component)
-           ? analyze_sequence(sequence_statements(component))
-           : is_block(component)
-           ? analyze_block(component)
-           : is_return_statement(component)
-           ? analyze_return_statement(component)
-           : is_function_declaration(component)
-           ? analyze(function_decl_to_constant_decl(component))
-           : is_declaration(component)
-           ? analyze_declaration(component)
-           : is_assignment(component)
-           ? analyze_assignment(component)
-           : error(component, "unknown syntax -- analyze");
+    ? analyze_literal(component)
+    : is_name(component)
+    ? analyze_name(component)
+    : is_amb(component)
+    ? analyze_amb(component)
+    : is_application(component)
+    ? analyze_application(component)
+    : is_operator_combination(component)
+    ? analyze(operator_combination_to_application(component))
+    : is_logical_composition(component)
+    ? analyze(logical_composition_to_conditional(component))
+    : is_conditional(component)
+    ? analyze_conditional(component)
+    : is_lambda_expression(component)
+    ? analyze_lambda_expression(component)
+    : is_sequence(component)
+    ? analyze_sequence(sequence_statements(component))
+    : is_block(component)
+    ? analyze_block(component)
+    : is_return_statement(component)
+    ? analyze_return_statement(component)
+    : is_function_declaration(component)
+    ? analyze(function_decl_to_constant_decl(component))
+    : is_declaration(component)
+    ? analyze_declaration(component)
+    : is_assignment(component)
+    ? analyze_assignment(component)
+    : error(component, "unknown syntax -- analyze");
 
 const analyze_literal = (component: Component): Execution =>
     (env, succeed, fail) =>
-             succeed(literal_value(component), fail);
+      succeed(literal_value(component), fail);
 
 const analyze_name = (component: Component): Execution =>
     (env, succeed, fail) =>
-             succeed(lookup_symbol_value(symbol_of_name(component),
-                                         env),
-                     fail);
+      succeed(lookup_symbol_value(symbol_of_name(component),
+                                  env),
+              fail);
 
 const analyze_lambda_expression = (component: Component): Execution => {
     const params = lambda_parameter_symbols(component);
@@ -131,19 +131,19 @@ const analyze_conditional = (component: Component): Execution => {
 const analyze_sequence = (stmts: List<Component>): Execution => {
     const sequentially = (a: Execution, b: Execution): Execution =>
         (env, succeed, fail) =>
-                 a(env,
+          a(env,
                    // success continuation for calling a
-                   (a_value, fail2) =>
-                     is_return_value(a_value)
-                     ? succeed(a_value, fail2)
-                     : b(env, succeed, fail2),
+            (a_value, fail2) =>
+              is_return_value(a_value)
+              ? succeed(a_value, fail2)
+              : b(env, succeed, fail2),
                    // failure continuation for calling a
-                   fail);
+            fail);
     const loop = (first_fun: Execution, rest_funs: List<Execution>): Execution =>
         is_null(rest_funs)
-               ? first_fun
-               : loop(sequentially(first_fun, head(rest_funs)),
-                      tail(rest_funs));
+        ? first_fun
+        : loop(sequentially(first_fun, head(rest_funs)),
+               tail(rest_funs));
     const funs = map(analyze, stmts);
     // The book has env => undefined here, which never calls succeed:
     // an empty block, such as the else {} of require, must succeed.
@@ -223,19 +223,19 @@ const analyze_application = (component: Component): Execution => {
 
 const get_args = (afuns: List<Execution>, env: Environment, succeed: Succeed, fail: Fail): unknown =>
     is_null(afuns)
-           ? succeed(null, fail)
-           : head(afuns)(env,
+    ? succeed(null, fail)
+    : head(afuns)(env,
                          // success continuation for this afun
-                         (arg, fail2) =>
-                           get_args(tail(afuns),
-                                    env,
+                  (arg, fail2) =>
+                    get_args(tail(afuns),
+                             env,
                                     // success continuation for
                                     // recursive call to get_args
-                                    (args, fail3) =>
-                                      succeed(pair(arg, args),
-                                              fail3),
-                                    fail2),
-                         fail);
+                             (args, fail3) =>
+                               succeed(pair(arg, args),
+                                       fail3),
+                             fail2),
+                  fail);
 
 const execute_application = (
     fun: PrimitiveFunction | CompoundFunction,
@@ -244,20 +244,20 @@ const execute_application = (
     fail: Fail
 ): unknown =>
     is_primitive_function(fun)
-           ? succeed(apply_primitive_function(fun, args),
-                     fail)
-           : is_compound_function(fun)
-           ? function_body(fun)(
-                 extend_environment(function_parameters(fun),
-                                    args,
-                                    function_environment(fun)),
-                 (body_result, fail2) =>
-                   succeed(is_return_value(body_result)
-                           ? return_value_content(body_result)
-                           : undefined,
-                           fail2),
-                 fail)
-           : error(fun, "unknown function type - execute_application");
+    ? succeed(apply_primitive_function(fun, args),
+              fail)
+    : is_compound_function(fun)
+    ? function_body(fun)(
+          extend_environment(function_parameters(fun),
+                             args,
+                             function_environment(fun)),
+          (body_result, fail2) =>
+            succeed(is_return_value(body_result)
+                    ? return_value_content(body_result)
+                    : undefined,
+                    fail2),
+          fail)
+    : error(fun, "unknown function type - execute_application");
 
 ${analyzeAmb}
 `;
@@ -269,12 +269,12 @@ ${analyzeAmb}
  */
 export const ambDistinct = `const distinct = <T>(items: List<T>): boolean =>
     is_null(items)
-           ? true
-           : is_null(tail(items))
-           ? true
-           : is_null(member(head(items), tail(items)))
-           ? distinct(tail(items))
-           : false;
+    ? true
+    : is_null(tail(items))
+    ? true
+    : is_null(member(head(items), tail(items)))
+    ? distinct(tail(items))
+    : false;
 `;
 
 /**
@@ -332,9 +332,9 @@ type ProgramLines = null | [ProgramText, ProgramLines];
 
 const program_text = (input: ProgramText): string =>
     is_string(input)
-           ? input
-           : accumulate((line, rest) => program_text(line) + "\\n" + rest,
-                        "", input);
+    ? input
+    : accumulate((line, rest) => program_text(line) + "\\n" + rest,
+                 "", input);
 
 // The frame a program's own declarations live in, as the driver loop
 // makes it for each new problem.
@@ -481,8 +481,8 @@ export const ambEvaluator = ambEvaluatorWith();
 export const ambPrimeSumPair = `const is_prime = (n: number): boolean => {
     const divides = (d: number): boolean =>
         d * d > n
-               ? false
-               : n % d === 0 || divides(d + 1);
+        ? false
+        : n % d === 0 || divides(d + 1);
     return n > 1 && ! divides(2);
 };
 
@@ -564,34 +564,34 @@ const parse_input = (input: List<string>): ParseTree => {
 
 const parse_prepositional_phrase = (): ParseTree =>
     list("prep-phrase",
-                parse_word(prepositions),
-                parse_noun_phrase());
+         parse_word(prepositions),
+         parse_noun_phrase());
 
 const parse_sentence = (): ParseTree =>
     list("sentence",
-                parse_noun_phrase(),
-                parse_verb_phrase());
+         parse_noun_phrase(),
+         parse_verb_phrase());
 
 const parse_verb_phrase = (): ParseTree => {
     const maybe_extend = (verb_phrase: ParseTree): ParseTree =>
         amb(verb_phrase,
-                   maybe_extend(list("verb-phrase",
-                                     verb_phrase,
-                                     parse_prepositional_phrase())));
+            maybe_extend(list("verb-phrase",
+                              verb_phrase,
+                              parse_prepositional_phrase())));
     return maybe_extend(parse_word(verbs));
 };
 
 const parse_simple_noun_phrase = (): ParseTree =>
     list("simple-noun-phrase",
-                parse_word(articles),
-                parse_word(nouns));
+         parse_word(articles),
+         parse_word(nouns));
 
 const parse_noun_phrase = (): ParseTree => {
     const maybe_extend = (noun_phrase: ParseTree): ParseTree =>
         amb(noun_phrase,
-                   maybe_extend(list("noun-phrase",
-                                     noun_phrase,
-                                     parse_prepositional_phrase())));
+            maybe_extend(list("noun-phrase",
+                              noun_phrase,
+                              parse_prepositional_phrase())));
     return maybe_extend(parse_simple_noun_phrase());
 };
 `;
@@ -608,16 +608,15 @@ const amb_tried = (point: number, index: number, count: number, amb_text: string
     undefined;
 const amb_chose = (point: number, index: number, value: unknown): void =>
     undefined;
-const amb_exhausted = (point: number, count: number): void =>
-    undefined;
+const amb_exhausted = (point: number, count: number): void => undefined;
 const amb_text_of = (component: Component): string => {
     const texts = (components: List<Component>): string =>
         is_null(components)
-               ? ""
-               : is_null(tail(components))
-               ? amb_text_of(head(components))
-               : amb_text_of(head(components)) + ", " +
-                 texts(tail(components));
+        ? ""
+        : is_null(tail(components))
+        ? amb_text_of(head(components))
+        : amb_text_of(head(components)) + ", " +
+          texts(tail(components));
     return is_literal(component)
            ? stringify(literal_value(component))
            : is_name(component)

@@ -49,14 +49,14 @@ const make_stack = (): Stack => {
     };
     const dispatch = (message: string): unknown =>
         message === "push"
-               ? push
-               : message === "pop"
-               ? pop()
-               : message === "initialize"
-               ? initialize()
-               : message === "print_statistics"
-               ? print_statistics()
-               : error(message, "unknown request -- stack");
+        ? push
+        : message === "pop"
+        ? pop()
+        : message === "initialize"
+        ? initialize()
+        : message === "print_statistics"
+        ? print_statistics()
+        : error(message, "unknown request -- stack");
     return dispatch;
 };
 ```

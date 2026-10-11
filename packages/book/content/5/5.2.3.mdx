@@ -15,24 +15,24 @@ const make_execution_function = (
     ops: Operations
 ): ExecutionFunction =>
     type(inst) === "assign"
-           ? make_assign_ef(inst, machine, labels, ops, pc)
-           : type(inst) === "test"
-           ? make_test_ef(inst, machine, labels, ops, flag, pc)
-           : type(inst) === "branch"
-           ? make_branch_ef(inst, machine, labels, flag, pc)
-           : type(inst) === "go_to"
-           ? make_go_to_ef(inst, machine, labels, pc)
-           : type(inst) === "save"
-           ? make_save_ef(inst, machine, stack, pc)
-           : type(inst) === "restore"
-           ? make_restore_ef(inst, machine, stack, pc)
-           : type(inst) === "push_marker_to_stack"
-           ? make_push_marker_to_stack_ef(machine, stack, pc)
-           : type(inst) === "revert_stack_to_marker"
-           ? make_revert_stack_to_marker_ef(machine, stack, pc)
-           : type(inst) === "perform"
-           ? make_perform_ef(inst, machine, labels, ops, pc)
-           : error(inst, "unknown instruction type -- assemble");
+    ? make_assign_ef(inst, machine, labels, ops, pc)
+    : type(inst) === "test"
+    ? make_test_ef(inst, machine, labels, ops, flag, pc)
+    : type(inst) === "branch"
+    ? make_branch_ef(inst, machine, labels, flag, pc)
+    : type(inst) === "go_to"
+    ? make_go_to_ef(inst, machine, labels, pc)
+    : type(inst) === "save"
+    ? make_save_ef(inst, machine, stack, pc)
+    : type(inst) === "restore"
+    ? make_restore_ef(inst, machine, stack, pc)
+    : type(inst) === "push_marker_to_stack"
+    ? make_push_marker_to_stack_ef(machine, stack, pc)
+    : type(inst) === "revert_stack_to_marker"
+    ? make_revert_stack_to_marker_ef(machine, stack, pc)
+    : type(inst) === "perform"
+    ? make_perform_ef(inst, machine, labels, ops, pc)
+    : error(inst, "unknown instruction type -- assemble");
 ```
 
 The elements of the controller sequence received by `make_machine` and passed to `assemble` are strings (for labels) and tagged lists (for instructions). The tag in an instruction is a string that identifies the instruction type, such as `"go_to"`, and the remaining elements of the list contain the arguments, such as the destination of the `go_to`. The dispatch in `make_execution_function` uses
@@ -235,14 +235,14 @@ The two marker instructions that §5.4 needs send the stack its `push_marker` an
 ```js
 const make_push_marker_to_stack_ef = (machine: Machine, stack: Stack, pc: Register): ExecutionFunction =>
     () => {
-               push_marker(stack);
-               advance_pc(pc);
-           };
+        push_marker(stack);
+        advance_pc(pc);
+    };
 const make_revert_stack_to_marker_ef = (machine: Machine, stack: Stack, pc: Register): ExecutionFunction =>
     () => {
-               pop_marker(stack);
-               advance_pc(pc);
-           };
+        pop_marker(stack);
+        advance_pc(pc);
+    };
 
 const push_marker_to_stack = (): Instruction => list("push_marker_to_stack");
 const revert_stack_to_marker = (): Instruction => list("revert_stack_to_marker");

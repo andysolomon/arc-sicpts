@@ -55,11 +55,11 @@ balance;
 /** §3.4.2: every way to interleave two processes of three steps each. */
 export const interleavingCountProgram = `const interleave = <T>(xs: List<T>, ys: List<T>): List<List<T>> =>
     is_null(xs)
-           ? list(ys)
-           : is_null(ys)
-           ? list(xs)
-           : append(map(rest => pair(head(xs), rest), interleave(tail(xs), ys)),
-                    map(rest => pair(head(ys), rest), interleave(xs, tail(ys))));
+    ? list(ys)
+    : is_null(ys)
+    ? list(xs)
+    : append(map(rest => pair(head(xs), rest), interleave(tail(xs), ys)),
+             map(rest => pair(head(ys), rest), interleave(xs, tail(ys))));
 
 const orders = interleave(list("a", "b", "c"), list("x", "y", "z"));
 for_each(order => display(accumulate((step, rest) => step + rest, "", order)),
@@ -82,12 +82,12 @@ const make_mutex = (): Mutex => {
     const cell = list(false);
     const the_mutex = (m: "acquire" | "release"): true | void =>
         m === "acquire"
-               ? test_and_set(cell)
-                 ? the_mutex("acquire")  // retry
-                 : true
-               : m === "release"
-               ? clear(cell)
-               : error(m, "unknown request -- mutex");
+        ? test_and_set(cell)
+          ? the_mutex("acquire")  // retry
+          : true
+        : m === "release"
+        ? clear(cell)
+        : error(m, "unknown request -- mutex");
     return the_mutex;
 };
 
@@ -144,12 +144,12 @@ const make_account = (balance: number): Account => {
     const protect = make_serializer();
     const dispatch = (m: "withdraw" | "deposit" | "balance"): Transaction | number =>
         m === "withdraw"
-               ? protect(withdraw)
-               : m === "deposit"
-               ? protect(deposit)
-               : m === "balance"
-               ? balance
-               : error(m, "unknown request -- make_account");
+        ? protect(withdraw)
+        : m === "deposit"
+        ? protect(deposit)
+        : m === "balance"
+        ? balance
+        : error(m, "unknown request -- make_account");
     return dispatch;
 };
 `;

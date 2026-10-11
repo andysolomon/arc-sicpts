@@ -81,8 +81,7 @@ const install_javascript_number_package = (): "done" => {
   return "done";
 };
 
-const gcd = (a: number, b: number): number =>
-  b === 0 ? a : gcd(b, a % b);
+const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
 
 type Rational = Pair<number, number>;
 
@@ -260,8 +259,7 @@ export const nestedCoefficientsProgram = `// adjoin_term asks whether each new c
 put("is_equal_to_zero", list("polynomial"),
     p => is_empty_termlist(term_list(p)));
 
-const poly_y = (terms: TermList): Tagged<Poly> =>
-  make_polynomial("y", terms);
+const poly_y = (terms: TermList): Tagged<Poly> => make_polynomial("y", terms);
 
 // (y + 1)x² + (y² + 1)x + (y − 1)
 const a = make_polynomial("x", list(

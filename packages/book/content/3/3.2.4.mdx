@@ -91,10 +91,10 @@ const make_account = (balance: number): Account => {
   };
   const dispatch = (m: "withdraw" | "deposit"): Transaction =>
     m === "withdraw"
-           ? withdraw
-           : m === "deposit"
-           ? deposit
-           : error(m, "unknown request: make_account");
+    ? withdraw
+    : m === "deposit"
+    ? deposit
+    : error(m, "unknown request: make_account");
   return dispatch;
 };
 ```

@@ -67,8 +67,7 @@ const display_every = <T>(k: number, s: Stream<T>, n: number): true => {
 };
 `;
 
-const sqrtImprove = `const average = (x: number, y: number): number =>
-  (x + y) / 2;
+const sqrtImprove = `const average = (x: number, y: number): number => (x + y) / 2;
 
 const sqrt_improve = (guess: number, x: number): number =>
   average(guess, x / guess);
@@ -80,7 +79,7 @@ const sqrt_improve = (guess: number, x: number): number =>
 export const paradigmSqrtStreamProgram = `${sqrtImprove}
 const sqrt_stream = (x: number): Stream<number> =>
   pair(1, () => stream_map(guess => sqrt_improve(guess, x),
-                                  sqrt_stream(x)));
+                           sqrt_stream(x)));
 
 ${paradigmDisplayStream}
 display_stream(sqrt_stream(2), 6);
@@ -88,8 +87,7 @@ display_stream(sqrt_stream(2), 6);
 
 /** Summands of π/4, their partial sums, and the transformations that accelerate them. */
 export const paradigmPiDefinitions = `${paradigmStreamOperations}
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
 const partial_sums = (s: Stream<number>): Stream<number> => {
   const sums = pair(head(s), memo(() => add_streams(stream_tail(s), sums)));
@@ -137,9 +135,9 @@ const interleave = <T>(s1: Stream<T>, s2: Stream<T>): Stream<T> =>
 
 const pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   pair(list(head(s), head(t)),
-              () => interleave(stream_map(x => list(head(s), x),
-                                          stream_tail(t)),
-                               pairs(stream_tail(s), stream_tail(t))));
+       () => interleave(stream_map(x => list(head(s), x),
+                                   stream_tail(t)),
+                        pairs(stream_tail(s), stream_tail(t))));
 `;
 
 const displayListStream = `const display_pairs = <T>(s: Stream<List<T>>, n: number): true => {
@@ -179,9 +177,9 @@ export const paradigmAppendPairsProgram = `const integers = integers_from(1);
 
 const pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   pair(list(head(s), head(t)),
-              () => stream_append(stream_map(x => list(head(s), x),
-                                             stream_tail(t)),
-                                  pairs(stream_tail(s), stream_tail(t))));
+       () => stream_append(stream_map(x => list(head(s), x),
+                                      stream_tail(t)),
+                           pairs(stream_tail(s), stream_tail(t))));
 
 ${displayListStream}
 display_pairs(pairs(integers, integers), 31);
@@ -275,8 +273,7 @@ stream_ref(y, 1000);
 export const paradigmRandDefinitions = `const random_init = 20220301;
 
 // x(n+1) = 48271 x(n) mod (2^31 - 1), the "minimal standard" generator.
-const rand_update = (x: number): number =>
-  (48271 * x) % 2147483647;
+const rand_update = (x: number): number => (48271 * x) % 2147483647;
 `;
 
 export const paradigmRandomStreamDefinitions = `${paradigmMemoDefinition}
@@ -285,12 +282,11 @@ ${paradigmRandDefinitions}
 const random_numbers =
   pair(random_init, memo(() => stream_map(rand_update, random_numbers)));
 
-const gcd = (a: number, b: number): number =>
-  b === 0 ? a : gcd(b, a % b);
+const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
 
 const map_successive_pairs = <T, R>(f: (a: T, b: T) => R, s: Stream<T>): Stream<R> =>
   pair(f(head(s), head(stream_tail(s))),
-              memo(() => map_successive_pairs(f, stream_tail(stream_tail(s)))));
+       memo(() => map_successive_pairs(f, stream_tail(stream_tail(s)))));
 
 const dirichlet_stream =
   map_successive_pairs((r1, r2) => gcd(r1, r2) === 1, random_numbers);
@@ -305,8 +301,8 @@ export const paradigmMonteCarloDefinitions = `${paradigmRandomStreamDefinitions}
 const monte_carlo = (experiment_stream: Stream<boolean>, passed: number, failed: number): Stream<number> => {
   const next = (passed: number, failed: number): Stream<number> =>
     pair(passed / (passed + failed),
-                memo(() => monte_carlo(stream_tail(experiment_stream),
-                                       passed, failed)));
+         memo(() => monte_carlo(stream_tail(experiment_stream),
+                                passed, failed)));
   return head(experiment_stream)
     ? next(passed + 1, failed)
     : next(passed, failed + 1);
@@ -333,10 +329,10 @@ export const paradigmWithdrawProgram = `const make_simplified_withdraw = (balanc
 
 const stream_withdraw = (balance: number, amount_stream: Stream<number>): Stream<number> =>
   pair(balance,
-              () => is_null(amount_stream)
-                    ? null
-                    : stream_withdraw(balance - head(amount_stream),
-                                      stream_tail(amount_stream)));
+       () => is_null(amount_stream)
+             ? null
+             : stream_withdraw(balance - head(amount_stream),
+                               stream_tail(amount_stream)));
 
 const w = make_simplified_withdraw(200);
 display(w(50));
@@ -351,10 +347,10 @@ stream_to_list(my_account_stream);
 /** Peter and Paul's requests merged by strict alternation: Peter waits for Paul. */
 export const paradigmJointAccountProgram = `const stream_withdraw = (balance: number, amount_stream: Stream<number>): Stream<number> =>
   pair(balance,
-              () => is_null(amount_stream)
-                    ? null
-                    : stream_withdraw(balance - head(amount_stream),
-                                      stream_tail(amount_stream)));
+       () => is_null(amount_stream)
+             ? null
+             : stream_withdraw(balance - head(amount_stream),
+                               stream_tail(amount_stream)));
 
 // Alternate strictly: one request from each, in turn.
 const alternate = <T>(s1: Stream<T>, s2: Stream<T>): Stream<T> =>

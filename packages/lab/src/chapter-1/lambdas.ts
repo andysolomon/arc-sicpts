@@ -3,8 +3,7 @@
  * conditional statements.
  */
 
-export const lambdaProgram = `const square = (x: number): number =>
-  x * x;
+export const lambdaProgram = `const square = (x: number): number => x * x;
 
 const plus4 = (x: number): number => x + 4;
 
@@ -12,8 +11,7 @@ display(plus4(3));
 ((x: number, y: number, z: number) => x + y + square(z))(1, 2, 3);
 `;
 
-export const localNamesProgram = `const square = (x: number): number =>
-  x * x;
+export const localNamesProgram = `const square = (x: number): number => x * x;
 
 const f = (x: number, y: number): number => {
   const a = 1 + x * y;
@@ -24,8 +22,7 @@ const f = (x: number, y: number): number => {
 f(2, 3);
 `;
 
-export const conditionalStatementProgram = `const is_even = (n: number): boolean =>
-  n % 2 === 0;
+export const conditionalStatementProgram = `const is_even = (n: number): boolean => n % 2 === 0;
 
 const expmod = (base: number, exp: number, m: number): number => {
   if (exp === 0) {

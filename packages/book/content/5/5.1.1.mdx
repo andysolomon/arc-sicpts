@@ -113,9 +113,9 @@ The section introduction asks for this machine before the language exists, as di
 const factorial = (n: number): number => {
     const iter = (product: number, counter: number): number =>
         counter > n
-               ? product
-               : iter(counter * product,
-                      counter + 1);
+        ? product
+        : iter(counter * product,
+               counter + 1);
     return iter(1, 1);
 };
 ```

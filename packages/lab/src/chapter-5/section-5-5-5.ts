@@ -14,30 +14,29 @@ import { onlyDeclarations, withoutDeclarations } from './pieces.ts';
 /** The declaration the book compiles in §5.5.5. */
 export const compiledCodeFactorialProgram = `const factorial = (n: number): number =>
     n === 1
-           ? 1
-           : factorial(n - 1) * n;
+    ? 1
+    : factorial(n - 1) * n;
 `;
 
 /** The declaration of exercise 5.36. */
 export const compiledCodeAlternativeProgram = `const factorial_alt = (n: number): number =>
     n === 1
-           ? 1
-           : n * factorial_alt(n - 1);
+    ? 1
+    : n * factorial_alt(n - 1);
 `;
 
 /** The iterative factorial of exercise 5.37. */
 export const compiledCodeIterativeProgram = `const factorial = (n: number): number => {
     const iter = (product: number, counter: number): number =>
         counter > n
-               ? product
-               : iter(product * counter, counter + 1);
+        ? product
+        : iter(product * counter, counter + 1);
     return iter(1, 1);
 };
 `;
 
 /** The program the code of exercise 5.38 was compiled from. */
-export const compiledCodeMysteryProgram = `const f = (x: number): number =>
-    x + g(x + 2);`;
+export const compiledCodeMysteryProgram = `const f = (x: number): number => x + g(x + 2);`;
 
 /**
  * The code of the figure in exercise 5.38, one instruction per line, in the
@@ -137,9 +136,9 @@ const check_same_code = (program: string): boolean =>
 /** Counting instructions of a kind (`"save"`, `"restore"`) in compiled code. */
 export const compiledCodeCountHelpers = `const check_count = (kind: string, program: string): number =>
     length(filter(instruction => is_pair(instruction) &&
-                                        head(instruction) === kind,
-                         instructions(compile(parse(program),
-                                              "val", "next"))));
+                                 head(instruction) === kind,
+                  instructions(compile(parse(program),
+                                       "val", "next"))));
 `;
 
 /**
@@ -251,11 +250,11 @@ const env =
 const comparisons = (symbol: string, env: Environment): number => {
     const scan = (symbols: List<string>, count: number, env: Environment): number =>
         is_null(symbols)
-               ? scan(frame_symbols(first_frame(enclosing_environment(env))),
-                      count, enclosing_environment(env))
-               : head(symbols) === symbol
-               ? count + 1
-               : scan(tail(symbols), count + 1, env);
+        ? scan(frame_symbols(first_frame(enclosing_environment(env))),
+               count, enclosing_environment(env))
+        : head(symbols) === symbol
+        ? count + 1
+        : scan(tail(symbols), count + 1, env);
     return scan(frame_symbols(first_frame(env)), 0, env);
 };
 
@@ -269,10 +268,10 @@ type Environment = List<Frame>;
 
 const check_environment = (): Environment =>
     extend_environment(list("y", "z"), list(6, 10),
-               extend_environment(list("a", "b", "c", "d", "e"),
-                                  list(1, 2, 3, 4, "*unassigned*"),
-                   extend_environment(list("x", "y"), list(3, 4),
-                                      the_global_environment)));
+        extend_environment(list("a", "b", "c", "d", "e"),
+                           list(1, 2, 3, 4, "*unassigned*"),
+            extend_environment(list("x", "y"), list(3, 4),
+                               the_global_environment)));
 
 const check_assign_then_lookup = (address: LexicalAddress, value: unknown): unknown => {
     const env = check_environment();
@@ -294,8 +293,8 @@ const factorial = (n: number): number =>
 
 export const interfacingCompareProgram = `const factorial = (n: number): number =>
     n === 1
-           ? 1
-           : factorial(n - 1) * n;
+    ? 1
+    : factorial(n - 1) * n;
 factorial(2);
 factorial(4);
 factorial(6);
@@ -322,8 +321,7 @@ const special_statistics = (n: number): List<number> => {
 };
 `;
 
-export const interfacingFibCompareProgram = `const fib = (n: number): number =>
-    n < 2 ? n : fib(n - 1) + fib(n - 2);
+export const interfacingFibCompareProgram = `const fib = (n: number): number => n < 2 ? n : fib(n - 1) + fib(n - 2);
 fib(2);
 fib(4);
 fib(6);

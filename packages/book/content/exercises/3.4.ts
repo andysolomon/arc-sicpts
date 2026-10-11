@@ -11,8 +11,7 @@ import type { ExerciseSpec } from './spec.ts';
  */
 
 /** Lists used as sets, and a scenario run many times. */
-const sets = `const contains = <T>(xs: List<T>, x: T): boolean =>
-    !is_null(member(x, xs));
+const sets = `const contains = <T>(xs: List<T>, x: T): boolean => !is_null(member(x, xs));
 
 const subset = <T>(xs: List<T>, ys: List<T>): boolean =>
     is_null(xs) || (contains(ys, head(xs)) && subset(tail(xs), ys));
@@ -22,10 +21,10 @@ const same_values = <T>(xs: List<T>, ys: List<T>): boolean =>
 
 const distinct = <T>(xs: List<T>): List<T> =>
     is_null(xs)
-           ? null
-           : contains(tail(xs), head(xs))
-           ? distinct(tail(xs))
-           : pair(head(xs), distinct(tail(xs)));
+    ? null
+    : contains(tail(xs), head(xs))
+    ? distinct(tail(xs))
+    : pair(head(xs), distinct(tail(xs)));
 
 const outcomes = <T>(run: () => T, n: number): List<T> =>
     n === 0 ? null : pair(run(), outcomes(run, n - 1));
@@ -33,8 +32,7 @@ const outcomes = <T>(run: () => T, n: number): List<T> =>
 const all_are = <T>(xs: List<T>, v: T): boolean =>
     is_null(filter(x => x !== v, xs));
 
-const some_are = <T>(xs: List<T>, v: T): boolean =>
-    contains(xs, v);
+const some_are = <T>(xs: List<T>, v: T): boolean => contains(xs, v);
 `;
 
 const serialBalances = 'list(35, 40, 45, 50)';
@@ -254,12 +252,12 @@ const make_account = (balance: number): Account => {
     const protected_deposit = deposit;
     const dispatch = (m: "withdraw" | "deposit" | "balance"): Transaction | number =>
         m === "withdraw"
-               ? protected_withdraw
-               : m === "deposit"
-               ? protected_deposit
-               : m === "balance"
-               ? balance
-               : error(m, "unknown request -- make_account");
+        ? protected_withdraw
+        : m === "deposit"
+        ? protected_deposit
+        : m === "balance"
+        ? balance
+        : error(m, "unknown request -- make_account");
     return dispatch;
 };
 
@@ -299,12 +297,12 @@ const make_account = (balance: number): Account => {
     const protected_deposit = protect(deposit);
     const dispatch = (m: "withdraw" | "deposit" | "balance"): Transaction | number =>
         m === "withdraw"
-               ? protected_withdraw
-               : m === "deposit"
-               ? protected_deposit
-               : m === "balance"
-               ? balance
-               : error(m, "unknown request -- make_account");
+        ? protected_withdraw
+        : m === "deposit"
+        ? protected_deposit
+        : m === "balance"
+        ? balance
+        : error(m, "unknown request -- make_account");
     return dispatch;
 };
 
@@ -629,8 +627,7 @@ const most_inside = (make_semaphore: (n: number) => Semaphore, n: number): numbe
     const guard = make_mutex();
     let inside = 0;
     let most = 0;
-    const work = (k: number): true =>
-        k === 0 ? true : work(k - 1);
+    const work = (k: number): true => k === 0 ? true : work(k - 1);
     const worker = (): void => {
         semaphore("acquire");
         guard("acquire");
@@ -708,8 +705,7 @@ const make_semaphore = (n: number): Semaphore => {
 const make_semaphore_tas = (n: number): Semaphore => {
     const cell = list(false);
     let taken = 0;
-    const lock = (): true =>
-        test_and_set(cell) ? lock() : true;
+    const lock = (): true => test_and_set(cell) ? lock() : true;
     const unlock = (): void => {
         set_head(cell, false);
     };

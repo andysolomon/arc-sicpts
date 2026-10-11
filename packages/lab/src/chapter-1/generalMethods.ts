@@ -3,21 +3,17 @@
  * function it works on as an argument.
  */
 
-export const averageDefinition = `const average = (x: number, y: number): number =>
-  (x + y) / 2;
+export const averageDefinition = `const average = (x: number, y: number): number => (x + y) / 2;
 `;
 
 export const halfIntervalDefinitions = `type NumFn = (x: number) => number;
 
 ${averageDefinition}
-const positive = (x: number): boolean =>
-  x > 0;
+const positive = (x: number): boolean => x > 0;
 
-const negative = (x: number): boolean =>
-  x < 0;
+const negative = (x: number): boolean => x < 0;
 
-const close_enough = (x: number, y: number): boolean =>
-  math_abs(x - y) < 0.001;
+const close_enough = (x: number, y: number): boolean => math_abs(x - y) < 0.001;
 
 const search = (f: NumFn, neg_point: number, pos_point: number): number => {
   const midpoint = average(neg_point, pos_point);

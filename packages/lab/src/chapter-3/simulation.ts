@@ -11,11 +11,9 @@
 /** §3.3.2's queue: a pair of pointers to the front and rear of an ordinary list. */
 export const circuitQueueDefinitions = `type Queue<T> = Pair<List<T>, List<T>>;
 
-const front_ptr = <T>(queue: Queue<T>): List<T> =>
-  head(queue);
+const front_ptr = <T>(queue: Queue<T>): List<T> => head(queue);
 
-const rear_ptr = <T>(queue: Queue<T>): List<T> =>
-  tail(queue);
+const rear_ptr = <T>(queue: Queue<T>): List<T> => tail(queue);
 
 const set_front_ptr = <T>(queue: Queue<T>, item: List<T>): void => {
   set_head(queue, item);
@@ -28,8 +26,7 @@ const set_rear_ptr = <T>(queue: Queue<T>, item: List<T>): void => {
 const is_empty_queue = <T>(queue: Queue<T>): boolean =>
   is_null(front_ptr(queue));
 
-const make_queue = <T>(): Queue<T> =>
-  pair(null, null);
+const make_queue = <T>(): Queue<T> => pair(null, null);
 
 const front_queue = <T>(queue: Queue<T>): T =>
   is_empty_queue(queue)
@@ -66,37 +63,30 @@ type Agenda = Pair<number, List<TimeSegment>>;
 const make_time_segment = (time: number, queue: Queue<Action>): TimeSegment =>
   pair(time, queue);
 
-const segment_time = (s: TimeSegment): number =>
-  head(s);
+const segment_time = (s: TimeSegment): number => head(s);
 
-const segment_queue = (s: TimeSegment): Queue<Action> =>
-  tail(s);
+const segment_queue = (s: TimeSegment): Queue<Action> => tail(s);
 
-const make_agenda = (): Agenda =>
-  list(0);
+const make_agenda = (): Agenda => list(0);
 
-const current_time = (agenda: Agenda): number =>
-  head(agenda);
+const current_time = (agenda: Agenda): number => head(agenda);
 
 const set_current_time = (agenda: Agenda, time: number): void => {
   set_head(agenda, time);
 };
 
-const segments = (agenda: Agenda): List<TimeSegment> =>
-  tail(agenda);
+const segments = (agenda: Agenda): List<TimeSegment> => tail(agenda);
 
 const set_segments = (agenda: Agenda, segs: List<TimeSegment>): void => {
   set_tail(agenda, segs);
 };
 
-const first_segment = (agenda: Agenda): TimeSegment =>
-  head(segments(agenda));
+const first_segment = (agenda: Agenda): TimeSegment => head(segments(agenda));
 
 const rest_segments = (agenda: Agenda): List<TimeSegment> =>
   tail(segments(agenda));
 
-const is_empty_agenda = (agenda: Agenda): boolean =>
-  is_null(segments(agenda));
+const is_empty_agenda = (agenda: Agenda): boolean => is_null(segments(agenda));
 
 const add_to_agenda = (time: number, action: Action, agenda: Agenda): void => {
   const belongs_before = (segs: List<TimeSegment>): boolean =>
@@ -183,8 +173,7 @@ const call_each = (functions: List<Action>): "done" => {
   }
 };
 
-const get_signal = (wire: Wire): number =>
-  wire("get_signal");
+const get_signal = (wire: Wire): number => wire("get_signal");
 
 const set_signal = (wire: Wire, new_value: number): "done" =>
   wire("set_signal")(new_value);
@@ -487,11 +476,9 @@ const for_each_except = <T>(exception: unknown, fun: (item: T) => void, list: Li
   return loop(list);
 };
 
-const has_value = (connector: Connector): boolean =>
-  connector("has_value");
+const has_value = (connector: Connector): boolean => connector("has_value");
 
-const get_value = (connector: Connector): number =>
-  connector("value");
+const get_value = (connector: Connector): number => connector("value");
 
 const set_value = (connector: Connector, new_value: number, informant: Informant): "done" | "ignored" =>
   connector("set_value")(new_value, informant);

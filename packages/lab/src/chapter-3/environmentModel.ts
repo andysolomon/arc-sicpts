@@ -1,8 +1,7 @@
 /** Programs of §3.2, shared by the Book's examples and the Laboratory's tests. */
 
 /** §3.2.1: declaring a function makes a function object; applying it makes a frame. */
-export const envModelSquareProgram = `const square = (x: number): number =>
-  x * x;
+export const envModelSquareProgram = `const square = (x: number): number => x * x;
 
 square(5);
 `;
@@ -20,14 +19,11 @@ bump(10);
 `;
 
 /** §3.2.2: the program of §1.1.5, now in the environment model. */
-export const envModelSumOfSquaresProgram = `const square = (x: number): number =>
-  x * x;
+export const envModelSumOfSquaresProgram = `const square = (x: number): number => x * x;
 
-const sum_of_squares = (x: number, y: number): number =>
-  square(x) + square(y);
+const sum_of_squares = (x: number, y: number): number => square(x) + square(y);
 
-const f = (a: number): number =>
-  sum_of_squares(a + 1, a * 2);
+const f = (a: number): number => sum_of_squares(a + 1, a * 2);
 
 f(5);
 `;
@@ -35,29 +31,28 @@ f(5);
 /** §3.2.2, exercise 3.9: the two factorials of §1.2.1. */
 export const envModelFactorialRecursiveDefinition = `const factorial = (n: number): number =>
   n === 1
-         ? 1
-         : n * factorial(n - 1);
+  ? 1
+  : n * factorial(n - 1);
 `;
 
-export const envModelFactorialIterativeDefinition = `const factorial = (n: number): number =>
-  fact_iter(1, 1, n);
+export const envModelFactorialIterativeDefinition = `const factorial = (n: number): number => fact_iter(1, 1, n);
 
 const fact_iter = (product: number, counter: number, max_count: number): number =>
   counter > max_count
-         ? product
-         : fact_iter(counter * product, counter + 1, max_count);
+  ? product
+  : fact_iter(counter * product, counter + 1, max_count);
 `;
 
 /** §3.2.3: the withdrawal processor of §3.1.1. */
 export const envModelMakeWithdrawDefinition = `const make_withdraw = (balance: number): ((amount: number) => number | string) =>
   amount => {
-           if (balance >= amount) {
-             balance = balance - amount;
-             return balance;
-           } else {
-             return "insufficient funds";
-           }
-         };
+    if (balance >= amount) {
+      balance = balance - amount;
+      return balance;
+    } else {
+      return "insufficient funds";
+    }
+  };
 `;
 
 export const envModelMakeWithdrawProgram = `${envModelMakeWithdrawDefinition}
@@ -78,21 +73,18 @@ W1(40);
 `;
 
 /** §3.2.4: square roots with block structure, as in §1.1.8. */
-export const envModelInternalSqrtProgram = `const square = (x: number): number =>
-  x * x;
+export const envModelInternalSqrtProgram = `const square = (x: number): number => x * x;
 
-const average = (x: number, y: number): number =>
-  (x + y) / 2;
+const average = (x: number, y: number): number => (x + y) / 2;
 
 const sqrt = (x: number): number => {
   const is_good_enough = (guess: number): boolean =>
     math_abs(square(guess) - x) < 0.001;
-  const improve = (guess: number): number =>
-    average(guess, x / guess);
+  const improve = (guess: number): number => average(guess, x / guess);
   const sqrt_iter = (guess: number): number =>
     is_good_enough(guess)
-           ? guess
-           : sqrt_iter(improve(guess));
+    ? guess
+    : sqrt_iter(improve(guess));
   return sqrt_iter(1);
 };
 
@@ -103,12 +95,12 @@ sqrt(2);
 export const envModelMutualRecursionProgram = `const f = (x: number): boolean => {
   const is_even = (n: number): boolean =>
     n === 0
-           ? true
-           : is_odd(n - 1);
+    ? true
+    : is_odd(n - 1);
   const is_odd = (n: number): boolean =>
     n === 0
-           ? false
-           : is_even(n - 1);
+    ? false
+    : is_even(n - 1);
   return is_even(x);
 };
 
@@ -146,10 +138,10 @@ const make_account = (balance: number): Account => {
   };
   const dispatch = (m: "withdraw" | "deposit"): Transaction =>
     m === "withdraw"
-           ? withdraw
-           : m === "deposit"
-           ? deposit
-           : error(m, "unknown request: make_account");
+    ? withdraw
+    : m === "deposit"
+    ? deposit
+    : error(m, "unknown request: make_account");
   return dispatch;
 };
 `;

@@ -33,8 +33,7 @@ fib_iter(1, 0, 10);
 fib_iter(1, 0, 15);
 `;
 
-export const countChangeDefinitions = `const count_change = (amount: number): number =>
-  cc(amount, 5);
+export const countChangeDefinitions = `const count_change = (amount: number): number => cc(amount, 5);
 
 const cc = (amount: number, kinds_of_coins: number): number =>
   amount === 0

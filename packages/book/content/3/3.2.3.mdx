@@ -7,13 +7,13 @@ Now for the reason we built the environment model: objects with local state. Tak
 ```js
 const make_withdraw = (balance: number): ((amount: number) => number | string) =>
   amount => {
-           if (balance >= amount) {
-             balance = balance - amount;
-             return balance;
-           } else {
-             return "insufficient funds";
-           }
-         };
+    if (balance >= amount) {
+      balance = balance - amount;
+      return balance;
+    } else {
+      return "insufficient funds";
+    }
+  };
 ```
 
 We will follow `const W1 = make_withdraw(100);` and then `W1(50);`.
@@ -68,14 +68,14 @@ In `make_withdraw`, the local variable `balance` is the function's parameter. It
 ```js
 const make_withdraw = (initial_amount: number): ((amount: number) => number | string) =>
   (balance =>
-            amount => {
-              if (balance >= amount) {
-                balance = balance - amount;
-                return balance;
-              } else {
-                return "insufficient funds";
-              }
-            })(initial_amount);
+     amount => {
+       if (balance >= amount) {
+         balance = balance - amount;
+         return balance;
+       } else {
+         return "insufficient funds";
+       }
+     })(initial_amount);
 ```
 
 Write this version of `make_withdraw` and show that it makes objects with the same behaviour as the original. Then use the environment model on `const W1 = make_withdraw(100); W1(50); const W2 = make_withdraw(100);` and answer: how many frames does one call of `make_withdraw` create now, which name is bound in the frame `W1`'s environment pointer leads to, and which name in the frame that one extends?

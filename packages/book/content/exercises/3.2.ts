@@ -43,8 +43,7 @@ const most_pending_iterative = 0; // your answer
     { name: 'the enclosing environment', kind: 'value', expr: 'enclosing', expected: 'program' },
     { name: 'frames pending at once', kind: 'value', expr: 'most_pending_recursive * 100 + most_pending_iterative', expected: 601 },
   ],
-  solution: `const frames_recursive = (n: number): number =>
-  n;
+  solution: `const frames_recursive = (n: number): number => n;
 
 const frames_iterative = (n: number): number => {
   // one for factorial(n), then fact_iter with counter = 1, 2, ..., n + 1
@@ -65,13 +64,13 @@ export const exercise_3_10: ExerciseSpec = {
 // with parameter balance to initial_amount.
 const make_withdraw = (balance: number): ((amount: number) => number | string) =>
   amount => {
-           if (balance >= amount) {
-             balance = balance - amount;
-             return balance;
-           } else {
-             return "insufficient funds";
-           }
-         };
+    if (balance >= amount) {
+      balance = balance - amount;
+      return balance;
+    } else {
+      return "insufficient funds";
+    }
+  };
 
 // How many frames does evaluating make_withdraw(100) now create?
 const frames_per_make_withdraw = 0; // your answer
@@ -97,14 +96,14 @@ const its_enclosing_frame_binds = ""; // your answer
   ],
   solution: `const make_withdraw = (initial_amount: number): ((amount: number) => number | string) =>
   (balance =>
-            amount => {
-              if (balance >= amount) {
-                balance = balance - amount;
-                return balance;
-              } else {
-                return "insufficient funds";
-              }
-            })(initial_amount);
+     amount => {
+       if (balance >= amount) {
+         balance = balance - amount;
+         return balance;
+       } else {
+         return "insufficient funds";
+       }
+     })(initial_amount);
 
 const frames_per_make_withdraw = 2;
 const pointed_at_frame_binds = "balance";

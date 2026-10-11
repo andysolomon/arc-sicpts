@@ -1,11 +1,8 @@
-export const substitution = `const square = (x: number): number =>
-  x * x;
+export const substitution = `const square = (x: number): number => x * x;
 
-const sum_of_squares = (x: number, y: number): number =>
-  square(x) + square(y);
+const sum_of_squares = (x: number, y: number): number => square(x) + square(y);
 
-const f = (a: number): number =>
-  sum_of_squares(a + 1, a * 2);
+const f = (a: number): number => sum_of_squares(a + 1, a * 2);
 
 f(5);
 `;

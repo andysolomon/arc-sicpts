@@ -105,11 +105,11 @@ The `integral` above mirrors the implicit declaration of `integers` in §3.5.2. 
 ```js
 const integral = (integrand: Stream<number>, initial_value: number, dt: number): Stream<number> =>
   pair(initial_value,
-              is_null(integrand)
-              ? null
-              : integral(stream_tail(integrand),
-                         dt * head(integrand) + initial_value,
-                         dt));
+       is_null(integrand)
+       ? null
+       : integral(stream_tail(integrand),
+                  dt * head(integrand) + initial_value,
+                  dt));
 ```
 
 In a system with loops this version has the same problem as the first one. Change it so that it takes the integrand as a delayed argument and can be used in `solve`.

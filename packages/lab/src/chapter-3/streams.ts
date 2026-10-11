@@ -10,11 +10,9 @@
  */
 
 /** The Θ(√n) primality test of §1.2.6. */
-export const streamPrimalityDefinitions = `const square = (x: number): number =>
-  x * x;
+export const streamPrimalityDefinitions = `const square = (x: number): number => x * x;
 
-const smallest_divisor = (n: number): number =>
-  find_divisor(n, 2);
+const smallest_divisor = (n: number): number => find_divisor(n, 2);
 
 const find_divisor = (n: number, test_divisor: number): number =>
   square(test_divisor) > n
@@ -23,11 +21,9 @@ const find_divisor = (n: number, test_divisor: number): number =>
     ? test_divisor
     : find_divisor(n, test_divisor + 1);
 
-const divides = (a: number, b: number): boolean =>
-  b % a === 0;
+const divides = (a: number, b: number): boolean => b % a === 0;
 
-const is_prime = (n: number): boolean =>
-  n === smallest_divisor(n);
+const is_prime = (n: number): boolean => n === smallest_divisor(n);
 `;
 
 /** The list version of `enumerate_interval` from §2.2.3. */
@@ -53,8 +49,8 @@ const sum_primes_iterative = (a: number, b: number): number => {
 // The sequence style: a list of the whole interval, then a list of its primes.
 const sum_primes_with_lists = (a: number, b: number): number =>
   accumulate((x, y) => x + y,
-                    0,
-                    filter(is_prime, enumerate_interval(a, b)));
+             0,
+             filter(is_prime, enumerate_interval(a, b)));
 
 display(sum_primes_iterative(10, 100));
 sum_primes_with_lists(10, 100);
@@ -90,8 +86,7 @@ export const streamFilterDefinition = `const stream_filter = <T>(pred: (x: T) =>
 `;
 
 /** The book's stream operations; they shadow the library's, which are the same. */
-export const streamOperationsDefinitions = `const stream_tail = <T>(stream: Stream<T>): Stream<T> =>
-  tail(stream)();
+export const streamOperationsDefinitions = `const stream_tail = <T>(stream: Stream<T>): Stream<T> => tail(stream)();
 
 const stream_ref = <T>(s: Stream<T>, n: number): T =>
   n === 0
@@ -113,8 +108,7 @@ const stream_for_each = <T>(fun: (x: T) => unknown, s: Stream<T>): true => {
   }
 };
 
-const display_stream = <T>(s: Stream<T>): true =>
-  stream_for_each(display, s);
+const display_stream = <T>(s: Stream<T>): true => stream_for_each(display, s);
 `;
 
 export const streamOperationsProgram = `${streamOperationsDefinitions}
@@ -167,8 +161,7 @@ export const streamMapOptimizedDefinition = `const stream_map_optimized = <A, B>
 export const memoizedStreamProgram = `${streamMemoDefinition}
 ${streamMapOptimizedDefinition}
 ${streamEnumerateIntervalDefinition}
-const show_square = (x: number): number =>
-  display(x * x);
+const show_square = (x: number): number => display(x * x);
 
 display("stream_map");
 const plain = stream_map(show_square, stream_enumerate_interval(1, 10));
@@ -185,8 +178,7 @@ export const integersStartingFromDefinition = `const integers_starting_from = (n
   pair(n, () => integers_starting_from(n + 1));
 `;
 
-export const isDivisibleDefinition = `const is_divisible = (x: number, y: number): boolean =>
-  x % y === 0;
+export const isDivisibleDefinition = `const is_divisible = (x: number, y: number): boolean => x % y === 0;
 `;
 
 export const noSevensProgram = `${integersStartingFromDefinition}
@@ -212,9 +204,9 @@ export const sieveDefinitions = `${integersStartingFromDefinition}
 ${isDivisibleDefinition}
 const sieve = (stream: Stream<number>): Stream<number> =>
   pair(head(stream),
-              () => sieve(stream_filter(
-                              x => ! is_divisible(x, head(stream)),
-                              stream_tail(stream))));
+       () => sieve(stream_filter(
+                       x => ! is_divisible(x, head(stream)),
+                       stream_tail(stream))));
 
 const primes = sieve(integers_starting_from(2));
 `;
@@ -237,7 +229,7 @@ export const addStreamsDefinition = `const add_streams = (s1: Stream<number>, s2
 
 export const scaleStreamDefinition = `const scale_stream = (stream: Stream<number>, factor: number): Stream<number> =>
   stream_map(x => x * factor,
-                    stream);
+             stream);
 `;
 
 export const implicitIntegersProgram = `${streamMap2Definition}
@@ -273,8 +265,7 @@ stream_ref(double, 50);
 
 export const primesFromPrimesProgram = `${integersStartingFromDefinition}
 ${isDivisibleDefinition}
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
 const is_prime = (n: number): boolean => {
   const iter = (ps: Stream<number>): boolean =>

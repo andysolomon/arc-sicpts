@@ -11,8 +11,8 @@ We keep the predicates of conditionals proper: they must evaluate to a boolean, 
 ```js
 const is_truthy = (x: unknown): boolean =>
     is_boolean(x)
-           ? x
-           : error(x, "boolean expected, received");
+    ? x
+    : error(x, "boolean expected, received");
 const is_falsy = (x: unknown): boolean => ! is_truthy(x);
 ```
 
@@ -47,8 +47,7 @@ const make_return_value = (content: unknown): ReturnValue =>
     list("return_value", content);
 const is_return_value = (value: unknown): boolean =>
     is_tagged_list(value, "return_value");
-const return_value_content = (value: ReturnValue): unknown =>
-    head(tail(value));
+const return_value_content = (value: ReturnValue): unknown => head(tail(value));
 ```
 
 </Prose>
@@ -89,11 +88,11 @@ const frame_values = (frame: Frame): List<unknown> => tail(frame);
 
 const extend_environment = (symbols: List<string>, vals: List<unknown>, base_env: Environment): Environment =>
     length(symbols) === length(vals)
-           ? pair(make_frame(symbols, vals), base_env)
-           : error(pair(symbols, vals),
-                   length(symbols) < length(vals)
-                   ? "too many arguments supplied"
-                   : "too few arguments supplied");
+    ? pair(make_frame(symbols, vals), base_env)
+    : error(pair(symbols, vals),
+            length(symbols) < length(vals)
+            ? "too many arguments supplied"
+            : "too few arguments supplied");
 ```
 
 To look up a symbol we scan the names of the first frame; if we find it, the value is the corresponding element of the values. Otherwise we search the enclosing environment, and so on; reaching the empty environment is an `"unbound name"` error.
@@ -103,10 +102,10 @@ const lookup_symbol_value = (symbol: string, env: Environment): unknown => {
     const env_loop = (env: Environment): unknown => {
         const scan = (symbols: List<string>, vals: List<unknown>): unknown =>
             is_null(symbols)
-                   ? env_loop(enclosing_environment(env))
-                   : symbol === head(symbols)
-                   ? head(vals)
-                   : scan(tail(symbols), tail(vals));
+            ? env_loop(enclosing_environment(env))
+            : symbol === head(symbols)
+            ? head(vals)
+            : scan(tail(symbols), tail(vals));
         if (env === the_empty_environment) {
             error(symbol, "unbound name");
         } else {

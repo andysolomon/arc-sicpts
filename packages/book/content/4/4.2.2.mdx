@@ -67,8 +67,8 @@ The other place we must change the evaluator is in the handling of conditionals,
 ```js
 const eval_conditional = (component: Component, env: Environment): unknown =>
     is_truthy(actual_value(conditional_predicate(component), env))
-           ? evaluate(conditional_consequent(component), env)
-           : evaluate(conditional_alternative(component), env);
+    ? evaluate(conditional_consequent(component), env)
+    : evaluate(conditional_alternative(component), env);
 ```
 
 Finally, the driver loop of section 4.1.4 must use `actual_value` instead of `evaluate`, so that if a delayed value is propagated back to it, it is forced before being printed. The prompts change too, to say that this is the lazy evaluator:
@@ -101,8 +101,8 @@ Our evaluator must arrange to create thunks when functions are applied to argume
 ```js
 const force_it = (obj: unknown): unknown =>
     is_thunk(obj)
-           ? actual_value(thunk_exp(obj), thunk_env(obj))
-           : obj;
+    ? actual_value(thunk_exp(obj), thunk_env(obj))
+    : obj;
 ```
 
 One easy way to package an expression with an environment is to make a list containing the expression and the environment. Thus, we create a thunk as follows:
@@ -112,8 +112,7 @@ type Thunk = List<unknown>;
 
 const delay_it = (exp: Component, env: Environment): Thunk =>
     list("thunk", exp, env);
-const is_thunk = (obj: unknown): boolean =>
-    is_tagged_list(obj, "thunk");
+const is_thunk = (obj: unknown): boolean => is_tagged_list(obj, "thunk");
 const thunk_exp = (thunk: Thunk): Component => head(tail(thunk));
 
 const thunk_env = (thunk: Thunk): Environment => head(tail(tail(thunk)));

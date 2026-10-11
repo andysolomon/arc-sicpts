@@ -204,8 +204,7 @@ Using the primitive constraints `adder`, `multiplier` and `constant`, declare a 
 Louis Reasoner wants a squarer, a constraint with two terminals such that the value of connector `b` is the square of the value of `a`. He proposes
 
 ```js
-const squarer = (a: Connector, b: Connector): Constraint =>
-  multiplier(a, a, b);
+const squarer = (a: Connector, b: Connector): Constraint => multiplier(a, a, b);
 ```
 
 There is a serious flaw in this idea. Find what `b` becomes when `a` is set to 3, and whether `a` gets a value when, on a fresh network, `b` is set to 9.

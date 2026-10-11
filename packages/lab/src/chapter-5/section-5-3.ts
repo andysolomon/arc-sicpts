@@ -8,8 +8,7 @@
  * The computation the section uses to show how much garbage a program makes:
  * two lists built only to be summed.
  */
-export const memoryGarbageProgram = `const is_odd = (n: number): boolean =>
-    n % 2 === 1;
+export const memoryGarbageProgram = `const is_odd = (n: number): boolean => n % 2 === 1;
 
 const sum = accumulate((x, y) => x + y,
                        0,

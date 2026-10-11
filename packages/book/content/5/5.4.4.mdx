@@ -34,8 +34,7 @@ We store the current environment, initially the global environment, in the varia
 ```js
 let current_environment = the_global_environment;
 
-const get_current_environment = (): Environment =>
-    current_environment;
+const get_current_environment = (): Environment => current_environment;
 
 const set_current_environment = (env: Environment): void => {
     current_environment = env;
@@ -129,9 +128,9 @@ Use the monitored stack to explore the tail-recursive property of the evaluator 
 const factorial = (n: number): number => {
     const iter = (product: number, counter: number): number =>
         counter > n
-               ? product
-               : iter(counter * product,
-                      counter + 1);
+        ? product
+        : iter(counter * product,
+               counter + 1);
     return iter(1, 1);
 };
 ```
@@ -154,8 +153,8 @@ For comparison with exercise 5.27, explore the behaviour of the following functi
 ```js
 const factorial = (n: number): number =>
     n === 1
-           ? 1
-           : factorial(n - 1) * n;
+    ? 1
+    : factorial(n - 1) * n;
 ```
 
 By running this function with the monitored stack, determine, as a function of *n*, the maximum depth of the stack and the total number of pushes used in evaluating *n*! for *n* ≥ 1. (Again, these functions will be linear.) Write `recursive_depth(n)` and `recursive_pushes(n)`. Then summarise your experiments by filling in this table with the appropriate expressions in terms of *n*:
@@ -195,8 +194,7 @@ Modify the definition of the evaluator by changing `ev_return` as described in �
 Monitor the stack operations in the tree-recursive Fibonacci computation:
 
 ```js
-const fib = (n: number): number =>
-    n < 2 ? n : fib(n - 1) + fib(n - 2);
+const fib = (n: number): number => n < 2 ? n : fib(n - 1) + fib(n - 2);
 ```
 
 - Give a formula in terms of *n* for the maximum depth of the stack required to compute Fib(*n*) for *n* ≥ 2: write `fib_depth(n)`. Hint: in §1.2.2 we argued that the space used by this process grows linearly with *n*.

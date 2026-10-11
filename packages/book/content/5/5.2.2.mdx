@@ -13,10 +13,10 @@ The `assemble` function is the main entry to the assembler. It takes the control
 ```js
 const assemble = (controller: Controller, machine: Machine): List<MachineInstruction> =>
     extract_labels(controller,
-                          (insts, labels) => {
-                              update_insts(insts, labels, machine);
-                              return insts;
-                          });
+                   (insts, labels) => {
+                       update_insts(insts, labels, machine);
+                       return insts;
+                   });
 ```
 
 `extract_labels` takes a list `controller` and a function `receive` as arguments. `receive` will be called with two values: (1) a list `insts` of instruction data structures, each containing an instruction from `controller`; and (2) a table called `labels`, which associates each label from `controller` with the position in the list `insts` that the label designates. Whatever `receive` returns, `extract_labels` returns; its type parameter `R` stands for that type.
@@ -27,20 +27,20 @@ const extract_labels = <R>(
     receive: (insts: List<MachineInstruction>, labels: List<LabelEntry>) => R
 ): R =>
     is_null(controller)
-           ? receive(null, null)
-           : extract_labels(
-                 tail(controller),
-                 (insts, labels) => {
-                   const next_element = head(controller);
-                   return is_string(next_element)
-                          ? receive(insts,
-                                    pair(make_label_entry(next_element,
-                                                          insts),
-                                         labels))
-                          : receive(pair(make_inst(next_element),
-                                         insts),
-                                    labels);
-                 });
+    ? receive(null, null)
+    : extract_labels(
+          tail(controller),
+          (insts, labels) => {
+            const next_element = head(controller);
+            return is_string(next_element)
+                   ? receive(insts,
+                             pair(make_label_entry(next_element,
+                                                   insts),
+                                  labels))
+                   : receive(pair(make_inst(next_element),
+                                  insts),
+                             labels);
+          });
 ```
 
 `extract_labels` works by sequentially scanning the elements of the controller and accumulating the `insts` and the `labels`. If an element is a string (and thus a label), an appropriate entry is added to the `labels` table. Otherwise the element is accumulated onto the `insts` list.

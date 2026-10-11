@@ -19,8 +19,8 @@ export const exercise_4_23: ExerciseSpec = {
 
 const factorial = (n: number): number =>
     unless(n === 1,
-                  n * factorial(n - 1),
-                  1);
+           n * factorial(n - 1),
+           1);
 
 // Work these out before running anything.
 // Does factorial(5) ever return a value in applicative order? true or false.
@@ -40,8 +40,8 @@ const lazy_calls = undefined;
 
 const factorial = (n: number): number =>
     unless(n === 1,
-                  n * factorial(n - 1),
-                  1);
+           n * factorial(n - 1),
+           1);
 
 // Applicative order evaluates n * factorial(n - 1) before unless is
 // entered, even when n is 1, so the recursion never stops.
@@ -57,10 +57,10 @@ const lazy_calls = 5;
 /** `evaluate` of §4.1.1, catching `unless` before it would be taken for an application. */
 const evaluateWithUnless = replaceOnce(
   pick(metacircularEvaluator, 'evaluate'),
-  '           : is_application(component)',
-  `           : is_unless(component)
-           ? evaluate(unless_to_conditional(component), env)
-           : is_application(component)`,
+  '    : is_application(component)',
+  `    : is_unless(component)
+    ? evaluate(unless_to_conditional(component), env)
+    : is_application(component)`,
 );
 
 export const exercise_4_24: ExerciseSpec = {
@@ -112,8 +112,8 @@ const unless_to_conditional = (component: Component): Component => {
   ],
   solution: `const is_unless = (component: Component): boolean =>
     is_application(component) &&
-           is_name(function_expression(component)) &&
-           symbol_of_name(function_expression(component)) === "unless";
+    is_name(function_expression(component)) &&
+    symbol_of_name(function_expression(component)) === "unless";
 
 const unless_to_conditional = (component: Component): Component => {
     const args = arg_expressions(component);
@@ -556,10 +556,10 @@ const apply = (fun: PrimitiveFunction | CompoundFunction, args: List<Component>,
 // lazy one, once it has been declared. The arguments stay unevaluated.
 const list_to_pairs = (exps: List<Component>): Component =>
     is_null(exps)
-           ? list("literal", null)
-           : list("application",
-                  list("name", "pair"),
-                  list(head(exps), list_to_pairs(tail(exps))));
+    ? list("literal", null)
+    : list("application",
+           list("name", "pair"),
+           list(head(exps), list_to_pairs(tail(exps))));
 
 const apply = (fun: PrimitiveFunction | CompoundFunction, args: List<Component>, env: Environment): unknown => {
     if (is_primitive_function(fun) && primitive_implementation(fun) === list) {
@@ -633,22 +633,22 @@ const print_form = (object: unknown): unknown => {
 // to the expression (p, q) => p gives the head, still to be forced.
 const is_lazy_pair = (object: unknown): boolean =>
     is_compound_function(object) &&
-           equal(function_parameters(object), list("m"));
+    equal(function_parameters(object), list("m"));
 
 const lazy_part = (object: CompoundFunction, selector: string): unknown =>
     force_it(apply(object, list(parse(selector)),
-                          the_global_environment));
+                   the_global_environment));
 
 const print_form = (object: unknown): unknown => {
     const elements = (object: unknown, n: number): unknown =>
         is_null(object)
-               ? null
-               : !is_lazy_pair(object)
-               ? object
-               : n === 0
-               ? list("...")
-               : pair(lazy_part(object, "(p, q) => p;"),
-                      elements(lazy_part(object, "(p, q) => q;"), n - 1));
+        ? null
+        : !is_lazy_pair(object)
+        ? object
+        : n === 0
+        ? list("...")
+        : pair(lazy_part(object, "(p, q) => p;"),
+               elements(lazy_part(object, "(p, q) => q;"), n - 1));
     return is_lazy_pair(object) ? elements(object, 10) : object;
 };
 `,

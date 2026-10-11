@@ -42,8 +42,8 @@ const saves_4 = list("argl", "fun");  // f(g("x"), "y")
 
 const recursiveFactorial = `const factorial = (n: number): number =>
     n === 1
-           ? 1
-           : factorial(n - 1) * n;`;
+    ? 1
+    : factorial(n - 1) * n;`;
 
 /** Runs the evaluator built with the reader's application block, recording what it prints. */
 const ecevalChecks = `${ecevalControllerWithout(['ev_operator_combination'])}
@@ -159,18 +159,18 @@ const check_m = ${quoted(mBody)};
 const check_h = ${quoted(hBody)};
 const check_count_undefined_returns = (component: Component): number =>
     is_return_statement(component)
-           ? (is_literal(return_expression(component)) &&
-              is_undefined(literal_value(return_expression(component)))
-              ? 1 : 0)
-           : is_sequence(component)
-           ? accumulate((s, n) => check_count_undefined_returns(s) + n,
-                        0, sequence_statements(component))
-           : is_block(component)
-           ? check_count_undefined_returns(block_body(component))
-           : is_conditional(component)
-           ? check_count_undefined_returns(conditional_consequent(component)) +
-             check_count_undefined_returns(conditional_alternative(component))
-           : 0;
+    ? (is_literal(return_expression(component)) &&
+       is_undefined(literal_value(return_expression(component)))
+       ? 1 : 0)
+    : is_sequence(component)
+    ? accumulate((s, n) => check_count_undefined_returns(s) + n,
+                 0, sequence_statements(component))
+    : is_block(component)
+    ? check_count_undefined_returns(block_body(component))
+    : is_conditional(component)
+    ? check_count_undefined_returns(conditional_consequent(component)) +
+      check_count_undefined_returns(conditional_alternative(component))
+    : 0;
 const check_added = (declaration: string): number => {
     const body = lambda_body(declaration_value_expression(parse(declaration)));
     return check_count_undefined_returns(append_return_undefined(body));

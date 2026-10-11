@@ -22,11 +22,11 @@ const check_statistics = (machine: Machine, inputs: List<Pair<string, number>>):
 };
 const check_operation_names = (machine: Machine): List<string> =>
     filter(name => name !== "initialize_stack" &&
-                          name !== "print_stack_statistics",
-                  map(head, machine("operations")));
+                   name !== "print_stack_statistics",
+           map(head, machine("operations")));
 const check_only = (names: List<string>, allowed: List<string>): boolean =>
     accumulate((name, ok) => ok && !is_null(member(name, allowed)),
-                      true, names);
+               true, names);
 const check_has = (names: List<string>, name: string): boolean =>
     !is_null(member(name, names));
 const check_arithmetic =

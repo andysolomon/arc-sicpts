@@ -124,9 +124,9 @@ That gives a function with one decision left open, how to combine the second and
 ```js
 const pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   pair(list(head(s), head(t)),
-              () => combine_in_some_way(
-                      stream_map(x => list(head(s), x), stream_tail(t)),
-                      pairs(stream_tail(s), stream_tail(t))));
+       () => combine_in_some_way(
+               stream_map(x => list(head(s), x), stream_tail(t)),
+               pairs(stream_tail(s), stream_tail(t))));
 ```
 
 An obvious candidate is `stream_append`, the stream version of `append` (it is in the library):
@@ -164,9 +164,9 @@ Each call puts one element from its first argument out front and then swaps the 
 ```js
 const pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   pair(list(head(s), head(t)),
-              () => interleave(stream_map(x => list(head(s), x),
-                                          stream_tail(t)),
-                               pairs(stream_tail(s), stream_tail(t))));
+       () => interleave(stream_map(x => list(head(s), x),
+                                   stream_tail(t)),
+                        pairs(stream_tail(s), stream_tail(t))));
 ```
 
 </Prose>
@@ -232,8 +232,8 @@ Louis Reasoner finds `sqrt_stream` slow and memoizes it:
 ```js
 const sqrt_stream_optimized = (x: number): Stream<number> =>
   pair(1,
-              memo(() => stream_map_optimized(guess => sqrt_improve(guess, x),
-                                              sqrt_stream_optimized(x))));
+       memo(() => stream_map_optimized(guess => sqrt_improve(guess, x),
+                                       sqrt_stream_optimized(x))));
 ```
 
 Alyssa P. Hacker suggests naming the stream instead, so that it refers to itself:
@@ -311,7 +311,7 @@ Louis Reasoner thinks three parts are one too many. He leaves (*S*₀, *T*₀) i
 ```js
 const pairs = <T>(s: Stream<T>, t: Stream<T>): Stream<List<T>> =>
   interleave(stream_map(x => list(head(s), x), t),
-                    pairs(stream_tail(s), stream_tail(t)));
+             pairs(stream_tail(s), stream_tail(t)));
 ```
 
 Does it work? What happens when you evaluate `pairs(integers, integers)` with this declaration? Answer, and then mend Louis's idea by writing `interleave_delayed`, an `interleave` whose second argument is a function returning the stream, so that the recursive call can be put off.
@@ -391,8 +391,8 @@ With a function `sign_change_detector(value, last_value)` that compares two sign
 ```js
 const make_zero_crossings = (input_stream: Stream<number>, last_value: number): Stream<number> =>
   pair(sign_change_detector(head(input_stream), last_value),
-              () => make_zero_crossings(stream_tail(input_stream),
-                                        head(input_stream)));
+       () => make_zero_crossings(stream_tail(input_stream),
+                                 head(input_stream)));
 const zero_crossings = make_zero_crossings(sense_data, 0);
 ```
 

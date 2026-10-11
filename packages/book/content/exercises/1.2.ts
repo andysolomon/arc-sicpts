@@ -48,8 +48,7 @@ const a_3_3 = 0;
 
 // g(n) computes A(1, n) for positive n. Give it a closed form:
 // an expression in n that does not call A.
-const g = (n: number): number =>
-  0;
+const g = (n: number): number => 0;
 `,
   tests: [
     { name: 'A(1, 10)', kind: 'value', expr: 'a_1_10', expected: 1024 },
@@ -70,8 +69,7 @@ const a_1_10 = 1024;
 const a_2_4 = 65536;
 const a_3_3 = 65536;
 
-const g = (n: number): number =>
-  math_pow(2, n);
+const g = (n: number): number => math_pow(2, n);
 `,
 };
 
@@ -107,8 +105,7 @@ const f_iter = (a: number, b: number, c: number, count: number): number =>
     ? a
     : f_iter(a + 2 * b + 3 * c, a, b, count - 1);
 
-const f_iterative = (n: number): number =>
-  n < 3 ? n : f_iter(2, 1, 0, n - 2);
+const f_iterative = (n: number): number => n < 3 ? n : f_iter(2, 1, 0, n - 2);
 `,
 };
 
@@ -181,11 +178,9 @@ const p_count = (angle: number): number =>
 `,
 };
 
-const evenAndSquare = `const is_even = (n: number): boolean =>
-  n % 2 === 0;
+const evenAndSquare = `const is_even = (n: number): boolean => n % 2 === 0;
 
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 `;
 
 export const exercise_1_16: ExerciseSpec = {
@@ -196,8 +191,7 @@ const fast_expt_iter = (a: number, b: number, n: number): number => {
   // your answer
 };
 
-const fast_expt = (b: number, n: number): number =>
-  fast_expt_iter(1, b, n);
+const fast_expt = (b: number, n: number): number => fast_expt_iter(1, b, n);
 `,
   tests: [
     { name: '2 to the 10th', kind: 'value', expr: 'fast_expt(2, 10)', expected: 1024 },
@@ -213,19 +207,15 @@ const fast_expt_iter = (a: number, b: number, n: number): number =>
       ? fast_expt_iter(a, square(b), n / 2)
       : fast_expt_iter(a * b, b, n - 1);
 
-const fast_expt = (b: number, n: number): number =>
-  fast_expt_iter(1, b, n);
+const fast_expt = (b: number, n: number): number => fast_expt_iter(1, b, n);
 `,
 };
 
-const doubleAndHalve = `const is_even = (n: number): boolean =>
-  n % 2 === 0;
+const doubleAndHalve = `const is_even = (n: number): boolean => n % 2 === 0;
 
-const double = (x: number): number =>
-  x + x;
+const double = (x: number): number => x + x;
 
-const halve = (x: number): number =>
-  x / 2;
+const halve = (x: number): number => x / 2;
 `;
 
 export const exercise_1_17: ExerciseSpec = {
@@ -274,8 +264,7 @@ const fast_times_iter = (acc: number, a: number, b: number): number => {
   // your answer
 };
 
-const fast_times = (a: number, b: number): number =>
-  fast_times_iter(0, a, b);
+const fast_times = (a: number, b: number): number => fast_times_iter(0, a, b);
 `,
   tests: [
     { name: '3 times 7', kind: 'value', expr: 'fast_times(3, 7)', expected: 21 },
@@ -290,15 +279,13 @@ const fast_times = (a: number, b: number): number =>
       ? fast_times_iter(acc, double(a), halve(b))
       : fast_times_iter(acc + a, a, b - 1);
 
-const fast_times = (a: number, b: number): number =>
-  fast_times_iter(0, a, b);
+const fast_times = (a: number, b: number): number => fast_times_iter(0, a, b);
 `,
 };
 
 export const exercise_1_19: ExerciseSpec = {
   id: '1.19',
-  starter: `const is_even = (n: number): boolean =>
-  n % 2 === 0;
+  starter: `const is_even = (n: number): boolean => n % 2 === 0;
 
 // Applying T(p, q) twice is the same as applying T(p_prime, q_prime) once.
 const p_prime = (p: number, q: number): number => {
@@ -316,8 +303,7 @@ const fib_iter = (a: number, b: number, p: number, q: number, count: number): nu
       ? fib_iter(a, b, p_prime(p, q), q_prime(p, q), count / 2)
       : fib_iter(b * q + a * q + a * p, b * p + a * q, p, q, count - 1);
 
-const fib = (n: number): number =>
-  fib_iter(1, 0, 0, 1, n);
+const fib = (n: number): number => fib_iter(1, 0, 0, 1, n);
 `,
   tests: [
     { name: 'fib(10)', kind: 'value', expr: 'fib(10)', expected: 55 },
@@ -325,14 +311,11 @@ const fib = (n: number): number =>
     { name: 'fib(70)', kind: 'value', expr: 'fib(70)', expected: 190392490709135 },
     { name: 'fib(1000) in a logarithmic number of steps', kind: 'calls', call: 'fib(1000)', fn: 'fib_iter', atMost: 24 },
   ],
-  solution: `const is_even = (n: number): boolean =>
-  n % 2 === 0;
+  solution: `const is_even = (n: number): boolean => n % 2 === 0;
 
-const p_prime = (p: number, q: number): number =>
-  p * p + q * q;
+const p_prime = (p: number, q: number): number => p * p + q * q;
 
-const q_prime = (p: number, q: number): number =>
-  2 * p * q + q * q;
+const q_prime = (p: number, q: number): number => 2 * p * q + q * q;
 
 const fib_iter = (a: number, b: number, p: number, q: number, count: number): number =>
   count === 0
@@ -341,8 +324,7 @@ const fib_iter = (a: number, b: number, p: number, q: number, count: number): nu
       ? fib_iter(a, b, p_prime(p, q), q_prime(p, q), count / 2)
       : fib_iter(b * q + a * q + a * p, b * p + a * q, p, q, count - 1);
 
-const fib = (n: number): number =>
-  fib_iter(1, 0, 0, 1, n);
+const fib = (n: number): number => fib_iter(1, 0, 0, 1, n);
 `,
 };
 
@@ -441,11 +423,9 @@ export const exercise_1_23: ExerciseSpec = {
     { name: 'still recognises primes', kind: 'value', expr: 'is_prime(199) && is_prime(1009) && !is_prime(1001)', expected: true },
     { name: 'half as many divisors tried', kind: 'calls', call: 'smallest_divisor(1009)', fn: 'find_divisor', atMost: 17 },
   ],
-  solution: `const square = (x: number): number =>
-  x * x;
+  solution: `const square = (x: number): number => x * x;
 
-const smallest_divisor = (n: number): number =>
-  find_divisor(n, 2);
+const smallest_divisor = (n: number): number => find_divisor(n, 2);
 
 const next = (test_divisor: number): number =>
   test_divisor === 2 ? 3 : test_divisor + 2;
@@ -457,18 +437,15 @@ const find_divisor = (n: number, test_divisor: number): number =>
       ? test_divisor
       : find_divisor(n, next(test_divisor));
 
-const divides = (a: number, b: number): boolean =>
-  b % a === 0;
+const divides = (a: number, b: number): boolean => b % a === 0;
 
-const is_prime = (n: number): boolean =>
-  n === smallest_divisor(n);
+const is_prime = (n: number): boolean => n === smallest_divisor(n);
 `,
 };
 
 export const exercise_1_27: ExerciseSpec = {
   id: '1.27',
-  prelude: `const square = (x: number): number =>
-  x * x;
+  prelude: `const square = (x: number): number => x * x;
 
 ${fermatDefinitions}`,
   starter: `// expmod and square are provided.
@@ -498,11 +475,9 @@ const fools_fermat = (n: number): boolean => {
 
 export const exercise_1_28: ExerciseSpec = {
   id: '1.28',
-  prelude: `const square = (x: number): number =>
-  x * x;
+  prelude: `const square = (x: number): number => x * x;
 
-const is_even = (n: number): boolean =>
-  n % 2 === 0;`,
+const is_even = (n: number): boolean => n % 2 === 0;`,
   starter: `// square and is_even are provided.
 
 // Like expmod, but returns 0 as soon as it finds a nontrivial
@@ -512,8 +487,7 @@ const mr_expmod = (base: number, exp: number, m: number): number => {
 };
 
 const miller_rabin_test = (n: number): boolean => {
-  const try_it = (a: number): boolean =>
-    mr_expmod(a, n - 1, n) === 1;
+  const try_it = (a: number): boolean => mr_expmod(a, n - 1, n) === 1;
   return try_it(1 + math_floor(math_random() * (n - 1)));
 };
 
@@ -544,8 +518,7 @@ const fast_is_prime = (n: number, times: number): boolean =>
 };
 
 const miller_rabin_test = (n: number): boolean => {
-  const try_it = (a: number): boolean =>
-    mr_expmod(a, n - 1, n) === 1;
+  const try_it = (a: number): boolean => mr_expmod(a, n - 1, n) === 1;
   return try_it(1 + math_floor(math_random() * (n - 1)));
 };
 

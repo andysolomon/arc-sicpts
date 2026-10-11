@@ -126,20 +126,18 @@ scale_tree(tree, 10);
 export const scaleTreeMapProgram = `${treeType}
 const scale_tree = (tree: Tree<number>, factor: number): Tree<number> =>
   map(sub_tree => is_pair(sub_tree)
-                         ? scale_tree(sub_tree, factor)
-                         : sub_tree * factor,
-             tree);
+                  ? scale_tree(sub_tree, factor)
+                  : sub_tree * factor,
+      tree);
 
 scale_tree(list(1, list(2, 3), 4), 10);
 `;
 
 // §2.2.3: sequences as conventional interfaces.
 
-const squareAndOdd = `const square = (x: number): number =>
-  x * x;
+const squareAndOdd = `const square = (x: number): number => x * x;
 
-const is_odd = (n: number): boolean =>
-  n % 2 === 1;
+const is_odd = (n: number): boolean => n % 2 === 1;
 `;
 
 /** `sum_odd_squares` written as a tree recursion, with its stages mingled. */
@@ -157,11 +155,9 @@ sum_odd_squares(list(1, list(2, list(3, 4)), 5));
 `;
 
 /** The sequence operations of §2.2.3 as the book declares them. */
-export const sequenceOperationDefinitions = `const plus = (x: number, y: number): number =>
-  x + y;
+export const sequenceOperationDefinitions = `const plus = (x: number, y: number): number => x + y;
 
-const times = (x: number, y: number): number =>
-  x * y;
+const times = (x: number, y: number): number => x * y;
 
 const filter = <T>(predicate: (x: T) => boolean, sequence: List<T>): List<T> =>
   is_null(sequence)
@@ -207,8 +203,7 @@ accumulate(plus, 0, odd_squares);
 /** The same components, mixed and matched. */
 export const mixAndMatchProgram = `${squareAndOdd}
 ${sequenceOperationDefinitions}
-const is_even = (n: number): boolean =>
-  n % 2 === 0;
+const is_even = (n: number): boolean => n % 2 === 0;
 
 const fib = (n: number): number => {
   const fib_iter = (a: number, b: number, count: number): number =>
@@ -220,23 +215,23 @@ const fib = (n: number): number => {
 
 const even_fibs = (n: number): List<number> =>
   accumulate(pair,
-                    null,
-                    filter(is_even,
-                           map(fib,
-                               enumerate_interval(0, n))));
+             null,
+             filter(is_even,
+                    map(fib,
+                        enumerate_interval(0, n))));
 
 const list_fib_squares = (n: number): List<number> =>
   accumulate(pair,
-                    null,
-                    map(square,
-                        map(fib,
-                            enumerate_interval(0, n))));
+             null,
+             map(square,
+                 map(fib,
+                     enumerate_interval(0, n))));
 
 const product_of_squares_of_odd_elements = (sequence: List<number>): number =>
   accumulate(times,
-                    1,
-                    map(square,
-                        filter(is_odd, sequence)));
+             1,
+             map(square,
+                 filter(is_odd, sequence)));
 
 display(product_of_squares_of_odd_elements(list(1, 2, 3, 4, 5)));
 const evens = even_fibs(12);
@@ -266,14 +261,14 @@ const is_prime_sum = (pair: List<number>): boolean =>
 
 const make_pair_sum = (pair: List<number>): List<number> =>
   list(head(pair), head(tail(pair)),
-              head(pair) + head(tail(pair)));
+       head(pair) + head(tail(pair)));
 
 const prime_sum_pairs = (n: number): List<List<number>> =>
   map(make_pair_sum,
-             filter(is_prime_sum,
-                    flatmap(i => map(j => list(i, j),
-                                     enumerate_interval(1, i - 1)),
-                            enumerate_interval(1, n))));
+      filter(is_prime_sum,
+             flatmap(i => map(j => list(i, j),
+                              enumerate_interval(1, i - 1)),
+                     enumerate_interval(1, n))));
 
 const all_pairs = flatmap(i => map(j => list(i, j),
                                    enumerate_interval(1, i - 1)),
@@ -287,7 +282,7 @@ export const permutationsProgram = `const flatmap = <A, B>(f: (x: A) => List<B>,
 
 const remove = <T>(item: T, sequence: List<T>): List<T> =>
   filter(x => ! (x === item),
-                sequence);
+         sequence);
 
 const permutations = <T>(s: List<T>): List<List<T>> =>
   is_null(s)             // empty set?

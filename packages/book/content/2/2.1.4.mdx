@@ -30,11 +30,9 @@ After debugging her program, Alyssa shows it to a potential user, who complains 
 const make_center_width = (c: number, w: number): Interval =>
   make_interval(c - w, c + w);
 
-const center = (i: Interval): number =>
-  (lower_bound(i) + upper_bound(i)) / 2;
+const center = (i: Interval): number => (lower_bound(i) + upper_bound(i)) / 2;
 
-const width = (i: Interval): number =>
-  (upper_bound(i) - lower_bound(i)) / 2;
+const width = (i: Interval): number => (upper_bound(i) - lower_bound(i)) / 2;
 ```
 
 Unfortunately, most of Alyssa's users are engineers. Real engineering situations usually involve measurements with only a small uncertainty, measured as the ratio of the width of the interval to its midpoint. Engineers usually specify percentage tolerances on the parameters of devices, as in the resistor specifications above.

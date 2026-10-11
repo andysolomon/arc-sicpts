@@ -12,8 +12,7 @@ type Operations = List<List<unknown>>;        // list(name, function) for each o
 
 const make_machine = (register_names: List<string>, ops: Operations, controller: Controller): Machine => {
     const machine = make_new_machine();
-    for_each(register_name =>
-               machine("allocate_register")(register_name),
+    for_each(register_name => machine("allocate_register")(register_name),
              register_names);
     machine("install_operations")(ops);
     machine("install_instruction_sequence")
@@ -33,10 +32,10 @@ const make_register = (name: string): Register => {
     let contents: unknown = "*unassigned*";
     const dispatch = (message: string): unknown =>
         message === "get"
-               ? contents
-               : message === "set"
-               ? value => { contents = value; }
-               : error(message, "unknown request -- make_register");
+        ? contents
+        : message === "set"
+        ? value => { contents = value; }
+        : error(message, "unknown request -- make_register");
     return dispatch;
 };
 ```
@@ -44,8 +43,7 @@ const make_register = (name: string): Register => {
 The following functions are used to access registers:
 
 ```js
-const get_contents = (register: Register): unknown =>
-    register("get");
+const get_contents = (register: Register): unknown => register("get");
 const set_contents = (register: Register, value: unknown): unknown =>
     register("set")(value);
 ```
@@ -78,12 +76,12 @@ const make_stack = (): Stack => {
     };
     const dispatch = (message: string): unknown =>
         message === "push"
-               ? push
-               : message === "pop"
-               ? pop()
-               : message === "initialize"
-               ? initialize()
-               : error(message, "unknown request -- stack");
+        ? push
+        : message === "pop"
+        ? pop()
+        : message === "initialize"
+        ? initialize()
+        : error(message, "unknown request -- stack");
     return dispatch;
 };
 ```
@@ -91,10 +89,8 @@ const make_stack = (): Stack => {
 The following functions are used to access stacks:
 
 ```js
-const pop = (stack: Stack): unknown =>
-    stack("pop");
-const push = (stack: Stack, value: unknown): unknown =>
-    stack("push")(value);
+const pop = (stack: Stack): unknown => stack("pop");
+const push = (stack: Stack, value: unknown): unknown => stack("push")(value);
 ```
 
 The explicit-control evaluator of §5.4 needs one more facility: it must be able to mark the current top of the stack and later discard everything pushed since the mark, in one step. The book's simulator therefore gives the stack a second piece of local state, `frame`, a list of the stacks as they were when each marker was pushed, and two more requests:
@@ -116,10 +112,8 @@ const pop_marker = (): "done" => {
 //        : message === "pop_marker"
 //        ? pop_marker()
 
-const push_marker = (stack: Stack): unknown =>
-    stack("push_marker");
-const pop_marker = (stack: Stack): unknown =>
-    stack("pop_marker");
+const push_marker = (stack: Stack): unknown => stack("push_marker");
+const pop_marker = (stack: Stack): unknown => stack("pop_marker");
 ```
 
 The machine instructions that use them, `push_marker_to_stack()` and `revert_stack_to_marker()`, appear with the other instructions in §5.2.3.
@@ -196,8 +190,7 @@ As part of its operation, each instruction execution function modifies `pc` to i
 For convenience, we provide an alternate interface to a machine's `start` operation, as well as functions to set and examine register contents, as specified at the beginning of §5.2:
 
 ```js
-const start = (machine: Machine): unknown =>
-    machine("start");
+const start = (machine: Machine): unknown => machine("start");
 const get_register_contents = (machine: Machine, register_name: string): unknown =>
     get_contents(get_register(machine, register_name));
 const set_register_contents = (machine: Machine, register_name: string, value: unknown): "done" => {

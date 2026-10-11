@@ -202,8 +202,8 @@ Ben Bitdiddle counts the pairs in a structure like this:
 ```js
 const count_pairs = (x: unknown): number =>
   ! is_pair(x)
-         ? 0
-         : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
+  ? 0
+  : count_pairs(head(x)) + count_pairs(tail(x)) + 1;
 ```
 
 Show that he is wrong: build four structures, each made of exactly three pairs, for which `count_pairs` returns 3, returns 4, returns 7, and never returns at all.

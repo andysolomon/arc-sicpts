@@ -25,19 +25,19 @@ Each relation becomes a function. The type `Rational` names a rational number, w
 ```js
 const add_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y) + numer(y) * denom(x),
-                  denom(x) * denom(y));
+           denom(x) * denom(y));
 
 const sub_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y) - numer(y) * denom(x),
-                  denom(x) * denom(y));
+           denom(x) * denom(y));
 
 const mul_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * numer(y),
-                  denom(x) * denom(y));
+           denom(x) * denom(y));
 
 const div_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y),
-                  denom(x) * numer(y));
+           denom(x) * numer(y));
 
 const equal_rat = (x: Rational, y: Rational): boolean =>
   numer(x) * denom(y) === numer(y) * denom(x);

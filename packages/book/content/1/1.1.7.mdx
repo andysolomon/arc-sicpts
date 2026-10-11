@@ -1,17 +1,13 @@
-export const sqrt = `const abs = (x: number): number =>
-  x >= 0 ? x : -x;
+export const sqrt = `const abs = (x: number): number => x >= 0 ? x : -x;
 
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
-const average = (x: number, y: number): number =>
-  (x + y) / 2;
+const average = (x: number, y: number): number => (x + y) / 2;
 
 const is_good_enough = (guess: number, x: number): boolean =>
   abs(square(guess) - x) < 0.001;
 
-const improve = (guess: number, x: number): number =>
-  average(guess, x / guess);
+const improve = (guess: number, x: number): number => average(guess, x / guess);
 
 const sqrt_iter = (guess: number, x: number): number => {
   display(guess);
@@ -20,8 +16,7 @@ const sqrt_iter = (guess: number, x: number): number => {
     : sqrt_iter(improve(guess, x), x);
 };
 
-const sqrt = (x: number): number =>
-  sqrt_iter(1, x);
+const sqrt = (x: number): number => sqrt_iter(1, x);
 
 sqrt(2);
 `;

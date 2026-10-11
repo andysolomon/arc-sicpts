@@ -11,12 +11,12 @@ In general, the output of each code generator will end with instructions, genera
 ```js
 const compile_linkage = (linkage: Linkage): InstructionSequence =>
     linkage === "return"
-           ? make_instruction_sequence(list("continue"), null,
-                                       list(go_to(reg("continue"))))
-           : linkage === "next"
-           ? make_instruction_sequence(null, null, null)
-           : make_instruction_sequence(null, null,
-                                       list(go_to(label(linkage))));
+    ? make_instruction_sequence(list("continue"), null,
+                                list(go_to(reg("continue"))))
+    : linkage === "next"
+    ? make_instruction_sequence(null, null, null)
+    : make_instruction_sequence(null, null,
+                                list(go_to(label(linkage))));
 ```
 
 The linkage code is appended to an instruction sequence by `preserving` the `continue` register, since a `"return"` linkage will require the `continue` register: if the given instruction sequence modifies `continue` and the linkage code needs it, `continue` will be saved and restored.
@@ -24,8 +24,8 @@ The linkage code is appended to an instruction sequence by `preserving` the `con
 ```js
 const end_with_linkage = (linkage: Linkage, instruction_sequence: InstructionSequence): InstructionSequence =>
     preserving(list("continue"),
-                      instruction_sequence,
-                      compile_linkage(linkage));
+               instruction_sequence,
+               compile_linkage(linkage));
 ```
 
 ## Compiling simple components
@@ -70,17 +70,17 @@ Assignments and declarations are handled much as they are in the interpreter. Th
 ```js
 const compile_assignment = (component: Component, target: Target, linkage: Linkage): InstructionSequence =>
     compile_assignment_declaration(
-               assignment_symbol(component),
-               assignment_value_expression(component),
-               reg("val"),
-               target, linkage);
+        assignment_symbol(component),
+        assignment_value_expression(component),
+        reg("val"),
+        target, linkage);
 
 const compile_declaration = (component: Component, target: Target, linkage: Linkage): InstructionSequence =>
     compile_assignment_declaration(
-               declaration_symbol(component),
-               declaration_value_expression(component),
-               constant(undefined),
-               target, linkage);
+        declaration_symbol(component),
+        declaration_value_expression(component),
+        constant(undefined),
+        target, linkage);
 
 const compile_assignment_declaration = (
     symbol: string,
@@ -182,14 +182,14 @@ The compilation of statement sequences parallels their evaluation in the explici
 ```js
 const compile_sequence = (seq: List<Component>, target: Target, linkage: Linkage): InstructionSequence =>
     is_empty_sequence(seq)
-           ? compile_literal(make_literal(undefined), target, linkage)
-           : is_last_statement(seq) ||
-                 is_return_statement(first_statement(seq))
-           ? compile(first_statement(seq), target, linkage)
-           : preserving(list("env", "continue"),
-                 compile(first_statement(seq), target, "next"),
-                 compile_sequence(rest_statements(seq),
-                                  target, linkage));
+    ? compile_literal(make_literal(undefined), target, linkage)
+    : is_last_statement(seq) ||
+          is_return_statement(first_statement(seq))
+    ? compile(first_statement(seq), target, linkage)
+    : preserving(list("env", "continue"),
+          compile(first_statement(seq), target, "next"),
+          compile_sequence(rest_statements(seq),
+                           target, linkage));
 ```
 
 Treating a return statement as if it were the last statement in a sequence avoids compiling any dead code after the return statement that can never be executed. Removing the `is_return_statement` check does not change the behaviour of the object program; however, there are many reasons not to compile dead code, which are beyond the scope of this book (security, compilation time, size of the object code, etc.), and many compilers give warnings for dead code. Our compiler does not detect all dead code: a conditional statement whose consequent and alternative both end in a return statement will not stop subsequent statements from being compiled, as the function at the end of this section shows (see exercises 5.34 and 5.35).
@@ -282,8 +282,8 @@ To ensure that all functions end by executing a return statement, `compile_lambd
 ```js
 const append_return_undefined = (body: Component): Component =>
     list("sequence", list(body,
-                                 list("return_statement",
-                                      list("literal", undefined))));
+                          list("return_statement",
+                               list("literal", undefined))));
 ```
 
 This simple transformation of lambda bodies is a third way to ensure that a function that does not return explicitly has the return value `undefined`. In the metacircular evaluator, we used a return-value object, which also played a role in stopping a sequence evaluation. In the explicit-control evaluator, functions that did not return explicitly continued to an entry point that stored `undefined` in `val`. See exercise 5.35 for a more elegant way to handle insertion of return statements.

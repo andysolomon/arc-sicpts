@@ -29,8 +29,8 @@ The syntax and data representations, and the basic `analyze` function, are those
 ```js
 const is_amb = (component: Component): boolean =>
     is_tagged_list(component, "application") &&
-           is_name(function_expression(component)) &&
-           symbol_of_name(function_expression(component)) === "amb";
+    is_name(function_expression(component)) &&
+    symbol_of_name(function_expression(component)) === "amb";
 const amb_choices = (component: Component): List<Component> =>
     arg_expressions(component);
 ```
@@ -67,13 +67,13 @@ The execution functions for the simplest kinds of expressions simply succeed wit
 ```js
 const analyze_literal = (component: Component): Execution =>
     (env, succeed, fail) =>
-             succeed(literal_value(component), fail);
+      succeed(literal_value(component), fail);
 
 const analyze_name = (component: Component): Execution =>
     (env, succeed, fail) =>
-             succeed(lookup_symbol_value(symbol_of_name(component),
-                                         env),
-                     fail);
+      succeed(lookup_symbol_value(symbol_of_name(component),
+                                  env),
+              fail);
 
 const analyze_lambda_expression = (component: Component): Execution => {
     const params = lambda_parameter_symbols(component);
@@ -114,19 +114,19 @@ To execute `a` and then `b` in a sequence, we call `a` with a success continuati
 const analyze_sequence = (stmts: List<Component>): Execution => {
     const sequentially = (a: Execution, b: Execution): Execution =>
         (env, succeed, fail) =>
-                 a(env,
+          a(env,
                    // success continuation for calling a
-                   (a_value, fail2) =>
-                     is_return_value(a_value)
-                     ? succeed(a_value, fail2)
-                     : b(env, succeed, fail2),
+            (a_value, fail2) =>
+              is_return_value(a_value)
+              ? succeed(a_value, fail2)
+              : b(env, succeed, fail2),
                    // failure continuation for calling a
-                   fail);
+            fail);
     const loop = (first_fun: Execution, rest_funs: List<Execution>): Execution =>
         is_null(rest_funs)
-               ? first_fun
-               : loop(sequentially(first_fun, head(rest_funs)),
-                      tail(rest_funs));
+        ? first_fun
+        : loop(sequentially(first_fun, head(rest_funs)),
+               tail(rest_funs));
     const funs = map(analyze, stmts);
     return is_null(funs)
            ? (env, succeed, fail) => succeed(undefined, fail)
@@ -238,19 +238,19 @@ const analyze_application = (component: Component): Execution => {
 
 const get_args = (afuns: List<Execution>, env: Environment, succeed: Succeed, fail: Fail): unknown =>
     is_null(afuns)
-           ? succeed(null, fail)
-           : head(afuns)(env,
+    ? succeed(null, fail)
+    : head(afuns)(env,
                          // success continuation for this afun
-                         (arg, fail2) =>
-                           get_args(tail(afuns),
-                                    env,
+                  (arg, fail2) =>
+                    get_args(tail(afuns),
+                             env,
                                     // success continuation for
                                     // recursive call to get_args
-                                    (args, fail3) =>
-                                      succeed(pair(arg, args),
-                                              fail3),
-                                    fail2),
-                         fail);
+                             (args, fail3) =>
+                               succeed(pair(arg, args),
+                                       fail3),
+                             fail2),
+                  fail);
 
 const execute_application = (
     fun: PrimitiveFunction | CompoundFunction,
@@ -259,20 +259,20 @@ const execute_application = (
     fail: Fail
 ): unknown =>
     is_primitive_function(fun)
-           ? succeed(apply_primitive_function(fun, args),
-                     fail)
-           : is_compound_function(fun)
-           ? function_body(fun)(
-                 extend_environment(function_parameters(fun),
-                                    args,
-                                    function_environment(fun)),
-                 (body_result, fail2) =>
-                   succeed(is_return_value(body_result)
-                           ? return_value_content(body_result)
-                           : undefined,
-                           fail2),
-                 fail)
-           : error(fun, "unknown function type - execute_application");
+    ? succeed(apply_primitive_function(fun, args),
+              fail)
+    : is_compound_function(fun)
+    ? function_body(fun)(
+          extend_environment(function_parameters(fun),
+                             args,
+                             function_environment(fun)),
+          (body_result, fail2) =>
+            succeed(is_return_value(body_result)
+                    ? return_value_content(body_result)
+                    : undefined,
+                    fail2),
+          fail)
+    : error(fun, "unknown function type - execute_application");
 ```
 
 `get_args` evaluates the arguments from left to right, which is what makes `parse_word` see the words of a sentence in order.
@@ -287,11 +287,11 @@ const analyze_amb = (component: Component): Execution => {
     return (env, succeed, fail) => {
                const try_next = (choices: List<Execution>): unknown =>
                    is_null(choices)
-                          ? fail()
-                          : head(choices)(env,
-                                          succeed,
-                                          () =>
-                                            try_next(tail(choices)));
+                   ? fail()
+                   : head(choices)(env,
+                                   succeed,
+                                   () =>
+                                     try_next(tail(choices)));
                return try_next(cfuns);
            };
 };

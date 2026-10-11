@@ -171,11 +171,11 @@ Recursive `count_leaves`:
 ```js
 const count_leaves = (tree: unknown): number =>
     is_null(tree)
-           ? 0
-           : ! is_pair(tree)
-           ? 1
-           : count_leaves(head(tree)) +
-             count_leaves(tail(tree));
+    ? 0
+    : ! is_pair(tree)
+    ? 1
+    : count_leaves(head(tree)) +
+      count_leaves(tail(tree));
 ```
 
 Recursive `count_leaves` with explicit counter:
@@ -184,11 +184,11 @@ Recursive `count_leaves` with explicit counter:
 const count_leaves = (tree: unknown): number => {
     const count_iter = (tree: unknown, n: number): number =>
         is_null(tree)
-               ? n
-               : ! is_pair(tree)
-               ? n + 1
-               : count_iter(tail(tree),
-                            count_iter(head(tree), n));
+        ? n
+        : ! is_pair(tree)
+        ? n + 1
+        : count_iter(tail(tree),
+                     count_iter(head(tree), n));
     return count_iter(tree, 0);
 };
 ```

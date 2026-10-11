@@ -98,19 +98,19 @@ const stringify_list = (xs: List<unknown>): string =>
                         "go_to", "save", "restore", "reg", "constant",
                         "test", "push_marker_to_stack",
                         "revert_stack_to_marker")))
-           ? "list(" + comma_separated(xs) + ")"
-           : head(xs) + "(" + comma_separated(tail(xs)) + ")";
+    ? "list(" + comma_separated(xs) + ")"
+    : head(xs) + "(" + comma_separated(tail(xs)) + ")";
 const comma_separated = (elements: List<unknown>): string =>
     accumulate((s, acc) => stringify_instruction(s) +
-                                  (acc === "" ? "" : ", " + acc),
-                      "", elements);
+                           (acc === "" ? "" : ", " + acc),
+               "", elements);
 const stringify_instruction = (x: unknown): string =>
     is_string(x) || is_number(x) || is_undefined(x) || is_null(x)
-           ? stringify(x)
-           : stringify_list(x);
+    ? stringify(x)
+    : stringify_list(x);
 const display_instructions = (instructions: List<Instruction | string>): true =>
     for_each(i => { display(stringify_instruction(i) + ","); },
-                    instructions);
+             instructions);
 ```
 
 ## Comparing stack use
@@ -174,8 +174,7 @@ Most of the difference is the general function-call protocol: every `*`, `-` and
 Carry out an analysis like the one in exercise 5.48 to determine the effectiveness of compiling the tree-recursive Fibonacci function
 
 ```js
-const fib = (n: number): number =>
-    n < 2 ? n : fib(n - 1) + fib(n - 2);
+const fib = (n: number): number => n < 2 ? n : fib(n - 1) + fib(n - 2);
 ```
 
 compared to the effectiveness of using the special-purpose Fibonacci machine of §5.1.4. (For measurement of the interpreted performance, see exercise 5.30.) For Fibonacci, the time resource used is not linear in *n*, so the ratios of stack operations cannot be read off two straight lines. Write `compiled_fib_pushes(n)` and `compiled_fib_depth(n)` (for *n* ≥ 2) for the compiled function, using `fib` (which the exercise provides), and `fib_pushes_ratio`, the limit of the ratio of compiled to interpreted pushes as *n* grows, if there is one.

@@ -58,8 +58,7 @@ const check_gcd = (a: number, b: number): unknown => {
 `;
 
 const checkFib = `
-const check_fib_controller = (): Controller =>
-    ${fibList};
+const check_fib_controller = (): Controller => ${fibList};
 
 const check_fib = (n: number): unknown => {
     const m = make_machine(list("n", "val", "continue"), ${fibOps},
@@ -233,23 +232,23 @@ const extract_labels = <R>(
     receive: (insts: List<MachineInstruction>, labels: List<LabelEntry>) => R
 ): R =>
     is_null(controller)
-           ? receive(null, null)
-           : extract_labels(
-                 tail(controller),
-                 (insts, labels) => {
-                     const next_element = head(controller);
-                     return is_string(next_element)
-                            ? is_undefined(assoc(next_element, labels))
-                              ? receive(insts,
-                                        pair(make_label_entry(next_element,
-                                                              insts),
-                                             labels))
-                              : error(next_element,
-                                      "multiply defined label -- assemble")
-                            : receive(pair(make_inst(next_element),
-                                           insts),
-                                      labels);
-                 });
+    ? receive(null, null)
+    : extract_labels(
+          tail(controller),
+          (insts, labels) => {
+              const next_element = head(controller);
+              return is_string(next_element)
+                     ? is_undefined(assoc(next_element, labels))
+                       ? receive(insts,
+                                 pair(make_label_entry(next_element,
+                                                       insts),
+                                      labels))
+                       : error(next_element,
+                               "multiply defined label -- assemble")
+                     : receive(pair(make_inst(next_element),
+                                    insts),
+                               labels);
+          });
 `,
 };
 
@@ -419,30 +418,30 @@ const check_has = (x: unknown, xs: List<unknown>): boolean =>
 
 const check_same_set = (xs: List<unknown>, ys: List<unknown>): boolean =>
     length(xs) === length(ys)
-           && accumulate((x, so_far) => so_far && check_has(x, ys), true, xs)
-           && accumulate((y, so_far) => so_far && check_has(y, xs), true, ys);
+    && accumulate((x, so_far) => so_far && check_has(x, ys), true, xs)
+    && accumulate((y, so_far) => so_far && check_has(y, xs), true, ys);
 
 const check_distinct = <T>(xs: List<T>): List<T> =>
     is_null(xs)
-           ? null
-           : pair(head(xs),
-                  check_distinct(filter(y => !equal(y, head(xs)), tail(xs))));
+    ? null
+    : pair(head(xs),
+           check_distinct(filter(y => !equal(y, head(xs)), tail(xs))));
 
 const check_type_changes = (insts: List<Instruction>): number =>
     is_null(insts) || is_null(tail(insts))
-           ? 0
-           : (head(head(insts)) === head(head(tail(insts))) ? 0 : 1)
-             + check_type_changes(tail(insts));
+    ? 0
+    : (head(head(insts)) === head(head(tail(insts))) ? 0 : 1)
+      + check_type_changes(tail(insts));
 
 const check_fib_machine = (): Machine =>
     make_machine(list("n", "val", "continue"), ${fibOps},
-                        check_fib_controller());
+                 check_fib_controller());
 
 const check_instructions = (): boolean =>
     check_same_set(
-               check_fib_machine()("instructions"),
-               check_distinct(filter(x => !is_string(x),
-                                     check_fib_controller())));
+        check_fib_machine()("instructions"),
+        check_distinct(filter(x => !is_string(x),
+                              check_fib_controller())));
 
 const check_sorted = (): boolean => {
     const insts = check_fib_machine()("instructions");
@@ -500,20 +499,20 @@ ${simulatorFunctions(['assemble', 'make_new_machine'])}
   budget: BUDGET,
   solution: `const assemble = (controller: Controller, machine: Machine): List<MachineInstruction> =>
     extract_labels(controller,
-                          (insts, labels) => {
-                              update_insts(insts, labels, machine);
-                              machine("install_data_paths")(
-                                  data_paths(map(inst_controller_instruction,
-                                                 insts)));
-                              return insts;
-                          });
+                   (insts, labels) => {
+                       update_insts(insts, labels, machine);
+                       machine("install_data_paths")(
+                           data_paths(map(inst_controller_instruction,
+                                          insts)));
+                       return insts;
+                   });
 
 // The list without repeated elements, in order of first appearance.
 const distinct = <T>(xs: List<T>): List<T> =>
     is_null(xs)
-           ? null
-           : pair(head(xs),
-                  distinct(filter(y => !equal(y, head(xs)), tail(xs))));
+    ? null
+    : pair(head(xs),
+           distinct(filter(y => !equal(y, head(xs)), tail(xs))));
 
 type DataPaths = List<unknown>; // list(instructions, entry registers, stack registers, sources)
 
@@ -772,11 +771,9 @@ export const exercise_5_13: ExerciseSpec = {
   id: '5.13',
   starter: `${readingFactorial}
 // From the statistics, formulas in n for n > 1.
-const factorial_pushes = (n: number): number =>
-    0;
+const factorial_pushes = (n: number): number => 0;
 
-const factorial_depth = (n: number): number =>
-    0;
+const factorial_depth = (n: number): number => 0;
 `,
   tests: [
     { name: 'total pushes for 2', kind: 'value', expr: 'factorial_pushes(2)', expected: 2 },
@@ -787,11 +784,9 @@ const factorial_depth = (n: number): number =>
     { name: 'maximum depth for 50', kind: 'value', expr: 'factorial_depth(50)', expected: 98 },
   ],
   solution: `${readingFactorial}
-const factorial_pushes = (n: number): number =>
-    2 * (n - 1);
+const factorial_pushes = (n: number): number => 2 * (n - 1);
 
-const factorial_depth = (n: number): number =>
-    2 * (n - 1);
+const factorial_depth = (n: number): number => 2 * (n - 1);
 `,
 };
 
@@ -1070,25 +1065,25 @@ const extract_labels = <R>(
     receive: (insts: List<MachineInstruction>, labels: List<LabelEntry>) => R
 ): R =>
     is_null(controller)
-           ? receive(null, null)
-           : extract_labels(
-                 tail(controller),
-                 (insts, labels) => {
-                     const next_element = head(controller);
-                     if (is_string(next_element)) {
-                         if (!is_null(insts)) {
-                             add_inst_label(head(insts), next_element);
-                         } else {}
-                         return receive(insts,
-                                        pair(make_label_entry(next_element,
-                                                              insts),
-                                             labels));
-                     } else {
-                         return receive(pair(make_inst(next_element),
-                                             insts),
-                                        labels);
-                     }
-                 });
+    ? receive(null, null)
+    : extract_labels(
+          tail(controller),
+          (insts, labels) => {
+              const next_element = head(controller);
+              if (is_string(next_element)) {
+                  if (!is_null(insts)) {
+                      add_inst_label(head(insts), next_element);
+                  } else {}
+                  return receive(insts,
+                                 pair(make_label_entry(next_element,
+                                                       insts),
+                                      labels));
+              } else {
+                  return receive(pair(make_inst(next_element),
+                                      insts),
+                                 labels);
+              }
+          });
 
 // An instruction is now a controller instruction, the labels just
 // before it, and its execution function.
@@ -1183,14 +1178,14 @@ ${simulatorFunctions(['make_register', 'make_new_machine'])}
     };
     const dispatch = (message: string): unknown =>
         message === "get"
-               ? contents
-               : message === "set"
-               ? set
-               : message === "trace_on"
-               ? trace(true)
-               : message === "trace_off"
-               ? trace(false)
-               : error(message, "unknown request -- make_register");
+        ? contents
+        : message === "set"
+        ? set
+        : message === "trace_on"
+        ? trace(true)
+        : message === "trace_off"
+        ? trace(false)
+        : error(message, "unknown request -- make_register");
     return dispatch;
 };
 ${replacing(
@@ -1215,8 +1210,8 @@ export const exercise_5_18: ExerciseSpec = {
 ${checkGcd}
 const check_gcd_registers = (m: Machine): List<unknown> =>
     list(get_register_contents(m, "a"),
-                get_register_contents(m, "b"),
-                get_register_contents(m, "t"));
+         get_register_contents(m, "b"),
+         get_register_contents(m, "t"));
 
 const check_started = (a: number, b: number): Machine => {
     const m = check_gcd_machine();
@@ -1296,11 +1291,11 @@ const cancel_all_breakpoints = (machine: Machine): unknown => {
   budget: BUDGET,
   solution: `const assemble = (controller: Controller, machine: Machine): List<MachineInstruction> =>
     extract_labels(controller,
-                          (insts, labels) => {
-                              update_insts(insts, labels, machine);
-                              machine("install_labels")(labels);
-                              return insts;
-                          });
+                   (insts, labels) => {
+                       update_insts(insts, labels, machine);
+                       machine("install_labels")(labels);
+                       return insts;
+                   });
 
 const make_new_machine = (): Machine => {
     const pc = make_register("pc");
@@ -1404,8 +1399,7 @@ const make_new_machine = (): Machine => {
 const set_breakpoint = (machine: Machine, label: string, n: number): unknown =>
     machine("set_breakpoint")(label, n);
 
-const proceed_machine = (machine: Machine): unknown =>
-    machine("proceed");
+const proceed_machine = (machine: Machine): unknown => machine("proceed");
 
 const cancel_breakpoint = (machine: Machine, label: string, n: number): unknown =>
     machine("cancel_breakpoint")(label, n);

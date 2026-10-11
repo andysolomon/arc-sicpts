@@ -246,8 +246,8 @@ Consider the following declaration of a factorial function, which is slightly di
 ```js
 const factorial_alt = (n: number): number =>
     n === 1
-           ? 1
-           : n * factorial_alt(n - 1);
+    ? 1
+    : n * factorial_alt(n - 1);
 ```
 
 Compile this function (the second editor above does) and compare the resulting code with that produced for `factorial`. Explain any differences you find. Does either program execute more efficiently than the other? Record your findings: `factorial_saves` and `factorial_alt_saves` name the register that each function's code saves on the stack, in addition to `continue` and `fun`, while it computes the recursive call; `more_efficient` is `"factorial"`, `"factorial_alt"` or `"neither"`.
@@ -266,8 +266,8 @@ Compile the iterative factorial function
 const factorial = (n: number): number => {
     const iter = (product: number, counter: number): number =>
         counter > n
-               ? product
-               : iter(product * counter, counter + 1);
+        ? product
+        : iter(product * counter, counter + 1);
     return iter(1, 1);
 };
 ```
@@ -369,8 +369,7 @@ Write the program as the string `program`. The checker compiles it with target `
 **Solution.** The code declares `f` as a function of `x` whose body is a single return statement (the revert and restore at `entry1`), which is how `parse` represents the body of a concise arrow function. The returned value is an application of `+`, called with linkage `"return"` at the end. Its last argument is computed first: `+` applied to `2` and `x`, that is `x + 2`, and the result is the single argument of `g`. Then `env` is restored and `x` is looked up and put in front: the first argument of the outer `+` is `x`.
 
 ```js
-const f = (x: number): number =>
-    x + g(x + 2);
+const f = (x: number): number => x + g(x + 2);
 ```
 
 </Solution>

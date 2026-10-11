@@ -36,7 +36,7 @@ Cesàro's experiment from §3.1.2 asks whether two random integers have no commo
 ```js
 const map_successive_pairs = <T, R>(f: (a: T, b: T) => R, s: Stream<T>): Stream<R> =>
   pair(f(head(s), head(stream_tail(s))),
-              memo(() => map_successive_pairs(f, stream_tail(stream_tail(s)))));
+       memo(() => map_successive_pairs(f, stream_tail(stream_tail(s)))));
 const dirichlet_stream =
   map_successive_pairs((r1, r2) => gcd(r1, r2) === 1, random_numbers);
 ```
@@ -57,8 +57,8 @@ The stream of outcomes now goes into a `monte_carlo` function that produces a st
 const monte_carlo = (experiment_stream: Stream<boolean>, passed: number, failed: number): Stream<number> => {
   const next = (passed: number, failed: number): Stream<number> =>
     pair(passed / (passed + failed),
-                memo(() => monte_carlo(stream_tail(experiment_stream),
-                                       passed, failed)));
+         memo(() => monte_carlo(stream_tail(experiment_stream),
+                                passed, failed)));
   return head(experiment_stream)
     ? next(passed + 1, failed)
     : next(passed, failed + 1);
@@ -102,8 +102,8 @@ Each call of `make_simplified_withdraw` creates an object with a state variable 
 ```js
 const stream_withdraw = (balance: number, amount_stream: Stream<number>): Stream<number> =>
   pair(balance,
-              () => stream_withdraw(balance - head(amount_stream),
-                                    stream_tail(amount_stream)));
+       () => stream_withdraw(balance - head(amount_stream),
+                             stream_tail(amount_stream)));
 ```
 
 </Prose>

@@ -9,33 +9,33 @@
 /** §4.1.1: `evaluate`, `apply` and the functions they hand work to. */
 export const evaluatorCore = `const evaluate = (component: Component, env: Environment): unknown =>
     is_literal(component)
-           ? literal_value(component)
-           : is_name(component)
-           ? lookup_symbol_value(symbol_of_name(component), env)
-           : is_application(component)
-           ? apply(evaluate(function_expression(component), env),
-                   list_of_values(arg_expressions(component), env))
-           : is_operator_combination(component)
-           ? evaluate(operator_combination_to_application(component),
-                      env)
-           : is_conditional(component)
-           ? eval_conditional(component, env)
-           : is_lambda_expression(component)
-           ? make_function(lambda_parameter_symbols(component),
-                           lambda_body(component), env)
-           : is_sequence(component)
-           ? eval_sequence(sequence_statements(component), env)
-           : is_block(component)
-           ? eval_block(component, env)
-           : is_return_statement(component)
-           ? eval_return_statement(component, env)
-           : is_function_declaration(component)
-           ? evaluate(function_decl_to_constant_decl(component), env)
-           : is_declaration(component)
-           ? eval_declaration(component, env)
-           : is_assignment(component)
-           ? eval_assignment(component, env)
-           : error(component, "unknown syntax -- evaluate");
+    ? literal_value(component)
+    : is_name(component)
+    ? lookup_symbol_value(symbol_of_name(component), env)
+    : is_application(component)
+    ? apply(evaluate(function_expression(component), env),
+            list_of_values(arg_expressions(component), env))
+    : is_operator_combination(component)
+    ? evaluate(operator_combination_to_application(component),
+               env)
+    : is_conditional(component)
+    ? eval_conditional(component, env)
+    : is_lambda_expression(component)
+    ? make_function(lambda_parameter_symbols(component),
+                    lambda_body(component), env)
+    : is_sequence(component)
+    ? eval_sequence(sequence_statements(component), env)
+    : is_block(component)
+    ? eval_block(component, env)
+    : is_return_statement(component)
+    ? eval_return_statement(component, env)
+    : is_function_declaration(component)
+    ? evaluate(function_decl_to_constant_decl(component), env)
+    : is_declaration(component)
+    ? eval_declaration(component, env)
+    : is_assignment(component)
+    ? eval_assignment(component, env)
+    : error(component, "unknown syntax -- evaluate");
 
 const apply = (fun: PrimitiveFunction | CompoundFunction, args: List<unknown>): unknown => {
     if (is_primitive_function(fun)) {
@@ -59,8 +59,8 @@ const list_of_values = (exps: List<Component>, env: Environment): List<unknown> 
 
 const eval_conditional = (component: Component, env: Environment): unknown =>
     is_truthy(evaluate(conditional_predicate(component), env))
-           ? evaluate(conditional_consequent(component), env)
-           : evaluate(conditional_alternative(component), env);
+    ? evaluate(conditional_consequent(component), env)
+    : evaluate(conditional_alternative(component), env);
 
 const eval_sequence = (stmts: List<Component>, env: Environment): unknown => {
     if (is_empty_sequence(stmts)) {
@@ -91,17 +91,17 @@ const list_of_unassigned = (symbols: List<string>): List<"*unassigned*"> =>
 
 const scan_out_declarations = (component: Component): List<string> =>
     is_sequence(component)
-           ? accumulate(append,
-                        null,
-                        map(scan_out_declarations,
-                            sequence_statements(component)))
-           : is_declaration(component)
-           ? list(declaration_symbol(component))
-           : null;
+    ? accumulate(append,
+                 null,
+                 map(scan_out_declarations,
+                     sequence_statements(component)))
+    : is_declaration(component)
+    ? list(declaration_symbol(component))
+    : null;
 
 const eval_return_statement = (component: Component, env: Environment): ReturnValue =>
     make_return_value(evaluate(return_expression(component),
-                                      env));
+                               env));
 
 const eval_assignment = (component: Component, env: Environment): unknown => {
     const value = evaluate(assignment_value_expression(component),
@@ -129,18 +129,14 @@ const is_tagged_list = (component: unknown, the_tag: string): boolean =>
 // literals
 const is_literal = (component: Component): boolean =>
     is_tagged_list(component, "literal");
-const literal_value = (component: Component): unknown =>
-    head(tail(component));
-const make_literal = (value: unknown): Component =>
-    list("literal", value);
+const literal_value = (component: Component): unknown => head(tail(component));
+const make_literal = (value: unknown): Component => list("literal", value);
 
 // names
 const is_name = (component: Component): boolean =>
     is_tagged_list(component, "name");
-const symbol_of_name = (component: Component): string =>
-    head(tail(component));
-const make_name = (symbol: string): Component =>
-    list("name", symbol);
+const symbol_of_name = (component: Component): string => head(tail(component));
+const make_name = (symbol: string): Component => list("name", symbol);
 
 // function applications
 const is_application = (component: Component): boolean =>
@@ -151,12 +147,12 @@ const arg_expressions = (component: Component): List<Component> =>
     head(tail(tail(component)));
 const make_application = (function_expression: Component, argument_expressions: List<Component>): Component =>
     list("application",
-                function_expression, argument_expressions);
+         function_expression, argument_expressions);
 
 // conditionals
 const is_conditional = (component: Component): boolean =>
     is_tagged_list(component, "conditional_expression") ||
-           is_tagged_list(component, "conditional_statement");
+    is_tagged_list(component, "conditional_statement");
 const conditional_predicate = (component: Component): Component =>
     list_ref(component, 1);
 const conditional_consequent = (component: Component): Component =>
@@ -190,8 +186,7 @@ const is_last_statement = (stmts: List<Component>): boolean => is_null(tail(stmt
 // blocks
 const is_block = (component: Component): boolean =>
     is_tagged_list(component, "block");
-const block_body = (component: Component): Component =>
-    head(tail(component));
+const block_body = (component: Component): Component => head(tail(component));
 
 // return statements
 const is_return_statement = (component: Component): boolean =>
@@ -210,8 +205,8 @@ const assignment_value_expression = (component: Component): Component =>
 // constant, variable and function declarations
 const is_declaration = (component: Component): boolean =>
     is_tagged_list(component, "constant_declaration") ||
-           is_tagged_list(component, "variable_declaration") ||
-           is_tagged_list(component, "function_declaration");
+    is_tagged_list(component, "variable_declaration") ||
+    is_tagged_list(component, "function_declaration");
 const declaration_symbol = (component: Component): string =>
     symbol_of_name(head(tail(component)));
 const declaration_value_expression = (component: Component): Component =>
@@ -228,15 +223,15 @@ const function_declaration_body = (component: Component): Component =>
     list_ref(component, 3);
 const function_decl_to_constant_decl = (component: Component): Component =>
     make_constant_declaration(
-               function_declaration_name(component),
-               make_lambda_expression(
-                   function_declaration_parameters(component),
-                   function_declaration_body(component)));
+        function_declaration_name(component),
+        make_lambda_expression(
+            function_declaration_parameters(component),
+            function_declaration_body(component)));
 
 // operator combinations, as derived components
 const is_operator_combination = (component: Component): boolean =>
     is_unary_operator_combination(component) ||
-           is_binary_operator_combination(component);
+    is_binary_operator_combination(component);
 const is_unary_operator_combination = (component: Component): boolean =>
     is_tagged_list(component, "unary_operator_combination");
 const is_binary_operator_combination = (component: Component): boolean =>
@@ -261,8 +256,8 @@ const operator_combination_to_application = (component: Component): Component =>
 /** §4.1.3: truth, functions, return values and environments. */
 export const evaluatorData = `const is_truthy = (x: unknown): boolean =>
     is_boolean(x)
-           ? x
-           : error(x, "boolean expected, received");
+    ? x
+    : error(x, "boolean expected, received");
 const is_falsy = (x: unknown): boolean => ! is_truthy(x);
 
 // A compound function: its parameters, body and environment, tagged.
@@ -284,8 +279,7 @@ const make_return_value = (content: unknown): ReturnValue =>
     list("return_value", content);
 const is_return_value = (value: unknown): boolean =>
     is_tagged_list(value, "return_value");
-const return_value_content = (value: ReturnValue): unknown =>
-    head(tail(value));
+const return_value_content = (value: ReturnValue): unknown => head(tail(value));
 
 // A frame pairs a list of names with the list of their values.
 type Frame = Pair<List<string>, List<unknown>>;
@@ -305,20 +299,20 @@ const frame_values = (frame: Frame): List<unknown> => tail(frame);
 
 const extend_environment = (symbols: List<string>, vals: List<unknown>, base_env: Environment): Environment =>
     length(symbols) === length(vals)
-           ? pair(make_frame(symbols, vals), base_env)
-           : error(pair(symbols, vals),
-                   length(symbols) < length(vals)
-                   ? "too many arguments supplied"
-                   : "too few arguments supplied");
+    ? pair(make_frame(symbols, vals), base_env)
+    : error(pair(symbols, vals),
+            length(symbols) < length(vals)
+            ? "too many arguments supplied"
+            : "too few arguments supplied");
 
 const lookup_symbol_value = (symbol: string, env: Environment): unknown => {
     const env_loop = (env: Environment): unknown => {
         const scan = (symbols: List<string>, vals: List<unknown>): unknown =>
             is_null(symbols)
-                   ? env_loop(enclosing_environment(env))
-                   : symbol === head(symbols)
-                   ? head(vals)
-                   : scan(tail(symbols), tail(vals));
+            ? env_loop(enclosing_environment(env))
+            : symbol === head(symbols)
+            ? head(vals)
+            : scan(tail(symbols), tail(vals));
         if (env === the_empty_environment) {
             return error(symbol, "unbound name");
         } else {
@@ -333,10 +327,10 @@ const assign_symbol_value = (symbol: string, val: unknown, env: Environment): vo
     const env_loop = (env: Environment): void => {
         const scan = (symbols: List<string>, vals: List<unknown>): void =>
             is_null(symbols)
-                   ? env_loop(enclosing_environment(env))
-                   : symbol === head(symbols)
-                   ? set_head(vals, val)
-                   : scan(tail(symbols), tail(vals));
+            ? env_loop(enclosing_environment(env))
+            : symbol === head(symbols)
+            ? set_head(vals, val)
+            : scan(tail(symbols), tail(vals));
         if (env === the_empty_environment) {
             return error(symbol, "unbound name -- assignment");
         } else {
@@ -401,10 +395,10 @@ const apply_primitive_function = (fun: PrimitiveFunction, arglist: List<unknown>
 
 const setup_environment = (): Environment =>
     extend_environment(append(primitive_function_symbols,
-                                     primitive_constant_symbols),
-                              append(primitive_function_objects,
-                                     primitive_constant_values),
-                              the_empty_environment);
+                              primitive_constant_symbols),
+                       append(primitive_function_objects,
+                              primitive_constant_values),
+                       the_empty_environment);
 
 const input_prompt = "M-evaluate input:";
 const output_prompt = "M-evaluate value:";
@@ -427,13 +421,13 @@ const driver_loop = (env: Environment, inputs: List<string>): void => {
 const user_print = (string: string, object: unknown): void => {
     const prepare = (object: unknown): unknown =>
         is_compound_function(object)
-               ? "< compound-function >"
-               : is_primitive_function(object)
-               ? "< primitive-function >"
-               : is_pair(object)
-               ? pair(prepare(head(object)),
-                      prepare(tail(object)))
-               : object;
+        ? "< compound-function >"
+        : is_primitive_function(object)
+        ? "< primitive-function >"
+        : is_pair(object)
+        ? pair(prepare(head(object)),
+               prepare(tail(object)))
+        : object;
     display(prepare(object), string);
 };
 

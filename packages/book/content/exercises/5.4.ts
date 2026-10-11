@@ -67,12 +67,11 @@ const check_last = (
     fragment: List<Instruction | string>,
     operations: List<unknown>,
     inputs: List<string>
-): List<unknown> =>
-    head(reverse(check_run(fragment, operations, inputs)));
+): List<unknown> => head(reverse(check_run(fragment, operations, inputs)));
 
 const check_uses = (fragment: List<Instruction | string>, instruction_name: string): boolean =>
     !is_null(filter(item => is_pair(item) && head(item) === instruction_name,
-                           fragment));
+                    fragment));
 `;
 
 export const exercise_5_22: ExerciseSpec = {
@@ -103,11 +102,9 @@ const depth_without_return = (k: number): number => {
     { name: 'without return, k = 7', kind: 'value', expr: 'depth_without_return(7)', expected: 16 },
     { name: 'without return, k = 25', kind: 'value', expr: 'depth_without_return(25)', expected: 34 },
   ],
-  solution: `const depth_with_return = (k: number): number =>
-    10;
+  solution: `const depth_with_return = (k: number): number => 10;
 
-const depth_without_return = (k: number): number =>
-    k + 9;
+const depth_without_return = (k: number): number => k + 9;
 `,
 };
 
@@ -119,14 +116,14 @@ export const exercise_5_23: ExerciseSpec = {
 ${checkRun}
 const check_value = (inputs: List<string>): unknown =>
     head(check_last(fragment,
-                           append(eceval_operations, extra_operations),
-                           inputs));
+                    append(eceval_operations, extra_operations),
+                    inputs));
 
 const check_depth = (inputs: List<string>): number =>
     list_ref(check_last(fragment,
-                               append(eceval_operations, extra_operations),
-                               inputs),
-                    2);
+                        append(eceval_operations, extra_operations),
+                        inputs),
+             2);
 `,
   starter: `// Replace push_marker_to_stack and revert_stack_to_marker in these three
 // blocks by saves and restores of a marker value. Operations the evaluator
@@ -298,14 +295,14 @@ const make_stack = (): Stack => {
     };
     const dispatch = (message: string): unknown =>
         message === "push"
-               ? push
-               : message === "pop"
-               ? pop()
-               : message === "initialize"
-               ? initialize()
-               : message === "print_statistics"
-               ? print_statistics()
-               : error(message, "unknown request -- stack");
+        ? push
+        : message === "pop"
+        ? pop()
+        : message === "initialize"
+        ? initialize()
+        : message === "print_statistics"
+        ? print_statistics()
+        : error(message, "unknown request -- stack");
     return dispatch;
 };
 
@@ -327,20 +324,20 @@ const make_execution_function = (
     ops: Operations
 ): ExecutionFunction =>
     type(inst) === "assign"
-           ? make_assign_ef(inst, machine, labels, ops, pc)
-           : type(inst) === "test"
-           ? make_test_ef(inst, machine, labels, ops, flag, pc)
-           : type(inst) === "branch"
-           ? make_branch_ef(inst, machine, labels, flag, pc)
-           : type(inst) === "go_to"
-           ? make_go_to_ef(inst, machine, labels, pc)
-           : type(inst) === "save"
-           ? make_save_ef(inst, machine, stack, pc)
-           : type(inst) === "restore"
-           ? make_restore_ef(inst, machine, stack, pc)
-           : type(inst) === "perform"
-           ? make_perform_ef(inst, machine, labels, ops, pc)
-           : error(inst, "unknown instruction type -- assemble");
+    ? make_assign_ef(inst, machine, labels, ops, pc)
+    : type(inst) === "test"
+    ? make_test_ef(inst, machine, labels, ops, flag, pc)
+    : type(inst) === "branch"
+    ? make_branch_ef(inst, machine, labels, flag, pc)
+    : type(inst) === "go_to"
+    ? make_go_to_ef(inst, machine, labels, pc)
+    : type(inst) === "save"
+    ? make_save_ef(inst, machine, stack, pc)
+    : type(inst) === "restore"
+    ? make_restore_ef(inst, machine, stack, pc)
+    : type(inst) === "perform"
+    ? make_perform_ef(inst, machine, labels, ops, pc)
+    : error(inst, "unknown instruction type -- assemble");
 
 const make_push_marker_to_stack_ef = (machine: Machine, stack: Stack, pc: Register): ExecutionFunction => {
     // your answer
@@ -488,11 +485,9 @@ const iterative_pushes = (n: number): number => {
     { name: 'pushes for n = 5', kind: 'value', expr: 'iterative_pushes(5)', expected: 207 },
     { name: 'pushes for n = 20', kind: 'value', expr: 'iterative_pushes(20)', expected: 732 },
   ],
-  solution: `const iterative_depth = (n: number): number =>
-    10;
+  solution: `const iterative_depth = (n: number): number => 10;
 
-const iterative_pushes = (n: number): number =>
-    35 * n + 32;
+const iterative_pushes = (n: number): number => 35 * n + 32;
 `,
 };
 
@@ -517,11 +512,9 @@ const recursive_pushes = (n: number): number => {
     { name: 'pushes for n = 5', kind: 'value', expr: 'recursive_pushes(5)', expected: 145 },
     { name: 'pushes for n = 20', kind: 'value', expr: 'recursive_pushes(20)', expected: 625 },
   ],
-  solution: `const recursive_depth = (n: number): number =>
-    5 * n + 3;
+  solution: `const recursive_depth = (n: number): number => 5 * n + 3;
 
-const recursive_pushes = (n: number): number =>
-    32 * n - 15;
+const recursive_pushes = (n: number): number => 32 * n - 15;
 `,
 };
 
@@ -555,8 +548,7 @@ const fib_pushes = (n: number): number => {
     { name: 'pushes for n = 5', kind: 'value', expr: 'fib_pushes(5)', expected: 409 },
     { name: 'pushes for n = 12', kind: 'value', expr: 'fib_pushes(12)', expected: 13009 },
   ],
-  solution: `const fib_depth = (n: number): number =>
-    5 * n + 3;
+  solution: `const fib_depth = (n: number): number => 5 * n + 3;
 
 const k = 39;
 

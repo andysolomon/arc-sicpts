@@ -75,17 +75,17 @@ Without the names, the stages nest, and each function reads as its signal-flow p
 ```js
 const sum_odd_squares = (tree: Tree<number>): number =>
   accumulate(plus,
-                    0,
-                    map(square,
-                        filter(is_odd,
-                               enumerate_tree(tree))));
+             0,
+             map(square,
+                 filter(is_odd,
+                        enumerate_tree(tree))));
 
 const even_fibs = (n: number): List<number> =>
   accumulate(pair,
-                    null,
-                    filter(is_even,
-                           map(fib,
-                               enumerate_interval(0, n))));
+             null,
+             filter(is_even,
+                    map(fib,
+                        enumerate_interval(0, n))));
 ```
 
 The value of expressing programs as sequence operations is that it helps us make modular designs, constructed by combining relatively independent pieces. We can encourage modular design by providing a library of standard components together with a conventional interface for connecting them in flexible ways. Modular construction is a powerful strategy for controlling complexity in engineering: signal-processing designers build systems by cascading elements chosen from standard families of filters and transducers. Sequence operations are a library of standard program elements that we can mix and match in the same way.
@@ -105,9 +105,9 @@ Conventional data-processing applications fit the same mould. Given a sequence o
 ```js
 const salary_of_highest_paid_programmer = (records: List<PersonnelRecord>): number =>
   accumulate(math_max,
-                    0,
-                    map(salary,
-                        filter(is_programmer, records)));
+             0,
+             map(salary,
+                 filter(is_programmer, records)));
 ```
 
 These examples only hint at the range of operations that can be expressed as sequence operations. Sequences, implemented here as lists, are a conventional interface that lets us combine processing modules. And when we represent structures uniformly as sequences, the data-structure dependencies in our programs are confined to a small number of sequence operations. By changing these, we can experiment with other representations of sequences while leaving the design of our programs intact. Section 3.5 does exactly that, to admit infinite sequences.

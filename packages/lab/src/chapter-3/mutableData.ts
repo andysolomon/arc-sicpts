@@ -21,8 +21,7 @@ display_list(x);
 /** `pair` in terms of the two mutators and a supply of fresh pairs. */
 export const mutableGetNewPairProgram = `// A stand-in for the memory manager of section 5.3.1:
 // all it has to do is hand out a pair no one else is using.
-const get_new_pair = (): Pair<unknown, unknown> =>
-  list(undefined);
+const get_new_pair = (): Pair<unknown, unknown> => list(undefined);
 
 const pair = <H, T>(x: H, y: T): Pair<H, T> => {
   const fresh = get_new_pair();
@@ -41,8 +40,8 @@ export const mutableLastPairDefinition = `const last_pair = <T>(x: List<T>): Lis
 
 export const mutableAppendDefinitions = `const append = <T>(x: List<T>, y: List<T>): List<T> =>
   is_null(x)
-         ? y
-         : pair(head(x), append(tail(x), y));
+  ? y
+  : pair(head(x), append(tail(x), y));
 
 const append_mutator = <T>(x: List<T>, y: List<T>): List<T> => {
   set_tail(last_pair(x), y);
@@ -109,11 +108,9 @@ const pair = (x: unknown, y: unknown): FunctionalPair => {
               : error(m, "undefined operation -- pair");
 };
 
-const head = (z: FunctionalPair): unknown =>
-  z("head");
+const head = (z: FunctionalPair): unknown => z("head");
 
-const tail = (z: FunctionalPair): unknown =>
-  z("tail");
+const tail = (z: FunctionalPair): unknown => z("tail");
 
 const set_head = (z: FunctionalPair, new_value: unknown): FunctionalPair => {
   z("set_head")(new_value);
@@ -137,11 +134,9 @@ tail(p);
 export const queueDefinitions = `// A queue is a pair of pointers into an ordinary list.
 type Queue<T> = Pair<List<T>, List<T>>;
 
-const front_ptr = <T>(queue: Queue<T>): List<T> =>
-  head(queue);
+const front_ptr = <T>(queue: Queue<T>): List<T> => head(queue);
 
-const rear_ptr = <T>(queue: Queue<T>): List<T> =>
-  tail(queue);
+const rear_ptr = <T>(queue: Queue<T>): List<T> => tail(queue);
 
 const set_front_ptr = <T>(queue: Queue<T>, item: List<T>): void => {
   set_head(queue, item);
@@ -154,13 +149,12 @@ const set_rear_ptr = <T>(queue: Queue<T>, item: List<T>): void => {
 const is_empty_queue = <T>(queue: Queue<T>): boolean =>
   is_null(front_ptr(queue));
 
-const make_queue = <T>(): Queue<T> =>
-  pair(null, null);
+const make_queue = <T>(): Queue<T> => pair(null, null);
 
 const front_queue = <T>(queue: Queue<T>): T =>
   is_empty_queue(queue)
-         ? error(queue, "front_queue called with an empty queue")
-         : head(front_ptr(queue));
+  ? error(queue, "front_queue called with an empty queue")
+  : head(front_ptr(queue));
 
 const insert_queue = <T>(queue: Queue<T>, item: T): Queue<T> => {
   const new_pair = pair(item, null);
@@ -210,10 +204,10 @@ export const tableDefinitions = `type Table = List<unknown>;
 
 const assoc = (key: unknown, records: List<unknown>): Pair<unknown, unknown> | undefined =>
   is_null(records)
-         ? undefined
-         : equal(key, head(head(records)))
-         ? head(records)
-         : assoc(key, tail(records));
+  ? undefined
+  : equal(key, head(head(records)))
+  ? head(records)
+  : assoc(key, tail(records));
 
 const lookup = (key: unknown, table: Table): unknown => {
   const record = assoc(key, tail(table));
@@ -232,8 +226,7 @@ const insert = (key: unknown, value: unknown, table: Table): "ok" => {
   return "ok";
 };
 
-const make_table = (): Table =>
-  list("*table*");
+const make_table = (): Table => list("*table*");
 `;
 
 /** Figure 3.22: a one-dimensional table, a headed list of records. */
@@ -250,10 +243,10 @@ export const table2DDefinitions = `type Table = List<unknown>;
 
 const assoc = (key: unknown, records: List<unknown>): Pair<unknown, unknown> | undefined =>
   is_null(records)
-         ? undefined
-         : equal(key, head(head(records)))
-         ? head(records)
-         : assoc(key, tail(records));
+  ? undefined
+  : equal(key, head(head(records)))
+  ? head(records)
+  : assoc(key, tail(records));
 
 const lookup = (key_1: unknown, key_2: unknown, table: Table): unknown => {
   const subtable = assoc(key_1, tail(table));
@@ -282,8 +275,7 @@ const insert = (key_1: unknown, key_2: unknown, value: unknown, table: Table): "
   return "ok";
 };
 
-const make_table = (): Table =>
-  list("*table*");
+const make_table = (): Table => list("*table*");
 `;
 
 /** Figure 3.23: a two-dimensional table, each subtable a headed list of its own. */
@@ -304,10 +296,10 @@ const make_table = (): LocalTable => {
   const local_table = list("*table*");
   const assoc = (key: unknown, records: List<unknown>): Pair<unknown, unknown> | undefined =>
     is_null(records)
-           ? undefined
-           : equal(key, head(head(records)))
-           ? head(records)
-           : assoc(key, tail(records));
+    ? undefined
+    : equal(key, head(head(records)))
+    ? head(records)
+    : assoc(key, tail(records));
   const lookup = (key_1: unknown, key_2: unknown): unknown => {
     const subtable = assoc(key_1, tail(local_table));
     if (is_undefined(subtable)) {
@@ -336,10 +328,10 @@ const make_table = (): LocalTable => {
   };
   const dispatch = (m: "lookup" | "insert"): unknown =>
     m === "lookup"
-           ? lookup
-           : m === "insert"
-           ? insert
-           : error(m, "unknown operation -- table");
+    ? lookup
+    : m === "insert"
+    ? insert
+    : error(m, "unknown operation -- table");
   return dispatch;
 };
 `;

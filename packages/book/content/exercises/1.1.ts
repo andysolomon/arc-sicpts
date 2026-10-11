@@ -14,8 +14,7 @@ const answer = 0;
 
 export const exercise_1_3: ExerciseSpec = {
   id: '1.3',
-  starter: `const square = (x: number): number =>
-  x * x;
+  starter: `const square = (x: number): number => x * x;
 
 const sum_of_larger_squares = (a: number, b: number, c: number): number => {
   // your answer
@@ -27,8 +26,7 @@ const sum_of_larger_squares = (a: number, b: number, c: number): number => {
     { name: 'smallest in the middle', kind: 'value', expr: 'sum_of_larger_squares(4, 1, 5)', expected: 41 },
     { name: 'ties', kind: 'value', expr: 'sum_of_larger_squares(2, 2, 1) + sum_of_larger_squares(5, 5, 5)', expected: 58 },
   ],
-  solution: `const square = (x: number): number =>
-  x * x;
+  solution: `const square = (x: number): number => x * x;
 
 const sum_of_larger_squares = (a: number, b: number, c: number): number =>
   a <= b && a <= c
@@ -41,11 +39,9 @@ const sum_of_larger_squares = (a: number, b: number, c: number): number =>
 
 export const exercise_1_4: ExerciseSpec = {
   id: '1.4',
-  starter: `const plus = (a: number, b: number): number =>
-  a + b;
+  starter: `const plus = (a: number, b: number): number => a + b;
 
-const minus = (a: number, b: number): number =>
-  a - b;
+const minus = (a: number, b: number): number => a - b;
 
 const a_plus_abs_b = (a: number, b: number): number =>
   (b >= 0 ? plus : minus)(a, b);
@@ -61,11 +57,9 @@ const a_minus_abs_b = (a: number, b: number): number => {
     { name: 'negative b', kind: 'value', expr: 'a_minus_abs_b(5, -3)', expected: 2 },
     { name: 'zero b', kind: 'value', expr: 'a_minus_abs_b(5, 0)', expected: 5 },
   ],
-  solution: `const plus = (a: number, b: number): number =>
-  a + b;
+  solution: `const plus = (a: number, b: number): number => a + b;
 
-const minus = (a: number, b: number): number =>
-  a - b;
+const minus = (a: number, b: number): number => a - b;
 
 const a_plus_abs_b = (a: number, b: number): number =>
   (b >= 0 ? plus : minus)(a, b);
@@ -80,16 +74,14 @@ export const exercise_1_7: ExerciseSpec = {
   starter: `const is_good_enough = (guess: number, x: number): boolean =>
   math_abs(guess * guess - x) < 0.001;
 
-const improve = (guess: number, x: number): number =>
-  (guess + x / guess) / 2;
+const improve = (guess: number, x: number): number => (guess + x / guess) / 2;
 
 const sqrt_iter = (guess: number, x: number): number =>
   is_good_enough(guess, x)
     ? guess
     : sqrt_iter(improve(guess, x), x);
 
-const sqrt = (x: number): number =>
-  sqrt_iter(1, x);
+const sqrt = (x: number): number => sqrt_iter(1, x);
 `,
   tests: [
     { name: 'an ordinary number', kind: 'value', expr: close('sqrt(9)', 3, 0.001), expected: true },
@@ -103,16 +95,14 @@ const sqrt = (x: number): number =>
   return math_abs(improve(guess, x) - guess) < guess * 0.00001;
 };
 
-const improve = (guess: number, x: number): number =>
-  (guess + x / guess) / 2;
+const improve = (guess: number, x: number): number => (guess + x / guess) / 2;
 
 const sqrt_iter = (guess: number, x: number): number =>
   is_good_enough(guess, x)
     ? guess
     : sqrt_iter(improve(guess, x), x);
 
-const sqrt = (x: number): number =>
-  sqrt_iter(1, x);
+const sqrt = (x: number): number => sqrt_iter(1, x);
 `,
 };
 
@@ -143,8 +133,7 @@ const cube_root_iter = (guess: number, x: number): number =>
     ? guess
     : cube_root_iter(improve(guess, x), x);
 
-const cube_root = (x: number): number =>
-  cube_root_iter(1, x);
+const cube_root = (x: number): number => cube_root_iter(1, x);
 `,
 };
 

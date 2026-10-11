@@ -11,14 +11,11 @@
  */
 export const pictureVectors = `type Vector = Pair<number, number>;
 
-const make_vect = (x: number, y: number): Vector =>
-  pair(x, y);
+const make_vect = (x: number, y: number): Vector => pair(x, y);
 
-const xcor_vect = (v: Vector): number =>
-  head(v);
+const xcor_vect = (v: Vector): number => head(v);
 
-const ycor_vect = (v: Vector): number =>
-  tail(v);
+const ycor_vect = (v: Vector): number => tail(v);
 
 const add_vect = (v: Vector, w: Vector): Vector =>
   pair(head(v) + head(w), tail(v) + tail(w));
@@ -36,14 +33,11 @@ export const pictureFrames = `type Frame = List<Vector>;
 const make_frame = (origin: Vector, edge1: Vector, edge2: Vector): Frame =>
   list(origin, edge1, edge2);
 
-const origin_frame = (frame: Frame): Vector =>
-  head(frame);
+const origin_frame = (frame: Frame): Vector => head(frame);
 
-const edge1_frame = (frame: Frame): Vector =>
-  head(tail(frame));
+const edge1_frame = (frame: Frame): Vector => head(tail(frame));
 
-const edge2_frame = (frame: Frame): Vector =>
-  head(tail(tail(frame)));
+const edge2_frame = (frame: Frame): Vector => head(tail(tail(frame)));
 `;
 
 export const pictureFrameCoordMap = `// The book's frame_coord_map, with the frame's parts looked up once.
@@ -60,14 +54,11 @@ const frame_coord_map = (frame: Frame): ((v: Vector) => Vector) => {
 /** Segments as pairs of vectors (Exercise 2.48). */
 export const pictureSegments = `type Segment = Pair<Vector, Vector>;
 
-const make_segment = (start: Vector, end: Vector): Segment =>
-  pair(start, end);
+const make_segment = (start: Vector, end: Vector): Segment => pair(start, end);
 
-const start_segment = (segment: Segment): Vector =>
-  head(segment);
+const start_segment = (segment: Segment): Vector => head(segment);
 
-const end_segment = (segment: Segment): Vector =>
-  tail(segment);
+const end_segment = (segment: Segment): Vector => tail(segment);
 `;
 
 /** The book's `segments_to_painter`, with the frame's map made once per frame. */
@@ -76,11 +67,11 @@ type Painter = (frame: Frame) => void;
 
 const segments_to_painter = (segment_list: List<Segment>): Painter =>
   frame => {
-           const m = frame_coord_map(frame);
-           return for_each(segment =>
-                             draw_line(m(head(segment)), m(tail(segment))),
-                           segment_list);
-         };
+    const m = frame_coord_map(frame);
+    return for_each(segment =>
+                      draw_line(m(head(segment)), m(tail(segment))),
+                    segment_list);
+  };
 `;
 
 /**
@@ -108,8 +99,7 @@ const letter_f = segments_to_painter(list(
 export const pictureUnitFrame = `const unit_frame = make_frame(make_vect(0, 0), make_vect(1, 0), make_vect(0, 1));
 
 // Paint on the whole canvas.
-const paint = (painter: Painter): void =>
-  painter(unit_frame);
+const paint = (painter: Painter): void => painter(unit_frame);
 `;
 
 /**
@@ -126,52 +116,51 @@ ${pictureUnitFrame}`;
 
 export const transformPainterDefinition = `const transform_painter = (painter: Painter, origin: Vector, corner1: Vector, corner2: Vector): Painter =>
   frame => {
-           const m = frame_coord_map(frame);
-           const new_origin = m(origin);
-           return painter(make_frame(
-                              new_origin,
-                              sub_vect(m(corner1), new_origin),
-                              sub_vect(m(corner2), new_origin)));
-         };
+    const m = frame_coord_map(frame);
+    const new_origin = m(origin);
+    return painter(make_frame(
+                       new_origin,
+                       sub_vect(m(corner1), new_origin),
+                       sub_vect(m(corner2), new_origin)));
+  };
 `;
 
 export const flipVertDefinition = `const flip_vert = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(0, 1),
-                           make_vect(1, 1),
-                           make_vect(0, 0));
+                    make_vect(0, 1),
+                    make_vect(1, 1),
+                    make_vect(0, 0));
 `;
 
 export const rotate90Definition = `const rotate90 = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(1, 0),
-                           make_vect(1, 1),
-                           make_vect(0, 0));
+                    make_vect(1, 0),
+                    make_vect(1, 1),
+                    make_vect(0, 0));
 `;
 
 /** The answers to Exercise 2.50. */
 export const flipHorizAndRotationsDefinitions = `const flip_horiz = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(1, 0),
-                           make_vect(0, 0),
-                           make_vect(1, 1));
+                    make_vect(1, 0),
+                    make_vect(0, 0),
+                    make_vect(1, 1));
 
 const rotate180 = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(1, 1),
-                           make_vect(0, 1),
-                           make_vect(1, 0));
+                    make_vect(1, 1),
+                    make_vect(0, 1),
+                    make_vect(1, 0));
 
 const rotate270 = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(0, 1),
-                           make_vect(0, 0),
-                           make_vect(1, 1));
+                    make_vect(0, 1),
+                    make_vect(0, 0),
+                    make_vect(1, 1));
 `;
 
 /** `identity`, the flips and the rotations. */
-export const pictureTransformations = `const identity = <T>(x: T): T =>
-  x;
+export const pictureTransformations = `const identity = <T>(x: T): T => x;
 
 ${flipVertDefinition}
 ${flipHorizAndRotationsDefinitions}
@@ -339,10 +328,10 @@ paint(square_limit(letter_f, 1));
 /** The frame coordinate map. Prelude: `pictureBasis`. */
 export const frameCoordMapProgram = `const frame_coord_map = (frame: Frame): ((v: Vector) => Vector) =>
   v => add_vect(origin_frame(frame),
-                       add_vect(scale_vect(xcor_vect(v),
-                                           edge1_frame(frame)),
-                                scale_vect(ycor_vect(v),
-                                           edge2_frame(frame))));
+                add_vect(scale_vect(xcor_vect(v),
+                                    edge1_frame(frame)),
+                         scale_vect(ycor_vect(v),
+                                    edge2_frame(frame))));
 
 const a_frame = make_frame(make_vect(0.15, 0.1),
                            make_vect(0.6, 0.2),
@@ -363,13 +352,13 @@ m(make_vect(0.5, 0.5));
 /** Painters from line segments. Prelude: `pictureBasis`. */
 export const segmentsToPainterProgram = `const segments_to_painter = (segment_list: List<Segment>): Painter =>
   frame =>
-           for_each(segment =>
-                      draw_line(
-                          frame_coord_map(frame)
-                              (start_segment(segment)),
-                          frame_coord_map(frame)
-                              (end_segment(segment))),
-                    segment_list);
+    for_each(segment =>
+               draw_line(
+                   frame_coord_map(frame)
+                       (start_segment(segment)),
+                   frame_coord_map(frame)
+                       (end_segment(segment))),
+             segment_list);
 
 const arrow = segments_to_painter(list(
   make_segment(make_vect(0.1, 0.5), make_vect(0.9, 0.5)),
@@ -391,21 +380,21 @@ const flip_vert = (painter: Painter): Painter => {
 
 const shrink_to_upper_right = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(0.5, 0.5),
-                           make_vect(1, 0.5),
-                           make_vect(0.5, 1));
+                    make_vect(0.5, 0.5),
+                    make_vect(1, 0.5),
+                    make_vect(0.5, 1));
 
 const rotate90 = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(1, 0),
-                           make_vect(1, 1),
-                           make_vect(0, 0));
+                    make_vect(1, 0),
+                    make_vect(1, 1),
+                    make_vect(0, 0));
 
 const squash_inwards = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(0, 0),
-                           make_vect(0.65, 0.35),
-                           make_vect(0.35, 0.65));
+                    make_vect(0, 0),
+                    make_vect(0.65, 0.35),
+                    make_vect(0.35, 0.65));
 
 const quarter = shrink_to_upper_right(letter_f);
 paint(quarter);

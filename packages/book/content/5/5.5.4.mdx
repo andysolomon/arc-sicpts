@@ -35,12 +35,12 @@ const append_instruction_sequences = (
     seq2: InstructionSequence | string
 ): InstructionSequence =>
     make_instruction_sequence(
-               list_union(registers_needed(seq1),
-                          list_difference(registers_needed(seq2),
-                                          registers_modified(seq1))),
-               list_union(registers_modified(seq1),
-                          registers_modified(seq2)),
-               append(instructions(seq1), instructions(seq2)));
+        list_union(registers_needed(seq1),
+                   list_difference(registers_needed(seq2),
+                                   registers_modified(seq1))),
+        list_union(registers_modified(seq1),
+                   registers_modified(seq2)),
+        append(instructions(seq1), instructions(seq2)));
 ```
 
 This function uses some simple operations for manipulating sets represented as lists, similar to the (unordered) set representation described in §2.3.3:
@@ -48,17 +48,17 @@ This function uses some simple operations for manipulating sets represented as l
 ```js
 const list_union = <T>(s1: List<T>, s2: List<T>): List<T> =>
     is_null(s1)
-           ? s2
-           : is_null(member(head(s1), s2))
-           ? pair(head(s1), list_union(tail(s1), s2))
-           : list_union(tail(s1), s2);
+    ? s2
+    : is_null(member(head(s1), s2))
+    ? pair(head(s1), list_union(tail(s1), s2))
+    : list_union(tail(s1), s2);
 
 const list_difference = <T>(s1: List<T>, s2: List<T>): List<T> =>
     is_null(s1)
-           ? null
-           : is_null(member(head(s1), s2))
-           ? pair(head(s1), list_difference(tail(s1), s2))
-           : list_difference(tail(s1), s2);
+    ? null
+    : is_null(member(head(s1), s2))
+    ? pair(head(s1), list_difference(tail(s1), s2))
+    : list_difference(tail(s1), s2);
 ```
 
 The function `preserving`, the second major instruction sequence combiner, takes a list of registers `regs` and two instruction sequences `seq1` and `seq2` that are to be executed sequentially. It returns an instruction sequence whose instructions are the instructions of `seq1` followed by the instructions of `seq2`, with appropriate `save` and `restore` instructions around `seq1` to protect the registers in `regs` that are modified by `seq1` but needed by `seq2`. To accomplish this, `preserving` first creates a sequence that has the required `save`s followed by the instructions of `seq1` followed by the required `restore`s. This sequence needs the registers being saved and restored in addition to the registers needed by `seq1`, and modifies the registers modified by `seq1` except for the ones being saved and restored. This augmented sequence and `seq2` are then appended in the usual way. The following function implements this strategy recursively, walking down the list of registers to be preserved:
@@ -108,9 +108,9 @@ const tack_on_instruction_sequence = (
     body_seq: InstructionSequence
 ): InstructionSequence =>
     make_instruction_sequence(
-               registers_needed(seq),
-               registers_modified(seq),
-               append(instructions(seq), instructions(body_seq)));
+        registers_needed(seq),
+        registers_modified(seq),
+        append(instructions(seq), instructions(body_seq)));
 ```
 
 The functions `compile_conditional` and `compile_function_call` use a special combiner called `parallel_instruction_sequences` to append the two alternative branches that follow a test. The two branches will never be executed sequentially; for any particular evaluation of the test, one branch or the other will be entered. Because of this, the registers needed by the second branch are still needed by the combined sequence, even if these are modified by the first branch.
@@ -121,11 +121,11 @@ const parallel_instruction_sequences = (
     seq2: InstructionSequence
 ): InstructionSequence =>
     make_instruction_sequence(
-               list_union(registers_needed(seq1),
-                          registers_needed(seq2)),
-               list_union(registers_modified(seq1),
-                          registers_modified(seq2)),
-               append(instructions(seq1), instructions(seq2)));
+        list_union(registers_needed(seq1),
+                   registers_needed(seq2)),
+        list_union(registers_modified(seq1),
+                   registers_modified(seq2)),
+        append(instructions(seq1), instructions(seq2)));
 ```
 
 </Prose>

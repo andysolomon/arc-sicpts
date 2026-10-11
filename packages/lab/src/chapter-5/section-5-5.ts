@@ -58,8 +58,7 @@ display_instructions(instructions(compile(parse("f()(x);"), "val", "next")));
 `;
 
 /** §5.5.3: a call in a return statement (here the body of a concise arrow function) is compiled with linkage "return". */
-export const compiledTailCallProgram = `const count_down = (n: number): "done" =>
-    n === 0 ? "done" : count_down(n - 1);
+export const compiledTailCallProgram = `const count_down = (n: number): "done" => n === 0 ? "done" : count_down(n - 1);
 count_down(3);
 `;
 
@@ -147,21 +146,21 @@ export const nameApplicationFragment = `const application_fragment = list(
 /** Exercise 5.35: a version of append_return_undefined that adds a return only where a path lacks one. */
 export const smarterAppendReturnUndefined = `const always_returns = (stmt: Component): boolean =>
     is_return_statement(stmt)
-           ? true
-           : is_sequence(stmt)
-           ? accumulate((s, found) => found || always_returns(s),
-                        false, sequence_statements(stmt))
-           : is_block(stmt)
-           ? always_returns(block_body(stmt))
-           : is_conditional(stmt)
-           ? always_returns(conditional_consequent(stmt)) &&
-             always_returns(conditional_alternative(stmt))
-           : false;
+    ? true
+    : is_sequence(stmt)
+    ? accumulate((s, found) => found || always_returns(s),
+                 false, sequence_statements(stmt))
+    : is_block(stmt)
+    ? always_returns(block_body(stmt))
+    : is_conditional(stmt)
+    ? always_returns(conditional_consequent(stmt)) &&
+      always_returns(conditional_alternative(stmt))
+    : false;
 
 const append_return_undefined = (body: Component): Component =>
     always_returns(body)
-           ? body
-           : list("sequence", list(body,
-                                   list("return_statement",
-                                        list("literal", undefined))));
+    ? body
+    : list("sequence", list(body,
+                            list("return_statement",
+                                 list("literal", undefined))));
 `;

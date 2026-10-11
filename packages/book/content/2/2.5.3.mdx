@@ -133,8 +133,7 @@ Here the sum has been simplified by removing common factors; ordinary cross-mult
 We can reduce polynomial fractions the way we reduced integer ones: divide numerator and denominator by their greatest common divisor. The notion makes sense for polynomials, and Euclid's algorithm works for them essentially unchanged, because polynomials, like integers, admit a division with a remainder smaller than the divisor (in degree, for polynomials). The integer version is
 
 ```js
-const gcd = (a: number, b: number): number =>
-  b === 0 ? a : gcd(b, a % b);
+const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
 ```
 
 and the obvious modification works on term lists:

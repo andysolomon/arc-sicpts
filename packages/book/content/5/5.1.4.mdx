@@ -9,15 +9,14 @@ Implementing recursive processes, however, requires an additional mechanism. Con
 ```js
 const factorial = (n: number): number =>
     n === 1
-           ? 1
-           : n * factorial(n - 1);
+    ? 1
+    : n * factorial(n - 1);
 ```
 
 As we see from the function, computing *n*! requires computing (*n* − 1)!. Our GCD machine, modeled on the function
 
 ```js
-const gcd = (a: number, b: number): number =>
-    b === 0 ? a : gcd(b, a % b);
+const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
 ```
 
 similarly had to compute another GCD. But there is an important difference between `gcd`, which reduces the original computation to a new GCD computation, and `factorial`, which requires computing another factorial as a subproblem. In GCD, the answer to the new GCD computation is the answer to the original problem. To compute the next GCD, we simply place the new arguments in the input registers of the GCD machine and reuse the machine's data paths by executing the same controller sequence. When the machine is finished solving the final GCD problem, it has completed the entire computation.
@@ -53,10 +52,10 @@ Let us examine a more complex recursive process, the tree-recursive computation 
 ```js
 const fib = (n: number): number =>
     n === 0
-           ? 0
-           : n === 1
-           ? 1
-           : fib(n - 1) + fib(n - 2);
+    ? 0
+    : n === 1
+    ? 1
+    : fib(n - 1) + fib(n - 2);
 ```
 
 Just as with factorial, we can implement the recursive Fibonacci computation as a register machine with registers `n`, `val` and `continue`. The machine is more complex than the one for factorial, because there are two places in the controller sequence where we need to perform recursive calls: once to compute Fib(*n* − 1) and once to compute Fib(*n* − 2). To set up for each of these calls, we save the registers whose values will be needed later, set the `n` register to the number whose Fib we need to compute recursively (*n* − 1 or *n* − 2), and assign to `continue` the entry point in the main sequence to which to return (`afterfib_n_1` or `afterfib_n_2`, respectively). We then go to `fib_loop`. When we return from the recursive call, the answer is in `val`.
@@ -85,8 +84,8 @@ Recursive exponentiation:
 ```js
 const expt = (b: number, n: number): number =>
     n === 0
-           ? 1
-           : b * expt(b, n - 1);
+    ? 1
+    : b * expt(b, n - 1);
 ```
 
 Iterative exponentiation:
@@ -95,8 +94,8 @@ Iterative exponentiation:
 const expt = (b: number, n: number): number => {
     const expt_iter = (counter: number, product: number): number =>
         counter === 0
-               ? product
-               : expt_iter(counter - 1, b * product);
+        ? product
+        : expt_iter(counter - 1, b * product);
     return expt_iter(n, 1);
 };
 ```

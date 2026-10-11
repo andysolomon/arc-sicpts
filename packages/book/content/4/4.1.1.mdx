@@ -22,33 +22,33 @@ The evaluator does not depend on how programs are written down. It tests a compo
 ```js
 const evaluate = (component: Component, env: Environment): unknown =>
     is_literal(component)
-           ? literal_value(component)
-           : is_name(component)
-           ? lookup_symbol_value(symbol_of_name(component), env)
-           : is_application(component)
-           ? apply(evaluate(function_expression(component), env),
-                   list_of_values(arg_expressions(component), env))
-           : is_operator_combination(component)
-           ? evaluate(operator_combination_to_application(component),
-                      env)
-           : is_conditional(component)
-           ? eval_conditional(component, env)
-           : is_lambda_expression(component)
-           ? make_function(lambda_parameter_symbols(component),
-                           lambda_body(component), env)
-           : is_sequence(component)
-           ? eval_sequence(sequence_statements(component), env)
-           : is_block(component)
-           ? eval_block(component, env)
-           : is_return_statement(component)
-           ? eval_return_statement(component, env)
-           : is_function_declaration(component)
-           ? evaluate(function_decl_to_constant_decl(component), env)
-           : is_declaration(component)
-           ? eval_declaration(component, env)
-           : is_assignment(component)
-           ? eval_assignment(component, env)
-           : error(component, "unknown syntax -- evaluate");
+    ? literal_value(component)
+    : is_name(component)
+    ? lookup_symbol_value(symbol_of_name(component), env)
+    : is_application(component)
+    ? apply(evaluate(function_expression(component), env),
+            list_of_values(arg_expressions(component), env))
+    : is_operator_combination(component)
+    ? evaluate(operator_combination_to_application(component),
+               env)
+    : is_conditional(component)
+    ? eval_conditional(component, env)
+    : is_lambda_expression(component)
+    ? make_function(lambda_parameter_symbols(component),
+                    lambda_body(component), env)
+    : is_sequence(component)
+    ? eval_sequence(sequence_statements(component), env)
+    : is_block(component)
+    ? eval_block(component, env)
+    : is_return_statement(component)
+    ? eval_return_statement(component, env)
+    : is_function_declaration(component)
+    ? evaluate(function_decl_to_constant_decl(component), env)
+    : is_declaration(component)
+    ? eval_declaration(component, env)
+    : is_assignment(component)
+    ? eval_assignment(component, env)
+    : error(component, "unknown syntax -- evaluate");
 ```
 
 A literal is its own value; a name is looked up. An application has its function expression and argument expressions evaluated, and the results go to `apply`. An operator combination such as `x * x` is rewritten as an application of the function named `*` and evaluated again. Every other syntactic form has its own evaluation function.
@@ -104,8 +104,8 @@ const list_of_values = (exps: List<Component>, env: Environment): List<unknown> 
 ```js
 const eval_conditional = (component: Component, env: Environment): unknown =>
     is_truthy(evaluate(conditional_predicate(component), env))
-           ? evaluate(conditional_consequent(component), env)
-           : evaluate(conditional_alternative(component), env);
+    ? evaluate(conditional_consequent(component), env)
+    : evaluate(conditional_alternative(component), env);
 ```
 
 `eval_sequence` evaluates the statements of a program or a block in order. The value is that of the last statement, unless some statement produces a return value: then that value is the result, and the statements after it are never evaluated.
@@ -145,13 +145,13 @@ const list_of_unassigned = (symbols: List<string>): List<"*unassigned*"> =>
     map(symbol => "*unassigned*", symbols);
 const scan_out_declarations = (component: Component): List<string> =>
     is_sequence(component)
-           ? accumulate(append,
-                        null,
-                        map(scan_out_declarations,
-                            sequence_statements(component)))
-           : is_declaration(component)
-           ? list(declaration_symbol(component))
-           : null;
+    ? accumulate(append,
+                 null,
+                 map(scan_out_declarations,
+                     sequence_statements(component)))
+    : is_declaration(component)
+    ? list(declaration_symbol(component))
+    : null;
 ```
 
 Declarations inside nested blocks are left for those blocks; and declarations in conditionals, function bodies and lambda expressions are always inside a nested block.
@@ -159,7 +159,7 @@ Declarations inside nested blocks are left for those blocks; and declarations in
 ```js
 const eval_return_statement = (component: Component, env: Environment): ReturnValue =>
     make_return_value(evaluate(return_expression(component),
-                                      env));
+                               env));
 const eval_assignment = (component: Component, env: Environment): unknown => {
     const value = evaluate(assignment_value_expression(component),
                            env);

@@ -40,8 +40,7 @@ const div_complex = (z1: Complex, z2: Complex): Complex =>
 /** Ben's representation: a complex number is the pair (real part, imaginary part). */
 export const rectangularDefinitions = `type Complex = Pair<number, number>; // real part and imaginary part
 
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
 const real_part = (z: Complex): number => head(z);
 
@@ -50,8 +49,7 @@ const imag_part = (z: Complex): number => tail(z);
 const magnitude = (z: Complex): number =>
   math_sqrt(square(real_part(z)) + square(imag_part(z)));
 
-const angle = (z: Complex): number =>
-  math_atan2(imag_part(z), real_part(z));
+const angle = (z: Complex): number => math_atan2(imag_part(z), real_part(z));
 
 const make_from_real_imag = (x: number, y: number): Complex => pair(x, y);
 
@@ -62,14 +60,11 @@ const make_from_mag_ang = (r: number, a: number): Complex =>
 /** Alyssa's representation: a complex number is the pair (magnitude, angle). */
 export const polarDefinitions = `type Complex = Pair<number, number>; // magnitude and angle
 
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
-const real_part = (z: Complex): number =>
-  magnitude(z) * math_cos(angle(z));
+const real_part = (z: Complex): number => magnitude(z) * math_cos(angle(z));
 
-const imag_part = (z: Complex): number =>
-  magnitude(z) * math_sin(angle(z));
+const imag_part = (z: Complex): number => magnitude(z) * math_sin(angle(z));
 
 const magnitude = (z: Complex): number => head(z);
 
@@ -107,11 +102,9 @@ product;
 /** The tagging functions, the types of tagged complex numbers, and the two predicates on tags. */
 export const tagPredicateDefinitions = `${typeTagDefinitions}
 ${complexTypeDefinitions}
-const is_rectangular = (z: Complex): boolean =>
-  type_tag(z) === "rectangular";
+const is_rectangular = (z: Complex): boolean => type_tag(z) === "rectangular";
 
-const is_polar = (z: Complex): boolean =>
-  type_tag(z) === "polar";
+const is_polar = (z: Complex): boolean => type_tag(z) === "polar";
 `;
 
 /** The same pair, read two ways, and told apart by a tag. */
@@ -125,8 +118,7 @@ contents(as_polar);
 
 /** Ben's and Alyssa's representations renamed, tagged, and behind generic selectors. */
 export const taggedComplexDefinitions = `${tagPredicateDefinitions}
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
 // Ben's rectangular representation
 const real_part_rectangular = (z: Rectangular): number => head(z);
@@ -285,10 +277,8 @@ export const polarPackageDefinition = `const install_polar_package = (): "done" 
   const magnitude = (z: Polar): number => head(z);
   const angle = (z: Polar): number => tail(z);
   const make_from_mag_ang = (r: number, a: number): Polar => pair(r, a);
-  const real_part = (z: Polar): number =>
-    magnitude(z) * math_cos(angle(z));
-  const imag_part = (z: Polar): number =>
-    magnitude(z) * math_sin(angle(z));
+  const real_part = (z: Polar): number => magnitude(z) * math_cos(angle(z));
+  const imag_part = (z: Polar): number => magnitude(z) * math_sin(angle(z));
   const make_from_real_imag = (x: number, y: number): Polar =>
     pair(math_sqrt(square(x) + square(y)),
          math_atan2(y, x));
@@ -326,8 +316,7 @@ const make_from_mag_ang = (r: number, a: number): Complex =>
 
 /** The whole data-directed system; the prelude is `dataDirectedPrelude`. */
 export const dataDirectedProgram = `${complexTypeDefinitions}
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
 ${rectangularPackageDefinition}
 ${polarPackageDefinition}
@@ -346,8 +335,7 @@ real_part(z2);
 export const messagePassingDefinitions = `// A complex number is a function that answers the name of an operation.
 type Complex = (op: string) => number;
 
-const square = (x: number): number =>
-  x * x;
+const square = (x: number): number => x * x;
 
 const make_from_real_imag = (x: number, y: number): Complex => {
   const dispatch = (op: string): number =>

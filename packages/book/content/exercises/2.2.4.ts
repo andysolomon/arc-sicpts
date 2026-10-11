@@ -74,11 +74,11 @@ const same_segments = (xs: List<Line>, ys: List<Line>): boolean =>
 // Every endpoint lies in the box from (x0, y0) to (x1, y1).
 const inside_box = (xs: List<Line>, x0: number, y0: number, x1: number, y1: number): boolean =>
   accumulate((s, ok) => ok &&
-                      x0 <= list_ref(s, 0) && list_ref(s, 0) <= x1 &&
-                      y0 <= list_ref(s, 1) && list_ref(s, 1) <= y1 &&
-                      x0 <= list_ref(s, 2) && list_ref(s, 2) <= x1 &&
-                      y0 <= list_ref(s, 3) && list_ref(s, 3) <= y1,
-                    true, xs);
+               x0 <= list_ref(s, 0) && list_ref(s, 0) <= x1 &&
+               y0 <= list_ref(s, 1) && list_ref(s, 1) <= y1 &&
+               x0 <= list_ref(s, 2) && list_ref(s, 2) <= x1 &&
+               y0 <= list_ref(s, 3) && list_ref(s, 3) <= y1,
+             true, xs);
 `;
 
 const f = (...xs: number[][]): string => `list(${xs.map((x) => `list(${x.join(', ')})`).join(', ')})`;
@@ -230,10 +230,10 @@ const scale_vect = (s: number, v: Vector): Vector => {
 
 const frame_coord_map = (frame: Frame): ((v: Vector) => Vector) =>
   v => add_vect(origin_frame(frame),
-                       add_vect(scale_vect(xcor_vect(v),
-                                           edge1_frame(frame)),
-                                scale_vect(ycor_vect(v),
-                                           edge2_frame(frame))));
+                add_vect(scale_vect(xcor_vect(v),
+                                    edge1_frame(frame)),
+                         scale_vect(ycor_vect(v),
+                                    edge2_frame(frame))));
 `,
   tests: [
     { name: 'selectors undo the constructor', kind: 'value', expr: 'xcor_vect(make_vect(3, 4)) * 10 + ycor_vect(make_vect(3, 4))', expected: 34 },
@@ -264,32 +264,29 @@ const frame_coord_map = (frame: Frame): ((v: Vector) => Vector) =>
   ],
   solution: `type Vector = Pair<number, number>;
 
-const make_vect = (x: number, y: number): Vector =>
-  pair(x, y);
+const make_vect = (x: number, y: number): Vector => pair(x, y);
 
-const xcor_vect = (v: Vector): number =>
-  head(v);
+const xcor_vect = (v: Vector): number => head(v);
 
-const ycor_vect = (v: Vector): number =>
-  tail(v);
+const ycor_vect = (v: Vector): number => tail(v);
 
 const add_vect = (v: Vector, w: Vector): Vector =>
   make_vect(xcor_vect(v) + xcor_vect(w),
-                   ycor_vect(v) + ycor_vect(w));
+            ycor_vect(v) + ycor_vect(w));
 
 const sub_vect = (v: Vector, w: Vector): Vector =>
   make_vect(xcor_vect(v) - xcor_vect(w),
-                   ycor_vect(v) - ycor_vect(w));
+            ycor_vect(v) - ycor_vect(w));
 
 const scale_vect = (s: number, v: Vector): Vector =>
   make_vect(s * xcor_vect(v), s * ycor_vect(v));
 
 const frame_coord_map = (frame: Frame): ((v: Vector) => Vector) =>
   v => add_vect(origin_frame(frame),
-                       add_vect(scale_vect(xcor_vect(v),
-                                           edge1_frame(frame)),
-                                scale_vect(ycor_vect(v),
-                                           edge2_frame(frame))));
+                add_vect(scale_vect(xcor_vect(v),
+                                    edge1_frame(frame)),
+                         scale_vect(ycor_vect(v),
+                                    edge2_frame(frame))));
 `,
 };
 
@@ -351,28 +348,22 @@ const edge2_frame_2 = (frame: Frame_2): Vector => {
 const make_frame_1 = (origin: Vector, edge1: Vector, edge2: Vector): Frame_1 =>
   list(origin, edge1, edge2);
 
-const origin_frame_1 = (frame: Frame_1): Vector =>
-  head(frame);
+const origin_frame_1 = (frame: Frame_1): Vector => head(frame);
 
-const edge1_frame_1 = (frame: Frame_1): Vector =>
-  head(tail(frame));
+const edge1_frame_1 = (frame: Frame_1): Vector => head(tail(frame));
 
-const edge2_frame_1 = (frame: Frame_1): Vector =>
-  head(tail(tail(frame)));
+const edge2_frame_1 = (frame: Frame_1): Vector => head(tail(tail(frame)));
 
 type Frame_2 = Pair<Vector, Pair<Vector, Vector>>;
 
 const make_frame_2 = (origin: Vector, edge1: Vector, edge2: Vector): Frame_2 =>
   pair(origin, pair(edge1, edge2));
 
-const origin_frame_2 = (frame: Frame_2): Vector =>
-  head(frame);
+const origin_frame_2 = (frame: Frame_2): Vector => head(frame);
 
-const edge1_frame_2 = (frame: Frame_2): Vector =>
-  head(tail(frame));
+const edge1_frame_2 = (frame: Frame_2): Vector => head(tail(frame));
 
-const edge2_frame_2 = (frame: Frame_2): Vector =>
-  tail(tail(frame));
+const edge2_frame_2 = (frame: Frame_2): Vector => tail(tail(frame));
 `,
 };
 
@@ -404,13 +395,13 @@ type Painter = (frame: Frame) => void;
 
 const segments_to_painter = (segment_list: List<Segment>): Painter =>
   frame =>
-           for_each(segment =>
-                      draw_line(
-                          frame_coord_map(frame)
-                              (start_segment(segment)),
-                          frame_coord_map(frame)
-                              (end_segment(segment))),
-                    segment_list);
+    for_each(segment =>
+               draw_line(
+                   frame_coord_map(frame)
+                       (start_segment(segment)),
+                   frame_coord_map(frame)
+                       (end_segment(segment))),
+             segment_list);
 `,
   tests: [
     { name: 'start_segment', kind: 'value', expr: 'equal(start_segment(make_segment(make_vect(1, 2), make_vect(3, 4))), make_vect(1, 2))', expected: true },
@@ -424,27 +415,24 @@ const segments_to_painter = (segment_list: List<Segment>): Painter =>
   ],
   solution: `type Segment = Pair<Vector, Vector>;
 
-const make_segment = (start: Vector, end: Vector): Segment =>
-  pair(start, end);
+const make_segment = (start: Vector, end: Vector): Segment => pair(start, end);
 
-const start_segment = (segment: Segment): Vector =>
-  head(segment);
+const start_segment = (segment: Segment): Vector => head(segment);
 
-const end_segment = (segment: Segment): Vector =>
-  tail(segment);
+const end_segment = (segment: Segment): Vector => tail(segment);
 
 // A painter draws in the frame it is given.
 type Painter = (frame: Frame) => void;
 
 const segments_to_painter = (segment_list: List<Segment>): Painter =>
   frame =>
-           for_each(segment =>
-                      draw_line(
-                          frame_coord_map(frame)
-                              (start_segment(segment)),
-                          frame_coord_map(frame)
-                              (end_segment(segment))),
-                    segment_list);
+    for_each(segment =>
+               draw_line(
+                   frame_coord_map(frame)
+                       (start_segment(segment)),
+                   frame_coord_map(frame)
+                       (end_segment(segment))),
+             segment_list);
 `,
 };
 
@@ -552,21 +540,21 @@ const rotate270 = (painter: Painter): Painter => {
   ],
   solution: `const flip_horiz = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(1, 0),
-                           make_vect(0, 0),
-                           make_vect(1, 1));
+                    make_vect(1, 0),
+                    make_vect(0, 0),
+                    make_vect(1, 1));
 
 const rotate180 = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(1, 1),
-                           make_vect(0, 1),
-                           make_vect(1, 0));
+                    make_vect(1, 1),
+                    make_vect(0, 1),
+                    make_vect(1, 0));
 
 const rotate270 = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(0, 1),
-                           make_vect(0, 0),
-                           make_vect(1, 1));
+                    make_vect(0, 1),
+                    make_vect(0, 0),
+                    make_vect(1, 1));
 `,
 };
 
@@ -588,9 +576,9 @@ ${flipVertDefinition}
 ${rotate90Definition}
 const rotate270 = (painter: Painter): Painter =>
   transform_painter(painter,
-                           make_vect(0, 1),
-                           make_vect(0, 0),
-                           make_vect(1, 1));
+                    make_vect(0, 1),
+                    make_vect(0, 0),
+                    make_vect(1, 1));
 
 ${besideDefinition}
 ${recording}`,
