@@ -31,6 +31,27 @@ concurrent_execute(() => { balance = balance + 40; },             // Peter depos
 balance;
 `;
 
+/**
+ * §3.4.1: the same two withdrawals as async functions. They can interleave
+ * only where one of them awaits, so the program needs no seed: Peter's
+ * withdrawal is lost every time.
+ */
+export const awaitInterleavingProgram = `let balance = 100;
+
+const withdraw = async (amount: number): Promise<number> => {
+    const current = balance;
+    await null;                    // other work may run here
+    balance = current - amount;
+    return balance;
+};
+
+const peter = withdraw(10);
+const paul = withdraw(25);
+await peter;
+await paul;
+balance;
+`;
+
 /** §3.4.2: every way to interleave two processes of three steps each. */
 export const interleavingCountProgram = `const interleave = <T>(xs: List<T>, ys: List<T>): List<List<T>> =>
     is_null(xs)

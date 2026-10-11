@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../evaluator/evaluate.ts';
 import {
+  awaitInterleavingProgram,
   exchangeDeadlockProgram,
   interleavingCountProgram,
   jointAccountProgram,
@@ -81,6 +82,17 @@ describe('section 3.4.1: the nature of time in concurrent systems', () => {
     const seen = kinds(outcomes(program, 3000)).map(Number);
     expect(seen.every((v) => all.includes(v))).toBe(true);
     expect(seen).toEqual(expect.arrayContaining([35, 40, 45, 50, 55, 80, 110]));
+  });
+
+  it('async withdrawals interleave only at await: reading before it loses Peter\'s withdrawal every time, reading after it never does', () => {
+    const balances = (source: string): string[] => kinds(outcomes(source, 20));
+    expect(balances(awaitInterleavingProgram)).toEqual(['75']);
+    const readAfter = awaitInterleavingProgram.replace(
+      '    const current = balance;\n    await null;                    // other work may run here\n',
+      '    await null;                    // other work may run here\n    const current = balance;\n',
+    );
+    expect(readAfter).not.toBe(awaitInterleavingProgram);
+    expect(balances(readAfter)).toEqual(['65']);
   });
 });
 
