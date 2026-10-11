@@ -1,4 +1,4 @@
-import { HighlightStyle, StreamLanguage, syntaxHighlighting } from '@codemirror/language';
+import { HighlightStyle, StreamLanguage, syntaxHighlighting, type StreamParser } from '@codemirror/language';
 import type { Extension } from '@codemirror/state';
 import { tags } from '@lezer/highlight';
 
@@ -14,7 +14,7 @@ const ATOMS = new Set(['true', 'false', 'null', 'undefined']);
 const OPENING = '([{<';
 const CLOSING = ')]}>';
 
-interface ModeState {
+export interface ModeState {
   inBlockComment: boolean;
   /** Inside a backquoted string, which may span lines. */
   inTemplate: boolean;
@@ -35,7 +35,8 @@ interface ModeState {
 /** Where `<` begins type parameters rather than a comparison, as in `= <T>(x: T) =>`. */
 const BEFORE_TYPE_PARAMS = new Set(['', '=', '(', ',', '=>', ':', '?', 'return', 'async']);
 
-const sourceMode = StreamLanguage.define<ModeState>({
+/** The tokenizer behind the mode, exported so that tests can run it line by line. */
+export const sourceParser: StreamParser<ModeState> = {
   name: 'source',
   startState: () => ({
     inBlockComment: false,
@@ -85,15 +86,19 @@ const sourceMode = StreamLanguage.define<ModeState>({
   },
   indent(state, textAfter, context) {
     const closing = /^\s*[)}]/.test(textAfter) ? 1 : 0;
-    return Math.max(0, state.depth - closing) * context.unit;
+    // The concise body of an arrow function that ends the previous line goes one level in.
+    const body = state.last === '=>' && state.type === null ? 1 : 0;
+    return Math.max(0, state.depth - closing + body) * context.unit;
   },
   languageData: {
     commentTokens: { line: '//', block: { open: '/*', close: '*/' } },
     closeBrackets: { brackets: ['(', '{', '"', "'"] },
   },
-});
+};
 
-type Stream = Parameters<Parameters<typeof StreamLanguage.define>[0]['token']>[0];
+const sourceMode = StreamLanguage.define(sourceParser);
+
+type Stream = Parameters<StreamParser<ModeState>['token']>[0];
 
 const beginType = (state: ModeState, annotation: boolean): void => {
   state.type = 0;
@@ -130,7 +135,9 @@ function code(stream: Stream, state: ModeState): string | null {
   }
   if (stream.match(':')) {
     // The `:` of a conditional is at the depth of its `?`; any other `:` begins a type annotation.
-    if (state.conditionals.at(-1) === state.depth) state.conditionals.pop();
+    // After `)`, it is a return type if `=>` follows and the conditional's own `:` is still to come.
+    const returnType = state.last === ')' && /^\s*[^?:;=]+=>.*:/.test(stream.string.slice(stream.pos));
+    if (!returnType && state.conditionals.at(-1) === state.depth) state.conditionals.pop();
     else beginType(state, true);
     return 'operator';
   }

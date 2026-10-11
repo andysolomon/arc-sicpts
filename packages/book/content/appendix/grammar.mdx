@@ -1,33 +1,47 @@
 <Prose>
 
-The Laboratory evaluates a subset of JavaScript in the spirit of Source §1, with assignment added for Chapter 3. This is the grammar its parser accepts today. It grows with the book; anything outside it is rejected with a message rather than interpreted loosely.
+The Laboratory evaluates *Source*: a subset of TypeScript in the spirit of Source §1, with assignment added for Chapter 3 and the newer conveniences of the language, such as arrow functions, rest parameters, spread arguments, `??`, `?.` and `async`, where they fit a language without objects or arrays. This is the grammar its parser accepts today. It grows with the book; anything outside it is rejected with a message rather than interpreted loosely.
 
 </Prose>
 
 ```
-program     ::= statement*
+program        ::= statement*
 
-statement   ::= "const" name "=" expression ";"
-              | "let" name "=" expression ";"
-              | "function" name "(" names? ")" block
-              | "return" expression? ";"
-              | "if" "(" expression ")" block ( "else" ( block | if-statement ) )?
-              | block
-              | expression ";"
+statement      ::= "const" name annotation? "=" expression ";"
+                 | "let" name annotation? "=" expression ";"
+                 | "type" name type-parameters? "=" type ";"
+                 | "async"? "function" name type-parameters? "(" parameters ")" annotation? block
+                 | "return" expression? ";"
+                 | "if" "(" expression ")" block ( "else" ( block | if-statement ) )?
+                 | block
+                 | expression ";"
 
-block       ::= "{" statement* "}"
+block          ::= "{" statement* "}"
 
-expression  ::= number | string | "true" | "false" | "null" | "undefined"
-              | name
-              | expression binary-operator expression
-              | unary-operator expression
-              | expression "&&" expression
-              | expression "||" expression
-              | expression "?" expression ":" expression
-              | expression "(" expressions? ")"
-              | name "=" expression
-              | ( name | "(" names? ")" ) "=>" ( expression | block )
-              | "(" expression ")"
+expression     ::= number | string | "true" | "false" | "null" | "undefined"
+                 | name
+                 | expression binary-operator expression
+                 | unary-operator expression
+                 | expression "&&" expression
+                 | expression "||" expression
+                 | expression "??" expression
+                 | expression "?" expression ":" expression
+                 | expression ( "(" | "?.(" ) arguments ")"
+                 | name "=" expression
+                 | "async"? lambda-head "=>" ( expression | block )
+                 | "await" expression
+                 | "(" expression ")"
+
+lambda-head    ::= name | type-parameters? "(" parameters ")" annotation?
+parameters     ::= ( name annotation? "," )* ( name annotation? | "..." name annotation? )?
+arguments      ::= ( ( "..." )? expression "," )* ( ( "..." )? expression )?
+
+annotation     ::= ":" type
+type-parameters ::= "<" name ( "extends" type )? ( "=" type )? ( "," ... )* ">"
+type           ::= TypeScript's type syntax: names and generic types such as List<number>,
+                   unions A | B, intersections A & B, literal types such as "done" or 0,
+                   tuples [A, B], arrays T[], object types { x: number },
+                   function types (x: A) => B, and parenthesized types
 
 binary-operator ::= "+" | "-" | "*" | "/" | "%" | "===" | "!==" | "<" | ">" | "<=" | ">="
 unary-operator  ::= "!" | "-"
@@ -35,13 +49,32 @@ unary-operator  ::= "!" | "-"
 
 <Prose>
 
-## Differences from JavaScript
+## Types are stripped, not checked
+
+Every function in the book carries type annotations, as in `const square = (x: number): number => x * x;`. The parser reads each annotation, reports one that is not well formed, and then drops it: no annotation changes what a program does, and a wrong one does not stop it from running. This is how Node runs a `.ts` file with type stripping, and how the Laboratory itself is run from the command line. The annotations are there for the reader.
+
+A `type` declaration names a type for later annotations, as in `type Rational = Pair<number, number>;`. It declares nothing a program can use at run time. Every program can use these library types without declaring them:
+
+| Type | Meaning |
+| --- | --- |
+| `Pair<H, T>` | A pair made by `pair`, as the tuple `[H, T]`. |
+| `List<T>` | `null`, or a pair of a `T` and a `List<T>`. |
+| `Stream<T>` | `null`, or a pair of a `T` and a function of no arguments that returns a `Stream<T>`. |
+| `Instruction`, `Machine`, `Register` | The register-machine language and machine interface of §5.1–5.2. |
+
+An async function's result is written `Promise<T>`.
+
+## Differences from JavaScript and TypeScript
 
 - Semicolons are required. A missing one is reported at the end of the statement that needs it.
 - Only strict equality exists: `==` and `!=` are syntax errors.
 - Operators check their operands. `+` takes two numbers or two strings; a conditional's test must be a boolean.
-- A name cannot be used before its declaration has been evaluated, and cannot be declared twice in one block.
-- Loops, classes, objects, arrays and `var` are not part of the language. Words such as `while` are reported as outside the subset.
+- A name cannot be used before its declaration has been evaluated, and cannot be declared twice in one block. This holds for `function` declarations too, which are accepted and behave like a `const` bound to an arrow function: unlike JavaScript, they are not hoisted.
+- There are no arrays, so rest parameters and spread arguments work on lists. In `(first: number, ...rest: List<number>)`, `rest` is the list of the arguments after the first; `f(...xs)` passes the elements of the list `xs` as arguments, and `list(0, ...xs)` puts `0` in front of them.
+- There are no objects or properties, so optional chaining applies only to calls: `f?.(x)` is `undefined`, without evaluating `x`, when `f` is `null` or `undefined`. The calls chained after it, as in `f?.(x)(y)`, are skipped too.
+- `a ?? b` is `b` when `a` is `null` or `undefined`, and `a` otherwise; `b` is evaluated only when it is needed. As in JavaScript, `??` cannot be combined with `&&` or `||` without parentheses.
+- An `async` function returns a promise. `await` waits for one, inside an async function or at the top level of a program. As in JavaScript, an async function runs until its first `await`; its caller then carries on, and the rest of the function is queued until the current work is done. So async functions interleave only at `await`, never in the middle of an expression. A program cannot reject a promise: an error stops the whole program. There are no timers; `await null` just lets queued work run.
+- Loops, classes, objects, arrays, property access, destructuring, optional and default parameters, `var`, `interface` and `enum` are not part of the language. Words such as `while` are reported as outside the subset.
 - Calls in tail position do not grow the stack.
 
 ## Primitive functions
@@ -52,11 +85,20 @@ For the picture language of §2.2.4, `draw_line(start, end)` draws a line betwee
 
 ## Library functions
 
-Written in Source and evaluated before every program, in a frame of their own that a program's declarations shadow. Lists: `equal`, `length`, `map`, `build_list`, `for_each`, `reverse`, `append`, `member`, `remove`, `remove_all`, `filter`, `enum_list`, `list_ref`, `accumulate`. Streams, whose tails are functions of no arguments: `stream_tail`, `is_stream`, `list_to_stream`, `stream_to_list`, `stream_length`, `stream_map`, `build_stream`, `stream_for_each`, `stream_reverse`, `stream_append`, `stream_member`, `stream_remove`, `stream_remove_all`, `stream_filter`, `enum_stream`, `integers_from`, `eval_stream`, `stream_ref`. The source is `packages/lab/src/evaluator/library.ts`.
+Written in typed Source and evaluated before every program, in a frame of their own that a program's declarations shadow. Lists: `equal`, `length`, `map`, `build_list`, `for_each`, `reverse`, `append`, `member`, `remove`, `remove_all`, `filter`, `enum_list`, `list_ref`, `accumulate`. Streams, whose tails are functions of no arguments: `stream_tail`, `is_stream`, `list_to_stream`, `stream_to_list`, `stream_length`, `stream_map`, `build_stream`, `stream_for_each`, `stream_reverse`, `stream_append`, `stream_member`, `stream_remove`, `stream_remove_all`, `stream_filter`, `enum_stream`, `integers_from`, `eval_stream`, `stream_ref`. The source is `packages/lab/src/evaluator/library.ts`, where each function's annotations give its type; `map`, for instance, is declared as
+
+</Prose>
+
+```
+const map = <A, B>(f: (x: A) => B, xs: List<A>): List<B> =>
+  is_null(xs) ? null : pair(f(head(xs)), map(f, tail(xs)));
+```
+
+<Prose>
 
 `display(value, prefix)` shows the string `prefix` before the value, and `error(value, message)` stops with `message` followed by the value, as in Source.
 
-The mutation functions `set_head` and `set_tail`, the predicate `is_list`, and `parse(text)` are primitives; `parse` returns the tagged-list representation of §4.1.2. The primitive `apply_in_underlying_javascript(f, list_of_arguments)` applies a compound or primitive function to the elements of a list. The list operations listed above, including `length`, `map`, `filter` and `accumulate`, are Source functions in the default library, available even without a page-specific prelude. Try `map(x => x * 2, list(1, 2));` in any editor: it returns the list of 2 and 4.
+The mutation functions `set_head` and `set_tail`, the predicate `is_list`, and `parse(text)` are primitives; `parse` returns the tagged-list representation of §4.1.2, with the program's type annotations stripped. The tagged lists of SICP have no forms for `??`, `?.`, rest parameters, spread arguments or async functions, so `parse` refuses a program that uses them. The primitive `apply_in_underlying_javascript(f, list_of_arguments)` applies a compound or primitive function to the elements of a list, as `f(...list_of_arguments)` does. The list operations listed above, including `length`, `map`, `filter` and `accumulate`, are Source functions in the default library, available even without a page-specific prelude. Try `map(x => x * 2, list(1, 2));` in any editor: it returns the list of 2 and 4.
 
 An example may additionally load a hidden prelude, such as a Chapter 4 evaluator, or redeclare a library function to teach an alternative implementation. Those definitions shadow the default library in an inner frame; they do not make the library function available for the first time. The example's “Under the hood” note explains its additional definitions.
 
@@ -66,6 +108,6 @@ For the threads of §3.4: `concurrent_execute(f, g, ...)` runs each function of 
 
 <UnderTheHood file="packages/lab/src/syntax/parse.ts">
 
-The grammar above is a description of `syntax/parse.ts`, a recursive-descent parser with one function per precedence level. `syntax/parse.test.ts` covers precedence, spans, and each rejection listed under "Differences from JavaScript".
+The grammar above is a description of `syntax/parse.ts`, a recursive-descent parser with one function per precedence level. It tries a lambda's parameters and return type before deciding that `(a): b` is not one, which is how it tells `c ? (x): number => x : y` from `c ? (x) : y`. `syntax/parse.test.ts` covers precedence, spans, type stripping, and each rejection listed under "Differences from JavaScript and TypeScript"; the semantics of `??`, `?.`, rest, spread and `await` are tested in `evaluator/evaluate.test.ts`.
 
 </UnderTheHood>
