@@ -9,41 +9,45 @@
  * `head` and `tail` directly: every line a painter draws maps two points, and
  * this keeps that cheap.
  */
-export const pictureVectors = `const make_vect = (x, y) =>
+export const pictureVectors = `type Vector = Pair<number, number>;
+
+const make_vect = (x: number, y: number): Vector =>
   pair(x, y);
 
-const xcor_vect = (v) =>
+const xcor_vect = (v: Vector): number =>
   head(v);
 
-const ycor_vect = (v) =>
+const ycor_vect = (v: Vector): number =>
   tail(v);
 
-const add_vect = (v, w) =>
+const add_vect = (v: Vector, w: Vector): Vector =>
   pair(head(v) + head(w), tail(v) + tail(w));
 
-const sub_vect = (v, w) =>
+const sub_vect = (v: Vector, w: Vector): Vector =>
   pair(head(v) - head(w), tail(v) - tail(w));
 
-const scale_vect = (s, v) =>
+const scale_vect = (s: number, v: Vector): Vector =>
   pair(s * head(v), s * tail(v));
 `;
 
 /** Frames as lists (Exercise 2.47). */
-export const pictureFrames = `const make_frame = (origin, edge1, edge2) =>
+export const pictureFrames = `type Frame = List<Vector>;
+
+const make_frame = (origin: Vector, edge1: Vector, edge2: Vector): Frame =>
   list(origin, edge1, edge2);
 
-const origin_frame = (frame) =>
+const origin_frame = (frame: Frame): Vector =>
   head(frame);
 
-const edge1_frame = (frame) =>
+const edge1_frame = (frame: Frame): Vector =>
   head(tail(frame));
 
-const edge2_frame = (frame) =>
+const edge2_frame = (frame: Frame): Vector =>
   head(tail(tail(frame)));
 `;
 
 export const pictureFrameCoordMap = `// The book's frame_coord_map, with the frame's parts looked up once.
-const frame_coord_map = (frame) => {
+const frame_coord_map = (frame: Frame): ((v: Vector) => Vector) => {
   const origin = origin_frame(frame);
   const edge1 = edge1_frame(frame);
   const edge2 = edge2_frame(frame);
@@ -54,18 +58,23 @@ const frame_coord_map = (frame) => {
 `;
 
 /** Segments as pairs of vectors (Exercise 2.48). */
-export const pictureSegments = `const make_segment = (start, end) =>
+export const pictureSegments = `type Segment = Pair<Vector, Vector>;
+
+const make_segment = (start: Vector, end: Vector): Segment =>
   pair(start, end);
 
-const start_segment = (segment) =>
+const start_segment = (segment: Segment): Vector =>
   head(segment);
 
-const end_segment = (segment) =>
+const end_segment = (segment: Segment): Vector =>
   tail(segment);
 `;
 
 /** The book's `segments_to_painter`, with the frame's map made once per frame. */
-export const pictureSegmentsToPainter = `const segments_to_painter = (segment_list) =>
+export const pictureSegmentsToPainter = `// A painter draws in the frame it is given.
+type Painter = (frame: Frame) => void;
+
+const segments_to_painter = (segment_list: List<Segment>): Painter =>
   frame => {
            const m = frame_coord_map(frame);
            return for_each(segment =>
@@ -79,7 +88,7 @@ export const pictureSegmentsToPainter = `const segments_to_painter = (segment_li
  * F, which looks different under every flip and rotation.
  */
 export const picturePainters = `// A segment from (x1, y1) to (x2, y2).
-const seg = (x1, y1, x2, y2) =>
+const seg = (x1: number, y1: number, x2: number, y2: number): Segment =>
   make_segment(make_vect(x1, y1), make_vect(x2, y2));
 
 const wave_segments = list(
@@ -99,7 +108,7 @@ const letter_f = segments_to_painter(list(
 export const pictureUnitFrame = `const unit_frame = make_frame(make_vect(0, 0), make_vect(1, 0), make_vect(0, 1));
 
 // Paint on the whole canvas.
-const paint = (painter) =>
+const paint = (painter: Painter): void =>
   painter(unit_frame);
 `;
 
@@ -115,7 +124,7 @@ ${pictureSegmentsToPainter}
 ${picturePainters}
 ${pictureUnitFrame}`;
 
-export const transformPainterDefinition = `const transform_painter = (painter, origin, corner1, corner2) =>
+export const transformPainterDefinition = `const transform_painter = (painter: Painter, origin: Vector, corner1: Vector, corner2: Vector): Painter =>
   frame => {
            const m = frame_coord_map(frame);
            const new_origin = m(origin);
@@ -126,14 +135,14 @@ export const transformPainterDefinition = `const transform_painter = (painter, o
          };
 `;
 
-export const flipVertDefinition = `const flip_vert = (painter) =>
+export const flipVertDefinition = `const flip_vert = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(0, 1),
                            make_vect(1, 1),
                            make_vect(0, 0));
 `;
 
-export const rotate90Definition = `const rotate90 = (painter) =>
+export const rotate90Definition = `const rotate90 = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(1, 0),
                            make_vect(1, 1),
@@ -141,19 +150,19 @@ export const rotate90Definition = `const rotate90 = (painter) =>
 `;
 
 /** The answers to Exercise 2.50. */
-export const flipHorizAndRotationsDefinitions = `const flip_horiz = (painter) =>
+export const flipHorizAndRotationsDefinitions = `const flip_horiz = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(1, 0),
                            make_vect(0, 0),
                            make_vect(1, 1));
 
-const rotate180 = (painter) =>
+const rotate180 = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(1, 1),
                            make_vect(0, 1),
                            make_vect(1, 0));
 
-const rotate270 = (painter) =>
+const rotate270 = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(0, 1),
                            make_vect(0, 0),
@@ -161,14 +170,14 @@ const rotate270 = (painter) =>
 `;
 
 /** `identity`, the flips and the rotations. */
-export const pictureTransformations = `const identity = (x) =>
+export const pictureTransformations = `const identity = <T>(x: T): T =>
   x;
 
 ${flipVertDefinition}
 ${flipHorizAndRotationsDefinitions}
 ${rotate90Definition}`;
 
-export const besideDefinition = `const beside = (painter1, painter2) => {
+export const besideDefinition = `const beside = (painter1: Painter, painter2: Painter): Painter => {
   const split_point = make_vect(0.5, 0);
   const paint_left  = transform_painter(painter1,
                                         make_vect(0, 0),
@@ -186,7 +195,7 @@ export const besideDefinition = `const beside = (painter1, painter2) => {
 `;
 
 /** The answer to Exercise 2.51, written like `beside`. */
-export const belowDefinition = `const below = (painter1, painter2) => {
+export const belowDefinition = `const below = (painter1: Painter, painter2: Painter): Painter => {
   const split_point = make_vect(0, 0.5);
   const paint_bottom = transform_painter(painter1,
                                          make_vect(0, 0),
@@ -210,7 +219,7 @@ ${pictureTransformations}
 ${besideDefinition}
 ${belowDefinition}`;
 
-export const rightSplitDefinition = `const right_split = (painter, n) => {
+export const rightSplitDefinition = `const right_split = (painter: Painter, n: number): Painter => {
   if (n === 0) {
     return painter;
   } else {
@@ -221,7 +230,7 @@ export const rightSplitDefinition = `const right_split = (painter, n) => {
 `;
 
 /** The answer to Exercise 2.44. */
-export const upSplitDefinition = `const up_split = (painter, n) => {
+export const upSplitDefinition = `const up_split = (painter: Painter, n: number): Painter => {
   if (n === 0) {
     return painter;
   } else {
@@ -231,7 +240,7 @@ export const upSplitDefinition = `const up_split = (painter, n) => {
 };
 `;
 
-export const cornerSplitDefinition = `const corner_split = (painter, n) => {
+export const cornerSplitDefinition = `const corner_split = (painter: Painter, n: number): Painter => {
   if (n === 0) {
     return painter;
   } else {
@@ -246,7 +255,9 @@ export const cornerSplitDefinition = `const corner_split = (painter, n) => {
 };
 `;
 
-export const squareOfFourDefinition = `const square_of_four = (tl, tr, bl, br) =>
+export const squareOfFourDefinition = `type PainterOp = (painter: Painter) => Painter;
+
+const square_of_four = (tl: PainterOp, tr: PainterOp, bl: PainterOp, br: PainterOp): PainterOp =>
   painter => {
     const top = beside(tl(painter), tr(painter));
     const bottom = beside(bl(painter), br(painter));
@@ -299,7 +310,7 @@ paint(right_split(wave, 3));
 /** Figure 2.9: `corner_split` and `square_limit`. Prelude: `squareLimitPrelude`. */
 export const squareLimitProgram = `${rightSplitDefinition}
 ${cornerSplitDefinition}
-const square_limit = (painter, n) => {
+const square_limit = (painter: Painter, n: number): Painter => {
   const quarter = corner_split(painter, n);
   const half = beside(flip_horiz(quarter), quarter);
   return below(flip_vert(half), half);
@@ -310,13 +321,13 @@ paint(square_limit(wave, 1));
 
 /** `square_of_four` and the patterns it captures. Prelude: `splitsPrelude`. */
 export const squareOfFourProgram = `${squareOfFourDefinition}
-const flipped_pairs = (painter) => {
+const flipped_pairs = (painter: Painter): Painter => {
   const combine4 = square_of_four(identity, flip_vert,
                                   identity, flip_vert);
   return combine4(painter);
 };
 
-const square_limit = (painter, n) => {
+const square_limit = (painter: Painter, n: number): Painter => {
   const combine4 = square_of_four(flip_horiz, identity,
                                   rotate180, flip_vert);
   return combine4(corner_split(painter, n));
@@ -326,7 +337,7 @@ paint(square_limit(letter_f, 1));
 `;
 
 /** The frame coordinate map. Prelude: `pictureBasis`. */
-export const frameCoordMapProgram = `const frame_coord_map = (frame) =>
+export const frameCoordMapProgram = `const frame_coord_map = (frame: Frame): ((v: Vector) => Vector) =>
   v => add_vect(origin_frame(frame),
                        add_vect(scale_vect(xcor_vect(v),
                                            edge1_frame(frame)),
@@ -350,7 +361,7 @@ m(make_vect(0.5, 0.5));
 `;
 
 /** Painters from line segments. Prelude: `pictureBasis`. */
-export const segmentsToPainterProgram = `const segments_to_painter = (segment_list) =>
+export const segmentsToPainterProgram = `const segments_to_painter = (segment_list: List<Segment>): Painter =>
   frame =>
            for_each(segment =>
                       draw_line(
@@ -371,26 +382,26 @@ arrow(make_frame(make_vect(0.75, 0.5), make_vect(0, 0.5), make_vect(-0.5, 0)));
 
 /** Transforming painters. Prelude: `pictureBasis`. */
 export const transformPainterProgram = `${transformPainterDefinition}
-const flip_vert = (painter) => {
+const flip_vert = (painter: Painter): Painter => {
   return transform_painter(painter,
                            make_vect(0, 1),  // new origin
                            make_vect(1, 1),  // new end of edge1
                            make_vect(0, 0)); // new end of edge2
 };
 
-const shrink_to_upper_right = (painter) =>
+const shrink_to_upper_right = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(0.5, 0.5),
                            make_vect(1, 0.5),
                            make_vect(0.5, 1));
 
-const rotate90 = (painter) =>
+const rotate90 = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(1, 0),
                            make_vect(1, 1),
                            make_vect(0, 0));
 
-const squash_inwards = (painter) =>
+const squash_inwards = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(0, 0),
                            make_vect(0.65, 0.35),

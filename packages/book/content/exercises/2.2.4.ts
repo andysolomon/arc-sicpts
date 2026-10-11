@@ -27,29 +27,32 @@ import type { ExerciseSpec } from './spec.ts';
  * `same_segments` compares two drawings whatever the order and direction of
  * their lines.
  */
-const recording = `let recorded_lines = null;
+const recording = `// A line drawn, as list(x1, y1, x2, y2).
+type Line = List<number>;
 
-const round6 = (x) => {
+let recorded_lines: List<Line> = null;
+
+const round6 = (x: number): number => {
   const r = math_round(x * 1000000) / 1000000;
   return r === 0 ? 0 : r;
 };
 
-const draw_line = (start, end) => {
+const draw_line = (start: Vector, end: Vector): void => {
   recorded_lines = pair(list(round6(head(start)), round6(tail(start)),
                              round6(head(end)), round6(tail(end))),
                         recorded_lines);
 };
 
-const segments_in = (painter, frame) => {
+const segments_in = (painter: Painter, frame: Frame): List<Line> => {
   recorded_lines = null;
   painter(frame);
   return reverse(recorded_lines);
 };
 
-const segments_of = (painter) =>
+const segments_of = (painter: Painter): List<Line> =>
   segments_in(painter, unit_frame);
 
-const segment_key = (s) => {
+const segment_key = (s: Line): string => {
   const x1 = list_ref(s, 0);
   const y1 = list_ref(s, 1);
   const x2 = list_ref(s, 2);
@@ -60,16 +63,16 @@ const segment_key = (s) => {
 };
 
 // Every line of ys is among the lines of xs.
-const contains_segments = (xs, ys) => {
+const contains_segments = (xs: List<Line>, ys: List<Line>): boolean => {
   const keys = map(segment_key, xs);
   return accumulate((y, ok) => ok && !is_null(member(segment_key(y), keys)), true, ys);
 };
 
-const same_segments = (xs, ys) =>
+const same_segments = (xs: List<Line>, ys: List<Line>): boolean =>
   length(xs) === length(ys) && contains_segments(xs, ys) && contains_segments(ys, xs);
 
 // Every endpoint lies in the box from (x0, y0) to (x1, y1).
-const inside_box = (xs, x0, y0, x1, y1) =>
+const inside_box = (xs: List<Line>, x0: number, y0: number, x1: number, y1: number): boolean =>
   accumulate((s, ok) => ok &&
                       x0 <= list_ref(s, 0) && list_ref(s, 0) <= x1 &&
                       y0 <= list_ref(s, 1) && list_ref(s, 1) <= y1 &&
@@ -89,11 +92,11 @@ ${recording}`,
 // transform_painter, flip_vert, flip_horiz, beside, below, right_split and
 // paint(painter).
 
-const up_split = (painter, n) => {
+const up_split = (painter: Painter, n: number): Painter => {
   // your answer
 };
 
-const corner_split = (painter, n) => {
+const corner_split = (painter: Painter, n: number): Painter => {
   if (n === 0) {
     return painter;
   } else {
@@ -123,7 +126,7 @@ const corner_split = (painter, n) => {
     },
     { name: 'corner_split now runs: 19 copies at n = 2', kind: 'value', expr: 'length(segments_of(corner_split(letter_f, 2)))', expected: 57 },
   ],
-  solution: `const up_split = (painter, n) => {
+  solution: `const up_split = (painter: Painter, n: number): Painter => {
   if (n === 0) {
     return painter;
   } else {
@@ -142,7 +145,10 @@ ${recording}`,
   starter: `// The prelude provides the picture language of this section: wave, letter_f,
 // transform_painter, the flips, beside, below and paint(painter).
 
-const split = (big_op, small_op) => {
+// beside and below are combiners.
+type Combiner = (painter1: Painter, painter2: Painter) => Painter;
+
+const split = (big_op: Combiner, small_op: Combiner): ((painter: Painter, n: number) => Painter) => {
   // your answer
 };
 
@@ -171,8 +177,10 @@ const up_split = split(below, beside);
     },
     { name: 'up_split(p, 3) draws 15 copies', kind: 'value', expr: 'length(segments_of(up_split(letter_f, 3)))', expected: 45 },
   ],
-  solution: `const split = (big_op, small_op) => {
-  const splitter = (painter, n) => {
+  solution: `type Combiner = (painter1: Painter, painter2: Painter) => Painter;
+
+const split = (big_op: Combiner, small_op: Combiner): ((painter: Painter, n: number) => Painter) => {
+  const splitter = (painter: Painter, n: number): Painter => {
     if (n === 0) {
       return painter;
     } else {
@@ -191,33 +199,36 @@ const up_split = split(below, beside);
 export const exercise_2_46: ExerciseSpec = {
   id: '2.46',
   prelude: pictureFrames,
-  starter: `// The prelude provides make_frame, origin_frame, edge1_frame and edge2_frame.
+  starter: `// The prelude provides the type Frame, make_frame, origin_frame, edge1_frame
+// and edge2_frame.
 
-const make_vect = (x, y) => {
+type Vector = Pair<number, number>;
+
+const make_vect = (x: number, y: number): Vector => {
   // your answer
 };
 
-const xcor_vect = (v) => {
+const xcor_vect = (v: Vector): number => {
   // your answer
 };
 
-const ycor_vect = (v) => {
+const ycor_vect = (v: Vector): number => {
   // your answer
 };
 
-const add_vect = (v, w) => {
+const add_vect = (v: Vector, w: Vector): Vector => {
   // your answer
 };
 
-const sub_vect = (v, w) => {
+const sub_vect = (v: Vector, w: Vector): Vector => {
   // your answer
 };
 
-const scale_vect = (s, v) => {
+const scale_vect = (s: number, v: Vector): Vector => {
   // your answer
 };
 
-const frame_coord_map = (frame) =>
+const frame_coord_map = (frame: Frame): ((v: Vector) => Vector) =>
   v => add_vect(origin_frame(frame),
                        add_vect(scale_vect(xcor_vect(v),
                                            edge1_frame(frame)),
@@ -251,27 +262,29 @@ const frame_coord_map = (frame) =>
       expected: true,
     },
   ],
-  solution: `const make_vect = (x, y) =>
+  solution: `type Vector = Pair<number, number>;
+
+const make_vect = (x: number, y: number): Vector =>
   pair(x, y);
 
-const xcor_vect = (v) =>
+const xcor_vect = (v: Vector): number =>
   head(v);
 
-const ycor_vect = (v) =>
+const ycor_vect = (v: Vector): number =>
   tail(v);
 
-const add_vect = (v, w) =>
+const add_vect = (v: Vector, w: Vector): Vector =>
   make_vect(xcor_vect(v) + xcor_vect(w),
                    ycor_vect(v) + ycor_vect(w));
 
-const sub_vect = (v, w) =>
+const sub_vect = (v: Vector, w: Vector): Vector =>
   make_vect(xcor_vect(v) - xcor_vect(w),
                    ycor_vect(v) - ycor_vect(w));
 
-const scale_vect = (s, v) =>
+const scale_vect = (s: number, v: Vector): Vector =>
   make_vect(s * xcor_vect(v), s * ycor_vect(v));
 
-const frame_coord_map = (frame) =>
+const frame_coord_map = (frame: Frame): ((v: Vector) => Vector) =>
   v => add_vect(origin_frame(frame),
                        add_vect(scale_vect(xcor_vect(v),
                                            edge1_frame(frame)),
@@ -286,35 +299,40 @@ const partsOf = (n: 1 | 2): string =>
 export const exercise_2_47: ExerciseSpec = {
   id: '2.47',
   prelude: pictureVectors,
-  starter: `// The prelude provides make_vect, xcor_vect, ycor_vect and the vector arithmetic.
+  starter: `// The prelude provides the type Vector, make_vect, xcor_vect, ycor_vect and
+// the vector arithmetic.
 
-const make_frame_1 = (origin, edge1, edge2) =>
+type Frame_1 = List<Vector>;
+
+const make_frame_1 = (origin: Vector, edge1: Vector, edge2: Vector): Frame_1 =>
   list(origin, edge1, edge2);
 
-const origin_frame_1 = (frame) => {
+const origin_frame_1 = (frame: Frame_1): Vector => {
   // your answer
 };
 
-const edge1_frame_1 = (frame) => {
+const edge1_frame_1 = (frame: Frame_1): Vector => {
   // your answer
 };
 
-const edge2_frame_1 = (frame) => {
+const edge2_frame_1 = (frame: Frame_1): Vector => {
   // your answer
 };
 
-const make_frame_2 = (origin, edge1, edge2) =>
+type Frame_2 = Pair<Vector, Pair<Vector, Vector>>;
+
+const make_frame_2 = (origin: Vector, edge1: Vector, edge2: Vector): Frame_2 =>
   pair(origin, pair(edge1, edge2));
 
-const origin_frame_2 = (frame) => {
+const origin_frame_2 = (frame: Frame_2): Vector => {
   // your answer
 };
 
-const edge1_frame_2 = (frame) => {
+const edge1_frame_2 = (frame: Frame_2): Vector => {
   // your answer
 };
 
-const edge2_frame_2 = (frame) => {
+const edge2_frame_2 = (frame: Frame_2): Vector => {
   // your answer
 };
 `,
@@ -328,28 +346,32 @@ const edge2_frame_2 = (frame) => {
       expected: 6,
     },
   ],
-  solution: `const make_frame_1 = (origin, edge1, edge2) =>
+  solution: `type Frame_1 = List<Vector>;
+
+const make_frame_1 = (origin: Vector, edge1: Vector, edge2: Vector): Frame_1 =>
   list(origin, edge1, edge2);
 
-const origin_frame_1 = (frame) =>
+const origin_frame_1 = (frame: Frame_1): Vector =>
   head(frame);
 
-const edge1_frame_1 = (frame) =>
+const edge1_frame_1 = (frame: Frame_1): Vector =>
   head(tail(frame));
 
-const edge2_frame_1 = (frame) =>
+const edge2_frame_1 = (frame: Frame_1): Vector =>
   head(tail(tail(frame)));
 
-const make_frame_2 = (origin, edge1, edge2) =>
+type Frame_2 = Pair<Vector, Pair<Vector, Vector>>;
+
+const make_frame_2 = (origin: Vector, edge1: Vector, edge2: Vector): Frame_2 =>
   pair(origin, pair(edge1, edge2));
 
-const origin_frame_2 = (frame) =>
+const origin_frame_2 = (frame: Frame_2): Vector =>
   head(frame);
 
-const edge1_frame_2 = (frame) =>
+const edge1_frame_2 = (frame: Frame_2): Vector =>
   head(tail(frame));
 
-const edge2_frame_2 = (frame) =>
+const edge2_frame_2 = (frame: Frame_2): Vector =>
   tail(tail(frame));
 `,
 };
@@ -363,19 +385,24 @@ ${pictureUnitFrame}
 ${recording}`,
   starter: `// The prelude provides vectors (Exercise 2.46), frames, frame_coord_map and unit_frame.
 
-const make_segment = (start, end) => {
+type Segment = Pair<Vector, Vector>;
+
+const make_segment = (start: Vector, end: Vector): Segment => {
   // your answer
 };
 
-const start_segment = (segment) => {
+const start_segment = (segment: Segment): Vector => {
   // your answer
 };
 
-const end_segment = (segment) => {
+const end_segment = (segment: Segment): Vector => {
   // your answer
 };
 
-const segments_to_painter = (segment_list) =>
+// A painter draws in the frame it is given.
+type Painter = (frame: Frame) => void;
+
+const segments_to_painter = (segment_list: List<Segment>): Painter =>
   frame =>
            for_each(segment =>
                       draw_line(
@@ -395,16 +422,21 @@ const segments_to_painter = (segment_list) =>
       expected: true,
     },
   ],
-  solution: `const make_segment = (start, end) =>
+  solution: `type Segment = Pair<Vector, Vector>;
+
+const make_segment = (start: Vector, end: Vector): Segment =>
   pair(start, end);
 
-const start_segment = (segment) =>
+const start_segment = (segment: Segment): Vector =>
   head(segment);
 
-const end_segment = (segment) =>
+const end_segment = (segment: Segment): Vector =>
   tail(segment);
 
-const segments_to_painter = (segment_list) =>
+// A painter draws in the frame it is given.
+type Painter = (frame: Frame) => void;
+
+const segments_to_painter = (segment_list: List<Segment>): Painter =>
   frame =>
            for_each(segment =>
                       draw_line(
@@ -431,7 +463,7 @@ ${recording}`,
 // unit_frame; paint(painter) paints on the unit frame.
 
 // A shorthand for the segment from (x1, y1) to (x2, y2).
-const seg = (x1, y1, x2, y2) =>
+const seg = (x1: number, y1: number, x2: number, y2: number): Segment =>
   make_segment(make_vect(x1, y1), make_vect(x2, y2));
 
 // Replace each null with a list of segments.
@@ -465,7 +497,7 @@ const wave = segments_to_painter(null);
       expected: true,
     },
   ],
-  solution: `const seg = (x1, y1, x2, y2) =>
+  solution: `const seg = (x1: number, y1: number, x2: number, y2: number): Segment =>
   make_segment(make_vect(x1, y1), make_vect(x2, y2));
 
 const outline = segments_to_painter(list(
@@ -500,15 +532,15 @@ ${recording}`,
 // rotate90 and paint(painter). letter_f is an F, so you can see which way
 // it has been turned.
 
-const flip_horiz = (painter) => {
+const flip_horiz = (painter: Painter): Painter => {
   // your answer
 };
 
-const rotate180 = (painter) => {
+const rotate180 = (painter: Painter): Painter => {
   // your answer
 };
 
-const rotate270 = (painter) => {
+const rotate270 = (painter: Painter): Painter => {
   // your answer
 };
 `,
@@ -518,19 +550,19 @@ const rotate270 = (painter) => {
     { name: 'rotate270 turns it clockwise by a quarter', kind: 'value', expr: `same_segments(segments_of(rotate270(letter_f)), ${f([0.1, 0.7, 0.9, 0.7], [0.9, 0.7, 0.9, 0.3], [0.55, 0.7, 0.55, 0.4])})`, expected: true },
     { name: 'rotate270 undoes rotate90', kind: 'value', expr: 'same_segments(segments_of(rotate270(rotate90(wave))), segments_of(wave))', expected: true },
   ],
-  solution: `const flip_horiz = (painter) =>
+  solution: `const flip_horiz = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(1, 0),
                            make_vect(0, 0),
                            make_vect(1, 1));
 
-const rotate180 = (painter) =>
+const rotate180 = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(1, 1),
                            make_vect(0, 1),
                            make_vect(1, 0));
 
-const rotate270 = (painter) =>
+const rotate270 = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(0, 1),
                            make_vect(0, 0),
@@ -554,7 +586,7 @@ export const exercise_2_51: ExerciseSpec = {
 ${transformPainterDefinition}
 ${flipVertDefinition}
 ${rotate90Definition}
-const rotate270 = (painter) =>
+const rotate270 = (painter: Painter): Painter =>
   transform_painter(painter,
                            make_vect(0, 1),
                            make_vect(0, 0),
@@ -566,12 +598,12 @@ ${recording}`,
 // rotate90, rotate270, beside and paint(painter).
 
 // Like beside: paint painter1 in the bottom half and painter2 in the top half.
-const below = (painter1, painter2) => {
+const below = (painter1: Painter, painter2: Painter): Painter => {
   // your answer
 };
 
 // The same, from beside and rotations.
-const below_by_rotation = (painter1, painter2) => {
+const below_by_rotation = (painter1: Painter, painter2: Painter): Painter => {
   // your answer
 };
 `,
@@ -586,7 +618,7 @@ const below_by_rotation = (painter1, painter2) => {
     },
     { name: 'below_by_rotation is built with beside', kind: 'calls', call: 'below_by_rotation(letter_f, wave)', fn: 'beside', atMost: 2 },
   ],
-  solution: `const below = (painter1, painter2) => {
+  solution: `const below = (painter1: Painter, painter2: Painter): Painter => {
   const split_point = make_vect(0, 0.5);
   const paint_bottom = transform_painter(painter1,
                                          make_vect(0, 0),
@@ -602,7 +634,7 @@ const below_by_rotation = (painter1, painter2) => {
          };
 };
 
-const below_by_rotation = (painter1, painter2) =>
+const below_by_rotation = (painter1: Painter, painter2: Painter): Painter =>
   rotate90(beside(rotate270(painter1), rotate270(painter2)));
 `,
 };
@@ -625,14 +657,14 @@ const smiling_wave = segments_to_painter(wave_segments); // your answer
 
 // 2. The middle level: corner_split with one copy of up_split and of
 //    right_split instead of two.
-const simple_corner_split = (painter, n) => {
+const simple_corner_split = (painter: Painter, n: number): Painter => {
   // your answer
 };
 
 // 3. The top level: a square limit, made with square_of_four and
 //    corner_split, whose four largest copies sit in the corners of the
 //    square, the bottom-left one upright, and which stays symmetric.
-const square_limit_out = (painter, n) => {
+const square_limit_out = (painter: Painter, n: number): Painter => {
   // your answer
 };
 `,
@@ -673,7 +705,7 @@ const square_limit_out = (painter, n) => {
   solution: `const smiling_wave = segments_to_painter(append(wave_segments, list(
   seg(0.45, 0.78, 0.5, 0.75), seg(0.5, 0.75, 0.55, 0.78))));
 
-const simple_corner_split = (painter, n) => {
+const simple_corner_split = (painter: Painter, n: number): Painter => {
   if (n === 0) {
     return painter;
   } else {
@@ -685,7 +717,7 @@ const simple_corner_split = (painter, n) => {
   }
 };
 
-const square_limit_out = (painter, n) => {
+const square_limit_out = (painter: Painter, n: number): Painter => {
   const combine4 = square_of_four(flip_vert, rotate180,
                                   identity, flip_horiz);
   return combine4(corner_split(painter, n));

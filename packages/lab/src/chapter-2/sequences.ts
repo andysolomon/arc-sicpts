@@ -27,12 +27,12 @@ equal(one_through_four, pair(1, pair(2, pair(3, pair(4, null)))));
 `;
 
 /** Walking down a list with `tail`: `list_ref` and `length`. */
-export const listRefProgram = `const list_ref = (items, n) =>
+export const listRefProgram = `const list_ref = <T>(items: List<T>, n: number): T =>
   n === 0
     ? head(items)
     : list_ref(tail(items), n - 1);
 
-const length = (items) =>
+const length = <T>(items: List<T>): number =>
   is_null(items)
     ? 0
     : 1 + length(tail(items));
@@ -45,7 +45,7 @@ length(odds);
 `;
 
 /** Building an answer with `pair` while walking down with `tail`. */
-export const appendProgram = `const append = (list1, list2) =>
+export const appendProgram = `const append = <T>(list1: List<T>, list2: List<T>): List<T> =>
   is_null(list1)
     ? list2
     : pair(head(list1), append(tail(list1), list2));
@@ -58,13 +58,13 @@ append(odds, squares);
 `;
 
 /** `scale_list`, and the pattern behind it captured as `map`. */
-export const mapProgram = `const scale_list = (items, factor) =>
+export const mapProgram = `const scale_list = (items: List<number>, factor: number): List<number> =>
   is_null(items)
     ? null
     : pair(head(items) * factor,
            scale_list(tail(items), factor));
 
-const map = (fun, items) =>
+const map = <A, B>(fun: (x: A) => B, items: List<A>): List<B> =>
   is_null(items)
     ? null
     : pair(fun(head(items)),
@@ -85,7 +85,16 @@ display(length(x));
 length(x_twice);
 `;
 
-export const countLeavesDefinition = `const count_leaves = (x) =>
+/**
+ * A tree is a list whose items are leaves or trees. The alias recurses through
+ * the pair itself, as `List` does, which TypeScript requires of a recursive alias.
+ */
+const treeType = `// A list whose elements are leaves or trees.
+type Tree<T> = null | [T | Tree<T>, Tree<T>];
+`;
+
+export const countLeavesDefinition = `${treeType}
+const count_leaves = <T>(x: T | Tree<T>): number =>
   is_null(x)
     ? 0
     : ! is_pair(x)
@@ -100,7 +109,8 @@ count_leaves(x);
 `;
 
 /** Mapping over a tree with recursion on head and tail. */
-export const scaleTreeProgram = `const scale_tree = (tree, factor) =>
+export const scaleTreeProgram = `${treeType}
+const scale_tree = (tree: number | Tree<number>, factor: number): number | Tree<number> =>
   is_null(tree)
     ? null
     : ! is_pair(tree)
@@ -113,7 +123,8 @@ scale_tree(tree, 10);
 `;
 
 /** The same, treating a tree as a sequence of subtrees and using `map`. */
-export const scaleTreeMapProgram = `const scale_tree = (tree, factor) =>
+export const scaleTreeMapProgram = `${treeType}
+const scale_tree = (tree: Tree<number>, factor: number): Tree<number> =>
   map(sub_tree => is_pair(sub_tree)
                          ? scale_tree(sub_tree, factor)
                          : sub_tree * factor,
@@ -124,16 +135,17 @@ scale_tree(list(1, list(2, 3), 4), 10);
 
 // §2.2.3: sequences as conventional interfaces.
 
-const squareAndOdd = `const square = (x) =>
+const squareAndOdd = `const square = (x: number): number =>
   x * x;
 
-const is_odd = (n) =>
+const is_odd = (n: number): boolean =>
   n % 2 === 1;
 `;
 
 /** `sum_odd_squares` written as a tree recursion, with its stages mingled. */
 export const sumOddSquaresProgram = `${squareAndOdd}
-const sum_odd_squares = (tree) =>
+${treeType}
+const sum_odd_squares = (tree: number | Tree<number>): number =>
   is_null(tree)
     ? 0
     : ! is_pair(tree)
@@ -145,13 +157,13 @@ sum_odd_squares(list(1, list(2, list(3, 4)), 5));
 `;
 
 /** The sequence operations of §2.2.3 as the book declares them. */
-export const sequenceOperationDefinitions = `const plus = (x, y) =>
+export const sequenceOperationDefinitions = `const plus = (x: number, y: number): number =>
   x + y;
 
-const times = (x, y) =>
+const times = (x: number, y: number): number =>
   x * y;
 
-const filter = (predicate, sequence) =>
+const filter = <T>(predicate: (x: T) => boolean, sequence: List<T>): List<T> =>
   is_null(sequence)
     ? null
     : predicate(head(sequence))
@@ -159,19 +171,20 @@ const filter = (predicate, sequence) =>
            filter(predicate, tail(sequence)))
     : filter(predicate, tail(sequence));
 
-const accumulate = (op, initial, sequence) =>
+const accumulate = <T, R>(op: (x: T, acc: R) => R, initial: R, sequence: List<T>): R =>
   is_null(sequence)
     ? initial
     : op(head(sequence),
          accumulate(op, initial, tail(sequence)));
 
-const enumerate_interval = (low, high) =>
+const enumerate_interval = (low: number, high: number): List<number> =>
   low > high
     ? null
     : pair(low,
            enumerate_interval(low + 1, high));
 
-const enumerate_tree = (tree) =>
+${treeType}
+const enumerate_tree = <T>(tree: T | Tree<T>): List<T> =>
   is_null(tree)
     ? null
     : ! is_pair(tree)
@@ -194,32 +207,32 @@ accumulate(plus, 0, odd_squares);
 /** The same components, mixed and matched. */
 export const mixAndMatchProgram = `${squareAndOdd}
 ${sequenceOperationDefinitions}
-const is_even = (n) =>
+const is_even = (n: number): boolean =>
   n % 2 === 0;
 
-const fib = (n) => {
-  const fib_iter = (a, b, count) =>
+const fib = (n: number): number => {
+  const fib_iter = (a: number, b: number, count: number): number =>
     count === 0
       ? b
       : fib_iter(a + b, a, count - 1);
   return fib_iter(1, 0, n);
 };
 
-const even_fibs = (n) =>
+const even_fibs = (n: number): List<number> =>
   accumulate(pair,
                     null,
                     filter(is_even,
                            map(fib,
                                enumerate_interval(0, n))));
 
-const list_fib_squares = (n) =>
+const list_fib_squares = (n: number): List<number> =>
   accumulate(pair,
                     null,
                     map(square,
                         map(fib,
                             enumerate_interval(0, n))));
 
-const product_of_squares_of_odd_elements = (sequence) =>
+const product_of_squares_of_odd_elements = (sequence: List<number>): number =>
   accumulate(times,
                     1,
                     map(square,
@@ -231,16 +244,16 @@ list_fib_squares(10);
 `;
 
 /** `flatmap`, `enumerate_interval` and a primality test, for nested mappings. */
-export const flatmapDefinitions = `const enumerate_interval = (low, high) =>
+export const flatmapDefinitions = `const enumerate_interval = (low: number, high: number): List<number> =>
   low > high
     ? null
     : pair(low, enumerate_interval(low + 1, high));
 
-const flatmap = (f, seq) =>
+const flatmap = <A, B>(f: (x: A) => List<B>, seq: List<A>): List<B> =>
   accumulate(append, null, map(f, seq));
 
-const is_prime = (n) => {
-  const find_divisor = (d) =>
+const is_prime = (n: number): boolean => {
+  const find_divisor = (d: number): number =>
     d * d > n ? n : n % d === 0 ? d : find_divisor(d + 1);
   return n > 1 && find_divisor(2) === n;
 };
@@ -248,14 +261,14 @@ const is_prime = (n) => {
 
 /** Pairs (i, j) with 1 ≤ j < i ≤ n whose sum is prime. */
 export const primeSumPairsProgram = `${flatmapDefinitions}
-const is_prime_sum = (pair) =>
+const is_prime_sum = (pair: List<number>): boolean =>
   is_prime(head(pair) + head(tail(pair)));
 
-const make_pair_sum = (pair) =>
+const make_pair_sum = (pair: List<number>): List<number> =>
   list(head(pair), head(tail(pair)),
               head(pair) + head(tail(pair)));
 
-const prime_sum_pairs = (n) =>
+const prime_sum_pairs = (n: number): List<List<number>> =>
   map(make_pair_sum,
              filter(is_prime_sum,
                     flatmap(i => map(j => list(i, j),
@@ -269,14 +282,14 @@ prime_sum_pairs(6);
 `;
 
 /** All the orderings of a set, by nested mapping. */
-export const permutationsProgram = `const flatmap = (f, seq) =>
+export const permutationsProgram = `const flatmap = <A, B>(f: (x: A) => List<B>, seq: List<A>): List<B> =>
   accumulate(append, null, map(f, seq));
 
-const remove = (item, sequence) =>
+const remove = <T>(item: T, sequence: List<T>): List<T> =>
   filter(x => ! (x === item),
                 sequence);
 
-const permutations = (s) =>
+const permutations = <T>(s: List<T>): List<List<T>> =>
   is_null(s)             // empty set?
     ? list(null)                // sequence containing empty set
     : flatmap(x => map(p => pair(x, p),
@@ -288,14 +301,16 @@ permutations(list(1, 2, 3));
 
 /** A representation of board positions for the queens puzzle (Exercise 2.42): a list of rows, newest column first. */
 export const queensBoardDefinitions = `${flatmapDefinitions}
+type Positions = List<number>;
+
 const empty_board = null;
 
-const adjoin_position = (row, col, positions) =>
+const adjoin_position = (row: number, col: number, positions: Positions): Positions =>
   pair(row, positions);
 
-const is_safe = (k, positions) => {
+const is_safe = (k: number, positions: Positions): boolean => {
   const new_row = head(positions);
-  const safe_from = (rest, distance) =>
+  const safe_from = (rest: Positions, distance: number): boolean =>
     is_null(rest)
       ? true
       : head(rest) !== new_row &&
@@ -306,8 +321,8 @@ const is_safe = (k, positions) => {
 `;
 
 /** The function `queens` as the book declares it. */
-export const queensDefinition = `const queens = (board_size) => {
-  const queen_cols = (k) =>
+export const queensDefinition = `const queens = (board_size: number): List<Positions> => {
+  const queen_cols = (k: number): List<Positions> =>
     k === 0
       ? list(empty_board)
       : filter(positions => is_safe(k, positions),
@@ -322,8 +337,8 @@ export const queensDefinition = `const queens = (board_size) => {
 `;
 
 /** Louis Reasoner's version (Exercise 2.43), with the nested mappings interchanged. */
-export const louisQueensDefinition = `const louis_queens = (board_size) => {
-  const queen_cols = (k) =>
+export const louisQueensDefinition = `const louis_queens = (board_size: number): List<Positions> => {
+  const queen_cols = (k: number): List<Positions> =>
     k === 0
       ? list(empty_board)
       : filter(positions => is_safe(k, positions),

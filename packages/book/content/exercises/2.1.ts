@@ -12,20 +12,23 @@ import { close, type ExerciseSpec } from './spec.ts';
 export const exercise_2_1: ExerciseSpec = {
   id: '2.1',
   prelude: `${gcdDefinitions}
-const numer = (x) =>
+type Rational = Pair<number, number>;
+
+const numer = (x: Rational): number =>
   head(x);
 
-const denom = (x) =>
+const denom = (x: Rational): number =>
   tail(x);
 
-const print_rat = (x) =>
+const print_rat = (x: Rational): string =>
   display(stringify(numer(x)) + " / " + stringify(denom(x)));`,
-  starter: `// gcd, numer, denom and print_rat are provided; numer and denom are head and tail.
+  starter: `// The type Rational, gcd, numer, denom and print_rat are provided; a Rational
+// is a pair, and numer and denom are head and tail.
 
 // Reduce to lowest terms, and normalize the sign: a positive rational number
 // has a positive numerator and denominator, a negative one has a negative
 // numerator and a positive denominator.
-const make_rat = (n, d) => {
+const make_rat = (n: number, d: number): Rational => {
   // your answer
 };
 `,
@@ -36,7 +39,7 @@ const make_rat = (n, d) => {
     { name: 'both positive, still reduced', kind: 'value', expr: 'print_rat(make_rat(6, 9))', expected: '2 / 3' },
     { name: 'a larger example', kind: 'value', expr: 'print_rat(make_rat(84, -36))', expected: '-7 / 3' },
   ],
-  solution: `const make_rat = (n, d) => {
+  solution: `const make_rat = (n: number, d: number): Rational => {
   const g = math_abs(gcd(n, d));
   const sign = d < 0 ? -1 : 1;
   return pair(sign * n / g, sign * d / g);
@@ -46,36 +49,39 @@ const make_rat = (n, d) => {
 
 export const exercise_2_2: ExerciseSpec = {
   id: '2.2',
-  starter: `const make_point = (x, y) => {
+  starter: `type Point = Pair<number, number>;
+type Segment = Pair<Point, Point>;
+
+const make_point = (x: number, y: number): Point => {
   // your answer
 };
 
-const x_point = (p) => {
+const x_point = (p: Point): number => {
   // your answer
 };
 
-const y_point = (p) => {
+const y_point = (p: Point): number => {
   // your answer
 };
 
-const make_segment = (start, end) => {
+const make_segment = (start: Point, end: Point): Segment => {
   // your answer
 };
 
-const start_segment = (s) => {
+const start_segment = (s: Segment): Point => {
   // your answer
 };
 
-const end_segment = (s) => {
+const end_segment = (s: Segment): Point => {
   // your answer
 };
 
 // The point halfway between the endpoints, using only the functions above.
-const midpoint_segment = (s) => {
+const midpoint_segment = (s: Segment): Point => {
   // your answer
 };
 
-const print_point = (p) =>
+const print_point = (p: Point): string =>
   display("(" + stringify(x_point(p)) + ", "
                      + stringify(y_point(p)) + ")");
 
@@ -88,35 +94,38 @@ print_point(midpoint_segment(make_segment(make_point(0, 0), make_point(4, 6))));
     { name: 'a midpoint', kind: 'value', expr: 'print_point(midpoint_segment(make_segment(make_point(0, 0), make_point(4, 6))))', expected: '(2, 3)' },
     { name: 'a midpoint off the grid', kind: 'value', expr: 'print_point(midpoint_segment(make_segment(make_point(-3, 1), make_point(2, 4))))', expected: '(-0.5, 2.5)' },
   ],
-  solution: `const make_point = (x, y) =>
+  solution: `type Point = Pair<number, number>;
+type Segment = Pair<Point, Point>;
+
+const make_point = (x: number, y: number): Point =>
   pair(x, y);
 
-const x_point = (p) =>
+const x_point = (p: Point): number =>
   head(p);
 
-const y_point = (p) =>
+const y_point = (p: Point): number =>
   tail(p);
 
-const make_segment = (start, end) =>
+const make_segment = (start: Point, end: Point): Segment =>
   pair(start, end);
 
-const start_segment = (s) =>
+const start_segment = (s: Segment): Point =>
   head(s);
 
-const end_segment = (s) =>
+const end_segment = (s: Segment): Point =>
   tail(s);
 
-const average = (a, b) =>
+const average = (a: number, b: number): number =>
   (a + b) / 2;
 
-const midpoint_segment = (s) => {
+const midpoint_segment = (s: Segment): Point => {
   const a = start_segment(s);
   const b = end_segment(s);
   return make_point(average(x_point(a), x_point(b)),
                     average(y_point(a), y_point(b)));
 };
 
-const print_point = (p) =>
+const print_point = (p: Point): string =>
   display("(" + stringify(x_point(p)) + ", "
                      + stringify(y_point(p)) + ")");
 
@@ -124,54 +133,61 @@ print_point(midpoint_segment(make_segment(make_point(0, 0), make_point(4, 6))));
 `,
 };
 
-const points = `const make_point = (x, y) =>
+const points = `type Point = Pair<number, number>;
+
+const make_point = (x: number, y: number): Point =>
   pair(x, y);
 
-const x_point = (p) =>
+const x_point = (p: Point): number =>
   head(p);
 
-const y_point = (p) =>
+const y_point = (p: Point): number =>
   tail(p);`;
 
 export const exercise_2_3: ExerciseSpec = {
   id: '2.3',
   prelude: points,
-  starter: `// make_point, x_point and y_point are provided, as in Exercise 2.2.
+  starter: `// The type Point, make_point, x_point and y_point are provided, as in
+// Exercise 2.2.
 // Rectangles have their sides parallel to the axes.
 
 // Above the barrier: perimeter and area use only width_rect and height_rect.
-const perimeter = (r) => {
+const perimeter = (r: Rectangle): number => {
   // your answer
 };
 
-const area = (r) => {
+const area = (r: Rectangle): number => {
   // your answer
 };
 
 // Representation 1: a rectangle is a pair of opposite corners, in either order.
-const make_rect = (corner, opposite) => {
+type Rectangle = Pair<Point, Point>;
+
+const make_rect = (corner: Point, opposite: Point): Rectangle => {
   // your answer
 };
 
-const width_rect = (r) => {
+const width_rect = (r: Rectangle): number => {
   // your answer
 };
 
-const height_rect = (r) => {
+const height_rect = (r: Rectangle): number => {
   // your answer
 };
 
-// Representation 2: a rectangle is its bottom-left corner, its width and
-// its height. Its selectors must agree with representation 1's.
-const make_rect_2 = (corner, width, height) => {
+// Representation 2: a rectangle is its bottom-left corner, paired with its
+// width and its height. Its selectors must agree with representation 1's.
+type Rectangle_2 = Pair<Point, Pair<number, number>>;
+
+const make_rect_2 = (corner: Point, width: number, height: number): Rectangle_2 => {
   // your answer
 };
 
-const width_rect_2 = (r) => {
+const width_rect_2 = (r: Rectangle_2): number => {
   // your answer
 };
 
-const height_rect_2 = (r) => {
+const height_rect_2 = (r: Rectangle_2): number => {
   // your answer
 };
 `,
@@ -182,41 +198,50 @@ const height_rect_2 = (r) => {
     { name: 'representation 2: width', kind: 'value', expr: 'width_rect_2(make_rect_2(make_point(1, 1), 3, 4))', expected: 3 },
     { name: 'representation 2: height', kind: 'value', expr: 'height_rect_2(make_rect_2(make_point(-2, 0), 7, 2))', expected: 2 },
   ],
-  solution: `const perimeter = (r) =>
+  solution: `const perimeter = (r: Rectangle): number =>
   2 * (width_rect(r) + height_rect(r));
 
-const area = (r) =>
+const area = (r: Rectangle): number =>
   width_rect(r) * height_rect(r);
 
-const make_rect = (corner, opposite) =>
+// Representation 1: a pair of opposite corners.
+type Rectangle = Pair<Point, Point>;
+
+const make_rect = (corner: Point, opposite: Point): Rectangle =>
   pair(corner, opposite);
 
-const width_rect = (r) =>
+const width_rect = (r: Rectangle): number =>
   math_abs(x_point(tail(r)) - x_point(head(r)));
 
-const height_rect = (r) =>
+const height_rect = (r: Rectangle): number =>
   math_abs(y_point(tail(r)) - y_point(head(r)));
 
-const make_rect_2 = (corner, width, height) =>
+// Representation 2: a corner, paired with the width and the height.
+type Rectangle_2 = Pair<Point, Pair<number, number>>;
+
+const make_rect_2 = (corner: Point, width: number, height: number): Rectangle_2 =>
   pair(corner, pair(width, height));
 
-const width_rect_2 = (r) =>
+const width_rect_2 = (r: Rectangle_2): number =>
   head(tail(r));
 
-const height_rect_2 = (r) =>
+const height_rect_2 = (r: Rectangle_2): number =>
   tail(tail(r));
 `,
 };
 
 export const exercise_2_4: ExerciseSpec = {
   id: '2.4',
-  starter: `const pair = (x, y) =>
+  starter: `// A pair is a function that hands both of its parts to the function m.
+type Pair<H, T> = <R>(m: (x: H, y: T) => R) => R;
+
+const pair = <H, T>(x: H, y: T): Pair<H, T> =>
   m => m(x, y);
 
-const head = (z) =>
+const head = <H, T>(z: Pair<H, T>): H =>
   z((p, q) => p);
 
-const tail = (z) => {
+const tail = <H, T>(z: Pair<H, T>): T => {
   // your answer
 };
 `,
@@ -226,13 +251,15 @@ const tail = (z) => {
     { name: 'pairs of pairs', kind: 'value', expr: 'tail(tail(pair(1, pair(2, 3))))', expected: 3 },
     { name: 'any objects', kind: 'value', expr: 'head(tail(pair("a", pair("b", null))))', expected: 'b' },
   ],
-  solution: `const pair = (x, y) =>
+  solution: `type Pair<H, T> = <R>(m: (x: H, y: T) => R) => R;
+
+const pair = <H, T>(x: H, y: T): Pair<H, T> =>
   m => m(x, y);
 
-const head = (z) =>
+const head = <H, T>(z: Pair<H, T>): H =>
   z((p, q) => p);
 
-const tail = (z) =>
+const tail = <H, T>(z: Pair<H, T>): T =>
   z((p, q) => q);
 `,
 };
@@ -241,15 +268,15 @@ export const exercise_2_5: ExerciseSpec = {
   id: '2.5',
   starter: `// The pair of nonnegative integers a and b is the number 2^a 3^b.
 
-const pair = (a, b) => {
+const pair = (a: number, b: number): number => {
   // your answer
 };
 
-const head = (z) => {
+const head = (z: number): number => {
   // your answer
 };
 
-const tail = (z) => {
+const tail = (z: number): number => {
   // your answer
 };
 `,
@@ -260,33 +287,39 @@ const tail = (z) => {
     { name: 'zeros', kind: 'value', expr: 'head(pair(0, 5)) + tail(pair(7, 0))', expected: 0 },
     { name: 'larger exponents', kind: 'value', expr: 'head(pair(10, 12)) * 100 + tail(pair(10, 12))', expected: 1012 },
   ],
-  solution: `const pair = (a, b) =>
+  solution: `const pair = (a: number, b: number): number =>
   math_pow(2, a) * math_pow(3, b);
 
 // How many times d divides n.
-const count_factors = (n, d) =>
+const count_factors = (n: number, d: number): number =>
   n % d === 0
     ? 1 + count_factors(n / d, d)
     : 0;
 
-const head = (z) =>
+const head = (z: number): number =>
   count_factors(z, 2);
 
-const tail = (z) =>
+const tail = (z: number): number =>
   count_factors(z, 3);
 `,
 };
 
 export const exercise_2_6: ExerciseSpec = {
   id: '2.6',
-  prelude: `// The ordinary number a Church numeral stands for.
-const church_to_number = (n) =>
+  prelude: `// A Church numeral n applies a function n times.
+type Church = <T>(f: (x: T) => T) => (x: T) => T;
+
+// The ordinary number a Church numeral stands for.
+const church_to_number = (n: Church): number =>
   n(k => k + 1)(0);`,
   starter: `// church_to_number(n) is provided: it applies n to k => k + 1 and 0.
 
-const zero = f => x => x;
+// A Church numeral n applies a function n times.
+type Church = <T>(f: (x: T) => T) => (x: T) => T;
 
-const add_1 = (n) =>
+const zero: Church = f => x => x;
+
+const add_1 = (n: Church): Church =>
   f => x => f(n(f)(x));
 
 // Directly, without zero or add_1.
@@ -294,7 +327,7 @@ const one = undefined;  // your answer
 const two = undefined;  // your answer
 
 // m + n, without applying add_1 repeatedly.
-const plus = (m, n) => {
+const plus = (m: Church, n: Church): Church => {
   // your answer
 };
 `,
@@ -306,25 +339,27 @@ const plus = (m, n) => {
     { name: 'plus agrees with add_1', kind: 'value', expr: 'church_to_number(plus(add_1(two), two))', expected: 5 },
     { name: 'zero plus zero', kind: 'value', expr: 'church_to_number(plus(zero, zero))', expected: 0 },
   ],
-  solution: `const zero = f => x => x;
+  solution: `type Church = <T>(f: (x: T) => T) => (x: T) => T;
 
-const add_1 = (n) =>
+const zero: Church = f => x => x;
+
+const add_1 = (n: Church): Church =>
   f => x => f(n(f)(x));
 
-const one = f => x => f(x);
-const two = f => x => f(f(x));
+const one: Church = f => x => f(x);
+const two: Church = f => x => f(f(x));
 
 // Apply f n times, then m more times.
-const plus = (m, n) =>
+const plus = (m: Church, n: Church): Church =>
   f => x => m(f)(n(f)(x));
 `,
 };
 
-const alyssa = `const add_interval = (x, y) =>
+const alyssa = `const add_interval = (x: Interval, y: Interval): Interval =>
   make_interval(lower_bound(x) + lower_bound(y),
                        upper_bound(x) + upper_bound(y));
 
-const mul_interval = (x, y) => {
+const mul_interval = (x: Interval, y: Interval): Interval => {
   const p1 = lower_bound(x) * lower_bound(y);
   const p2 = lower_bound(x) * upper_bound(y);
   const p3 = upper_bound(x) * lower_bound(y);
@@ -333,21 +368,23 @@ const mul_interval = (x, y) => {
                        math_max(p1, p2, p3, p4));
 };
 
-const div_interval = (x, y) =>
+const div_interval = (x: Interval, y: Interval): Interval =>
   mul_interval(x, make_interval(1 / upper_bound(y),
                                        1 / lower_bound(y)));
 `;
 
 export const exercise_2_7: ExerciseSpec = {
   id: '2.7',
-  starter: `const make_interval = (x, y) =>
+  starter: `type Interval = Pair<number, number>;
+
+const make_interval = (x: number, y: number): Interval =>
   pair(x, y);
 
-const lower_bound = (i) => {
+const lower_bound = (i: Interval): number => {
   // your answer
 };
 
-const upper_bound = (i) => {
+const upper_bound = (i: Interval): number => {
   // your answer
 };
 
@@ -358,13 +395,15 @@ ${alyssa}`,
     { name: 'a product', kind: 'value', expr: 'lower_bound(mul_interval(make_interval(-1, 2), make_interval(3, 4)))', expected: -4 },
     { name: 'a quotient', kind: 'value', expr: 'upper_bound(div_interval(make_interval(1, 2), make_interval(4, 8)))', expected: 0.5 },
   ],
-  solution: `const make_interval = (x, y) =>
+  solution: `type Interval = Pair<number, number>;
+
+const make_interval = (x: number, y: number): Interval =>
   pair(x, y);
 
-const lower_bound = (i) =>
+const lower_bound = (i: Interval): number =>
   head(i);
 
-const upper_bound = (i) =>
+const upper_bound = (i: Interval): number =>
   tail(i);
 
 ${alyssa}`,
@@ -374,17 +413,17 @@ const intervals = `${intervalRepresentationDefinitions}
 ${intervalDefinitions}`;
 
 /** Both bounds as one string, so a test can compare a whole interval. */
-const bounds = `const bounds = (i) =>
+const bounds = `const bounds = (i: Interval): string =>
   stringify(lower_bound(i)) + ", " + stringify(upper_bound(i));`;
 
 export const exercise_2_8: ExerciseSpec = {
   id: '2.8',
   prelude: `${intervals}
 ${bounds}`,
-  starter: `// make_interval, lower_bound, upper_bound, add_interval, mul_interval and
-// div_interval are provided.
+  starter: `// The type Interval, make_interval, lower_bound, upper_bound, add_interval,
+// mul_interval and div_interval are provided.
 
-const sub_interval = (x, y) => {
+const sub_interval = (x: Interval, y: Interval): Interval => {
   // your answer
 };
 `,
@@ -393,17 +432,17 @@ const sub_interval = (x, y) => {
     { name: '[−1, 1] − [−1, 1]', kind: 'value', expr: 'bounds(sub_interval(make_interval(-1, 1), make_interval(-1, 1)))', expected: '-2, 2' },
     { name: '[0, 1] − [3, 7]', kind: 'value', expr: 'bounds(sub_interval(make_interval(0, 1), make_interval(3, 7)))', expected: '-7, -2' },
   ],
-  solution: `const sub_interval = (x, y) =>
+  solution: `const sub_interval = (x: Interval, y: Interval): Interval =>
   make_interval(lower_bound(x) - upper_bound(y),
                        upper_bound(x) - lower_bound(y));
 `,
 };
 
-const subAndWidth = `const sub_interval = (x, y) =>
+const subAndWidth = `const sub_interval = (x: Interval, y: Interval): Interval =>
   make_interval(lower_bound(x) - upper_bound(y),
                        upper_bound(x) - lower_bound(y));
 
-const width = (i) =>
+const width = (i: Interval): number =>
   (upper_bound(i) - lower_bound(i)) / 2;`;
 
 export const exercise_2_9: ExerciseSpec = {
@@ -413,12 +452,12 @@ ${subAndWidth}`,
   starter: `// Interval arithmetic, sub_interval and width are provided.
 
 // The width of the sum of two intervals, from their widths alone.
-const width_of_sum = (w1, w2) => {
+const width_of_sum = (w1: number, w2: number): number => {
   // your answer
 };
 
 // The width of the difference of two intervals, from their widths alone.
-const width_of_difference = (w1, w2) => {
+const width_of_difference = (w1: number, w2: number): number => {
   // your answer
 };
 
@@ -437,10 +476,10 @@ const b2 = make_interval(0, 1);
     { name: 'the factors have equal widths', kind: 'value', expr: 'width(a1) === width(a2) && width(b1) === width(b2)', expected: true },
     { name: 'the products do not', kind: 'value', expr: 'width(mul_interval(a1, b1)) !== width(mul_interval(a2, b2))', expected: true },
   ],
-  solution: `const width_of_sum = (w1, w2) =>
+  solution: `const width_of_sum = (w1: number, w2: number): number =>
   w1 + w2;
 
-const width_of_difference = (w1, w2) =>
+const width_of_difference = (w1: number, w2: number): number =>
   w1 + w2;
 
 // Both a's have width 0.5, but a2 sits much further from zero.
@@ -454,11 +493,11 @@ const b2 = make_interval(0, 1);
 export const exercise_2_10: ExerciseSpec = {
   id: '2.10',
   prelude: `${intervalRepresentationDefinitions}
-const add_interval = (x, y) =>
+const add_interval = (x: Interval, y: Interval): Interval =>
   make_interval(lower_bound(x) + lower_bound(y),
                        upper_bound(x) + upper_bound(y));
 
-const mul_interval = (x, y) => {
+const mul_interval = (x: Interval, y: Interval): Interval => {
   const p1 = lower_bound(x) * lower_bound(y);
   const p2 = lower_bound(x) * upper_bound(y);
   const p3 = upper_bound(x) * lower_bound(y);
@@ -466,16 +505,16 @@ const mul_interval = (x, y) => {
   return make_interval(math_min(p1, p2, p3, p4),
                        math_max(p1, p2, p3, p4));
 };`,
-  starter: `// make_interval, lower_bound, upper_bound, add_interval and mul_interval
-// are provided.
+  starter: `// The type Interval, make_interval, lower_bound, upper_bound, add_interval
+// and mul_interval are provided.
 
 // True when the interval contains zero, endpoints included.
-const spans_zero = (i) => {
+const spans_zero = (i: Interval): boolean => {
   // your answer
 };
 
 // Make div_interval use spans_zero to signal an error.
-const div_interval = (x, y) =>
+const div_interval = (x: Interval, y: Interval): Interval =>
   mul_interval(x, make_interval(1 / upper_bound(y),
                                        1 / lower_bound(y)));
 `,
@@ -487,10 +526,10 @@ const div_interval = (x, y) =>
     { name: 'div_interval checks its divisor', kind: 'calls', call: 'div_interval(make_interval(1, 2), make_interval(4, 8))', fn: 'spans_zero', atMost: 1 },
     { name: 'dividing by an interval that spans zero is an error', kind: 'error', call: 'div_interval(make_interval(1, 2), make_interval(-1, 1))' },
   ],
-  solution: `const spans_zero = (i) =>
+  solution: `const spans_zero = (i: Interval): boolean =>
   lower_bound(i) <= 0 && upper_bound(i) >= 0;
 
-const div_interval = (x, y) =>
+const div_interval = (x: Interval, y: Interval): Interval =>
   spans_zero(y)
     ? error("division by an interval that spans zero", y)
     : mul_interval(x, make_interval(1 / upper_bound(y),
@@ -517,15 +556,16 @@ export const exercise_2_11: ExerciseSpec = {
   prelude: `${intervalRepresentationDefinitions}
 ${bounds}
 
-const mul = (a, b) =>
+const mul = (a: number, b: number): number =>
   a * b;`,
-  starter: `// make_interval, lower_bound and upper_bound are provided, and mul(a, b),
+  starter: `// The type Interval, make_interval, lower_bound and upper_bound are provided,
+// and mul(a, b),
 // which multiplies two numbers. Use mul for every multiplication, so that the
 // checker can count them.
 
 // Nine cases on the signs of the endpoints: each interval is nonnegative,
 // nonpositive, or spans zero.
-const mul_interval = (x, y) => {
+const mul_interval = (x: Interval, y: Interval): Interval => {
   // your answer
 };
 `,
@@ -536,7 +576,7 @@ const mul_interval = (x, y) => {
     { name: 'two when only one interval spans zero', kind: 'calls', call: 'mul_interval(make_interval(-1, 4), make_interval(-5, -2))', fn: 'mul', atMost: 2 },
     { name: 'four when both span zero', kind: 'calls', call: 'mul_interval(make_interval(-1, 4), make_interval(-2, 3))', fn: 'mul', atMost: 4 },
   ],
-  solution: `const mul_interval = (x, y) => {
+  solution: `const mul_interval = (x: Interval, y: Interval): Interval => {
   const xl = lower_bound(x);
   const xu = upper_bound(x);
   const yl = lower_bound(y);
@@ -576,11 +616,11 @@ ${centerWidthDefinitions}`,
 
 // An interval from its center and a percentage tolerance:
 // make_center_percent(6.8, 10) is 6.8 ohms ± 10%.
-const make_center_percent = (c, p) => {
+const make_center_percent = (c: number, p: number): Interval => {
   // your answer
 };
 
-const percent = (i) => {
+const percent = (i: Interval): number => {
   // your answer
 };
 `,
@@ -591,19 +631,19 @@ const percent = (i) => {
     { name: 'the percentage survives', kind: 'value', expr: close('percent(make_center_percent(6.8, 10))', 10, 1e-9), expected: true },
     { name: 'the percentage of [9, 11]', kind: 'value', expr: close('percent(make_interval(9, 11))', 10, 1e-9), expected: true },
   ],
-  solution: `const make_center_percent = (c, p) =>
+  solution: `const make_center_percent = (c: number, p: number): Interval =>
   make_center_width(c, c * p / 100);
 
-const percent = (i) =>
+const percent = (i: Interval): number =>
   width(i) / center(i) * 100;
 `,
 };
 
 const centerPercent = `${centerWidthDefinitions}
-const make_center_percent = (c, p) =>
+const make_center_percent = (c: number, p: number): Interval =>
   make_center_width(c, c * p / 100);
 
-const percent = (i) =>
+const percent = (i: Interval): number =>
   width(i) / center(i) * 100;
 `;
 
@@ -615,7 +655,7 @@ ${centerPercent}`,
 
 // The approximate percentage tolerance of the product of two positive
 // intervals with small tolerances p1 and p2.
-const product_percent = (p1, p2) => {
+const product_percent = (p1: number, p2: number): number => {
   // your answer
 };
 `,
@@ -630,7 +670,7 @@ const product_percent = (p1, p2) => {
     },
   ],
   solution: `// Tolerances add: the exact value is (p1 + p2) / (1 + p1 p2 / 10000).
-const product_percent = (p1, p2) =>
+const product_percent = (p1: number, p2: number): number =>
   p1 + p2;
 `,
 };
@@ -699,7 +739,7 @@ export const exercise_2_15: ExerciseSpec = {
 
 // The true range of 1 / (1/r1 + 1/r2) as r1 and r2 vary over their
 // intervals. The formula grows as r1 grows and as r2 grows.
-const exact_par = (r1, r2) => {
+const exact_par = (r1: Interval, r2: Interval): Interval => {
   // your answer
 };
 
@@ -712,8 +752,8 @@ const exact = "";
     { name: 'another pair of resistors', kind: 'value', expr: close('upper_bound(exact_par(make_interval(1, 3), make_interval(2, 6)))', 2, 1e-9), expected: true },
     { name: 'the program that is exact', kind: 'value', expr: 'exact', expected: 'par2' },
   ],
-  solution: `const exact_par = (r1, r2) => {
-  const par = (a, b) =>
+  solution: `const exact_par = (r1: Interval, r2: Interval): Interval => {
+  const par = (a: number, b: number): number =>
     1 / (1 / a + 1 / b);
   return make_interval(par(lower_bound(r1), lower_bound(r2)),
                        par(upper_bound(r1), upper_bound(r2)));
@@ -735,7 +775,7 @@ ${bounds}`,
 const x = make_interval(1, 2);
 
 // The true range of the square of a number in the interval i.
-const square_interval = (i) => {
+const square_interval = (i: Interval): Interval => {
   // your answer
 };
 `,
@@ -748,7 +788,7 @@ const square_interval = (i) => {
   ],
   solution: `const x = make_interval(-1, 2);
 
-const square_interval = (i) => {
+const square_interval = (i: Interval): Interval => {
   const lo = math_abs(lower_bound(i));
   const hi = math_abs(upper_bound(i));
   return lower_bound(i) <= 0 && upper_bound(i) >= 0

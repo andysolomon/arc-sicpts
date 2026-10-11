@@ -16,38 +16,44 @@ display(head(head(z)));
 head(tail(z));
 `;
 
-/** §2.1.1: the rational-number operations, written by wishful thinking. */
-export const ratOperationsDefinitions = `const add_rat = (x, y) =>
+/**
+ * §2.1.1: the rational-number operations, written by wishful thinking. They
+ * name the type `Rational` without knowing what it is; each representation
+ * below declares it.
+ */
+export const ratOperationsDefinitions = `const add_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y) + numer(y) * denom(x),
                   denom(x) * denom(y));
 
-const sub_rat = (x, y) =>
+const sub_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y) - numer(y) * denom(x),
                   denom(x) * denom(y));
 
-const mul_rat = (x, y) =>
+const mul_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * numer(y),
                   denom(x) * denom(y));
 
-const div_rat = (x, y) =>
+const div_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y),
                   denom(x) * numer(y));
 
-const equal_rat = (x, y) =>
+const equal_rat = (x: Rational, y: Rational): boolean =>
   numer(x) * denom(y) === numer(y) * denom(x);
 
-const print_rat = (x) =>
+const print_rat = (x: Rational): string =>
   display(stringify(numer(x)) + " / " + stringify(denom(x)));
 `;
 
 /** §2.1.1: a rational number is a pair of integers. */
-export const ratPairDefinitions = `const make_rat = (n, d) =>
+export const ratPairDefinitions = `type Rational = Pair<number, number>;
+
+const make_rat = (n: number, d: number): Rational =>
   pair(n, d);
 
-const numer = (x) =>
+const numer = (x: Rational): number =>
   head(x);
 
-const denom = (x) =>
+const denom = (x: Rational): number =>
   tail(x);
 `;
 
@@ -66,15 +72,17 @@ ${ratUses}`;
 
 /** §2.1.1: reducing to lowest terms when a rational number is made. */
 export const ratLowestTermsDefinitions = `${gcdDefinitions}
-const make_rat = (n, d) => {
+type Rational = Pair<number, number>;
+
+const make_rat = (n: number, d: number): Rational => {
   const g = gcd(n, d);
   return pair(n / g, d / g);
 };
 
-const numer = (x) =>
+const numer = (x: Rational): number =>
   head(x);
 
-const denom = (x) =>
+const denom = (x: Rational): number =>
   tail(x);
 `;
 
@@ -85,15 +93,17 @@ ${ratUses}`;
 /** §2.1.2: the same package, reducing when a part is selected instead. */
 export const ratAccessReductionProgram = `${ratOperationsDefinitions}
 ${gcdDefinitions}
-const make_rat = (n, d) =>
+type Rational = Pair<number, number>;
+
+const make_rat = (n: number, d: number): Rational =>
   pair(n, d);
 
-const numer = (x) => {
+const numer = (x: Rational): number => {
   const g = gcd(head(x), tail(x));
   return head(x) / g;
 };
 
-const denom = (x) => {
+const denom = (x: Rational): number => {
   const g = gcd(head(x), tail(x));
   return tail(x) / g;
 };
@@ -108,15 +118,15 @@ two_thirds;
 
 /** §2.1.2: the smallest program with every layer of figure 2.1, for the layers diagram. */
 export const ratLayersProgram = `${ratPairDefinitions}
-const add_rat = (x, y) =>
+const add_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y) + numer(y) * denom(x),
                   denom(x) * denom(y));
 
-const mul_rat = (x, y) =>
+const mul_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * numer(y),
                   denom(x) * denom(y));
 
-const equal_rat = (x, y) =>
+const equal_rat = (x: Rational, y: Rational): boolean =>
   numer(x) * denom(y) === numer(y) * denom(x);
 
 const x = make_rat(1, 3);
@@ -125,9 +135,15 @@ const two = make_rat(2, 1);
 equal_rat(add_rat(x, x), mul_rat(two, x));
 `;
 
-/** §2.1.3: pair, head and tail with no data structure at all. */
-export const functionalPairDefinitions = `const pair = (x, y) => {
-  const dispatch = (m) =>
+/**
+ * §2.1.3: pair, head and tail with no data structure at all. The program's
+ * `Pair` takes the place of the library's type, as its `pair` takes the place
+ * of the primitive: a pair is now a function from 0 or 1 to one of its parts.
+ */
+export const functionalPairDefinitions = `type Pair<H, T> = (m: number) => H | T;
+
+const pair = <H, T>(x: H, y: T): Pair<H, T> => {
+  const dispatch = (m: number): H | T =>
     m === 0
       ? x
       : m === 1
@@ -136,10 +152,10 @@ export const functionalPairDefinitions = `const pair = (x, y) => {
   return dispatch;
 };
 
-const head = (z) =>
+const head = <H, T>(z: Pair<H, T>): H | T =>
   z(0);
 
-const tail = (z) =>
+const tail = <H, T>(z: Pair<H, T>): H | T =>
   z(1);
 `;
 
@@ -161,22 +177,24 @@ print_rat(add_rat(one_half, one_third));
 `;
 
 /** §2.1.4: the interval constructor and selectors (Exercise 2.7). */
-export const intervalRepresentationDefinitions = `const make_interval = (x, y) =>
+export const intervalRepresentationDefinitions = `type Interval = Pair<number, number>;
+
+const make_interval = (x: number, y: number): Interval =>
   pair(x, y);
 
-const lower_bound = (i) =>
+const lower_bound = (i: Interval): number =>
   head(i);
 
-const upper_bound = (i) =>
+const upper_bound = (i: Interval): number =>
   tail(i);
 `;
 
 /** §2.1.4: Alyssa's arithmetic on intervals. */
-export const intervalDefinitions = `const add_interval = (x, y) =>
+export const intervalDefinitions = `const add_interval = (x: Interval, y: Interval): Interval =>
   make_interval(lower_bound(x) + lower_bound(y),
                        upper_bound(x) + upper_bound(y));
 
-const mul_interval = (x, y) => {
+const mul_interval = (x: Interval, y: Interval): Interval => {
   const p1 = lower_bound(x) * lower_bound(y);
   const p2 = lower_bound(x) * upper_bound(y);
   const p3 = upper_bound(x) * lower_bound(y);
@@ -185,7 +203,7 @@ const mul_interval = (x, y) => {
                        math_max(p1, p2, p3, p4));
 };
 
-const div_interval = (x, y) =>
+const div_interval = (x: Interval, y: Interval): Interval =>
   mul_interval(x, make_interval(1 / upper_bound(y),
                                        1 / lower_bound(y)));
 `;
@@ -204,22 +222,22 @@ mul_interval(r1, r2);
 `;
 
 /** Center and width, Alyssa's alternate constructor and selectors. */
-export const centerWidthDefinitions = `const make_center_width = (c, w) =>
+export const centerWidthDefinitions = `const make_center_width = (c: number, w: number): Interval =>
   make_interval(c - w, c + w);
 
-const center = (i) =>
+const center = (i: Interval): number =>
   (lower_bound(i) + upper_bound(i)) / 2;
 
-const width = (i) =>
+const width = (i: Interval): number =>
   (upper_bound(i) - lower_bound(i)) / 2;
 `;
 
 /** Lem's two formulas for resistors in parallel. */
-export const parallelDefinitions = `const par1 = (r1, r2) =>
+export const parallelDefinitions = `const par1 = (r1: Interval, r2: Interval): Interval =>
   div_interval(mul_interval(r1, r2),
                       add_interval(r1, r2));
 
-const par2 = (r1, r2) => {
+const par2 = (r1: Interval, r2: Interval): Interval => {
   const one = make_interval(1, 1);
   return div_interval(one,
                       add_interval(div_interval(one, r1),

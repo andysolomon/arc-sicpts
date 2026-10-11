@@ -55,19 +55,19 @@ test('an exercise can require that a function signals an error', async ({ page }
   const exercise = page.getByRole('article', { name: 'Exercise 2.10' });
   const editor = exercise.getByRole('textbox', { name: 'Your answer to exercise 2.10' });
   const status = exercise.getByTestId('check-status');
-  const spansZero = 'function spans_zero(i) { return lower_bound(i) <= 0 && upper_bound(i) >= 0; } ';
+  const spansZero = 'const spans_zero = (i: Interval): boolean => lower_bound(i) <= 0 && upper_bound(i) >= 0; ';
   const divide = 'mul_interval(x, make_interval(1 / upper_bound(y), 1 / lower_bound(y)))';
 
   // The predicate is right, but division never uses it.
   await editor.click();
   await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.type(`${spansZero}function div_interval(x, y) { return ${divide}; }`);
+  await page.keyboard.type(`${spansZero}const div_interval = (x: Interval, y: Interval): Interval => ${divide};`);
   await exercise.getByRole('button', { name: 'Check' }).click();
   await expect(status).toHaveText('4 / 6 hidden tests pass');
 
   await editor.click();
   await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.type(`${spansZero}function div_interval(x, y) { return spans_zero(y) ? error("spans zero", y) : ${divide}; }`);
+  await page.keyboard.type(`${spansZero}const div_interval = (x: Interval, y: Interval): Interval => spans_zero(y) ? error("spans zero", y) : ${divide};`);
   await exercise.getByRole('button', { name: 'Check' }).click();
   await expect(status).toHaveText('6 / 6 hidden tests pass');
 });

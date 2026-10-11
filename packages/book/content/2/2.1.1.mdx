@@ -20,26 +20,26 @@ This is a powerful strategy of synthesis: *wishful thinking*. We have not said h
 - (*n*₁/*d*₁) / (*n*₂/*d*₂) = (*n*₁*d*₂) / (*d*₁*n*₂)
 - *n*₁/*d*₁ = *n*₂/*d*₂ if and only if *n*₁*d*₂ = *n*₂*d*₁
 
-Each relation becomes a function:
+Each relation becomes a function. The type `Rational` names a rational number, whatever its representation turns out to be:
 
 ```js
-const add_rat = (x, y) =>
+const add_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y) + numer(y) * denom(x),
                   denom(x) * denom(y));
 
-const sub_rat = (x, y) =>
+const sub_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y) - numer(y) * denom(x),
                   denom(x) * denom(y));
 
-const mul_rat = (x, y) =>
+const mul_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * numer(y),
                   denom(x) * denom(y));
 
-const div_rat = (x, y) =>
+const div_rat = (x: Rational, y: Rational): Rational =>
   make_rat(numer(x) * denom(y),
                   denom(x) * numer(y));
 
-const equal_rat = (x, y) =>
+const equal_rat = (x: Rational, y: Rational): boolean =>
   numer(x) * denom(y) === numer(y) * denom(x);
 ```
 
@@ -59,7 +59,7 @@ Each pair is drawn as two boxes, the head on the left and the tail on the right,
 
 The single compound-data primitive *pair*, implemented by the functions `pair`, `head` and `tail`, is the only glue we need. Data objects constructed from pairs are called *list-structured* data.
 
-**Representing rational numbers.** Pairs offer a natural way to complete the rational-number system: represent a rational number as a pair of two integers, a numerator and a denominator. Then `make_rat`, `numer` and `denom` are one line each.
+**Representing rational numbers.** Pairs offer a natural way to complete the rational-number system: represent a rational number as a pair of two integers, a numerator and a denominator, so that the type `Rational` is `Pair<number, number>`, the library's type of a pair. Then `make_rat`, `numer` and `denom` are one line each.
 
 To display results, `print_rat` prints the numerator, a slash and the denominator. The primitive `stringify` turns any value, here a number, into a string, and the operator `+` applied to two strings *concatenates* them. `display` shows a string with its quotation marks, as the Laboratory prints every string.
 
@@ -76,7 +76,7 @@ A rational number is nothing more than the pair of its numerator and denominator
 As the final example shows, this implementation does not reduce rational numbers to lowest terms. We can remedy that by changing `make_rat`. With the `gcd` function of §1.2.5, which produces the greatest common divisor of two integers, `make_rat` can divide the numerator and the denominator by their greatest common divisor before constructing the pair:
 
 ```js
-const make_rat = (n, d) => {
+const make_rat = (n: number, d: number): Rational => {
   const g = gcd(n, d);
   return pair(n / g, d / g);
 };

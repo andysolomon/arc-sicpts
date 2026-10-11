@@ -3,14 +3,19 @@ import { type ExerciseSpec } from './spec.ts';
 
 /** Exercises of §2.2.1 – §2.2.3. */
 
-const square = `const square = (x) =>
+/** A tree is a list whose elements are leaves or trees. */
+const tree = `// A list whose elements are leaves or trees.
+type Tree<T> = null | [T | Tree<T>, Tree<T>];
+`;
+
+const square = `const square = (x: number): number =>
   x * x;
 `;
 
-const plusTimes = `const plus = (x, y) =>
+const plusTimes = `const plus = (x: number, y: number): number =>
   x + y;
 
-const times = (x, y) =>
+const times = (x: number, y: number): number =>
   x * y;
 `;
 
@@ -19,7 +24,7 @@ const times = (x, y) =>
 export const exercise_2_17: ExerciseSpec = {
   id: '2.17',
   starter: `// The list that holds only the last element of a nonempty list.
-const last_pair = (items) => {
+const last_pair = <T>(items: List<T>): List<T> => {
   // your answer
 };
 
@@ -30,7 +35,7 @@ last_pair(list(23, 72, 149, 34));
     { name: 'a list of one', kind: 'value', expr: 'equal(last_pair(list("only")), list("only"))', expected: true },
     { name: 'the last pair itself, not a copy', kind: 'value', expr: '(xs => last_pair(xs) === tail(tail(xs)))(list(1, 2, 3))', expected: true },
   ],
-  solution: `const last_pair = (items) =>
+  solution: `const last_pair = <T>(items: List<T>): List<T> =>
   is_null(tail(items))
     ? items
     : last_pair(tail(items));
@@ -42,7 +47,7 @@ last_pair(list(23, 72, 149, 34));
 export const exercise_2_18: ExerciseSpec = {
   id: '2.18',
   starter: `// Your reverse takes the place of the library's.
-const reverse = (items) => {
+const reverse = <T>(items: List<T>): List<T> => {
   // your answer
 };
 
@@ -53,8 +58,8 @@ reverse(list(1, 4, 9, 16, 25));
     { name: 'the empty list', kind: 'value', expr: 'reverse(null)', expected: null },
     { name: 'only the top level is reversed', kind: 'value', expr: 'equal(reverse(list(list(1, 2), 3)), list(3, list(1, 2)))', expected: true },
   ],
-  solution: `const reverse = (items) => {
-  const iter = (rest, reversed) =>
+  solution: `const reverse = <T>(items: List<T>): List<T> => {
+  const iter = (rest: List<T>, reversed: List<T>): List<T> =>
     is_null(rest)
       ? reversed
       : iter(tail(rest), pair(head(rest), reversed));
@@ -65,7 +70,7 @@ reverse(list(1, 4, 9, 16, 25));
 `,
 };
 
-const ccWithLists = `const cc = (amount, coin_values) =>
+const ccWithLists = `const cc = (amount: number, coin_values: List<number>): number =>
   amount === 0
     ? 1
     : amount < 0 || no_more(coin_values)
@@ -80,15 +85,15 @@ const uk_coins = list(100, 50, 20, 10, 5, 2, 1);
 export const exercise_2_19: ExerciseSpec = {
   id: '2.19',
   starter: `${ccWithLists}
-const first_denomination = (coin_values) => {
+const first_denomination = (coin_values: List<number>): number => {
   // your answer
 };
 
-const except_first_denomination = (coin_values) => {
+const except_first_denomination = (coin_values: List<number>): List<number> => {
   // your answer
 };
 
-const no_more = (coin_values) => {
+const no_more = (coin_values: List<number>): boolean => {
   // your answer
 };
 
@@ -105,13 +110,13 @@ cc(100, us_coins);
   ],
   budget: 3_000_000,
   solution: `${ccWithLists}
-const first_denomination = (coin_values) =>
+const first_denomination = (coin_values: List<number>): number =>
   head(coin_values);
 
-const except_first_denomination = (coin_values) =>
+const except_first_denomination = (coin_values: List<number>): List<number> =>
   tail(coin_values);
 
-const no_more = (coin_values) =>
+const no_more = (coin_values: List<number>): boolean =>
   is_null(coin_values);
 
 const order_matters = false;
@@ -120,7 +125,7 @@ cc(100, us_coins);
 `,
 };
 
-const plusCurried = `const plus_curried = (x) =>
+const plusCurried = `const plus_curried = (x: number): ((y: number) => number) =>
   y => x + y;
 `;
 
@@ -128,12 +133,12 @@ export const exercise_2_20: ExerciseSpec = {
   id: '2.20',
   starter: `${plusCurried}
 // Apply the curried function f to the arguments in args, one by one.
-const brooks = (f, args) => {
+const brooks = (f: unknown, args: List<unknown>): unknown => {
   // your answer
 };
 
 // brooks, curried: brooks_curried(list(f, a, b, ...)).
-const brooks_curried = (xs) => {
+const brooks_curried = (xs: List<unknown>): unknown => {
   // your answer
 };
 
@@ -152,12 +157,12 @@ const result_2 = undefined;
     { name: 'the two predictions', kind: 'value', expr: 'result_1 === 7 && result_2 === 7', expected: true },
   ],
   solution: `${plusCurried}
-const brooks = (f, args) =>
+const brooks = (f: unknown, args: List<unknown>): unknown =>
   is_null(args)
     ? f
     : brooks(f(head(args)), tail(args));
 
-const brooks_curried = (xs) =>
+const brooks_curried = (xs: List<unknown>): unknown =>
   brooks(head(xs), tail(xs));
 
 const result_1 = 7;
@@ -170,12 +175,12 @@ export const exercise_2_21: ExerciseSpec = {
   prelude: square,
   starter: `// square is provided. Replace each undefined.
 
-const square_list = (items) =>
+const square_list = (items: List<number>): List<number> =>
   is_null(items)
     ? null
     : pair(undefined, undefined);
 
-const square_list_map = (items) =>
+const square_list_map = (items: List<number>): List<number> =>
   map(undefined, undefined);
 
 square_list(list(1, 2, 3, 4));
@@ -186,12 +191,12 @@ square_list(list(1, 2, 3, 4));
     { name: 'square_list_map uses map', kind: 'calls', call: 'square_list_map(list(1, 2, 3))', fn: 'map', atMost: 4 },
     { name: 'square_list recurses once per element', kind: 'calls', call: 'square_list(list(1, 2, 3))', fn: 'square_list', atMost: 4 },
   ],
-  solution: `const square_list = (items) =>
+  solution: `const square_list = (items: List<number>): List<number> =>
   is_null(items)
     ? null
     : pair(square(head(items)), square_list(tail(items)));
 
-const square_list_map = (items) =>
+const square_list_map = (items: List<number>): List<number> =>
   map(square, items);
 
 square_list(list(1, 2, 3, 4));
@@ -204,8 +209,8 @@ export const exercise_2_22: ExerciseSpec = {
   starter: `// square is provided.
 
 // Louis's first attempt.
-const square_list_louis = (items) => {
-  const iter = (things, answer) =>
+const square_list_louis = (items: List<number>): List<number> => {
+  const iter = (things: List<number>, answer: List<number>): List<number> =>
     is_null(things)
       ? answer
       : iter(tail(things),
@@ -218,7 +223,7 @@ const square_list_louis = (items) => {
 const louis_result = undefined;
 
 // An iterative square_list that gets the order right.
-const square_list = (items) => {
+const square_list = (items: List<number>): List<number> => {
   // your answer
 };
 `,
@@ -228,8 +233,8 @@ const square_list = (items) => {
     { name: 'the empty list', kind: 'value', expr: 'square_list(null)', expected: null },
     { name: 'an iterative process', kind: 'shape', expr: '"iterative"', call: 'square_list(list(1, 2, 3, 4, 5, 6, 7, 8))' },
   ],
-  solution: `const square_list_louis = (items) => {
-  const iter = (things, answer) =>
+  solution: `const square_list_louis = (items: List<number>): List<number> => {
+  const iter = (things: List<number>, answer: List<number>): List<number> =>
     is_null(things)
       ? answer
       : iter(tail(things),
@@ -241,7 +246,7 @@ const square_list = (items) => {
 const louis_result = list(9, 4, 1);
 
 // Louis's iteration on the reversed list puts the squares back in order.
-const square_list = (items) =>
+const square_list = (items: List<number>): List<number> =>
   square_list_louis(reverse(items));
 `,
 };
@@ -249,7 +254,7 @@ const square_list = (items) =>
 export const exercise_2_23: ExerciseSpec = {
   id: '2.23',
   starter: `// Your for_each takes the place of the library's.
-const for_each = (f, items) => {
+const for_each = <T>(f: (x: T) => unknown, items: List<T>): true => {
   // your answer
 };
 
@@ -265,7 +270,7 @@ for_each(x => display(x), list(57, 321, 88));
     { name: 'returns true', kind: 'value', expr: 'for_each(x => x, list(1, 2))', expected: true },
     { name: 'the empty list', kind: 'value', expr: 'for_each(x => error("never"), null)', expected: true },
   ],
-  solution: `const for_each = (f, items) => {
+  solution: `const for_each = <T>(f: (x: T) => unknown, items: List<T>): true => {
   if (is_null(items)) {
     return true;
   } else {
@@ -303,20 +308,21 @@ const pairs_used = 6;
 
 export const exercise_2_25: ExerciseSpec = {
   id: '2.25',
-  starter: `// Using only head and tail, pick out the element where 7 stands.
+  starter: `${tree}
+// Using only head and tail, pick out the element where 7 stands.
 
 // list(1, 3, list(5, 7), 9)
-const pick_a = (xs) => {
+const pick_a = (xs: Tree<number>): number => {
   // your answer
 };
 
 // list(list(7))
-const pick_b = (xs) => {
+const pick_b = (xs: Tree<number>): number => {
   // your answer
 };
 
 // list(1, list(2, list(3, list(4, list(5, list(6, 7))))))
-const pick_c = (xs) => {
+const pick_c = (xs: Tree<number>): number => {
   // your answer
 };
 `,
@@ -327,13 +333,14 @@ const pick_c = (xs) => {
     { name: 'the third list', kind: 'value', expr: 'pick_c(list(1, list(2, list(3, list(4, list(5, list(6, 7)))))))', expected: 7 },
     { name: 'the third shape, another value', kind: 'value', expr: 'pick_c(list(1, list(2, list(3, list(4, list(5, list(6, 9)))))))', expected: 9 },
   ],
-  solution: `const pick_a = (xs) =>
+  solution: `${tree}
+const pick_a = (xs: Tree<number>): number =>
   head(tail(head(tail(tail(xs)))));
 
-const pick_b = (xs) =>
+const pick_b = (xs: Tree<number>): number =>
   head(head(xs));
 
-const pick_c = (xs) =>
+const pick_c = (xs: Tree<number>): number =>
   head(tail(head(tail(head(tail(head(tail(head(tail(head(tail(xs))))))))))));
 `,
 };
@@ -372,10 +379,11 @@ const list_length = 2;
 
 export const exercise_2_27: ExerciseSpec = {
   id: '2.27',
-  starter: `const x = list(list(1, 2), list(3, 4));
+  starter: `${tree}
+const x = list(list(1, 2), list(3, 4));
 
 // Reverse the list, and every sublist within it.
-const deep_reverse = (items) => {
+const deep_reverse = <T>(items: Tree<T>): Tree<T> => {
   // your answer
 };
 
@@ -387,10 +395,11 @@ deep_reverse(x);
     { name: 'deeper nesting', kind: 'value', expr: 'equal(deep_reverse(list(1, list(2, list(3, 4)), 5)), list(5, list(list(4, 3), 2), 1))', expected: true },
     { name: 'the empty list', kind: 'value', expr: 'deep_reverse(null)', expected: null },
   ],
-  solution: `const x = list(list(1, 2), list(3, 4));
+  solution: `${tree}
+const x = list(list(1, 2), list(3, 4));
 
-const deep_reverse = (items) => {
-  const iter = (rest, reversed) =>
+const deep_reverse = <T>(items: Tree<T>): Tree<T> => {
+  const iter = (rest: Tree<T>, reversed: Tree<T>): Tree<T> =>
     is_null(rest)
       ? reversed
       : iter(tail(rest),
@@ -405,10 +414,11 @@ deep_reverse(x);
 
 export const exercise_2_28: ExerciseSpec = {
   id: '2.28',
-  starter: `const x = list(list(1, 2), list(3, 4));
+  starter: `${tree}
+const x = list(list(1, 2), list(3, 4));
 
 // The leaves of a tree, left to right.
-const fringe = (tree) => {
+const fringe = <T>(tree: T | Tree<T>): List<T> => {
   // your answer
 };
 
@@ -419,9 +429,10 @@ fringe(x);
     { name: 'fringe(list(x, x))', kind: 'value', expr: 'equal(fringe(list(x, x)), list(1, 2, 3, 4, 1, 2, 3, 4))', expected: true },
     { name: 'deeper and uneven', kind: 'value', expr: 'equal(fringe(list(1, list(2, list(3, null, 4)), 5)), list(1, 2, 3, 4, 5))', expected: true },
   ],
-  solution: `const x = list(list(1, 2), list(3, 4));
+  solution: `${tree}
+const x = list(list(1, 2), list(3, 4));
 
-const fringe = (tree) =>
+const fringe = <T>(tree: T | Tree<T>): List<T> =>
   is_null(tree)
     ? null
     : ! is_pair(tree)
@@ -432,10 +443,14 @@ fringe(x);
 `,
 };
 
-const mobiles = `const make_mobile = (left, right) =>
+const mobiles = `// A mobile is list(left, right) and a branch is list(length, structure).
+type Mobile = [Branch, [Branch, null]];
+type Branch = [number, [number | Mobile, null]];
+
+const make_mobile = (left: Branch, right: Branch): Mobile =>
   list(left, right);
 
-const make_branch = (length, structure) =>
+const make_branch = (length: number, structure: number | Mobile): Branch =>
   list(length, structure);
 `;
 
@@ -445,27 +460,27 @@ const small = 'make_mobile(make_branch(1, 1), make_branch(1, 1))';
 export const exercise_2_29: ExerciseSpec = {
   id: '2.29',
   starter: `${mobiles}
-const left_branch = (mobile) => {
+const left_branch = (mobile: Mobile): Branch => {
   // your answer
 };
 
-const right_branch = (mobile) => {
+const right_branch = (mobile: Mobile): Branch => {
   // your answer
 };
 
-const branch_length = (branch) => {
+const branch_length = (branch: Branch): number => {
   // your answer
 };
 
-const branch_structure = (branch) => {
+const branch_structure = (branch: Branch): number | Mobile => {
   // your answer
 };
 
-const total_weight = (mobile) => {
+const total_weight = (mobile: Mobile): number => {
   // your answer
 };
 
-const is_balanced = (mobile) => {
+const is_balanced = (mobile: Mobile): boolean => {
   // your answer
 };
 
@@ -497,30 +512,30 @@ const changes = null;
     },
   ],
   solution: `${mobiles}
-const left_branch = (mobile) =>
+const left_branch = (mobile: Mobile): Branch =>
   head(mobile);
 
-const right_branch = (mobile) =>
+const right_branch = (mobile: Mobile): Branch =>
   head(tail(mobile));
 
-const branch_length = (branch) =>
+const branch_length = (branch: Branch): number =>
   head(branch);
 
-const branch_structure = (branch) =>
+const branch_structure = (branch: Branch): number | Mobile =>
   head(tail(branch));
 
-const branch_weight = (branch) => {
+const branch_weight = (branch: Branch): number => {
   const structure = branch_structure(branch);
   return is_number(structure) ? structure : total_weight(structure);
 };
 
-const total_weight = (mobile) =>
+const total_weight = (mobile: Mobile): number =>
   branch_weight(left_branch(mobile)) + branch_weight(right_branch(mobile));
 
-const is_balanced = (mobile) => {
-  const torque = (branch) =>
+const is_balanced = (mobile: Mobile): boolean => {
+  const torque = (branch: Branch): number =>
     branch_length(branch) * branch_weight(branch);
-  const branch_balanced = (branch) => {
+  const branch_balanced = (branch: Branch): boolean => {
     const structure = branch_structure(branch);
     return is_number(structure) || is_balanced(structure);
   };
@@ -542,13 +557,14 @@ export const exercise_2_30: ExerciseSpec = {
   prelude: square,
   starter: `// square is provided.
 
+${tree}
 // Directly, without higher-order functions.
-const square_tree = (tree) => {
+const square_tree = (tree: number | Tree<number>): number | Tree<number> => {
   // your answer
 };
 
 // With map and recursion.
-const square_tree_map = (tree) => {
+const square_tree_map = (tree: Tree<number>): Tree<number> => {
   // your answer
 };
 
@@ -560,14 +576,15 @@ square_tree(${sampleTree});
     { name: 'the empty tree', kind: 'value', expr: 'is_null(square_tree(null)) && is_null(square_tree_map(null))', expected: true },
     { name: 'square_tree_map uses map', kind: 'calls', call: 'square_tree_map(list(1, list(2, 3)))', fn: 'map', atMost: 6 },
   ],
-  solution: `const square_tree = (tree) =>
+  solution: `${tree}
+const square_tree = (tree: number | Tree<number>): number | Tree<number> =>
   is_null(tree)
     ? null
     : ! is_pair(tree)
     ? square(tree)
     : pair(square_tree(head(tree)), square_tree(tail(tree)));
 
-const square_tree_map = (tree) =>
+const square_tree_map = (tree: Tree<number>): Tree<number> =>
   map(sub_tree => is_pair(sub_tree)
                          ? square_tree_map(sub_tree)
                          : square(sub_tree),
@@ -582,12 +599,13 @@ export const exercise_2_31: ExerciseSpec = {
   prelude: square,
   starter: `// square is provided.
 
+${tree}
 // Apply f to every leaf of the tree, keeping its shape.
-const tree_map = (f, tree) => {
+const tree_map = <A, B>(f: (x: A) => B, tree: Tree<A>): Tree<B> => {
   // your answer
 };
 
-const square_tree = (tree) =>
+const square_tree = (tree: Tree<number>): Tree<number> =>
   tree_map(square, tree);
 
 square_tree(${sampleTree});
@@ -597,13 +615,14 @@ square_tree(${sampleTree});
     { name: 'any function', kind: 'value', expr: `equal(tree_map(x => x * 10, ${sampleTree}), list(10, list(20, list(30, 40), 50), list(60, 70)))`, expected: true },
     { name: 'strings as leaves', kind: 'value', expr: 'equal(tree_map(s => s + "!", list("a", list("b"))), list("a!", list("b!")))', expected: true },
   ],
-  solution: `const tree_map = (f, tree) =>
+  solution: `${tree}
+const tree_map = <A, B>(f: (x: A) => B, tree: Tree<A>): Tree<B> =>
   map(sub_tree => is_pair(sub_tree)
                          ? tree_map(f, sub_tree)
                          : f(sub_tree),
              tree);
 
-const square_tree = (tree) =>
+const square_tree = (tree: Tree<number>): Tree<number> =>
   tree_map(square, tree);
 
 square_tree(${sampleTree});
@@ -612,7 +631,7 @@ square_tree(${sampleTree});
 
 export const exercise_2_32: ExerciseSpec = {
   id: '2.32',
-  starter: `const subsets = (s) => {
+  starter: `const subsets = <T>(s: List<T>): List<List<T>> => {
   if (is_null(s)) {
     return list(null);
   } else {
@@ -634,7 +653,7 @@ subsets(list(1, 2, 3));
     { name: 'the empty set', kind: 'value', expr: 'equal(subsets(null), list(null))', expected: true },
     { name: '2⁶ subsets of six elements', kind: 'value', expr: 'length(subsets(list(1, 2, 3, 4, 5, 6)))', expected: 64 },
   ],
-  solution: `const subsets = (s) => {
+  solution: `const subsets = <T>(s: List<T>): List<List<T>> => {
   if (is_null(s)) {
     return list(null);
   } else {
@@ -655,13 +674,13 @@ export const exercise_2_33: ExerciseSpec = {
 // accumulate is the library's, with the book's argument order.
 // Replace each undefined.
 
-const map = (f, sequence) =>
+const map = <A, B>(f: (x: A) => B, sequence: List<A>): List<B> =>
   accumulate((x, y) => undefined, null, sequence);
 
-const append = (seq1, seq2) =>
+const append = <T>(seq1: List<T>, seq2: List<T>): List<T> =>
   accumulate(pair, undefined, undefined);
 
-const length = (sequence) =>
+const length = <T>(sequence: List<T>): number =>
   accumulate(undefined, 0, sequence);
 `,
   tests: [
@@ -671,13 +690,13 @@ const length = (sequence) =>
     { name: 'length is an accumulation', kind: 'calls', call: 'length(list(1, 2, 3))', fn: 'accumulate', atMost: 4 },
     { name: 'append is an accumulation', kind: 'calls', call: 'append(list(1, 2), list(3))', fn: 'accumulate', atMost: 3 },
   ],
-  solution: `const map = (f, sequence) =>
+  solution: `const map = <A, B>(f: (x: A) => B, sequence: List<A>): List<B> =>
   accumulate((x, y) => pair(f(x), y), null, sequence);
 
-const append = (seq1, seq2) =>
+const append = <T>(seq1: List<T>, seq2: List<T>): List<T> =>
   accumulate(pair, seq2, seq1);
 
-const length = (sequence) =>
+const length = <T>(sequence: List<T>): number =>
   accumulate((x, y) => y + 1, 0, sequence);
 `,
 };
@@ -685,7 +704,7 @@ const length = (sequence) =>
 export const exercise_2_34: ExerciseSpec = {
   id: '2.34',
   starter: `// Coefficients from a_0 up to a_n. Replace undefined.
-const horner_eval = (x, coefficient_sequence) =>
+const horner_eval = (x: number, coefficient_sequence: List<number>): number =>
   accumulate((this_coeff, higher_terms) => undefined,
                     0,
                     coefficient_sequence);
@@ -698,7 +717,7 @@ horner_eval(2, list(1, 3, 0, 5, 0, 1));
     { name: '1 + x + x² at 3', kind: 'value', expr: 'horner_eval(3, list(1, 1, 1))', expected: 13 },
     { name: 'a constant', kind: 'value', expr: 'horner_eval(10, list(4))', expected: 4 },
   ],
-  solution: `const horner_eval = (x, coefficient_sequence) =>
+  solution: `const horner_eval = (x: number, coefficient_sequence: List<number>): number =>
   accumulate((this_coeff, higher_terms) => this_coeff + x * higher_terms,
                     0,
                     coefficient_sequence);
@@ -711,7 +730,8 @@ export const exercise_2_35: ExerciseSpec = {
   id: '2.35',
   prelude: plusTimes,
   starter: `// plus and times are provided. Replace each undefined.
-const count_leaves = (t) =>
+${tree}
+const count_leaves = <T>(t: Tree<T>): number =>
   accumulate(undefined, undefined, map(undefined, undefined));
 
 const x = pair(list(1, 2), list(3, 4));
@@ -723,7 +743,8 @@ count_leaves(x);
     { name: 'deeper', kind: 'value', expr: 'count_leaves(list(1, list(2, list(3, 4)), 5))', expected: 5 },
     { name: 'an accumulation', kind: 'calls', call: 'count_leaves(list(1, 2, 3))', fn: 'accumulate', atMost: 8 },
   ],
-  solution: `const count_leaves = (t) =>
+  solution: `${tree}
+const count_leaves = <T>(t: Tree<T>): number =>
   accumulate(plus, 0, map(sub => is_pair(sub) ? count_leaves(sub) : 1, t));
 
 const x = pair(list(1, 2), list(3, 4));
@@ -731,7 +752,7 @@ count_leaves(x);
 `,
 };
 
-const accumulateN = `const accumulate_n = (op, init, seqs) =>
+const accumulateN = `const accumulate_n = <T, R>(op: (x: T, acc: R) => R, init: R, seqs: List<List<T>>): List<R> =>
   is_null(head(seqs))
     ? null
     : pair(accumulate(op, init, map(head, seqs)),
@@ -742,7 +763,7 @@ export const exercise_2_36: ExerciseSpec = {
   id: '2.36',
   prelude: plusTimes,
   starter: `// plus and times are provided. Replace each undefined.
-const accumulate_n = (op, init, seqs) =>
+const accumulate_n = <T, R>(op: (x: T, acc: R) => R, init: R, seqs: List<List<T>>): List<R> =>
   is_null(head(seqs))
     ? null
     : pair(accumulate(op, init, undefined),
@@ -768,17 +789,20 @@ export const exercise_2_37: ExerciseSpec = {
   id: '2.37',
   prelude: `${plusTimes}
 ${accumulateN}
-const dot_product = (v, w) =>
+const dot_product = (v: List<number>, w: List<number>): number =>
   accumulate(plus, 0, accumulate_n(times, 1, list(v, w)));`,
   starter: `// plus, times, accumulate_n and dot_product are provided. Replace each undefined.
 
-const matrix_times_vector = (m, v) =>
+// A matrix is a list of rows, each a list of numbers.
+type Matrix = List<List<number>>;
+
+const matrix_times_vector = (m: Matrix, v: List<number>): List<number> =>
   map(undefined, m);
 
-const transpose = (mat) =>
+const transpose = (mat: Matrix): Matrix =>
   accumulate_n(undefined, undefined, mat);
 
-const matrix_times_matrix = (m, n) => {
+const matrix_times_matrix = (m: Matrix, n: Matrix): Matrix => {
   const cols = transpose(n);
   return map(undefined, m);
 };
@@ -802,13 +826,15 @@ matrix_times_vector(m, list(1, 2, 3, 4));
       expected: true,
     },
   ],
-  solution: `const matrix_times_vector = (m, v) =>
+  solution: `type Matrix = List<List<number>>;
+
+const matrix_times_vector = (m: Matrix, v: List<number>): List<number> =>
   map(row => dot_product(row, v), m);
 
-const transpose = (mat) =>
+const transpose = (mat: Matrix): Matrix =>
   accumulate_n(pair, null, mat);
 
-const matrix_times_matrix = (m, n) => {
+const matrix_times_matrix = (m: Matrix, n: Matrix): Matrix => {
   const cols = transpose(n);
   return map(row => matrix_times_vector(cols, row), m);
 };
@@ -819,17 +845,17 @@ matrix_times_vector(m, list(1, 2, 3, 4));
 };
 
 const folds = `${plusTimes}
-const minus = (x, y) =>
+const minus = (x: number, y: number): number =>
   x - y;
 
-const divide = (x, y) =>
+const divide = (x: number, y: number): number =>
   x / y;
 
-const fold_right = (op, initial, sequence) =>
+const fold_right = <T, R>(op: (x: T, acc: R) => R, initial: R, sequence: List<T>): R =>
   accumulate(op, initial, sequence);
 
-const fold_left = (op, initial, sequence) => {
-  const iter = (result, rest) =>
+const fold_left = <T, R>(op: (acc: R, x: T) => R, initial: R, sequence: List<T>): R => {
+  const iter = (result: R, rest: List<T>): R =>
     is_null(rest)
       ? result
       : iter(op(result, head(rest)),
@@ -883,10 +909,10 @@ export const exercise_2_39: ExerciseSpec = {
   prelude: folds,
   starter: `// fold_right and fold_left are provided. Replace each undefined.
 
-const reverse_right = (sequence) =>
+const reverse_right = <T>(sequence: List<T>): List<T> =>
   fold_right((x, y) => undefined, null, sequence);
 
-const reverse_left = (sequence) =>
+const reverse_left = <T>(sequence: List<T>): List<T> =>
   fold_left((x, y) => undefined, null, sequence);
 
 reverse_left(list(1, 2, 3, 4));
@@ -898,20 +924,20 @@ reverse_left(list(1, 2, 3, 4));
     { name: 'reverse_right folds right', kind: 'calls', call: 'reverse_right(list(1, 2))', fn: 'fold_right', atMost: 1 },
     { name: 'reverse_left folds left', kind: 'calls', call: 'reverse_left(list(1, 2))', fn: 'fold_left', atMost: 1 },
   ],
-  solution: `const reverse_right = (sequence) =>
+  solution: `const reverse_right = <T>(sequence: List<T>): List<T> =>
   fold_right((x, y) => append(y, list(x)), null, sequence);
 
-const reverse_left = (sequence) =>
+const reverse_left = <T>(sequence: List<T>): List<T> =>
   fold_left((x, y) => pair(y, x), null, sequence);
 
 reverse_left(list(1, 2, 3, 4));
 `,
 };
 
-const primeSumParts = `const is_prime_sum = (pair) =>
+const primeSumParts = `const is_prime_sum = (pair: List<number>): boolean =>
   is_prime(head(pair) + head(tail(pair)));
 
-const make_pair_sum = (pair) =>
+const make_pair_sum = (pair: List<number>): List<number> =>
   list(head(pair), head(tail(pair)),
               head(pair) + head(tail(pair)));
 `;
@@ -924,11 +950,11 @@ ${primeSumParts}`,
 // are provided.
 
 // The pairs list(i, j) with 1 <= j < i <= n.
-const unique_pairs = (n) => {
+const unique_pairs = (n: number): List<List<number>> => {
   // your answer
 };
 
-const prime_sum_pairs = (n) => {
+const prime_sum_pairs = (n: number): List<List<number>> => {
   // your answer, using unique_pairs
 };
 
@@ -945,12 +971,12 @@ prime_sum_pairs(6);
     },
     { name: 'prime_sum_pairs uses unique_pairs', kind: 'calls', call: 'prime_sum_pairs(4)', fn: 'unique_pairs', atMost: 1 },
   ],
-  solution: `const unique_pairs = (n) =>
+  solution: `const unique_pairs = (n: number): List<List<number>> =>
   flatmap(i => map(j => list(i, j),
                           enumerate_interval(1, i - 1)),
                  enumerate_interval(1, n));
 
-const prime_sum_pairs = (n) =>
+const prime_sum_pairs = (n: number): List<List<number>> =>
   map(make_pair_sum,
              filter(is_prime_sum, unique_pairs(n)));
 
@@ -964,12 +990,12 @@ export const exercise_2_41: ExerciseSpec = {
   starter: `// enumerate_interval and flatmap are provided.
 
 // The triples list(i, j, k) with n >= i > j > k >= 1.
-const unique_triples = (n) => {
+const unique_triples = (n: number): List<List<number>> => {
   // your answer
 };
 
 // Those triples whose elements sum to s.
-const triples_with_sum = (n, s) => {
+const triples_with_sum = (n: number, s: number): List<List<number>> => {
   // your answer
 };
 
@@ -987,17 +1013,17 @@ triples_with_sum(6, 10);
     },
     { name: 'and none is missed', kind: 'value', expr: 'length(triples_with_sum(10, 15))', expected: 10 },
   ],
-  solution: `const unique_pairs = (n) =>
+  solution: `const unique_pairs = (n: number): List<List<number>> =>
   flatmap(i => map(j => list(i, j),
                           enumerate_interval(1, i - 1)),
                  enumerate_interval(1, n));
 
-const unique_triples = (n) =>
+const unique_triples = (n: number): List<List<number>> =>
   flatmap(i => map(jk => pair(i, jk),
                           unique_pairs(i - 1)),
                  enumerate_interval(1, n));
 
-const triples_with_sum = (n, s) =>
+const triples_with_sum = (n: number, s: number): List<List<number>> =>
   filter(t => head(t) + head(tail(t)) + head(tail(tail(t))) === s,
                 unique_triples(n));
 
@@ -1012,14 +1038,15 @@ export const exercise_2_42: ExerciseSpec = {
 
 ${queensDefinition}
 // Your representation of a set of board positions.
+type Positions = unknown;  // your answer
 const empty_board = undefined;
 
-const adjoin_position = (row, col, positions) => {
+const adjoin_position = (row: number, col: number, positions: Positions): Positions => {
   // your answer
 };
 
 // Is the queen in column k safe from the others?
-const is_safe = (k, positions) => {
+const is_safe = (k: number, positions: Positions): boolean => {
   // your answer
 };
 
@@ -1035,14 +1062,16 @@ length(queens(6));
   budget: 2_000_000,
   solution: `${queensDefinition}
 // A set of positions is the list of rows, newest column first.
+type Positions = List<number>;
+
 const empty_board = null;
 
-const adjoin_position = (row, col, positions) =>
+const adjoin_position = (row: number, col: number, positions: Positions): Positions =>
   pair(row, positions);
 
-const is_safe = (k, positions) => {
+const is_safe = (k: number, positions: Positions): boolean => {
   const new_row = head(positions);
-  const safe_from = (rest, distance) =>
+  const safe_from = (rest: Positions, distance: number): boolean =>
     is_null(rest)
       ? true
       : head(rest) !== new_row &&
@@ -1055,18 +1084,19 @@ length(queens(6));
 `,
 };
 
-const louisQueens = louisQueensDefinition.replace('function louis_queens(', 'function queens(');
+const louisQueens = louisQueensDefinition.replace('const louis_queens = (', 'const queens = (');
+if (louisQueens === louisQueensDefinition) throw new Error('Exercise 2.43: could not rename louis_queens');
 
 export const exercise_2_43: ExerciseSpec = {
   id: '2.43',
   prelude: queensBoardDefinitions,
-  starter: `// enumerate_interval, flatmap, empty_board, adjoin_position and is_safe
-// are provided, as in Exercise 2.42.
+  starter: `// The type Positions, enumerate_interval, flatmap, empty_board,
+// adjoin_position and is_safe are provided, as in Exercise 2.42.
 
 // Louis's queens: fix it.
 ${louisQueens}
 // How many times does Louis's version apply queen_cols on an n × n board?
-const louis_calls = (n) => {
+const louis_calls = (n: number): number => {
   // your answer
 };
 
@@ -1086,7 +1116,7 @@ length(queens(4));
   solution: `${queensDefinition}
 // queen_cols(k) applies queen_cols(k - 1) once for each of the n rows,
 // so queen_cols(k) is applied n^(n - k) times: 1 + n + ... + n^n in all.
-const louis_calls = (n) =>
+const louis_calls = (n: number): number =>
   (math_pow(n, n + 1) - 1) / (n - 1);
 
 // The original tries 15 720 positions on the 8 × 8 board; Louis's tries the
