@@ -727,10 +727,8 @@ const real_query_frames = query_frames;
 const variantPostlude = (replacement: string, ...replaced: string[]): string => `${queryTable}
 ${replacement}
 ${omit(queryEvaluator, ...replaced, 'get_stream')}
-const get_stream = (key1: string, key2: string): Stream<Pattern> => {
-    const s = real_get(key1, key2);
-    return is_undefined(s) ? null : s;
-};
+const get_stream = (key1: string, key2: string): Stream<Pattern> =>
+    real_get(key1, key2) ?? null;
 ${omit(queryDriver, 'query', 'assert_all', 'display_answers')}`;
 
 /** `apply_a_rule` that gives up, with an error, after a fixed number of rule applications. */

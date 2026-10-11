@@ -252,10 +252,8 @@ export const queryDataBase = `const fetch_assertions = (pattern: Pattern, frame:
 const get_indexed_assertions = (pattern: Pattern): Stream<Pattern> =>
     get_stream(index_key_of(pattern), "assertion-stream");
 
-const get_stream = (key1: string, key2: string): Stream<Pattern> => {
-    const s = get(key1, key2);
-    return is_undefined(s) ? null : s;
-};
+const get_stream = (key1: string, key2: string): Stream<Pattern> =>
+    get(key1, key2) ?? null;
 
 const fetch_rules = (pattern: Pattern, frame: QueryFrame): Stream<Rule> =>
     get_indexed_rules(pattern);
