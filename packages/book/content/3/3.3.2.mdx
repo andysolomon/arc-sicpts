@@ -11,18 +11,16 @@ An ordinary list could hold the items, front first, but inserting would then mea
 </Prose>
 
 ```js
-function front_ptr(queue) {
-  return head(queue);
-}
-function rear_ptr(queue) {
-  return tail(queue);
-}
-function set_front_ptr(queue, item) {
+const front_ptr = (queue) =>
+  head(queue);
+const rear_ptr = (queue) =>
+  tail(queue);
+const set_front_ptr = (queue, item) => {
   set_head(queue, item);
-}
-function set_rear_ptr(queue, item) {
+};
+const set_rear_ptr = (queue, item) => {
   set_tail(queue, item);
-}
+};
 ```
 
 <Prose>

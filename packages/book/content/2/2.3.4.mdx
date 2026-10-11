@@ -97,12 +97,11 @@ Use the `decode` function to decode the message, and give the result.
 The `encode` function takes a message and a tree and produces the list of bits that encodes the message.
 
 ```js
-function encode(message, tree) {
-  return is_null(message)
+const encode = (message, tree) =>
+  is_null(message)
     ? null
     : append(encode_symbol(head(message), tree),
              encode(tail(message), tree));
-}
 ```
 
 Write `encode_symbol`, which returns the list of bits that encodes a given symbol according to a given tree. It should signal an error if the symbol is not in the tree at all. Test it by encoding the result of exercise 2.67 with the sample tree and checking that you get the original sample message.
@@ -118,9 +117,8 @@ Write `encode_symbol`, which returns the list of bits that encodes a given symbo
 The following function takes a list of symbol-frequency pairs, where no symbol appears in more than one pair, and generates a Huffman encoding tree according to the Huffman algorithm.
 
 ```js
-function generate_huffman_tree(pairs) {
-  return successive_merge(make_leaf_set(pairs));
-}
+const generate_huffman_tree = (pairs) =>
+  successive_merge(make_leaf_set(pairs));
 ```
 
 `make_leaf_set` is given above. Write `successive_merge`, using `make_code_tree` to merge the smallest-weight elements of the set until only one element is left, which is the desired Huffman tree. (This function is slightly tricky, but not complicated. If you find yourself designing a complex function, you are almost certainly doing something wrong. You can take significant advantage of the ordered set representation.)

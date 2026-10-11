@@ -39,26 +39,26 @@ const y_pointer = "p3";
 };
 
 /** Runs a machine of exercise 5.20 on a tree, with statistics from a fresh stack. */
-const countLeavesChecks = `function check_count_leaves(machine, tree) {
+const countLeavesChecks = `const check_count_leaves = (machine, tree) => {
     set_register_contents(machine, "tree", tree);
     machine("stack")("initialize");
     start(machine);
     return get_register_contents(machine, "val");
-}
+};
 
-function check_pushes(machine, tree) {
+const check_pushes = (machine, tree) => {
     check_count_leaves(machine, tree);
     return head(machine("stack")("statistics"));
-}
+};
 
-function check_only_operations(machine, allowed) {
+const check_only_operations = (machine, allowed) => {
     const builtin = list("initialize_stack", "print_stack_statistics");
     return accumulate((op, ok) => ok &&
                                   (! is_null(member(head(op), allowed)) ||
                                    ! is_null(member(head(op), builtin))),
                       true,
                       machine("operations"));
-}`;
+};`;
 
 const countLeavesOperations = `list(list("is_null", is_null),
              list("is_pair", is_pair),
@@ -198,20 +198,20 @@ const count_leaves_iter_machine =
 };
 
 /** Runs a machine of exercise 5.21 on x and y, and the checks of identity the exercise needs. */
-const appendChecks = `function check_run(machine, x, y) {
+const appendChecks = `const check_run = (machine, x, y) => {
     set_register_contents(machine, "x", x);
     set_register_contents(machine, "y", y);
     machine("stack")("initialize");
     start(machine);
     return get_register_contents(machine, "val");
-}
+};
 
-function check_pushes(machine, x, y) {
+const check_pushes = (machine, x, y) => {
     check_run(machine, x, y);
     return head(machine("stack")("statistics"));
-}
+};
 
-function check_append_copies(machine) {
+const check_append_copies = (machine) => {
     const x = list(1, 2);
     const y = list(3, 4);
     const result = check_run(machine, x, y);
@@ -220,25 +220,25 @@ function check_append_copies(machine) {
            result !== x &&
            tail(result) !== tail(x) &&
            tail(tail(result)) === y;
-}
+};
 
-function check_append_splices(machine) {
+const check_append_splices = (machine) => {
     const x = list(1, 2);
     const y = list(3, 4);
     const result = check_run(machine, x, y);
     return result === x &&
            equal(x, list(1, 2, 3, 4)) &&
            tail(tail(x)) === y;
-}
+};
 
-function check_only_operations(machine, allowed) {
+const check_only_operations = (machine, allowed) => {
     const builtin = list("initialize_stack", "print_stack_statistics");
     return accumulate((op, ok) => ok &&
                                   (! is_null(member(head(op), allowed)) ||
                                    ! is_null(member(head(op), builtin))),
                       true,
                       machine("operations"));
-}`;
+};`;
 
 const listOperations = 'list("is_null", "is_pair", "pair", "head", "tail", "set_head", "set_tail")';
 

@@ -28,13 +28,13 @@ export const exercise_3_50: ExerciseSpec = {
 ${integersStartingFromDefinition}`,
   starter: `// memo and integers_starting_from are provided.
 
-function stream_map_2(f, s1, s2) {
+const stream_map_2 = (f, s1, s2) => {
   // your answer
-}
+};
 
-function stream_map_2_optimized(f, s1, s2) {
+const stream_map_2_optimized = (f, s1, s2) => {
   // your answer: like stream_map_2, with a memoized tail
-}
+};
 `,
   tests: [
     {
@@ -66,19 +66,17 @@ n`,
       expected: 6,
     },
   ],
-  solution: `function stream_map_2(f, s1, s2) {
-  return is_null(s1) || is_null(s2)
+  solution: `const stream_map_2 = (f, s1, s2) =>
+  is_null(s1) || is_null(s2)
     ? null
     : pair(f(head(s1), head(s2)),
            () => stream_map_2(f, stream_tail(s1), stream_tail(s2)));
-}
 
-function stream_map_2_optimized(f, s1, s2) {
-  return is_null(s1) || is_null(s2)
+const stream_map_2_optimized = (f, s1, s2) =>
+  is_null(s1) || is_null(s2)
     ? null
     : pair(f(head(s1), head(s2)),
            memo(() => stream_map_2_optimized(f, stream_tail(s1), stream_tail(s2))));
-}
 `,
 };
 
@@ -127,21 +125,18 @@ export const exercise_3_52: ExerciseSpec = {
   prelude: `${streamMemoDefinition}
 ${streamMapOptimizedDefinition}
 ${streamEnumerateIntervalDefinition}
-function stream_filter_optimized(pred, s) {
-  return is_null(s)
+const stream_filter_optimized = (pred, s) =>
+  is_null(s)
     ? null
     : pred(head(s))
     ? pair(head(s), memo(() => stream_filter_optimized(pred, stream_tail(s))))
     : stream_filter_optimized(pred, stream_tail(s));
-}
 
-function is_even(n) {
-  return n % 2 === 0;
-}
+const is_even = (n) =>
+  n % 2 === 0;
 
-function display_stream(s) {
-  return stream_for_each(display, s);
-}
+const display_stream = (s) =>
+  stream_for_each(display, s);
 `,
   starter: `// The statements:
 //
@@ -199,9 +194,9 @@ const s = pair(1, () => add_streams(s, s));
 
 // Without running anything: the element of s at position n (counting from 0),
 // as a formula in n.
-function element_of_s(n) {
+const element_of_s = (n) => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'position 0', kind: 'value', expr: 'element_of_s(0)', expected: 1 },
@@ -212,9 +207,8 @@ function element_of_s(n) {
   solution: `const s = pair(1, () => add_streams(s, s));
 
 // Each element is the previous one added to itself: the powers of 2.
-function element_of_s(n) {
-  return math_pow(2, n);
-}
+const element_of_s = (n) =>
+  math_pow(2, n);
 `,
 };
 
@@ -223,9 +217,9 @@ export const exercise_3_54: ExerciseSpec = {
   prelude: implicitPrelude,
   starter: `// stream_map_2, add_streams and integers are provided.
 
-function mul_streams(s1, s2) {
+const mul_streams = (s1, s2) => {
   // your answer
-}
+};
 
 // Replace the two nulls: element n should be (n + 1)!
 const factorials = pair(1, () => mul_streams(null, null));
@@ -236,9 +230,8 @@ const factorials = pair(1, () => mul_streams(null, null));
     { name: 'element 1 is 2! = 2', kind: 'value', expr: 'stream_ref(factorials, 1)', expected: 2 },
     { name: 'element 5 is 6! = 720', kind: 'value', expr: 'stream_ref(factorials, 5)', expected: 720 },
   ],
-  solution: `function mul_streams(s1, s2) {
-  return stream_map_2((x1, x2) => x1 * x2, s1, s2);
-}
+  solution: `const mul_streams = (s1, s2) =>
+  stream_map_2((x1, x2) => x1 * x2, s1, s2);
 
 const factorials = pair(1, () => mul_streams(factorials, stream_tail(integers)));
 `,
@@ -249,9 +242,9 @@ export const exercise_3_55: ExerciseSpec = {
   prelude: implicitPrelude,
   starter: `// add_streams, scale_stream, ones and integers are provided.
 
-function partial_sums(s) {
+const partial_sums = (s) => {
   // your answer
-}
+};
 `,
   tests: [
     {
@@ -268,10 +261,9 @@ function partial_sums(s) {
       expected: true,
     },
   ],
-  solution: `function partial_sums(s) {
-  return pair(head(s),
+  solution: `const partial_sums = (s) =>
+  pair(head(s),
               () => add_streams(stream_tail(s), partial_sums(s)));
-}
 `,
 };
 
@@ -308,14 +300,14 @@ export const exercise_3_57: ExerciseSpec = {
 // in add_streams, but the answers should not build any streams.
 
 // With add_streams on stream_map_2_optimized and fibs declared with memo:
-function additions_memoized(n) {
+const additions_memoized = (n) => {
   // your answer
-}
+};
 
 // With the plain, unmemoized stream_map_2 and fibs of section 3.5.2:
-function additions_unmemoized(n) {
+const additions_unmemoized = (n) => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'memoized, n = 1', kind: 'value', expr: 'additions_memoized(1)', expected: 0 },
@@ -327,26 +319,23 @@ function additions_unmemoized(n) {
     { name: 'unmemoized, n = 10', kind: 'value', expr: 'additions_unmemoized(10)', expected: 221 },
     { name: 'unmemoized, n = 16', kind: 'value', expr: 'additions_unmemoized(16)', expected: 4163 },
   ],
-  solution: `function additions_memoized(n) {
-  return n <= 1 ? 0 : n - 1;
-}
+  solution: `const additions_memoized = (n) =>
+  n <= 1 ? 0 : n - 1;
 
 // A(n) = A(n - 1) + A(n - 2) + (n - 1), which is fib(n + 3) - n - 2.
-function additions_unmemoized(n) {
-  function fib_iter(a, b, k) {
-    return k === 0 ? a : fib_iter(b, a + b, k - 1);
-  }
+const additions_unmemoized = (n) => {
+  const fib_iter = (a, b, k) =>
+    k === 0 ? a : fib_iter(b, a + b, k - 1);
   return fib_iter(0, 1, n + 3) - n - 2;
-}
+};
 `,
 };
 
 export const exercise_3_58: ExerciseSpec = {
   id: '3.58',
-  starter: `function expand(num, den, radix) {
-  return pair(math_trunc((num * radix) / den),
+  starter: `const expand = (num, den, radix) =>
+  pair(math_trunc((num * radix) / den),
               () => expand((num * radix) % den, den, radix));
-}
 
 // The first eight elements of each stream:
 const expand_1_7 = list();
@@ -356,10 +345,9 @@ const expand_3_8 = list();
     { name: 'expand(1, 7, 10)', kind: 'value', expr: 'equal(expand_1_7, list(1, 4, 2, 8, 5, 7, 1, 4))', expected: true },
     { name: 'expand(3, 8, 10)', kind: 'value', expr: 'equal(expand_3_8, list(3, 7, 5, 0, 0, 0, 0, 0))', expected: true },
   ],
-  solution: `function expand(num, den, radix) {
-  return pair(math_trunc((num * radix) / den),
+  solution: `const expand = (num, den, radix) =>
+  pair(math_trunc((num * radix) / den),
               () => expand((num * radix) % den, den, radix));
-}
 
 // The digits of num / den after the point, in base radix.
 const expand_1_7 = list(1, 4, 2, 8, 5, 7, 1, 4);
@@ -368,9 +356,8 @@ const expand_3_8 = list(3, 7, 5, 0, 0, 0, 0, 0);
 };
 
 /** The series of exercise 3.59 for the exercises after it. */
-const seriesSolution = `function integrate_series(s) {
-  return stream_map_2((a, n) => a / n, s, integers);
-}
+const seriesSolution = `const integrate_series = (s) =>
+  stream_map_2((a, n) => a / n, s, integers);
 
 const exp_series = pair(1, () => integrate_series(exp_series));
 
@@ -378,16 +365,14 @@ const cosine_series = pair(1, () => scale_stream(integrate_series(sine_series), 
 const sine_series = pair(0, () => integrate_series(cosine_series));
 `;
 
-const mulSeriesSolution = `function mul_series(s1, s2) {
-  return pair(head(s1) * head(s2),
+const mulSeriesSolution = `const mul_series = (s1, s2) =>
+  pair(head(s1) * head(s2),
               () => add_streams(scale_stream(stream_tail(s2), head(s1)),
                                 mul_series(stream_tail(s1), s2)));
-}
 `;
 
-const invertSolution = `function invert_unit_series(s) {
-  return pair(1, () => scale_stream(mul_series(stream_tail(s), invert_unit_series(s)), -1));
-}
+const invertSolution = `const invert_unit_series = (s) =>
+  pair(1, () => scale_stream(mul_series(stream_tail(s), invert_unit_series(s)), -1));
 `;
 
 /** Unmemoized series take more steps than the default as the terms go up. */
@@ -400,9 +385,9 @@ export const exercise_3_59: ExerciseSpec = {
   starter: `// stream_map_2, add_streams, scale_stream, ones and integers are provided.
 
 // a. a0, a1 / 2, a2 / 3, ...
-function integrate_series(s) {
+const integrate_series = (s) => {
   // your answer
-}
+};
 
 const exp_series = pair(1, () => integrate_series(exp_series));
 
@@ -434,9 +419,9 @@ ${seriesSolution}`,
   starter: `// add_streams, scale_stream, exp_series, sine_series and cosine_series
 // (exercise 3.59) are provided.
 
-function mul_series(s1, s2) {
+const mul_series = (s1, s2) => {
   // your answer: pair(..., () => add_streams(..., ...))
-}
+};
 `,
   tests: [
     { name: 'sin² x + cos² x: the constant term is 1', kind: 'value', expr: close('stream_ref(add_streams(mul_series(sine_series, sine_series), mul_series(cosine_series, cosine_series)), 0)', 1, 1e-12), expected: true },
@@ -456,9 +441,9 @@ ${mulSeriesSolution}`,
   starter: `// mul_series (exercise 3.60), scale_stream, exp_series and cosine_series
 // are provided.
 
-function invert_unit_series(s) {
+const invert_unit_series = (s) => {
   // your answer
-}
+};
 `,
   tests: [
     { name: '1/eˣ = e⁻ˣ: constant term 1', kind: 'value', expr: 'stream_ref(invert_unit_series(exp_series), 0)', expected: 1 },
@@ -479,9 +464,9 @@ ${invertSolution}`,
   starter: `// mul_series, invert_unit_series, scale_stream and the series of
 // exercise 3.59 are provided.
 
-function div_series(s1, s2) {
+const div_series = (s1, s2) => {
   // your answer
-}
+};
 
 const tangent_series = null; // replace null
 `,
@@ -497,12 +482,12 @@ const tangent_series = null; // replace null
     { name: 'tangent: the coefficient of x³ is 1/3', kind: 'value', expr: close('stream_ref(tangent_series, 3)', 1 / 3, 1e-12), expected: true },
     { name: 'tangent: the coefficient of x⁵ is 2/15', kind: 'value', expr: close('stream_ref(tangent_series, 5)', 2 / 15, 1e-12), expected: true },
   ],
-  solution: `function div_series(s1, s2) {
+  solution: `const div_series = (s1, s2) => {
   const c = head(s2);
   return c === 0
     ? error("div_series: the denominator has a zero constant term")
     : scale_stream(mul_series(s1, invert_unit_series(scale_stream(s2, 1 / c))), 1 / c);
-}
+};
 
 const tangent_series = div_series(sine_series, cosine_series);
 `,

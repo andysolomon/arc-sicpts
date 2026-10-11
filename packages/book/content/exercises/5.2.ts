@@ -36,41 +36,39 @@ const factorialOps = `list(list("=", (a, b) => a === b),
 
 /** Make and run the GCD machine with whatever `make_machine` is in scope. */
 const checkGcd = `
-function check_gcd_machine() {
-    return make_machine(list("a", "b", "t"), ${gcdOps}, ${gcdList});
-}
+const check_gcd_machine = () =>
+    make_machine(list("a", "b", "t"), ${gcdOps}, ${gcdList});
 
-function check_gcd(a, b) {
+const check_gcd = (a, b) => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", a);
     set_register_contents(m, "b", b);
     start(m);
     return get_register_contents(m, "a");
-}
+};
 `;
 
 const checkFib = `
-function check_fib_controller() {
-    return ${fibList};
-}
+const check_fib_controller = () =>
+    ${fibList};
 
-function check_fib(n) {
+const check_fib = (n) => {
     const m = make_machine(list("n", "val", "continue"), ${fibOps},
                            check_fib_controller());
     set_register_contents(m, "n", n);
     start(m);
     return get_register_contents(m, "val");
-}
+};
 `;
 
 const checkFactorial = `
-function check_factorial(n) {
+const check_factorial = (n) => {
     const m = make_machine(list("n", "val", "continue"), ${factorialOps},
                            ${factorialList});
     set_register_contents(m, "n", n);
     start(m);
     return get_register_contents(m, "val");
-}
+};
 `;
 
 const BUDGET = 5_000_000;
@@ -83,18 +81,18 @@ export const exercise_5_7: ExerciseSpec = {
   id: '5.7',
   prelude: simulatorSource,
   context: `
-function check_expt(machine, b, n) {
+const check_expt = (machine, b, n) => {
     set_register_contents(machine, "b", b);
     set_register_contents(machine, "n", n);
     start(machine);
     return get_register_contents(machine, "val");
-}
+};
 
-function check_expt_stack(machine, b, n) {
+const check_expt_stack = (machine, b, n) => {
     machine("stack")("initialize");
     check_expt(machine, b, n);
     machine("stack")("print_statistics");
-}
+};
 `,
   starter: `// The two machines of exercise 5.4, for b to the power n. Each takes
 // b and n in registers b and n and leaves the answer in val.
@@ -194,7 +192,7 @@ export const exercise_5_8: ExerciseSpec = {
   id: '5.8',
   context: `${simulatorWithout(['extract_labels'])}
 ${checkGcd}
-function check_two_labels() {
+const check_two_labels = () => {
     const m = make_machine(list("a"), list(), list(
         go_to(label("second")),
       "first",
@@ -202,7 +200,7 @@ function check_two_labels() {
         assign("a", constant(5))));
     start(m);
     return get_register_contents(m, "a");
-}
+};
 `,
   starter: `// With the simulator as written, what is in register a when control
 // reaches "there"? Work it out, then replace the 0.
@@ -221,8 +219,8 @@ ${simulatorFunctions(['extract_labels'])}
   budget: BUDGET,
   solution: `const a_at_there = 3;
 
-function extract_labels(controller, receive) {
-    return is_null(controller)
+const extract_labels = (controller, receive) =>
+    is_null(controller)
            ? receive(null, null)
            : extract_labels(
                  tail(controller),
@@ -240,7 +238,6 @@ function extract_labels(controller, receive) {
                                            insts),
                                       labels);
                  });
-}
 `,
 };
 
@@ -268,7 +265,7 @@ ${simulatorFunctions(['make_operation_exp_ef'])}
     { name: 'labels can still be assigned to registers', kind: 'value', expr: 'check_factorial(5)', expected: 120 },
   ],
   budget: BUDGET,
-  solution: `function make_operation_exp_ef(exp, machine, labels, operations) {
+  solution: `const make_operation_exp_ef = (exp, machine, labels, operations) => {
     const op = lookup_prim(operation_exp_op(exp), operations);
     const afuns = map(e => is_label_exp(e)
                            ? error(e, "label as an operand -- assemble")
@@ -276,7 +273,7 @@ ${simulatorFunctions(['make_operation_exp_ef'])}
                       operation_exp_operands(exp));
     return () => apply_in_underlying_javascript(
                      op, map(f => f(), afuns));
-}
+};
 `,
 };
 
@@ -297,26 +294,24 @@ export const exercise_5_10: ExerciseSpec = {
   // runs part (a) whatever the reader does to save and restore in part (b).
   prelude: 'const check_lab_make_machine = make_machine;',
   context: `${simulatorWithout(['make_save_ef', 'make_restore_ef'])}
-function check_instructions(controller) {
-    return length(filter(x => !is_string(x), controller));
-}
+const check_instructions = (controller) =>
+    length(filter(x => !is_string(x), controller));
 
-function check_fib_with(make, controller, n) {
+const check_fib_with = (make, controller, n) => {
     const m = make(list("n", "val", "continue"), ${fibOps}, controller);
     set_register_contents(m, "n", n);
     start(m);
     return get_register_contents(m, "val");
-}
+};
 
-function check_fib_short(n) {
-    return check_fib_with(check_lab_make_machine, fib_controller_short, n);
-}
+const check_fib_short = (n) =>
+    check_fib_with(check_lab_make_machine, fib_controller_short, n);
 
-function check_stack_machine(controller) {
+const check_stack_machine = (controller) => {
     const m = make_machine(list("x", "y"), list(), controller);
     start(m);
     return get_register_contents(m, "y");
-}
+};
 ${checkFib}
 `,
   starter: `// (a) The Fibonacci controller of section 5.1.4. Remove one instruction,
@@ -356,16 +351,16 @@ ${simulatorFunctions(['make_save_ef', 'make_restore_ef'])}
   solution: `const fib_controller_short =
     ${fibShort};
 
-function make_save_ef(inst, machine, stack, pc) {
+const make_save_ef = (inst, machine, stack, pc) => {
     const name = stack_inst_reg_name(inst);
     const reg = get_register(machine, name);
     return () => {
                push(stack, pair(name, get_contents(reg)));
                advance_pc(pc);
            };
-}
+};
 
-function make_restore_ef(inst, machine, stack, pc) {
+const make_restore_ef = (inst, machine, stack, pc) => {
     const name = stack_inst_reg_name(inst);
     const reg = get_register(machine, name);
     return () => {
@@ -378,7 +373,7 @@ function make_restore_ef(inst, machine, stack, pc) {
                          head(saved) + " -- restore");
                }
            };
-}
+};
 `,
 };
 
@@ -387,51 +382,44 @@ export const exercise_5_11: ExerciseSpec = {
   context: `${simulatorWithout(['assemble', 'make_new_machine'])}
 ${checkFib}
 ${checkGcd}
-function check_has(x, xs) {
-    return !is_null(xs) && (equal(x, head(xs)) || check_has(x, tail(xs)));
-}
+const check_has = (x, xs) =>
+    !is_null(xs) && (equal(x, head(xs)) || check_has(x, tail(xs)));
 
-function check_same_set(xs, ys) {
-    return length(xs) === length(ys)
+const check_same_set = (xs, ys) =>
+    length(xs) === length(ys)
            && accumulate((x, so_far) => so_far && check_has(x, ys), true, xs)
            && accumulate((y, so_far) => so_far && check_has(y, xs), true, ys);
-}
 
-function check_distinct(xs) {
-    return is_null(xs)
+const check_distinct = (xs) =>
+    is_null(xs)
            ? null
            : pair(head(xs),
                   check_distinct(filter(y => !equal(y, head(xs)), tail(xs))));
-}
 
-function check_type_changes(insts) {
-    return is_null(insts) || is_null(tail(insts))
+const check_type_changes = (insts) =>
+    is_null(insts) || is_null(tail(insts))
            ? 0
            : (head(head(insts)) === head(head(tail(insts))) ? 0 : 1)
              + check_type_changes(tail(insts));
-}
 
-function check_fib_machine() {
-    return make_machine(list("n", "val", "continue"), ${fibOps},
+const check_fib_machine = () =>
+    make_machine(list("n", "val", "continue"), ${fibOps},
                         check_fib_controller());
-}
 
-function check_instructions() {
-    return check_same_set(
+const check_instructions = () =>
+    check_same_set(
                check_fib_machine()("instructions"),
                check_distinct(filter(x => !is_string(x),
                                      check_fib_controller())));
-}
 
-function check_sorted() {
+const check_sorted = () => {
     const insts = check_fib_machine()("instructions");
     return check_type_changes(insts)
            === length(check_distinct(map(head, insts))) - 1;
-}
+};
 
-function check_sources(name, expected) {
-    return check_same_set(check_fib_machine()("sources")(name), expected);
-}
+const check_sources = (name, expected) =>
+    check_same_set(check_fib_machine()("sources")(name), expected);
 `,
   starter: `// Keep in the machine model, and answer these messages with:
 //   "instructions"      every instruction once, grouped by type
@@ -478,8 +466,8 @@ ${simulatorFunctions(['assemble', 'make_new_machine'])}
     { name: 'the Fibonacci machine still runs', kind: 'value', expr: 'check_fib(7)', expected: 13 },
   ],
   budget: BUDGET,
-  solution: `function assemble(controller, machine) {
-    return extract_labels(controller,
+  solution: `const assemble = (controller, machine) =>
+    extract_labels(controller,
                           (insts, labels) => {
                               update_insts(insts, labels, machine);
                               machine("install_data_paths")(
@@ -487,17 +475,15 @@ ${simulatorFunctions(['assemble', 'make_new_machine'])}
                                                  insts)));
                               return insts;
                           });
-}
 
 // The list without repeated elements, in order of first appearance.
-function distinct(xs) {
-    return is_null(xs)
+const distinct = (xs) =>
+    is_null(xs)
            ? null
            : pair(head(xs),
                   distinct(filter(y => !equal(y, head(xs)), tail(xs))));
-}
 
-function data_paths(instructions) {
+const data_paths = (instructions) => {
     const unique = distinct(instructions);
     const types = distinct(map(type, unique));
     const sorted = accumulate(append, null,
@@ -521,9 +507,9 @@ function data_paths(instructions) {
                                              assigns)))),
             distinct(map(assign_reg_name, assigns)));
     return list(sorted, entry_registers, stack_registers, sources);
-}
+};
 
-function make_new_machine() {
+const make_new_machine = () => {
     const pc = make_register("pc");
     const flag = make_register("flag");
     const stack = make_stack();
@@ -534,7 +520,7 @@ function make_new_machine() {
                        list("print_stack_statistics",
                             () => stack("print_statistics")));
     let register_table = list(list("pc", pc), list("flag", flag));
-    function allocate_register(name) {
+    const allocate_register = (name) => {
         if (is_undefined(assoc(name, register_table))) {
             register_table = pair(list(name, make_register(name)),
                                   register_table);
@@ -542,18 +528,18 @@ function make_new_machine() {
             error(name, "multiply defined register");
         }
         return "register allocated";
-    }
-    function lookup_register(name) {
+    };
+    const lookup_register = (name) => {
         const val = assoc(name, register_table);
         return is_undefined(val)
                ? error(name, "unknown register")
                : head(tail(val));
-    }
-    function sources(name) {
+    };
+    const sources = (name) => {
         const entry = assoc(name, list_ref(the_data_paths, 3));
         return is_undefined(entry) ? null : tail(entry);
-    }
-    function execute() {
+    };
+    const execute = () => {
         const insts = get_contents(pc);
         if (is_null(insts)) {
             return "done";
@@ -561,12 +547,12 @@ function make_new_machine() {
             inst_execution_fun(head(insts))();
             return execute();
         }
-    }
-    function dispatch(message) {
-        function start() {
+    };
+    const dispatch = (message) => {
+        const start = () => {
             set_contents(pc, the_instruction_sequence);
             return execute();
-        }
+        };
         return message === "start"
                ? start()
                : message === "install_instruction_sequence"
@@ -592,29 +578,29 @@ function make_new_machine() {
                : message === "sources"
                ? sources
                : error(message, "unknown request -- machine");
-    }
+    };
     return dispatch;
-}
+};
 `,
 };
 
 export const exercise_5_12: ExerciseSpec = {
   id: '5.12',
   context: `${simulatorWithout(['make_machine', 'make_new_machine'])}
-function check_gcd(a, b) {
+const check_gcd = (a, b) => {
     const m = make_machine(${gcdOps}, ${gcdList});
     set_register_contents(m, "a", a);
     set_register_contents(m, "b", b);
     start(m);
     return get_register_contents(m, "a");
-}
+};
 
-function check_factorial(n) {
+const check_factorial = (n) => {
     const m = make_machine(${factorialOps}, ${factorialList});
     set_register_contents(m, "n", n);
     start(m);
     return get_register_contents(m, "val");
-}
+};
 `,
   starter: `// make_machine(ops, controller): the registers are the ones the
 // controller mentions, allocated as the assembler meets them.
@@ -625,15 +611,15 @@ ${simulatorFunctions(['make_machine', 'make_new_machine'])}
     { name: 'the factorial machine, without a list of registers', kind: 'value', expr: 'check_factorial(6)', expected: 720 },
   ],
   budget: BUDGET,
-  solution: `function make_machine(ops, controller) {
+  solution: `const make_machine = (ops, controller) => {
     const machine = make_new_machine();
     machine("install_operations")(ops);
     machine("install_instruction_sequence")
            (assemble(controller, machine));
     return machine;
-}
+};
 
-function make_new_machine() {
+const make_new_machine = () => {
     const pc = make_register("pc");
     const flag = make_register("flag");
     const stack = make_stack();
@@ -643,7 +629,7 @@ function make_new_machine() {
                        list("print_stack_statistics",
                             () => stack("print_statistics")));
     let register_table = list(list("pc", pc), list("flag", flag));
-    function allocate_register(name) {
+    const allocate_register = (name) => {
         if (is_undefined(assoc(name, register_table))) {
             register_table = pair(list(name, make_register(name)),
                                   register_table);
@@ -651,10 +637,10 @@ function make_new_machine() {
             error(name, "multiply defined register");
         }
         return "register allocated";
-    }
+    };
     // A register is allocated the first time it is looked up, which
     // is when the assembler first meets it in the controller.
-    function lookup_register(name) {
+    const lookup_register = (name) => {
         const val = assoc(name, register_table);
         if (is_undefined(val)) {
             allocate_register(name);
@@ -662,8 +648,8 @@ function make_new_machine() {
         } else {
             return head(tail(val));
         }
-    }
-    function execute() {
+    };
+    const execute = () => {
         const insts = get_contents(pc);
         if (is_null(insts)) {
             return "done";
@@ -671,12 +657,12 @@ function make_new_machine() {
             inst_execution_fun(head(insts))();
             return execute();
         }
-    }
-    function dispatch(message) {
-        function start() {
+    };
+    const dispatch = (message) => {
+        const start = () => {
             set_contents(pc, the_instruction_sequence);
             return execute();
-        }
+        };
         return message === "start"
                ? start()
                : message === "install_instruction_sequence"
@@ -692,9 +678,9 @@ function make_new_machine() {
                : message === "operations"
                ? the_ops
                : error(message, "unknown request -- machine");
-    }
+    };
     return dispatch;
-}
+};
 `,
 };
 
@@ -752,13 +738,11 @@ export const exercise_5_13: ExerciseSpec = {
   id: '5.13',
   starter: `${readingFactorial}
 // From the statistics, formulas in n for n > 1.
-function factorial_pushes(n) {
-    return 0;
-}
+const factorial_pushes = (n) =>
+    0;
 
-function factorial_depth(n) {
-    return 0;
-}
+const factorial_depth = (n) =>
+    0;
 `,
   tests: [
     { name: 'total pushes for 2', kind: 'value', expr: 'factorial_pushes(2)', expected: 2 },
@@ -769,18 +753,16 @@ function factorial_depth(n) {
     { name: 'maximum depth for 50', kind: 'value', expr: 'factorial_depth(50)', expected: 98 },
   ],
   solution: `${readingFactorial}
-function factorial_pushes(n) {
-    return 2 * (n - 1);
-}
+const factorial_pushes = (n) =>
+    2 * (n - 1);
 
-function factorial_depth(n) {
-    return 2 * (n - 1);
-}
+const factorial_depth = (n) =>
+    2 * (n - 1);
 `,
 };
 
 /** The basic machine with instruction counting (5.14) and tracing (5.15). */
-const countingTracingMachine = `function make_new_machine() {
+const countingTracingMachine = `const make_new_machine = () => {
     const pc = make_register("pc");
     const flag = make_register("flag");
     const stack = make_stack();
@@ -792,7 +774,7 @@ const countingTracingMachine = `function make_new_machine() {
                        list("print_stack_statistics",
                             () => stack("print_statistics")));
     let register_table = list(list("pc", pc), list("flag", flag));
-    function allocate_register(name) {
+    const allocate_register = (name) => {
         if (is_undefined(assoc(name, register_table))) {
             register_table = pair(list(name, make_register(name)),
                                   register_table);
@@ -800,14 +782,14 @@ const countingTracingMachine = `function make_new_machine() {
             error(name, "multiply defined register");
         }
         return "register allocated";
-    }
-    function lookup_register(name) {
+    };
+    const lookup_register = (name) => {
         const val = assoc(name, register_table);
         return is_undefined(val)
                ? error(name, "unknown register")
                : head(tail(val));
-    }
-    function execute() {
+    };
+    const execute = () => {
         const insts = get_contents(pc);
         if (is_null(insts)) {
             return "done";
@@ -820,21 +802,21 @@ const countingTracingMachine = `function make_new_machine() {
             inst_execution_fun(inst)();
             return execute();
         }
-    }
-    function read_instruction_count() {
+    };
+    const read_instruction_count = () => {
         const count = instruction_count;
         instruction_count = 0;
         return count;
-    }
-    function trace(on) {
+    };
+    const trace = (on) => {
         tracing = on;
         return "done";
-    }
-    function dispatch(message) {
-        function start() {
+    };
+    const dispatch = (message) => {
+        const start = () => {
             set_contents(pc, the_instruction_sequence);
             return execute();
-        }
+        };
         return message === "start"
                ? start()
                : message === "install_instruction_sequence"
@@ -856,24 +838,24 @@ const countingTracingMachine = `function make_new_machine() {
                : message === "trace_off"
                ? trace(false)
                : error(message, "unknown request -- machine");
-    }
+    };
     return dispatch;
-}
+};
 `;
 
 export const exercise_5_14: ExerciseSpec = {
   id: '5.14',
   context: `${simulatorWithout(['make_new_machine'])}
 ${checkGcd}
-function check_count_gcd(a, b) {
+const check_count_gcd = (a, b) => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", a);
     set_register_contents(m, "b", b);
     start(m);
     return m("instruction_count");
-}
+};
 
-function check_count_reset() {
+const check_count_reset = () => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
@@ -884,15 +866,15 @@ function check_count_reset() {
     set_register_contents(m, "b", 40);
     start(m);
     return list(first, after_reading, m("instruction_count"));
-}
+};
 
-function check_count_factorial(n) {
+const check_count_factorial = (n) => {
     const m = make_machine(list("n", "val", "continue"), ${factorialOps},
                            ${factorialList});
     set_register_contents(m, "n", n);
     start(m);
     return m("instruction_count");
-}
+};
 `,
   starter: `// Count the instructions the machine executes. The message
 // "instruction_count" returns the count and resets it to zero.
@@ -914,10 +896,10 @@ ${simulatorFunctions(['make_new_machine'])}
       '',
     )
     .replace(
-      `    function trace(on) {
+      `    const trace = (on) => {
         tracing = on;
         return "done";
-    }
+    };
 `,
       '',
     )
@@ -935,16 +917,16 @@ export const exercise_5_15: ExerciseSpec = {
   id: '5.15',
   context: `${simulatorWithout(['make_new_machine'])}
 ${checkGcd}
-function check_traced_gcd(a, b, on) {
+const check_traced_gcd = (a, b, on) => {
     const m = check_gcd_machine();
     m(on ? "trace_on" : "trace_off");
     set_register_contents(m, "a", a);
     set_register_contents(m, "b", b);
     start(m);
     return get_register_contents(m, "a");
-}
+};
 
-function check_trace_on_then_off() {
+const check_trace_on_then_off = () => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
@@ -954,7 +936,7 @@ function check_trace_on_then_off() {
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
     start(m);
-}
+};
 `,
   starter: `// Before each instruction is executed, display it, when tracing is on.
 // The messages "trace_on" and "trace_off" turn tracing on and off.
@@ -977,11 +959,11 @@ ${simulatorFunctions(['make_new_machine'])}
     .replace('    let instruction_count = 0;\n', '')
     .replace('            instruction_count = instruction_count + 1;\n', '')
     .replace(
-      `    function read_instruction_count() {
+      `    const read_instruction_count = () => {
         const count = instruction_count;
         instruction_count = 0;
         return count;
-    }
+    };
 `,
       '',
     )
@@ -999,16 +981,16 @@ export const exercise_5_16: ExerciseSpec = {
   id: '5.16',
   context: `${simulatorWithout([...instructionFunctions, 'make_new_machine'])}
 ${checkGcd}
-function check_traced_gcd() {
+const check_traced_gcd = () => {
     const m = check_gcd_machine();
     m("trace_on");
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
     start(m);
     return m("instruction_count");
-}
+};
 
-function check_two_labels() {
+const check_two_labels = () => {
     const m = make_machine(list("a"), list(), list(
         go_to(label("first")),
       "first",
@@ -1016,7 +998,7 @@ function check_two_labels() {
         assign("a", constant(1))));
     m("trace_on");
     start(m);
-}
+};
 `,
   starter: `// The machine of exercises 5.14 and 5.15, which counts and traces.
 // When tracing, print the labels just before an instruction ahead of it,
@@ -1051,8 +1033,8 @@ ${simulatorFunctions(instructionFunctions)}
                 display(inst_controller_instruction(inst));`,
   ) +
     `
-function extract_labels(controller, receive) {
-    return is_null(controller)
+const extract_labels = (controller, receive) =>
+    is_null(controller)
            ? receive(null, null)
            : extract_labels(
                  tail(controller),
@@ -1072,33 +1054,28 @@ function extract_labels(controller, receive) {
                                         labels);
                      }
                  });
-}
 
 // An instruction is now a controller instruction, the labels just
 // before it, and its execution function.
-function make_inst(inst_controller_instruction) {
-    return pair(inst_controller_instruction, pair(null, null));
-}
+const make_inst = (inst_controller_instruction) =>
+    pair(inst_controller_instruction, pair(null, null));
 
-function inst_controller_instruction(inst) {
-    return head(inst);
-}
+const inst_controller_instruction = (inst) =>
+    head(inst);
 
-function inst_labels(inst) {
-    return head(tail(inst));
-}
+const inst_labels = (inst) =>
+    head(tail(inst));
 
-function add_inst_label(inst, label_name) {
+const add_inst_label = (inst, label_name) => {
     set_head(tail(inst), pair(label_name, inst_labels(inst)));
-}
+};
 
-function inst_execution_fun(inst) {
-    return tail(tail(inst));
-}
+const inst_execution_fun = (inst) =>
+    tail(tail(inst));
 
-function set_inst_execution_fun(inst, fun) {
+const set_inst_execution_fun = (inst, fun) => {
     set_tail(tail(inst), fun);
-}
+};
 `,
 };
 
@@ -1106,15 +1083,15 @@ export const exercise_5_17: ExerciseSpec = {
   id: '5.17',
   context: `${simulatorWithout(['make_register', 'make_new_machine'])}
 ${checkGcd}
-function check_traced_register(name) {
+const check_traced_register = (name) => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
     m("trace_register_on")(name);
     start(m);
-}
+};
 
-function check_trace_on_then_off() {
+const check_trace_on_then_off = () => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
@@ -1124,7 +1101,7 @@ function check_trace_on_then_off() {
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
     start(m);
-}
+};
 `,
   starter: `// A traced register displays, on one line, its name, its old contents
 // and its new contents whenever it is assigned. Registers accept
@@ -1153,22 +1130,22 @@ ${simulatorFunctions(['make_register', 'make_new_machine'])}
     { name: 'the GCD machine still computes', kind: 'value', expr: 'check_gcd(206, 40)', expected: 2 },
   ],
   budget: BUDGET,
-  solution: `function make_register(name) {
+  solution: `const make_register = (name) => {
     let contents = "*unassigned*";
     let tracing = false;
-    function set(value) {
+    const set = (value) => {
         if (tracing) {
             display(name + ": " + stringify(contents) +
                     " -> " + stringify(value));
         } else {}
         contents = value;
-    }
-    function trace(on) {
+    };
+    const trace = (on) => {
         tracing = on;
         return "done";
-    }
-    function dispatch(message) {
-        return message === "get"
+    };
+    const dispatch = (message) =>
+        message === "get"
                ? contents
                : message === "set"
                ? set
@@ -1177,9 +1154,8 @@ ${simulatorFunctions(['make_register', 'make_new_machine'])}
                : message === "trace_off"
                ? trace(false)
                : error(message, "unknown request -- make_register");
-    }
     return dispatch;
-}
+};
 ${simulatorFunctions(['make_new_machine']).replace(
   `               : message === "operations"
                ? the_ops
@@ -1199,47 +1175,45 @@ export const exercise_5_18: ExerciseSpec = {
   id: '5.18',
   context: `${simulatorWithout(['assemble', 'make_new_machine'])}
 ${checkGcd}
-function check_gcd_registers(m) {
-    return list(get_register_contents(m, "a"),
+const check_gcd_registers = (m) =>
+    list(get_register_contents(m, "a"),
                 get_register_contents(m, "b"),
                 get_register_contents(m, "t"));
-}
 
-function check_started(a, b) {
+const check_started = (a, b) => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", a);
     set_register_contents(m, "b", b);
     set_breakpoint(m, "test_b", 4);
     start(m);
     return m;
-}
+};
 
-function check_at_breakpoint() {
-    return check_gcd_registers(check_started(206, 40));
-}
+const check_at_breakpoint = () =>
+    check_gcd_registers(check_started(206, 40));
 
-function check_proceed() {
+const check_proceed = () => {
     const m = check_started(206, 40);
     proceed_machine(m);
     return check_gcd_registers(m);
-}
+};
 
-function check_cancel() {
+const check_cancel = () => {
     const m = check_started(206, 40);
     cancel_breakpoint(m, "test_b", 4);
     proceed_machine(m);
     return get_register_contents(m, "a");
-}
+};
 
-function check_cancel_all() {
+const check_cancel_all = () => {
     const m = check_started(206, 40);
     set_breakpoint(m, "test_b", 1);
     cancel_all_breakpoints(m);
     proceed_machine(m);
     return get_register_contents(m, "a");
-}
+};
 
-function check_change_state() {
+const check_change_state = () => {
     const m = check_gcd_machine();
     set_register_contents(m, "a", 206);
     set_register_contents(m, "b", 40);
@@ -1250,27 +1224,27 @@ function check_change_state() {
     cancel_all_breakpoints(m);
     proceed_machine(m);
     return get_register_contents(m, "a");
-}
+};
 `,
   starter: `// set_breakpoint(machine, label, n) stops the machine just before the
 // nth instruction after label, printing the label and n.
 ${simulatorFunctions(['assemble', 'make_new_machine'])}
 
-function set_breakpoint(machine, label, n) {
+const set_breakpoint = (machine, label, n) => {
     // your answer
-}
+};
 
-function proceed_machine(machine) {
+const proceed_machine = (machine) => {
     // your answer
-}
+};
 
-function cancel_breakpoint(machine, label, n) {
+const cancel_breakpoint = (machine, label, n) => {
     // your answer
-}
+};
 
-function cancel_all_breakpoints(machine) {
+const cancel_all_breakpoints = (machine) => {
     // your answer
-}
+};
 `,
   tests: [
     { name: 'stops before the assignment to a', kind: 'value', expr: 'equal(check_at_breakpoint(), list(206, 40, 6))', expected: true },
@@ -1282,16 +1256,15 @@ function cancel_all_breakpoints(machine) {
     { name: 'without breakpoints the machine runs to the end', kind: 'value', expr: 'check_gcd(206, 40)', expected: 2 },
   ],
   budget: BUDGET,
-  solution: `function assemble(controller, machine) {
-    return extract_labels(controller,
+  solution: `const assemble = (controller, machine) =>
+    extract_labels(controller,
                           (insts, labels) => {
                               update_insts(insts, labels, machine);
                               machine("install_labels")(labels);
                               return insts;
                           });
-}
 
-function make_new_machine() {
+const make_new_machine = () => {
     const pc = make_register("pc");
     const flag = make_register("flag");
     const stack = make_stack();
@@ -1304,7 +1277,7 @@ function make_new_machine() {
                        list("print_stack_statistics",
                             () => stack("print_statistics")));
     let register_table = list(list("pc", pc), list("flag", flag));
-    function allocate_register(name) {
+    const allocate_register = (name) => {
         if (is_undefined(assoc(name, register_table))) {
             register_table = pair(list(name, make_register(name)),
                                   register_table);
@@ -1312,19 +1285,19 @@ function make_new_machine() {
             error(name, "multiply defined register");
         }
         return "register allocated";
-    }
-    function lookup_register(name) {
+    };
+    const lookup_register = (name) => {
         const val = assoc(name, register_table);
         return is_undefined(val)
                ? error(name, "unknown register")
                : head(tail(val));
-    }
-    function breakpoint_at(inst) {
+    };
+    const breakpoint_at = (inst) => {
         const found = filter(b => head(b) === inst, breakpoints);
         return is_null(found) ? null : head(found);
-    }
+    };
     // When resuming, the instruction at the breakpoint runs first.
-    function execute(resuming) {
+    const execute = (resuming) => {
         const insts = get_contents(pc);
         if (is_null(insts)) {
             return "done";
@@ -1340,27 +1313,27 @@ function make_new_machine() {
                 return execute(false);
             }
         }
-    }
-    function set_breakpoint(label_name, n) {
+    };
+    const set_breakpoint = (label_name, n) => {
         const inst = list_ref(lookup_label(the_labels, label_name), n - 1);
         breakpoints = pair(list(inst, label_name, n), breakpoints);
         return "done";
-    }
-    function cancel_breakpoint(label_name, n) {
+    };
+    const cancel_breakpoint = (label_name, n) => {
         breakpoints = filter(b => !(list_ref(b, 1) === label_name &&
                                     list_ref(b, 2) === n),
                              breakpoints);
         return "done";
-    }
-    function cancel_all_breakpoints() {
+    };
+    const cancel_all_breakpoints = () => {
         breakpoints = null;
         return "done";
-    }
-    function dispatch(message) {
-        function start() {
+    };
+    const dispatch = (message) => {
+        const start = () => {
             set_contents(pc, the_instruction_sequence);
             return execute(false);
-        }
+        };
         return message === "start"
                ? start()
                : message === "install_instruction_sequence"
@@ -1386,24 +1359,20 @@ function make_new_machine() {
                : message === "proceed"
                ? execute(true)
                : error(message, "unknown request -- machine");
-    }
+    };
     return dispatch;
-}
+};
 
-function set_breakpoint(machine, label, n) {
-    return machine("set_breakpoint")(label, n);
-}
+const set_breakpoint = (machine, label, n) =>
+    machine("set_breakpoint")(label, n);
 
-function proceed_machine(machine) {
-    return machine("proceed");
-}
+const proceed_machine = (machine) =>
+    machine("proceed");
 
-function cancel_breakpoint(machine, label, n) {
-    return machine("cancel_breakpoint")(label, n);
-}
+const cancel_breakpoint = (machine, label, n) =>
+    machine("cancel_breakpoint")(label, n);
 
-function cancel_all_breakpoints(machine) {
-    return machine("cancel_all_breakpoints");
-}
+const cancel_all_breakpoints = (machine) =>
+    machine("cancel_all_breakpoints");
 `,
 };

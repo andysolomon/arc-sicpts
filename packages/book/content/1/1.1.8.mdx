@@ -1,29 +1,25 @@
-export const blockStructure = `function sqrt(x) {
-  function is_good_enough(guess) {
-    return math_abs(guess * guess - x) < 0.001;
-  }
-  function improve(guess) {
-    return (guess + x / guess) / 2;
-  }
-  function sqrt_iter(guess) {
-    return is_good_enough(guess)
+export const blockStructure = `const sqrt = (x) => {
+  const is_good_enough = (guess) =>
+    math_abs(guess * guess - x) < 0.001;
+  const improve = (guess) =>
+    (guess + x / guess) / 2;
+  const sqrt_iter = (guess) =>
+    is_good_enough(guess)
       ? guess
       : sqrt_iter(improve(guess));
-  }
   return sqrt_iter(1);
-}
+};
 
 sqrt(144);
 `;
 
-export const localNames = `function square(x) {
-  return x * x;
-}
+export const localNames = `const square = (x) =>
+  x * x;
 
-function double_square(x) {
+const double_square = (x) => {
   const y = square(x);
   return y + y;
-}
+};
 
 const x = 100;
 display(double_square(3));

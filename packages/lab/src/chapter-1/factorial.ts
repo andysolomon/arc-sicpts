@@ -4,17 +4,15 @@
  * `processes.test.ts` asserts the claims the section makes about it.
  */
 
-export const factorialDefinitions = `function factorial(n) {
-  return n === 1
+export const factorialDefinitions = `const factorial = (n) =>
+  n === 1
     ? 1
     : n * factorial(n - 1);
-}
 
-function fact_iter(product, counter, max) {
-  return counter > max
+const fact_iter = (product, counter, max) =>
+  counter > max
     ? product
     : fact_iter(counter * product, counter + 1, max);
-}
 `;
 
 export const factorialProgram = `${factorialDefinitions}

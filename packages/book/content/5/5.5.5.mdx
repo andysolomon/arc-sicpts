@@ -6,11 +6,10 @@ Now that we have seen all the elements of the compiler, let us examine an exampl
 
 ```js
 compile(parse(`
-function factorial(n) {
-    return n === 1
+const factorial = (n) =>
+    n === 1
            ? 1
            : factorial(n - 1) * n;
-}
               `),
         "val",
         "next");
@@ -245,11 +244,10 @@ Both editors' programs are compiled in the Laboratory's worker by the Source com
 Consider the following declaration of a factorial function, which is slightly different from the one given above:
 
 ```js
-function factorial_alt(n) {
-    return n === 1
+const factorial_alt = (n) =>
+    n === 1
            ? 1
            : n * factorial_alt(n - 1);
-}
 ```
 
 Compile this function (the second editor above does) and compare the resulting code with that produced for `factorial`. Explain any differences you find. Does either program execute more efficiently than the other? Record your findings: `factorial_saves` and `factorial_alt_saves` name the register that each function's code saves on the stack, in addition to `continue` and `fun`, while it computes the recursive call; `more_efficient` is `"factorial"`, `"factorial_alt"` or `"neither"`.
@@ -265,14 +263,13 @@ Compile this function (the second editor above does) and compare the resulting c
 Compile the iterative factorial function
 
 ```js
-function factorial(n) {
-    function iter(product, counter) {
-        return counter > n
+const factorial = (n) => {
+    const iter = (product, counter) =>
+        counter > n
                ? product
                : iter(product * counter, counter + 1);
-    }
     return iter(1, 1);
-}
+};
 ```
 
 and annotate the resulting code, showing the essential difference between the code for iterative and recursive versions of `factorial` that makes one process build up stack space and the other run in constant stack space. Then measure it: the exercise's editor has `compile_and_go` (§5.5.7) loaded, which prints the total pushes and the maximum depth for each call it is given. Write `recursive_depth(n)` and `iterative_depth(n)`, the maximum stack depth for computing `factorial(n)` with *n* ≥ 2 by the compiled recursive and iterative versions; the checker compares them with what it measures.
@@ -372,9 +369,8 @@ Write the program as the string `program`. The checker compiles it with target `
 **Solution.** The code declares `f` as a function of `x` whose body is a single return statement (the revert and restore at `entry1`). The returned value is an application of `+`, called with linkage `"return"` at the end. Its last argument is computed first: `+` applied to `2` and `x`, that is `x + 2`, and the result is the single argument of `g`. Then `env` is restored and `x` is looked up and put in front: the first argument of the outer `+` is `x`.
 
 ```js
-function f(x) {
-    return x + g(x + 2);
-}
+const f = (x) =>
+    x + g(x + 2);
 ```
 
 </Solution>

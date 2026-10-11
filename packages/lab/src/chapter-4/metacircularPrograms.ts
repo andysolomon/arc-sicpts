@@ -126,11 +126,11 @@ export const scopeQuestionProgram = `evaluate_program(
 
 /** §4.1.6: the same program, run by the Laboratory's own evaluator. */
 export const scopeQuestionDirectProgram = `const a = 1;
-function f(x) {
+const f = (x) => {
     const b = a + x;
     const a = 5;
     return a + b;
-}
+};
 f(10);
 `;
 

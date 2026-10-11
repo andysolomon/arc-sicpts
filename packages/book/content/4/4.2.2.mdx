@@ -23,9 +23,8 @@ This is almost the same as before. For lazy evaluation, however, `apply` is call
 Whenever we need the actual value of an expression, we use
 
 ```js
-function actual_value(exp, env) {
-    return force_it(evaluate(exp, env));
-}
+const actual_value = (exp, env) =>
+    force_it(evaluate(exp, env));
 ```
 
 instead of just `evaluate`, so that if the expression’s value is a thunk, it will be forced.
@@ -33,7 +32,7 @@ instead of just `evaluate`, so that if the expression’s value is a thunk, it w
 The new `apply` is also almost the same as the version in section 4.1.1. The difference is that `evaluate` has passed in unevaluated argument expressions: for primitive functions, which are strict, we evaluate all the arguments before applying the primitive; for compound functions, which are non-strict, we delay all the arguments before applying the function.
 
 ```js
-function apply(fun, args, env) {
+const apply = (fun, args, env) => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(
                    fun,
@@ -51,28 +50,25 @@ function apply(fun, args, env) {
     } else {
         return error(fun, "unknown function type -- apply");
     }
-}
+};
 ```
 
 The functions that process the arguments are just like `list_of_values` from section 4.1.1, except that `list_of_delayed_args` delays the arguments instead of evaluating them, and `list_of_arg_values` uses `actual_value` instead of `evaluate`:
 
 ```js
-function list_of_arg_values(exps, env) {
-    return map(exp => actual_value(exp, env), exps);
-}
-function list_of_delayed_args(exps, env) {
-    return map(exp => delay_it(exp, env), exps);
-}
+const list_of_arg_values = (exps, env) =>
+    map(exp => actual_value(exp, env), exps);
+const list_of_delayed_args = (exps, env) =>
+    map(exp => delay_it(exp, env), exps);
 ```
 
 The other place we must change the evaluator is in the handling of conditionals, where we must use `actual_value` instead of `evaluate` to get the value of the predicate before testing whether it is true or false:
 
 ```js
-function eval_conditional(component, env) {
-    return is_truthy(actual_value(conditional_predicate(component), env))
+const eval_conditional = (component, env) =>
+    is_truthy(actual_value(conditional_predicate(component), env))
            ? evaluate(conditional_consequent(component), env)
            : evaluate(conditional_alternative(component), env);
-}
 ```
 
 Finally, the driver loop of section 4.1.4 must use `actual_value` instead of `evaluate`, so that if a delayed value is propagated back to it, it is forced before being printed. The prompts change too, to say that this is the lazy evaluator:
@@ -81,7 +77,7 @@ Finally, the driver loop of section 4.1.4 must use `actual_value` instead of `ev
 const input_prompt = "L-evaluate input:";
 const output_prompt = "L-evaluate value:";
 
-function driver_loop(env, inputs) {
+const driver_loop = (env, inputs) => {
     if (is_null(inputs)) {
         display("evaluator terminated");
     } else {
@@ -93,7 +89,7 @@ function driver_loop(env, inputs) {
         user_print(output_prompt, output);
         return driver_loop(program_env, tail(inputs));
     }
-}
+};
 ```
 
 With these changes made, the successful evaluation of `try_me(0, head(null))`, in the second example of section 4.2.1, shows that the interpreter is performing lazy evaluation.
@@ -103,38 +99,33 @@ With these changes made, the successful evaluation of `try_me(0, head(null))`, i
 Our evaluator must arrange to create thunks when functions are applied to arguments, and to force these thunks later. A thunk must package an expression together with an environment, so that the argument can be produced later. To force the thunk, we simply extract the expression and environment and evaluate the one in the other. We use `actual_value` rather than `evaluate`, so that if the value of the expression is itself a thunk, we force that, and so on, until we reach something that is not a thunk:
 
 ```js
-function force_it(obj) {
-    return is_thunk(obj)
+const force_it = (obj) =>
+    is_thunk(obj)
            ? actual_value(thunk_exp(obj), thunk_env(obj))
            : obj;
-}
 ```
 
 One easy way to package an expression with an environment is to make a list containing the expression and the environment. Thus, we create a thunk as follows:
 
 ```js
-function delay_it(exp, env) {
-    return list("thunk", exp, env);
-}
-function is_thunk(obj) {
-    return is_tagged_list(obj, "thunk");
-}
-function thunk_exp(thunk) { return head(tail(thunk)); }
+const delay_it = (exp, env) =>
+    list("thunk", exp, env);
+const is_thunk = (obj) =>
+    is_tagged_list(obj, "thunk");
+const thunk_exp = (thunk) => head(tail(thunk));
 
-function thunk_env(thunk) { return head(tail(tail(thunk))); }
+const thunk_env = (thunk) => head(tail(tail(thunk)));
 ```
 
 What we want for our interpreter is not quite this, but thunks that have been memoized. When a thunk is forced, we turn it into an evaluated thunk, by replacing the stored expression with its value and changing the `thunk` tag so that it can be recognized as already evaluated.
 
 ```js
-function is_evaluated_thunk(obj) {
-    return is_tagged_list(obj, "evaluated_thunk");
-}
-function thunk_value(evaluated_thunk) {
-    return head(tail(evaluated_thunk));
-}
+const is_evaluated_thunk = (obj) =>
+    is_tagged_list(obj, "evaluated_thunk");
+const thunk_value = (evaluated_thunk) =>
+    head(tail(evaluated_thunk));
 
-function force_it(obj) {
+const force_it = (obj) => {
     if (is_thunk(obj)) {
         const result = actual_value(thunk_exp(obj), thunk_env(obj));
         set_head(obj, "evaluated_thunk");
@@ -146,7 +137,7 @@ function force_it(obj) {
     } else {
         return obj;
     }
-}
+};
 ```
 
 Notice that the same `delay_it` function works both with and without memoization. Erasing the environment once the value is known makes no difference to the values the interpreter returns, but it saves space: with no reference left to the environment, its structure can be garbage-collected and its space recycled, as section 5.3 discusses.
@@ -196,10 +187,10 @@ Suppose we type in the following declarations to the lazy evaluator:
 
 ```js
 let count = 0;
-function id(x) {
+const id = (x) => {
     count = count + 1;
     return x;
-}
+};
 const w = id(id(10));
 ```
 
@@ -236,7 +227,7 @@ Exhibit a program that you would expect to run much more slowly without memoizat
 Cy D. Fect, a reformed C programmer, is worried that some side effects may never take place, because the lazy evaluator doesn’t force the statements in a sequence. Since the value of a statement in a sequence may not be used (the statement may be there only for its effect, such as assigning to a variable or printing), there may be no subsequent use of this value that will cause it to be forced. Cy thus thinks that when evaluating sequences, we must force all statements in the sequence. He proposes to modify `eval_sequence` from section 4.1.1 to use `actual_value` rather than `evaluate`:
 
 ```js
-function eval_sequence(stmts, env) {
+const eval_sequence = (stmts, env) => {
     if (is_empty_sequence(stmts)) {
         return undefined;
     } else if (is_last_statement(stmts)) {
@@ -250,7 +241,7 @@ function eval_sequence(stmts, env) {
             return eval_sequence(rest_statements(stmts), env);
         }
     }
-}
+};
 ```
 
 a. Ben Bitdiddle thinks Cy is wrong. He shows Cy the `for_each` function of exercise 2.23, an important example of a sequence with side effects, and claims that the evaluator in the text handles `for_each(display, list(57, 321, 88))` correctly, displaying 57, 321 and 88. Explain why Ben is right.

@@ -7,19 +7,17 @@ With the ideas illustrated so far, we can implement any iterative process by spe
 Implementing recursive processes, however, requires an additional mechanism. Consider the recursive method for computing factorials that we first examined in §1.2.1:
 
 ```js
-function factorial(n) {
-    return n === 1
+const factorial = (n) =>
+    n === 1
            ? 1
            : n * factorial(n - 1);
-}
 ```
 
 As we see from the function, computing *n*! requires computing (*n* − 1)!. Our GCD machine, modeled on the function
 
 ```js
-function gcd(a, b) {
-    return b === 0 ? a : gcd(b, a % b);
-}
+const gcd = (a, b) =>
+    b === 0 ? a : gcd(b, a % b);
 ```
 
 similarly had to compute another GCD. But there is an important difference between `gcd`, which reduces the original computation to a new GCD computation, and `factorial`, which requires computing another factorial as a subproblem. In GCD, the answer to the new GCD computation is the answer to the original problem. To compute the next GCD, we simply place the new arguments in the input registers of the GCD machine and reuse the machine's data paths by executing the same controller sequence. When the machine is finished solving the final GCD problem, it has completed the entire computation.
@@ -53,13 +51,12 @@ Although in principle the factorial computation requires an infinite machine, th
 Let us examine a more complex recursive process, the tree-recursive computation of the Fibonacci numbers, which we introduced in §1.2.2:
 
 ```js
-function fib(n) {
-    return n === 0
+const fib = (n) =>
+    n === 0
            ? 0
            : n === 1
            ? 1
            : fib(n - 1) + fib(n - 2);
-}
 ```
 
 Just as with factorial, we can implement the recursive Fibonacci computation as a register machine with registers `n`, `val` and `continue`. The machine is more complex than the one for factorial, because there are two places in the controller sequence where we need to perform recursive calls: once to compute Fib(*n* − 1) and once to compute Fib(*n* − 2). To set up for each of these calls, we save the registers whose values will be needed later, set the `n` register to the number whose Fib we need to compute recursively (*n* − 1 or *n* − 2), and assign to `continue` the entry point in the main sequence to which to return (`afterfib_n_1` or `afterfib_n_2`, respectively). We then go to `fib_loop`. When we return from the recursive call, the answer is in `val`.
@@ -86,24 +83,22 @@ Specify register machines that implement each of the following functions.
 Recursive exponentiation:
 
 ```js
-function expt(b, n) {
-    return n === 0
+const expt = (b, n) =>
+    n === 0
            ? 1
            : b * expt(b, n - 1);
-}
 ```
 
 Iterative exponentiation:
 
 ```js
-function expt(b, n) {
-    function expt_iter(counter, product) {
-        return counter === 0
+const expt = (b, n) => {
+    const expt_iter = (counter, product) =>
+        counter === 0
                ? product
                : expt_iter(counter - 1, b * product);
-    }
     return expt_iter(n, 1);
-}
+};
 ```
 
 Complete the two machines in the editor. Both take *b* and *n* in registers `b` and `n`; the recursive one leaves *b*ⁿ in `val`, the iterative one in `product`. The checker runs each on a few inputs, checks that the recursive machine's stack grows with *n* (at least *n* deep for *n* = 8) and that the iterative machine never uses the stack. For the data-path diagrams the book asks for, run a machine in an editor above and look at the animation.

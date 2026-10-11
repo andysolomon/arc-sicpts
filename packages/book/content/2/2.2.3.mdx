@@ -25,8 +25,8 @@ Every pair splits the call in two, as in `count_leaves`; the enumeration of the 
 On the surface, that function is very different from this one, which constructs a list of all the even Fibonacci numbers Fib(*k*) with *k* ≤ *n*:
 
 ```js
-function even_fibs(n) {
-  function next(k) {
+const even_fibs = (n) => {
+  const next = (k) => {
     if (k > n) {
       return null;
     } else {
@@ -35,9 +35,9 @@ function even_fibs(n) {
         ? pair(f, next(k + 1))
         : next(k + 1);
     }
-  }
+  };
   return next(0);
-}
+};
 ```
 
 Yet a more abstract description of the two computations reveals a great deal of similarity. The first program
@@ -73,21 +73,19 @@ The signal-flow diagram, one stage at a time: the tree, its five leaves, the thr
 Without the names, the stages nest, and each function reads as its signal-flow plan:
 
 ```js
-function sum_odd_squares(tree) {
-  return accumulate(plus,
+const sum_odd_squares = (tree) =>
+  accumulate(plus,
                     0,
                     map(square,
                         filter(is_odd,
                                enumerate_tree(tree))));
-}
 
-function even_fibs(n) {
-  return accumulate(pair,
+const even_fibs = (n) =>
+  accumulate(pair,
                     null,
                     filter(is_even,
                            map(fib,
                                enumerate_interval(0, n))));
-}
 ```
 
 The value of expressing programs as sequence operations is that it helps us make modular designs, constructed by combining relatively independent pieces. We can encourage modular design by providing a library of standard components together with a conventional interface for connecting them in flexible ways. Modular construction is a powerful strategy for controlling complexity in engineering: signal-processing designers build systems by cascading elements chosen from standard families of filters and transducers. Sequence operations are a library of standard program elements that we can mix and match in the same way.
@@ -105,12 +103,11 @@ Three programs from the same parts. `even_fibs(12)` keeps the even ones among Fi
 Conventional data-processing applications fit the same mould. Given a sequence of personnel records, a selector `salary` and a predicate `is_programmer`, the salary of the highest-paid programmer is
 
 ```js
-function salary_of_highest_paid_programmer(records) {
-  return accumulate(math_max,
+const salary_of_highest_paid_programmer = (records) =>
+  accumulate(math_max,
                     0,
                     map(salary,
                         filter(is_programmer, records)));
-}
 ```
 
 These examples only hint at the range of operations that can be expressed as sequence operations. Sequences, implemented here as lists, are a conventional interface that lets us combine processing modules. And when we represent structures uniformly as sequences, the data-structure dependencies in our programs are confined to a small number of sequence operations. By changing these, we can experiment with other representations of sequences while leaving the design of our programs intact. Section 3.5 does exactly that, to admit infinite sequences.
@@ -235,9 +232,8 @@ list(list(1, 2, 3, 4),
 With this representation, sequence operations express the basic matrix and vector operations concisely: `dot_product(v, w)` returns the sum Σᵢ *vᵢwᵢ*; `matrix_times_vector(m, v)` returns the vector *t* with *tᵢ* = Σⱼ *mᵢⱼvⱼ*; `matrix_times_matrix(m, n)` returns the matrix *p* with *pᵢⱼ* = Σₖ *mᵢₖnₖⱼ*; and `transpose(m)` returns the matrix *n* with *nᵢⱼ* = *mⱼᵢ*. The dot product is
 
 ```js
-function dot_product(v, w) {
-  return accumulate(plus, 0, accumulate_n(times, 1, list(v, w)));
-}
+const dot_product = (v, w) =>
+  accumulate(plus, 0, accumulate_n(times, 1, list(v, w)));
 ```
 
 Fill in the missing expressions in the editor for the other three. (`accumulate_n` is that of Exercise 2.36.)

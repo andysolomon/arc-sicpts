@@ -23,29 +23,24 @@ This is a powerful strategy of synthesis: *wishful thinking*. We have not said h
 Each relation becomes a function:
 
 ```js
-function add_rat(x, y) {
-  return make_rat(numer(x) * denom(y) + numer(y) * denom(x),
+const add_rat = (x, y) =>
+  make_rat(numer(x) * denom(y) + numer(y) * denom(x),
                   denom(x) * denom(y));
-}
 
-function sub_rat(x, y) {
-  return make_rat(numer(x) * denom(y) - numer(y) * denom(x),
+const sub_rat = (x, y) =>
+  make_rat(numer(x) * denom(y) - numer(y) * denom(x),
                   denom(x) * denom(y));
-}
 
-function mul_rat(x, y) {
-  return make_rat(numer(x) * numer(y),
+const mul_rat = (x, y) =>
+  make_rat(numer(x) * numer(y),
                   denom(x) * denom(y));
-}
 
-function div_rat(x, y) {
-  return make_rat(numer(x) * denom(y),
+const div_rat = (x, y) =>
+  make_rat(numer(x) * denom(y),
                   denom(x) * numer(y));
-}
 
-function equal_rat(x, y) {
-  return numer(x) * denom(y) === numer(y) * denom(x);
-}
+const equal_rat = (x, y) =>
+  numer(x) * denom(y) === numer(y) * denom(x);
 ```
 
 The operations are now defined in terms of `make_rat`, `numer` and `denom`, which are not yet defined. What we need is some way to glue a numerator and a denominator together into a single value.
@@ -81,10 +76,10 @@ A rational number is nothing more than the pair of its numerator and denominator
 As the final example shows, this implementation does not reduce rational numbers to lowest terms. We can remedy that by changing `make_rat`. With the `gcd` function of §1.2.5, which produces the greatest common divisor of two integers, `make_rat` can divide the numerator and the denominator by their greatest common divisor before constructing the pair:
 
 ```js
-function make_rat(n, d) {
+const make_rat = (n, d) => {
   const g = gcd(n, d);
   return pair(n / g, d / g);
-}
+};
 ```
 
 </Prose>

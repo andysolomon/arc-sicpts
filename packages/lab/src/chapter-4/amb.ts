@@ -14,21 +14,18 @@ import { pick } from './source.ts';
  */
 
 /** §4.3.3: recognizing `amb`, which `parse` reads as an application. */
-export const ambSyntax = `function is_amb(component) {
-    return is_tagged_list(component, "application") &&
+export const ambSyntax = `const is_amb = (component) =>
+    is_tagged_list(component, "application") &&
            is_name(function_expression(component)) &&
            symbol_of_name(function_expression(component)) === "amb";
-}
-function amb_choices(component) {
-    return arg_expressions(component);
-}
+const amb_choices = (component) =>
+    arg_expressions(component);
 
 // Not in the book's evaluator: && and || as derived conditional
 // expressions, as in exercise 4.4, so that requirements can use them.
-function is_logical_composition(component) {
-    return is_tagged_list(component, "logical_composition");
-}
-function logical_composition_to_conditional(component) {
+const is_logical_composition = (component) =>
+    is_tagged_list(component, "logical_composition");
+const logical_composition_to_conditional = (component) => {
     const operator = list_ref(component, 1);
     const left = list_ref(component, 2);
     const right = list_ref(component, 3);
@@ -37,32 +34,30 @@ function logical_composition_to_conditional(component) {
                   make_literal(false))
            : list("conditional_expression", left,
                   make_literal(true), right);
-}
+};
 `;
 
 /** §4.3.3: the execution function for `amb`, the heart of the evaluator. */
-export const analyzeAmb = `function analyze_amb(component) {
+export const analyzeAmb = `const analyze_amb = (component) => {
     const cfuns = map(analyze, amb_choices(component));
     return (env, succeed, fail) => {
-               function try_next(choices) {
-                   return is_null(choices)
+               const try_next = (choices) =>
+                   is_null(choices)
                           ? fail()
                           : head(choices)(env,
                                           succeed,
                                           () =>
                                             try_next(tail(choices)));
-               }
                return try_next(cfuns);
            };
-}`;
+};`;
 
 /** §4.3.3: `ambeval`, `analyze` and the execution functions with continuations. */
-export const ambAnalyze = `function ambeval(component, env, succeed, fail) {
-    return analyze(component)(env, succeed, fail);
-}
+export const ambAnalyze = `const ambeval = (component, env, succeed, fail) =>
+    analyze(component)(env, succeed, fail);
 
-function analyze(component) {
-    return is_literal(component)
+const analyze = (component) =>
+    is_literal(component)
            ? analyze_literal(component)
            : is_name(component)
            ? analyze_name(component)
@@ -91,29 +86,26 @@ function analyze(component) {
            : is_assignment(component)
            ? analyze_assignment(component)
            : error(component, "unknown syntax -- analyze");
-}
 
-function analyze_literal(component) {
-    return (env, succeed, fail) =>
+const analyze_literal = (component) =>
+    (env, succeed, fail) =>
              succeed(literal_value(component), fail);
-}
 
-function analyze_name(component) {
-    return (env, succeed, fail) =>
+const analyze_name = (component) =>
+    (env, succeed, fail) =>
              succeed(lookup_symbol_value(symbol_of_name(component),
                                          env),
                      fail);
-}
 
-function analyze_lambda_expression(component) {
+const analyze_lambda_expression = (component) => {
     const params = lambda_parameter_symbols(component);
     const bfun = analyze(lambda_body(component));
     return (env, succeed, fail) =>
              succeed(make_function(params, bfun, env),
                      fail);
-}
+};
 
-function analyze_conditional(component) {
+const analyze_conditional = (component) => {
     const pfun = analyze(conditional_predicate(component));
     const cfun = analyze(conditional_consequent(component));
     const afun = analyze(conditional_alternative(component));
@@ -127,11 +119,11 @@ function analyze_conditional(component) {
                     : afun(env, succeed, fail2),
                   // failure continuation for evaluating the predicate
                   fail);
-}
+};
 
-function analyze_sequence(stmts) {
-    function sequentially(a, b) {
-        return (env, succeed, fail) =>
+const analyze_sequence = (stmts) => {
+    const sequentially = (a, b) =>
+        (env, succeed, fail) =>
                  a(env,
                    // success continuation for calling a
                    (a_value, fail2) =>
@@ -140,22 +132,20 @@ function analyze_sequence(stmts) {
                      : b(env, succeed, fail2),
                    // failure continuation for calling a
                    fail);
-    }
-    function loop(first_fun, rest_funs) {
-        return is_null(rest_funs)
+    const loop = (first_fun, rest_funs) =>
+        is_null(rest_funs)
                ? first_fun
                : loop(sequentially(first_fun, head(rest_funs)),
                       tail(rest_funs));
-    }
     const funs = map(analyze, stmts);
     // The book has env => undefined here, which never calls succeed:
     // an empty block, such as the else {} of require, must succeed.
     return is_null(funs)
            ? (env, succeed, fail) => succeed(undefined, fail)
            : loop(head(funs), tail(funs));
-}
+};
 
-function analyze_declaration(component) {
+const analyze_declaration = (component) => {
     const symbol = declaration_symbol(component);
     const vfun = analyze(declaration_value_expression(component));
     return (env, succeed, fail) =>
@@ -165,9 +155,9 @@ function analyze_declaration(component) {
                       return succeed(undefined, fail2);
                   },
                   fail);
-}
+};
 
-function analyze_assignment(component) {
+const analyze_assignment = (component) => {
     const symbol = assignment_symbol(component);
     const vfun = analyze(assignment_value_expression(component));
     return (env, succeed, fail) =>
@@ -185,18 +175,18 @@ function analyze_assignment(component) {
                                      });
                   },
                   fail);
-}
+};
 
-function analyze_return_statement(component) {
+const analyze_return_statement = (component) => {
     const rfun = analyze(return_expression(component));
     return (env, succeed, fail) =>
              rfun(env,
                   (val, fail2) =>
                     succeed(make_return_value(val), fail2),
                   fail);
-}
+};
 
-function analyze_block(component) {
+const analyze_block = (component) => {
     const body = block_body(component);
     const locals = scan_out_declarations(body);
     const unassigneds = list_of_unassigned(locals);
@@ -205,9 +195,9 @@ function analyze_block(component) {
              bfun(extend_environment(locals, unassigneds, env),
                   succeed,
                   fail);
-}
+};
 
-function analyze_application(component) {
+const analyze_application = (component) => {
     const ffun = analyze(function_expression(component));
     const afuns = map(analyze, arg_expressions(component));
     return (env, succeed, fail) =>
@@ -222,10 +212,10 @@ function analyze_application(component) {
                                                    fail3),
                              fail2),
                   fail);
-}
+};
 
-function get_args(afuns, env, succeed, fail) {
-    return is_null(afuns)
+const get_args = (afuns, env, succeed, fail) =>
+    is_null(afuns)
            ? succeed(null, fail)
            : head(afuns)(env,
                          // success continuation for this afun
@@ -239,10 +229,9 @@ function get_args(afuns, env, succeed, fail) {
                                               fail3),
                                     fail2),
                          fail);
-}
 
-function execute_application(fun, args, succeed, fail) {
-    return is_primitive_function(fun)
+const execute_application = (fun, args, succeed, fail) =>
+    is_primitive_function(fun)
            ? succeed(apply_primitive_function(fun, args),
                      fail)
            : is_compound_function(fun)
@@ -257,7 +246,6 @@ function execute_application(fun, args, succeed, fail) {
                            fail2),
                  fail)
            : error(fun, "unknown function type - execute_application");
-}
 
 ${analyzeAmb}
 `;
@@ -267,15 +255,14 @@ ${analyzeAmb}
  * evaluator gets it as a primitive: the puzzles then spend their steps on
  * the search rather than on comparing lists.
  */
-export const ambDistinct = `function distinct(items) {
-    return is_null(items)
+export const ambDistinct = `const distinct = (items) =>
+    is_null(items)
            ? true
            : is_null(tail(items))
            ? true
            : is_null(member(head(items), tail(items)))
            ? distinct(tail(items))
            : false;
-}
 `;
 
 /**
@@ -324,25 +311,24 @@ const ambDrivers = `const input_prompt = "amb-evaluate input:";
 const output_prompt = "amb-evaluate value:";
 
 // A program is a string, or a list of programs that are its lines.
-function program_text(input) {
-    return is_string(input)
+const program_text = (input) =>
+    is_string(input)
            ? input
            : accumulate((line, rest) => program_text(line) + "\\n" + rest,
                         "", input);
-}
 
 // The frame a program's own declarations live in, as the driver loop
 // makes it for each new problem.
-function program_environment(program, env) {
+const program_environment = (program, env) => {
     const locals = scan_out_declarations(program);
     return extend_environment(locals, list_of_unassigned(locals), env);
-}
+};
 
 // The book's driver loop, reading from the list inputs instead of from a
 // prompt: each input is a program, or "retry" for its next value.
-function driver_loop(env, inputs) {
+const driver_loop = (env, inputs) => {
     let unread = inputs;
-    function user_read(prompt_string) {
+    const user_read = (prompt_string) => {
         if (is_null(unread)) {
             return null;
         } else {
@@ -351,8 +337,8 @@ function driver_loop(env, inputs) {
             display(input, prompt_string);
             return input;
         }
-    }
-    function internal_loop(retry) {
+    };
+    const internal_loop = (retry) => {
         const input = user_read(input_prompt);
         if (is_null(input)) {
             display("evaluator terminated");
@@ -377,61 +363,60 @@ function driver_loop(env, inputs) {
                            return driver_loop(program_env, unread);
                        });
         }
-    }
+    };
     return internal_loop(() => {
                              display("There is no current problem");
                              return driver_loop(env, unread);
                          });
-}
+};
 
 // The first n values of a program, as a list: a new problem, then retry
 // until there are n values or no more.
-function amb_solutions(input, n) {
+const amb_solutions = (input, n) => {
     const program = parse(program_text(input));
     let values = null;
     let count = 0;
-    function solution_found(value, next_alternative) {
+    const solution_found = (value, next_alternative) => {
         values = pair(value, values);
         count = count + 1;
         return count < n
                ? next_alternative()
                : reverse(values);
-    }
+    };
     return ambeval(program,
                    program_environment(program, the_global_environment),
                    solution_found,
                    () => reverse(values));
-}
+};
 
 // The environment env with the declarations of an amb program added.
-function with_declarations(env, input) {
+const with_declarations = (env, input) => {
     const program = parse(program_text(input));
     const program_env = program_environment(program, env);
     return ambeval(program,
                    program_env,
                    (value, fail) => program_env,
                    () => error(input, "no value for declarations"));
-}
+};
 `;
 
 /**
  * §4.3.1: what the book declares in the nondeterministic language itself
  * before running its examples.
  */
-export const ambLibrary = `function require(p) {
+export const ambLibrary = `const require = (p) => {
     if (! p) {
         amb();
     } else {}
-}
+};
 
-function an_element_of(items) {
+const an_element_of = (items) => {
     require(! is_null(items));
     return amb(head(items), an_element_of(tail(items)));
-}
+};
 
-function an_integer_starting_from(n) {
-    return amb(n, an_integer_starting_from(n + 1));
-}
+const an_integer_starting_from = (n) =>
+    amb(n, an_integer_starting_from(n + 1));
 `;
 
 /**
@@ -474,40 +459,39 @@ export function ambEvaluatorWith(...programs: string[]): string {
 export const ambEvaluator = ambEvaluatorWith();
 
 /** §4.3: `prime_sum_pair` and the `is_prime` it assumes. */
-export const ambPrimeSumPair = `function is_prime(n) {
-    function divides(d) {
-        return d * d > n
+export const ambPrimeSumPair = `const is_prime = (n) => {
+    const divides = (d) =>
+        d * d > n
                ? false
                : n % d === 0 || divides(d + 1);
-    }
     return n > 1 && ! divides(2);
-}
+};
 
-function prime_sum_pair(list1, list2) {
+const prime_sum_pair = (list1, list2) => {
     const a = an_element_of(list1);
     const b = an_element_of(list2);
     require(is_prime(a + b));
     return list(a, b);
-}
+};
 `;
 
 /** Exercise 4.33: Pythagorean triples between two bounds, with its solution. */
-export const ambPythagoreanTriples = `function an_integer_between(low, high) {
+export const ambPythagoreanTriples = `const an_integer_between = (low, high) => {
     require(low <= high);
     return amb(low, an_integer_between(low + 1, high));
-}
+};
 
-function a_pythagorean_triple_between(low, high) {
+const a_pythagorean_triple_between = (low, high) => {
     const i = an_integer_between(low, high);
     const j = an_integer_between(i, high);
     const k = an_integer_between(j, high);
     require(i * i + j * j === k * k);
     return list(i, j, k);
-}
+};
 `;
 
 /** §4.3.2: the office-move puzzle, as the book first writes it. */
-export const ambOfficeMove = `function office_move() {
+export const ambOfficeMove = `const office_move = () => {
     const alyssa = amb(1, 2, 3, 4, 5);
     const ben = amb(1, 2, 3, 4, 5);
     const cy = amb(1, 2, 3, 4, 5);
@@ -526,7 +510,7 @@ export const ambOfficeMove = `function office_move() {
                 list("cy", cy),
                 list("lem", lem),
                 list("louis", louis));
-}
+};
 `;
 
 /** §4.3.2: the parser of simple sentences, the book's final grammar. */
@@ -538,60 +522,55 @@ const articles = list("article", "the", "a");
 
 const prepositions = list("prep", "for", "to", "in", "by", "with");
 
-function parse_word(word_list) {
+const parse_word = (word_list) => {
     require(! is_null(not_yet_parsed));
     require(! is_null(member(head(not_yet_parsed), tail(word_list))));
     const found_word = head(not_yet_parsed);
     not_yet_parsed = tail(not_yet_parsed);
     return list(head(word_list), found_word);
-}
+};
 
 let not_yet_parsed = null;
 
-function parse_input(input) {
+const parse_input = (input) => {
     not_yet_parsed = input;
     const sent = parse_sentence();
     require(is_null(not_yet_parsed));
     return sent;
-}
+};
 
-function parse_prepositional_phrase() {
-    return list("prep-phrase",
+const parse_prepositional_phrase = () =>
+    list("prep-phrase",
                 parse_word(prepositions),
                 parse_noun_phrase());
-}
 
-function parse_sentence() {
-    return list("sentence",
+const parse_sentence = () =>
+    list("sentence",
                 parse_noun_phrase(),
                 parse_verb_phrase());
-}
 
-function parse_verb_phrase() {
-    function maybe_extend(verb_phrase) {
-        return amb(verb_phrase,
+const parse_verb_phrase = () => {
+    const maybe_extend = (verb_phrase) =>
+        amb(verb_phrase,
                    maybe_extend(list("verb-phrase",
                                      verb_phrase,
                                      parse_prepositional_phrase())));
-    }
     return maybe_extend(parse_word(verbs));
-}
+};
 
-function parse_simple_noun_phrase() {
-    return list("simple-noun-phrase",
+const parse_simple_noun_phrase = () =>
+    list("simple-noun-phrase",
                 parse_word(articles),
                 parse_word(nouns));
-}
 
-function parse_noun_phrase() {
-    function maybe_extend(noun_phrase) {
-        return amb(noun_phrase,
+const parse_noun_phrase = () => {
+    const maybe_extend = (noun_phrase) =>
+        amb(noun_phrase,
                    maybe_extend(list("noun-phrase",
                                      noun_phrase,
                                      parse_prepositional_phrase())));
-    }
     return maybe_extend(parse_simple_noun_phrase());
-}
+};
 `;
 
 /**
@@ -602,24 +581,20 @@ function parse_noun_phrase() {
  * among them. Choice points are numbered as they are reached.
  */
 const probedAnalyzeAmb = `let amb_points = 0;
-function amb_tried(point, index, count, amb_text, choice_text) {
-    return undefined;
-}
-function amb_chose(point, index, value) {
-    return undefined;
-}
-function amb_exhausted(point, count) {
-    return undefined;
-}
-function amb_text_of(component) {
-    function texts(components) {
-        return is_null(components)
+const amb_tried = (point, index, count, amb_text, choice_text) =>
+    undefined;
+const amb_chose = (point, index, value) =>
+    undefined;
+const amb_exhausted = (point, count) =>
+    undefined;
+const amb_text_of = (component) => {
+    const texts = (components) =>
+        is_null(components)
                ? ""
                : is_null(tail(components))
                ? amb_text_of(head(components))
                : amb_text_of(head(components)) + ", " +
                  texts(tail(components));
-    }
     return is_literal(component)
            ? stringify(literal_value(component))
            : is_name(component)
@@ -635,8 +610,8 @@ function amb_text_of(component) {
            ? (operator_symbol(component) === "!" ? "!" : "-") +
              amb_text_of(first_operand(component))
            : "…";
-}
-function analyze_amb(component) {
+};
+const analyze_amb = (component) => {
     const cfuns = map(analyze, amb_choices(component));
     const texts = map(amb_text_of, amb_choices(component));
     const amb_text = amb_text_of(component);
@@ -644,7 +619,7 @@ function analyze_amb(component) {
     return (env, succeed, fail) => {
                amb_points = amb_points + 1;
                const point = amb_points;
-               function try_next(choices, texts, index) {
+               const try_next = (choices, texts, index) => {
                    if (is_null(choices)) {
                        amb_exhausted(point, count);
                        return fail();
@@ -659,10 +634,10 @@ function analyze_amb(component) {
                                   () => try_next(tail(choices), tail(texts),
                                                  index + 1));
                    }
-               }
+               };
                return try_next(cfuns, texts, 0);
            };
-}`;
+};`;
 
 /** The functions the search-tree animation watches. */
 export const ambProbeNames = ['amb_tried', 'amb_chose', 'amb_exhausted', 'solution_found', 'user_print'] as const;
@@ -731,13 +706,13 @@ export const sentenceProgram = `amb_solutions(list(
 `;
 
 /** §4.3.3: \`ambeval\` called with continuations of our own. */
-export const ambevalProgram = `function first_value(input) {
+export const ambevalProgram = `const first_value = (input) => {
     const program = parse(input);
     return ambeval(program,
                    program_environment(program, the_global_environment),
                    (value, fail) => value,
                    () => "failed");
-}
+};
 
 display(first_value("amb(1, 2, 3);"));
 display(first_value("const x = amb(1, 2, 3); require(x > 1); x * 10;"));

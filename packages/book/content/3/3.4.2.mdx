@@ -70,11 +70,11 @@ Peter's and Paul's withdrawals from the same serialized account. Whichever threa
 **Complexity of using multiple shared resources.** Serializers make concurrent programs manageable, but only as long as each operation touches one shared resource. Suppose we want to swap the balances of two accounts:
 
 ```js
-function exchange(account1, account2) {
+const exchange = (account1, account2) => {
     const difference = account1("balance") - account2("balance");
     account1("withdraw")(difference);
     account2("deposit")(difference);
-}
+};
 ```
 
 With one thread this is fine. Now let Peter exchange accounts *a* and *b* while Paul exchanges *a* and *c*. Each account serializes its own withdrawals and deposits, yet the result can be wrong: Peter can compute his difference from *a*'s balance, and before he withdraws it, Paul can change *a*'s balance. To exchange correctly, a thread must hold both accounts for the whole exchange.
@@ -92,11 +92,11 @@ Accounts *a*, *b* and *c* hold $10, $20 and $30. In sixty runs every outcome is 
 One fix is to let the accounts' serializers out: each account answers the message `"serializer"` with the serializer that protects its balance, and leaves withdrawals and deposits unserialized. Code that uses one account must then serialize its operations itself. A deposit, for example, becomes:
 
 ```js
-function deposit(account, amount) {
+const deposit = (account, amount) => {
     const s = account("serializer");
     const d = account("deposit");
     s(() => d(amount))();
-}
+};
 ```
 
 `serialized_exchange` can then take both serializers and run `exchange` inside both. Exporting the serializer gives us flexibility, but it breaks modularity: every program that uses an account is now responsible for its correct use. Exercise 3.45 shows why the accounts cannot simply keep serializing their own operations as well.
@@ -232,10 +232,10 @@ To check your reasoning, write `check_balances(a, b, c)`, which classifies three
 Transferring an amount from one account to another needs no exchange of balances:
 
 ```js
-function transfer(from_account, to_account, amount) {
+const transfer = (from_account, to_account, amount) => {
     from_account("withdraw")(amount);
     to_account("deposit")(amount);
-}
+};
 ```
 
 Louis Reasoner claims this has the same problem as `exchange` and needs a more sophisticated method. Ben Bitdiddle says it is fine as long as the source account has enough money. Write `transfer` and say whether Louis is right. The check runs three concurrent transfers 40 times.
@@ -275,14 +275,14 @@ What happens when `serialized_exchange` is called?
 Suppose `test_and_set` were an ordinary function, as SICP first writes it:
 
 ```js
-function test_and_set(cell) {
+const test_and_set = (cell) => {
     if (head(cell)) {
         return true;
     } else {
         set_head(cell, true);
         return false;
     }
-}
+};
 ```
 
 Show how two threads can then both acquire the same mutex. Write it as `non_atomic_test_and_set`; the check races two threads for one cell 200 times and expects at least one race in which both win. Use the *interleaving* animation of the mutex example, with your function in place of `test_and_set`, to draw the timing diagram.

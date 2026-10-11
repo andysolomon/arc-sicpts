@@ -13,17 +13,16 @@ import { metacircularEvaluator } from './metacircular.ts';
  */
 
 /** §3.3.3: two-dimensional tables, for `put` and `get`. */
-export const queryTable = `function assoc(key, records) {
-    return is_null(records)
+export const queryTable = `const assoc = (key, records) =>
+    is_null(records)
            ? undefined
            : equal(key, head(head(records)))
            ? head(records)
            : assoc(key, tail(records));
-}
 
-function make_table() {
+const make_table = () => {
     const local_table = list("*table*");
-    function lookup(key_1, key_2) {
+    const lookup = (key_1, key_2) => {
         const subtable = assoc(key_1, tail(local_table));
         if (is_undefined(subtable)) {
             return undefined;
@@ -33,8 +32,8 @@ function make_table() {
                    ? undefined
                    : tail(record);
         }
-    }
-    function insert(key_1, key_2, value) {
+    };
+    const insert = (key_1, key_2, value) => {
         const subtable = assoc(key_1, tail(local_table));
         if (is_undefined(subtable)) {
             set_tail(local_table,
@@ -49,16 +48,15 @@ function make_table() {
                 set_tail(record, value);
             }
         }
-    }
-    function dispatch(m) {
-        return m === "lookup"
+    };
+    const dispatch = (m) =>
+        m === "lookup"
                ? lookup
                : m === "insert"
                ? insert
                : error(m, "unknown operation -- table");
-    }
     return dispatch;
-}
+};
 
 const operation_table = make_table();
 const get = operation_table("lookup");
@@ -66,53 +64,49 @@ const put = operation_table("insert");
 `;
 
 /** §4.4.4.2: the evaluator. */
-export const queryEval = `function evaluate_query(query, frame_stream) {
+export const queryEval = `const evaluate_query = (query, frame_stream) => {
     const qfun = get(type(query), "evaluate_query");
     return is_undefined(qfun)
            ? simple_query(query, frame_stream)
            : qfun(contents(query), frame_stream);
-}
+};
 
-function simple_query(query_pattern, frame_stream) {
-    return stream_flatmap(
+const simple_query = (query_pattern, frame_stream) =>
+    stream_flatmap(
                frame =>
                  stream_append_delayed(
                      find_assertions(query_pattern, frame),
                      () => apply_rules(query_pattern, frame)),
                frame_stream);
-}
 
-function conjoin(conjuncts, frame_stream) {
-    return is_empty_conjunction(conjuncts)
+const conjoin = (conjuncts, frame_stream) =>
+    is_empty_conjunction(conjuncts)
            ? frame_stream
            : conjoin(rest_conjuncts(conjuncts),
                      evaluate_query(first_conjunct(conjuncts),
                                     frame_stream));
-}
 put("and", "evaluate_query", conjoin);
 
-function disjoin(disjuncts, frame_stream) {
-    return is_empty_disjunction(disjuncts)
+const disjoin = (disjuncts, frame_stream) =>
+    is_empty_disjunction(disjuncts)
            ? null
            : interleave_delayed(
                  evaluate_query(first_disjunct(disjuncts), frame_stream),
                  () => disjoin(rest_disjuncts(disjuncts), frame_stream));
-}
 put("or", "evaluate_query", disjoin);
 
-function negate(exps, frame_stream) {
-    return stream_flatmap(
+const negate = (exps, frame_stream) =>
+    stream_flatmap(
                frame =>
                  is_null(evaluate_query(negated_query(exps),
                                         singleton_stream(frame)))
                  ? singleton_stream(frame)
                  : null,
                frame_stream);
-}
 put("not", "evaluate_query", negate);
 
-function javascript_predicate(exps, frame_stream) {
-    return stream_flatmap(
+const javascript_predicate = (exps, frame_stream) =>
+    stream_flatmap(
                frame =>
                  evaluate(instantiate_expression(
                               javascript_predicate_expression(exps),
@@ -121,32 +115,29 @@ function javascript_predicate(exps, frame_stream) {
                  ? singleton_stream(frame)
                  : null,
                frame_stream);
-}
 put("javascript_predicate", "evaluate_query", javascript_predicate);
 
-function always_true(ignore, frame_stream) {
-    return frame_stream;
-}
+const always_true = (ignore, frame_stream) =>
+    frame_stream;
 put("always_true", "evaluate_query", always_true);
 `;
 
 /** §4.4.4.3: finding assertions by pattern matching. */
-export const queryAssertions = `function find_assertions(pattern, frame) {
-    return stream_flatmap(
+export const queryAssertions = `const find_assertions = (pattern, frame) =>
+    stream_flatmap(
                datum => check_an_assertion(datum, pattern, frame),
                fetch_assertions(pattern, frame));
-}
 
-function check_an_assertion(assertion, query_pat, query_frame) {
+const check_an_assertion = (assertion, query_pat, query_frame) => {
     const match_result = pattern_match(query_pat, assertion,
                                        query_frame);
     return match_result === "failed"
            ? null
            : singleton_stream(match_result);
-}
+};
 
-function pattern_match(pattern, data, frame) {
-    return frame === "failed"
+const pattern_match = (pattern, data, frame) =>
+    frame === "failed"
            ? "failed"
            : equal(pattern, data)
            ? frame
@@ -159,23 +150,21 @@ function pattern_match(pattern, data, frame) {
                                          head(data),
                                          frame))
            : "failed";
-}
 
-function extend_if_consistent(variable, data, frame) {
+const extend_if_consistent = (variable, data, frame) => {
     const binding = binding_in_frame(variable, frame);
     return is_undefined(binding)
            ? extend(variable, data, frame)
            : pattern_match(binding_value(binding), data, frame);
-}
+};
 `;
 
 /** §4.4.4.4: rules and unification. */
-export const queryRules = `function apply_rules(pattern, frame) {
-    return stream_flatmap(rule => apply_a_rule(rule, pattern, frame),
+export const queryRules = `const apply_rules = (pattern, frame) =>
+    stream_flatmap(rule => apply_a_rule(rule, pattern, frame),
                           fetch_rules(pattern, frame));
-}
 
-function apply_a_rule(rule, query_pattern, query_frame) {
+const apply_a_rule = (rule, query_pattern, query_frame) => {
     const clean_rule = rename_variables_in(rule);
     const unify_result = unify_match(query_pattern,
                                      conclusion(clean_rule),
@@ -184,23 +173,22 @@ function apply_a_rule(rule, query_pattern, query_frame) {
            ? null
            : evaluate_query(rule_body(clean_rule),
                             singleton_stream(unify_result));
-}
+};
 
-function rename_variables_in(rule) {
+const rename_variables_in = (rule) => {
     const rule_application_id = new_rule_application_id();
-    function tree_walk(exp) {
-        return is_variable(exp)
+    const tree_walk = (exp) =>
+        is_variable(exp)
                ? make_new_variable(exp, rule_application_id)
                : is_pair(exp)
                ? pair(tree_walk(head(exp)),
                       tree_walk(tail(exp)))
                : exp;
-    }
     return tree_walk(rule);
-}
+};
 
-function unify_match(p1, p2, frame) {
-    return frame === "failed"
+const unify_match = (p1, p2, frame) =>
+    frame === "failed"
            ? "failed"
            : equal(p1, p2)
            ? frame
@@ -215,9 +203,8 @@ function unify_match(p1, p2, frame) {
                                      head(p2),
                                      frame))
            : "failed";
-}
 
-function extend_if_possible(variable, value, frame) {
+const extend_if_possible = (variable, value, frame) => {
     const binding = binding_in_frame(variable, frame);
     if (! is_undefined(binding)) {
         return unify_match(binding_value(binding),
@@ -234,10 +221,10 @@ function extend_if_possible(variable, value, frame) {
     } else {
         return extend(variable, value, frame);
     }
-}
+};
 
-function depends_on(expression, variable, frame) {
-    function tree_walk(e) {
+const depends_on = (expression, variable, frame) => {
+    const tree_walk = (e) => {
         if (is_variable(e)) {
             if (equal(variable, e)) {
                 return true;
@@ -252,116 +239,104 @@ function depends_on(expression, variable, frame) {
                    ? tree_walk(head(e)) || tree_walk(tail(e))
                    : false;
         }
-    }
+    };
     return tree_walk(expression);
-}
+};
 `;
 
 /** §4.4.4.5: maintaining the data base. */
-export const queryDataBase = `function fetch_assertions(pattern, frame) {
-    return get_indexed_assertions(pattern);
-}
-function get_indexed_assertions(pattern) {
-    return get_stream(index_key_of(pattern), "assertion-stream");
-}
+export const queryDataBase = `const fetch_assertions = (pattern, frame) =>
+    get_indexed_assertions(pattern);
+const get_indexed_assertions = (pattern) =>
+    get_stream(index_key_of(pattern), "assertion-stream");
 
-function get_stream(key1, key2) {
+const get_stream = (key1, key2) => {
     const s = get(key1, key2);
     return is_undefined(s) ? null : s;
-}
+};
 
-function fetch_rules(pattern, frame) {
-    return get_indexed_rules(pattern);
-}
-function get_indexed_rules(pattern) {
-    return get_stream(index_key_of(pattern), "rule-stream");
-}
+const fetch_rules = (pattern, frame) =>
+    get_indexed_rules(pattern);
+const get_indexed_rules = (pattern) =>
+    get_stream(index_key_of(pattern), "rule-stream");
 
-function add_rule_or_assertion(assertion) {
-    return is_rule(assertion)
+const add_rule_or_assertion = (assertion) =>
+    is_rule(assertion)
            ? add_rule(assertion)
            : add_assertion(assertion);
-}
-function add_assertion(assertion) {
+const add_assertion = (assertion) => {
     store_assertion_in_index(assertion);
     return "ok";
-}
-function add_rule(rule) {
+};
+const add_rule = (rule) => {
     store_rule_in_index(rule);
     return "ok";
-}
+};
 
-function store_assertion_in_index(assertion) {
+const store_assertion_in_index = (assertion) => {
     const key = index_key_of(assertion);
     const current_assertion_stream =
                 get_stream(key, "assertion-stream");
     put(key, "assertion-stream",
         pair(assertion, () => current_assertion_stream));
-}
-function store_rule_in_index(rule) {
+};
+const store_rule_in_index = (rule) => {
     const pattern = conclusion(rule);
     const key = index_key_of(pattern);
     const current_rule_stream =
                 get_stream(key, "rule-stream");
     put(key, "rule-stream",
         pair(rule, () => current_rule_stream));
-}
+};
 
-function index_key_of(pattern) { return head(pattern); }
+const index_key_of = (pattern) => head(pattern);
 `;
 
 /** §4.4.4.6: stream operations. */
-export const queryStreams = `function stream_append_delayed(s1, delayed_s2) {
-    return is_null(s1)
+export const queryStreams = `const stream_append_delayed = (s1, delayed_s2) =>
+    is_null(s1)
            ? delayed_s2()
            : pair(head(s1),
                   () => stream_append_delayed(stream_tail(s1),
                                               delayed_s2));
-}
-function interleave_delayed(s1, delayed_s2) {
-    return is_null(s1)
+const interleave_delayed = (s1, delayed_s2) =>
+    is_null(s1)
            ? delayed_s2()
            : pair(head(s1),
                   () => interleave_delayed(delayed_s2(),
                                            () => stream_tail(s1)));
-}
 
-function stream_flatmap(fun, s) {
-    return flatten_stream(stream_map(fun, s));
-}
-function flatten_stream(stream) {
-    return is_null(stream)
+const stream_flatmap = (fun, s) =>
+    flatten_stream(stream_map(fun, s));
+const flatten_stream = (stream) =>
+    is_null(stream)
            ? null
            : interleave_delayed(
                  head(stream),
                  () => flatten_stream(stream_tail(stream)));
-}
 
-function singleton_stream(x) {
-    return pair(x, () => null);
-}
+const singleton_stream = (x) =>
+    pair(x, () => null);
 `;
 
 /** §4.4.4.7: query syntax functions and instantiation. */
 export const querySyntax = `// The book uses a primitive char_at here. Comparing strings does the same
 // job: a symbol starts with "$" exactly when it lies between "$" and "%".
-function is_variable(exp) {
-    return is_name(exp) && symbol_of_name(exp) >= "$"
+const is_variable = (exp) =>
+    is_name(exp) && symbol_of_name(exp) >= "$"
                         && symbol_of_name(exp) < "%";
-}
 
 let rule_counter = 0;
 
-function new_rule_application_id() {
+const new_rule_application_id = () => {
     rule_counter = rule_counter + 1;
     return rule_counter;
-}
-function make_new_variable(variable, rule_application_id) {
-    return make_name(symbol_of_name(variable) + "_" +
+};
+const make_new_variable = (variable, rule_application_id) =>
+    make_name(symbol_of_name(variable) + "_" +
                      stringify(rule_application_id));
-}
 
-function convert_to_query_syntax(exp) {
+const convert_to_query_syntax = (exp) => {
     if (is_application(exp)) {
         const function_symbol = symbol_of_name(function_expression(exp));
         if (function_symbol === "javascript_predicate") {
@@ -380,18 +355,17 @@ function convert_to_query_syntax(exp) {
     } else { // exp is literal
         return literal_value(exp);
     }
-}
+};
 
-function instantiate_expression(expression, frame) {
-    return is_variable(expression)
+const instantiate_expression = (expression, frame) =>
+    is_variable(expression)
            ? convert(instantiate_term(expression, frame))
            : is_pair(expression)
            ? pair(instantiate_expression(head(expression), frame),
                   instantiate_expression(tail(expression), frame))
            : expression;
-}
 
-function instantiate_term(term, frame) {
+const instantiate_term = (term, frame) => {
     if (is_variable(term)) {
         const binding = binding_in_frame(term, frame);
         return is_undefined(binding)
@@ -403,10 +377,10 @@ function instantiate_term(term, frame) {
     } else { // term is a primitive value
         return term;
     }
-}
+};
 
-function convert(term) {
-    return is_variable(term)
+const convert = (term) =>
+    is_variable(term)
            ? term
            : is_pair(term)
            ? make_application(make_name("pair"),
@@ -414,10 +388,9 @@ function convert(term) {
                                    convert(tail(term))))
            : // term is a primitive value
              make_literal(term);
-}
 
-function unparse(exp) {
-    return is_literal(exp)
+const unparse = (exp) =>
+    is_literal(exp)
            ? unparse_literal(literal_value(exp))
            : is_name(exp)
            ? symbol_of_name(exp)
@@ -435,99 +408,84 @@ function unparse(exp) {
              " " + unparse(second_operand(exp)) +
              ")"
            : error(exp, "unknown syntax -- unparse");
-}
 
 // The book stringifies every literal. An answer is itself displayed as a
 // string, which puts it in double quotes, so the strings inside it get single
 // quotes to stay readable.
-function unparse_literal(value) {
-    return is_string(value)
+const unparse_literal = (value) =>
+    is_string(value)
            ? "'" + value + "'"
            : stringify(value);
-}
 
-function comma_separated(strings) {
-    return accumulate((s, acc) => s + (acc === "" ? "" : ", " + acc),
+const comma_separated = (strings) =>
+    accumulate((s, acc) => s + (acc === "" ? "" : ", " + acc),
                       "",
                       strings);
-}
 
-function is_list_construction(exp) {
-    return (is_literal(exp) && is_null(literal_value(exp))) ||
+const is_list_construction = (exp) =>
+    (is_literal(exp) && is_null(literal_value(exp))) ||
            (is_application(exp) && is_name(function_expression(exp)) &&
             symbol_of_name(function_expression(exp)) === "pair" &&
             is_list_construction(head(tail(arg_expressions(exp)))));
-}
 
-function element_expressions(list_constr) {
-    return is_literal(list_constr)
+const element_expressions = (list_constr) =>
+    is_literal(list_constr)
            ? null // list_constr is literal null
            :      // list_constr is application of pair
              pair(head(arg_expressions(list_constr)),
                   element_expressions(
                       head(tail(arg_expressions(list_constr)))));
-}
 
-function type(exp) {
-    return is_pair(exp)
+const type = (exp) =>
+    is_pair(exp)
            ? head(exp)
            : error(exp, "unknown expression type");
-}
-function contents(exp) {
-    return is_pair(exp)
+const contents = (exp) =>
+    is_pair(exp)
            ? tail(exp)
            : error(exp, "unknown expression contents");
-}
 
-function is_assertion(exp) {
-    return type(exp) === "assert";
-}
-function assertion_body(exp) { return head(contents(exp)); }
+const is_assertion = (exp) =>
+    type(exp) === "assert";
+const assertion_body = (exp) => head(contents(exp));
 
-function is_empty_conjunction(exps) { return is_null(exps); }
+const is_empty_conjunction = (exps) => is_null(exps);
 
-function first_conjunct(exps) { return head(exps); }
+const first_conjunct = (exps) => head(exps);
 
-function rest_conjuncts(exps) { return tail(exps); }
+const rest_conjuncts = (exps) => tail(exps);
 
-function is_empty_disjunction(exps) { return is_null(exps); }
+const is_empty_disjunction = (exps) => is_null(exps);
 
-function first_disjunct(exps) { return head(exps); }
+const first_disjunct = (exps) => head(exps);
 
-function rest_disjuncts(exps) { return tail(exps); }
+const rest_disjuncts = (exps) => tail(exps);
 
-function negated_query(exps) { return head(exps); }
+const negated_query = (exps) => head(exps);
 
-function javascript_predicate_expression(exps) { return head(exps); }
+const javascript_predicate_expression = (exps) => head(exps);
 
-function is_rule(assertion) {
-    return is_tagged_list(assertion, "rule");
-}
-function conclusion(rule) { return head(tail(rule)); }
+const is_rule = (assertion) =>
+    is_tagged_list(assertion, "rule");
+const conclusion = (rule) => head(tail(rule));
 
-function rule_body(rule) {
-    return is_null(tail(tail(rule)))
+const rule_body = (rule) =>
+    is_null(tail(tail(rule)))
            ? list("always_true")
            : head(tail(tail(rule)));
-}
 `;
 
 /** §4.4.4.8: frames and bindings. */
-export const queryFrames = `function make_binding(variable, value) {
-    return pair(variable, value);
-}
-function binding_variable(binding) {
-    return head(binding);
-}
-function binding_value(binding) {
-    return tail(binding);
-}
-function binding_in_frame(variable, frame) {
-    return assoc(variable, frame);
-}
-function extend(variable, value, frame) {
-    return pair(make_binding(variable, value), frame);
-}
+export const queryFrames = `const make_binding = (variable, value) =>
+    pair(variable, value);
+const binding_variable = (binding) =>
+    head(binding);
+const binding_value = (binding) =>
+    tail(binding);
+const binding_in_frame = (variable, frame) =>
+    assoc(variable, frame);
+const extend = (variable, value, frame) =>
+    pair(make_binding(variable, value), frame);
 `;
 
 /**
@@ -537,7 +495,7 @@ function extend(variable, value, frame) {
  * found and returns how many there were. The other functions give the answers
  * as data, for programs and checks that compute with them.
  */
-export const queryDriver = `function query(input) {
+export const queryDriver = `const query = (input) => {
     const expression = parse(input + ";");
     const query_syntax = convert_to_query_syntax(expression);
     if (is_assertion(query_syntax)) {
@@ -551,36 +509,34 @@ export const queryDriver = `function query(input) {
                          unparse(instantiate_expression(expression, frame)),
                        evaluate_query(query_syntax, singleton_stream(null))));
     }
-}
+};
 
-function display_answers(answers) {
-    function display_next(s, count) {
+const display_answers = (answers) => {
+    const display_next = (s, count) => {
         if (is_null(s)) {
             return count;
         } else {
             display(head(s));
             return display_next(stream_tail(s), count + 1);
         }
-    }
+    };
     return display_next(answers, 0);
-}
+};
 
 // Each of the strings, an assertion or a rule, added to the data base.
-function assert_all(inputs) {
-    return for_each(input => add_rule_or_assertion(
+const assert_all = (inputs) =>
+    for_each(input => add_rule_or_assertion(
                                  convert_to_query_syntax(
                                      parse(input + ";"))),
                     inputs);
-}
 
 // A pattern written in JavaScript syntax, in the query language's form.
-function pattern_of(input) {
-    return convert_to_query_syntax(parse(input + ";"));
-}
+const pattern_of = (input) =>
+    convert_to_query_syntax(parse(input + ";"));
 
 // A frame as text, one variable = value for each binding, oldest first.
-function frame_text(frame) {
-    return frame === "failed"
+const frame_text = (frame) =>
+    frame === "failed"
            ? "failed"
            : is_null(frame)
            ? "the empty frame"
@@ -589,67 +545,60 @@ function frame_text(frame) {
                        symbol_of_name(binding_variable(binding)) + " = " +
                        unparse(convert(binding_value(binding))),
                      reverse(frame)));
-}
 
 // The stream of frames that satisfy a query.
-function query_frames(input) {
-    return evaluate_query(convert_to_query_syntax(parse(input + ";")),
+const query_frames = (input) =>
+    evaluate_query(convert_to_query_syntax(parse(input + ";")),
                           singleton_stream(null));
-}
 
 // The answers to a query, as unparsed strings.
-function answers(input) {
+const answers = (input) => {
     const expression = parse(input + ";");
     return map(frame => unparse(instantiate_expression(expression, frame)),
                stream_to_list(query_frames(input)));
-}
+};
 
 // The value of a pattern variable, such as "$x", in each answer.
-function values_of(variable, input) {
-    return map(frame => instantiate_term(make_name(variable), frame),
+const values_of = (variable, input) =>
+    map(frame => instantiate_term(make_name(variable), frame),
                stream_to_list(query_frames(input)));
-}
 
 // For each answer, the list of the values of the given variables.
-function bindings_of(variables, input) {
-    return map(frame => map(variable => instantiate_term(make_name(variable),
+const bindings_of = (variables, input) =>
+    map(frame => map(variable => instantiate_term(make_name(variable),
                                                          frame),
                             variables),
                stream_to_list(query_frames(input)));
-}
 
 // The values of one variable, for the first n answers only, when there may
 // be infinitely many.
-function first_values_of(n, variable, input) {
-    function take(s, k) {
-        return k === 0 || is_null(s)
+const first_values_of = (n, variable, input) => {
+    const take = (s, k) =>
+        k === 0 || is_null(s)
                ? null
                : pair(instantiate_term(make_name(variable), head(s)),
                       k === 1 ? null : take(stream_tail(s), k - 1));
-    }
     return take(query_frames(input), n);
-}
+};
 
-function count_answers(input) {
-    return length(stream_to_list(query_frames(input)));
-}
+const count_answers = (input) =>
+    length(stream_to_list(query_frames(input)));
 
 // True when xs and ys hold the same elements, in any order, counting repeats.
-function same_elements(xs, ys) {
-    function remove_one(x, items) {
-        return is_null(items)
+const same_elements = (xs, ys) => {
+    const remove_one = (x, items) =>
+        is_null(items)
                ? undefined
                : equal(x, head(items))
                ? tail(items)
                : is_undefined(remove_one(x, tail(items)))
                ? undefined
                : pair(head(items), remove_one(x, tail(items)));
-    }
     return is_null(xs)
            ? is_null(ys)
            : ! is_undefined(remove_one(head(xs), ys)) &&
              same_elements(tail(xs), remove_one(head(xs), ys));
-}
+};
 `;
 
 /** The whole query evaluator of §4.4.4.2–4.4.4.8, without its table and driver. */
@@ -725,26 +674,23 @@ export const queryPrelude = `${querySystem}\n${assertAll(gargleAssertions)}`;
  * §4.4.4, exercise 4.68: Louis Reasoner's `simple_query` and `disjoin`, which
  * do without the delayed second arguments, in an otherwise unchanged system.
  */
-export const louisSimpleQuery = `function simple_query(query_pattern, frame_stream) {
-    return stream_flatmap(
+export const louisSimpleQuery = `const simple_query = (query_pattern, frame_stream) =>
+    stream_flatmap(
                frame =>
                  stream_append(find_assertions(query_pattern, frame),
                                apply_rules(query_pattern, frame)),
                frame_stream);
-}
-function disjoin(disjuncts, frame_stream) {
-    return is_empty_disjunction(disjuncts)
+const disjoin = (disjuncts, frame_stream) =>
+    is_empty_disjunction(disjuncts)
            ? null
            : interleave(
                  evaluate_query(first_disjunct(disjuncts), frame_stream),
                  disjoin(rest_disjuncts(disjuncts), frame_stream));
-}
-function interleave(s1, s2) {
-    return is_null(s1)
+const interleave = (s1, s2) =>
+    is_null(s1)
            ? s2
            : pair(head(s1),
                   () => interleave(s2, stream_tail(s1)));
-}
 `;
 
 // The programs of the section's pages. Each runs with `queryPrelude`.

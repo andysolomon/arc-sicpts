@@ -9,83 +9,69 @@
  * `head` and `tail` directly: every line a painter draws maps two points, and
  * this keeps that cheap.
  */
-export const pictureVectors = `function make_vect(x, y) {
-  return pair(x, y);
-}
+export const pictureVectors = `const make_vect = (x, y) =>
+  pair(x, y);
 
-function xcor_vect(v) {
-  return head(v);
-}
+const xcor_vect = (v) =>
+  head(v);
 
-function ycor_vect(v) {
-  return tail(v);
-}
+const ycor_vect = (v) =>
+  tail(v);
 
-function add_vect(v, w) {
-  return pair(head(v) + head(w), tail(v) + tail(w));
-}
+const add_vect = (v, w) =>
+  pair(head(v) + head(w), tail(v) + tail(w));
 
-function sub_vect(v, w) {
-  return pair(head(v) - head(w), tail(v) - tail(w));
-}
+const sub_vect = (v, w) =>
+  pair(head(v) - head(w), tail(v) - tail(w));
 
-function scale_vect(s, v) {
-  return pair(s * head(v), s * tail(v));
-}
+const scale_vect = (s, v) =>
+  pair(s * head(v), s * tail(v));
 `;
 
 /** Frames as lists (Exercise 2.47). */
-export const pictureFrames = `function make_frame(origin, edge1, edge2) {
-  return list(origin, edge1, edge2);
-}
+export const pictureFrames = `const make_frame = (origin, edge1, edge2) =>
+  list(origin, edge1, edge2);
 
-function origin_frame(frame) {
-  return head(frame);
-}
+const origin_frame = (frame) =>
+  head(frame);
 
-function edge1_frame(frame) {
-  return head(tail(frame));
-}
+const edge1_frame = (frame) =>
+  head(tail(frame));
 
-function edge2_frame(frame) {
-  return head(tail(tail(frame)));
-}
+const edge2_frame = (frame) =>
+  head(tail(tail(frame)));
 `;
 
 export const pictureFrameCoordMap = `// The book's frame_coord_map, with the frame's parts looked up once.
-function frame_coord_map(frame) {
+const frame_coord_map = (frame) => {
   const origin = origin_frame(frame);
   const edge1 = edge1_frame(frame);
   const edge2 = edge2_frame(frame);
   return v => add_vect(origin,
                        add_vect(scale_vect(head(v), edge1),
                                 scale_vect(tail(v), edge2)));
-}
+};
 `;
 
 /** Segments as pairs of vectors (Exercise 2.48). */
-export const pictureSegments = `function make_segment(start, end) {
-  return pair(start, end);
-}
+export const pictureSegments = `const make_segment = (start, end) =>
+  pair(start, end);
 
-function start_segment(segment) {
-  return head(segment);
-}
+const start_segment = (segment) =>
+  head(segment);
 
-function end_segment(segment) {
-  return tail(segment);
-}
+const end_segment = (segment) =>
+  tail(segment);
 `;
 
 /** The book's `segments_to_painter`, with the frame's map made once per frame. */
-export const pictureSegmentsToPainter = `function segments_to_painter(segment_list) {
-  return frame => {
+export const pictureSegmentsToPainter = `const segments_to_painter = (segment_list) =>
+  frame => {
            const m = frame_coord_map(frame);
            return for_each(segment =>
                              draw_line(m(head(segment)), m(tail(segment))),
                            segment_list);
          };
-}
 `;
 
 /**
@@ -93,9 +79,8 @@ export const pictureSegmentsToPainter = `function segments_to_painter(segment_li
  * F, which looks different under every flip and rotation.
  */
 export const picturePainters = `// A segment from (x1, y1) to (x2, y2).
-function seg(x1, y1, x2, y2) {
-  return make_segment(make_vect(x1, y1), make_vect(x2, y2));
-}
+const seg = (x1, y1, x2, y2) =>
+  make_segment(make_vect(x1, y1), make_vect(x2, y2));
 
 const wave_segments = list(
   seg(0.25, 0, 0.35, 0.5), seg(0.35, 0.5, 0.3, 0.6), seg(0.3, 0.6, 0.15, 0.4),
@@ -114,9 +99,8 @@ const letter_f = segments_to_painter(list(
 export const pictureUnitFrame = `const unit_frame = make_frame(make_vect(0, 0), make_vect(1, 0), make_vect(0, 1));
 
 // Paint on the whole canvas.
-function paint(painter) {
-  return painter(unit_frame);
-}
+const paint = (painter) =>
+  painter(unit_frame);
 `;
 
 /**
@@ -131,8 +115,8 @@ ${pictureSegmentsToPainter}
 ${picturePainters}
 ${pictureUnitFrame}`;
 
-export const transformPainterDefinition = `function transform_painter(painter, origin, corner1, corner2) {
-  return frame => {
+export const transformPainterDefinition = `const transform_painter = (painter, origin, corner1, corner2) =>
+  frame => {
            const m = frame_coord_map(frame);
            const new_origin = m(origin);
            return painter(make_frame(
@@ -140,58 +124,51 @@ export const transformPainterDefinition = `function transform_painter(painter, o
                               sub_vect(m(corner1), new_origin),
                               sub_vect(m(corner2), new_origin)));
          };
-}
 `;
 
-export const flipVertDefinition = `function flip_vert(painter) {
-  return transform_painter(painter,
+export const flipVertDefinition = `const flip_vert = (painter) =>
+  transform_painter(painter,
                            make_vect(0, 1),
                            make_vect(1, 1),
                            make_vect(0, 0));
-}
 `;
 
-export const rotate90Definition = `function rotate90(painter) {
-  return transform_painter(painter,
+export const rotate90Definition = `const rotate90 = (painter) =>
+  transform_painter(painter,
                            make_vect(1, 0),
                            make_vect(1, 1),
                            make_vect(0, 0));
-}
 `;
 
 /** The answers to Exercise 2.50. */
-export const flipHorizAndRotationsDefinitions = `function flip_horiz(painter) {
-  return transform_painter(painter,
+export const flipHorizAndRotationsDefinitions = `const flip_horiz = (painter) =>
+  transform_painter(painter,
                            make_vect(1, 0),
                            make_vect(0, 0),
                            make_vect(1, 1));
-}
 
-function rotate180(painter) {
-  return transform_painter(painter,
+const rotate180 = (painter) =>
+  transform_painter(painter,
                            make_vect(1, 1),
                            make_vect(0, 1),
                            make_vect(1, 0));
-}
 
-function rotate270(painter) {
-  return transform_painter(painter,
+const rotate270 = (painter) =>
+  transform_painter(painter,
                            make_vect(0, 1),
                            make_vect(0, 0),
                            make_vect(1, 1));
-}
 `;
 
 /** `identity`, the flips and the rotations. */
-export const pictureTransformations = `function identity(x) {
-  return x;
-}
+export const pictureTransformations = `const identity = (x) =>
+  x;
 
 ${flipVertDefinition}
 ${flipHorizAndRotationsDefinitions}
 ${rotate90Definition}`;
 
-export const besideDefinition = `function beside(painter1, painter2) {
+export const besideDefinition = `const beside = (painter1, painter2) => {
   const split_point = make_vect(0.5, 0);
   const paint_left  = transform_painter(painter1,
                                         make_vect(0, 0),
@@ -205,11 +182,11 @@ export const besideDefinition = `function beside(painter1, painter2) {
              paint_left(frame);
              paint_right(frame);
          };
-}
+};
 `;
 
 /** The answer to Exercise 2.51, written like `beside`. */
-export const belowDefinition = `function below(painter1, painter2) {
+export const belowDefinition = `const below = (painter1, painter2) => {
   const split_point = make_vect(0, 0.5);
   const paint_bottom = transform_painter(painter1,
                                          make_vect(0, 0),
@@ -223,7 +200,7 @@ export const belowDefinition = `function below(painter1, painter2) {
              paint_bottom(frame);
              paint_top(frame);
          };
-}
+};
 `;
 
 /** `pictureBasis` with the means of combination: transformations, `beside` and `below`. */
@@ -233,28 +210,28 @@ ${pictureTransformations}
 ${besideDefinition}
 ${belowDefinition}`;
 
-export const rightSplitDefinition = `function right_split(painter, n) {
+export const rightSplitDefinition = `const right_split = (painter, n) => {
   if (n === 0) {
     return painter;
   } else {
     const smaller = right_split(painter, n - 1);
     return beside(painter, below(smaller, smaller));
   }
-}
+};
 `;
 
 /** The answer to Exercise 2.44. */
-export const upSplitDefinition = `function up_split(painter, n) {
+export const upSplitDefinition = `const up_split = (painter, n) => {
   if (n === 0) {
     return painter;
   } else {
     const smaller = up_split(painter, n - 1);
     return below(painter, beside(smaller, smaller));
   }
-}
+};
 `;
 
-export const cornerSplitDefinition = `function corner_split(painter, n) {
+export const cornerSplitDefinition = `const corner_split = (painter, n) => {
   if (n === 0) {
     return painter;
   } else {
@@ -266,16 +243,15 @@ export const cornerSplitDefinition = `function corner_split(painter, n) {
     return beside(below(painter, top_left),
                   below(bottom_right, corner));
   }
-}
+};
 `;
 
-export const squareOfFourDefinition = `function square_of_four(tl, tr, bl, br) {
-  return painter => {
+export const squareOfFourDefinition = `const square_of_four = (tl, tr, bl, br) =>
+  painter => {
     const top = beside(tl(painter), tr(painter));
     const bottom = beside(bl(painter), br(painter));
     return below(bottom, top);
   };
-}
 `;
 
 /** The prelude of the square-limit example: the picture language and `up_split`. */
@@ -323,40 +299,39 @@ paint(right_split(wave, 3));
 /** Figure 2.9: `corner_split` and `square_limit`. Prelude: `squareLimitPrelude`. */
 export const squareLimitProgram = `${rightSplitDefinition}
 ${cornerSplitDefinition}
-function square_limit(painter, n) {
+const square_limit = (painter, n) => {
   const quarter = corner_split(painter, n);
   const half = beside(flip_horiz(quarter), quarter);
   return below(flip_vert(half), half);
-}
+};
 
 paint(square_limit(wave, 1));
 `;
 
 /** `square_of_four` and the patterns it captures. Prelude: `splitsPrelude`. */
 export const squareOfFourProgram = `${squareOfFourDefinition}
-function flipped_pairs(painter) {
+const flipped_pairs = (painter) => {
   const combine4 = square_of_four(identity, flip_vert,
                                   identity, flip_vert);
   return combine4(painter);
-}
+};
 
-function square_limit(painter, n) {
+const square_limit = (painter, n) => {
   const combine4 = square_of_four(flip_horiz, identity,
                                   rotate180, flip_vert);
   return combine4(corner_split(painter, n));
-}
+};
 
 paint(square_limit(letter_f, 1));
 `;
 
 /** The frame coordinate map. Prelude: `pictureBasis`. */
-export const frameCoordMapProgram = `function frame_coord_map(frame) {
-  return v => add_vect(origin_frame(frame),
+export const frameCoordMapProgram = `const frame_coord_map = (frame) =>
+  v => add_vect(origin_frame(frame),
                        add_vect(scale_vect(xcor_vect(v),
                                            edge1_frame(frame)),
                                 scale_vect(ycor_vect(v),
                                            edge2_frame(frame))));
-}
 
 const a_frame = make_frame(make_vect(0.15, 0.1),
                            make_vect(0.6, 0.2),
@@ -375,8 +350,8 @@ m(make_vect(0.5, 0.5));
 `;
 
 /** Painters from line segments. Prelude: `pictureBasis`. */
-export const segmentsToPainterProgram = `function segments_to_painter(segment_list) {
-  return frame =>
+export const segmentsToPainterProgram = `const segments_to_painter = (segment_list) =>
+  frame =>
            for_each(segment =>
                       draw_line(
                           frame_coord_map(frame)
@@ -384,7 +359,6 @@ export const segmentsToPainterProgram = `function segments_to_painter(segment_li
                           frame_coord_map(frame)
                               (end_segment(segment))),
                     segment_list);
-}
 
 const arrow = segments_to_painter(list(
   make_segment(make_vect(0.1, 0.5), make_vect(0.9, 0.5)),
@@ -397,33 +371,30 @@ arrow(make_frame(make_vect(0.75, 0.5), make_vect(0, 0.5), make_vect(-0.5, 0)));
 
 /** Transforming painters. Prelude: `pictureBasis`. */
 export const transformPainterProgram = `${transformPainterDefinition}
-function flip_vert(painter) {
+const flip_vert = (painter) => {
   return transform_painter(painter,
                            make_vect(0, 1),  // new origin
                            make_vect(1, 1),  // new end of edge1
                            make_vect(0, 0)); // new end of edge2
-}
+};
 
-function shrink_to_upper_right(painter) {
-  return transform_painter(painter,
+const shrink_to_upper_right = (painter) =>
+  transform_painter(painter,
                            make_vect(0.5, 0.5),
                            make_vect(1, 0.5),
                            make_vect(0.5, 1));
-}
 
-function rotate90(painter) {
-  return transform_painter(painter,
+const rotate90 = (painter) =>
+  transform_painter(painter,
                            make_vect(1, 0),
                            make_vect(1, 1),
                            make_vect(0, 0));
-}
 
-function squash_inwards(painter) {
-  return transform_painter(painter,
+const squash_inwards = (painter) =>
+  transform_painter(painter,
                            make_vect(0, 0),
                            make_vect(0.65, 0.35),
                            make_vect(0.35, 0.65));
-}
 
 const quarter = shrink_to_upper_right(letter_f);
 paint(quarter);

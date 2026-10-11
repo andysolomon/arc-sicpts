@@ -38,15 +38,13 @@ Upon returning from evaluating the function expression, we proceed to evaluate t
 The operations on argument lists are two small additions to the evaluator's data structures, and the loop needs one more syntax function, to test for the last argument expression:
 
 ```js
-function empty_arglist() { return null; }
+const empty_arglist = () => null;
 
-function adjoin_arg(arg, arglist) {
-    return append(arglist, list(arg));
-}
+const adjoin_arg = (arg, arglist) =>
+    append(arglist, list(arg));
 
-function is_last_argument_expression(arg_expression) {
-    return is_null(tail(arg_expression));
-}
+const is_last_argument_expression = (arg_expression) =>
+    is_null(tail(arg_expression));
 ```
 
 Each cycle of the argument-evaluation loop evaluates an argument expression from the list in `unev` and accumulates the result into `argl`. To evaluate an argument expression, we place it in the `comp` register and go to `eval_dispatch`, after setting `continue` so that execution will resume with the argument-accumulation phase. But first we save the arguments accumulated so far (held in `argl`), the environment (held in `env`), and the remaining argument expressions to be evaluated (held in `unev`). A special case is made for the evaluation of the last argument expression, which is handled at `ev_appl_last_arg`.
@@ -166,11 +164,10 @@ If no return statement is encountered during evaluation of the function body, ev
 **Return statements and tail recursion.** In chapter 1 we said that the process described by a function such as
 
 ```js
-function sqrt_iter(guess, x) {
-    return is_good_enough(guess, x)
+const sqrt_iter = (guess, x) =>
+    is_good_enough(guess, x)
            ? guess
            : sqrt_iter(improve(guess, x), x);
-}
 ```
 
 is an iterative process. Even though the function is syntactically recursive (defined in terms of itself), it is not logically necessary for an evaluator to save information in passing from one call to `sqrt_iter` to the next. (In §5.1 we implemented such a process with a register machine that had no stack at all.) An evaluator that can execute a function such as `sqrt_iter` without requiring increasing storage as the function continues to call itself is called a *tail-recursive* evaluator.
@@ -197,10 +194,10 @@ This may seem like a minor change: the only difference is that we delay undoing 
 This difference can be significant. For example, with tail recursion, an infinite loop can be expressed using only the function-call and return mechanisms:
 
 ```js
-function count(n) {
+const count = (n) => {
     display(n);
     return count(n + 1);
-}
+};
 ```
 
 Without tail recursion, such a function would eventually run out of stack space, and expressing a true iteration would require some control mechanism other than function call.
@@ -227,10 +224,10 @@ The simulator keeps, beside the stack, a list of the stack heights at which `pus
 Explain how the stack builds up if `return` is removed from `count`:
 
 ```js
-function count(n) {
+const count = (n) => {
     display(n);
     count(n + 1);
-}
+};
 ```
 
 To make your explanation checkable, take versions that stop at `k`. With `return`, the body is `display(n); return n === k ? n : count(n + 1, k);`; without it, the conditional is an expression statement, `display(n); n === k ? n : count(n + 1, k);`. Measure the maximum stack depth of `count(1, k)` for a few values of `k` with the second Example above, then write it as a function of `k`, for `k` ≥ 2, for each version: `depth_with_return(k)` and `depth_without_return(k)`. The checker compares your formulas with the Laboratory's measurements.

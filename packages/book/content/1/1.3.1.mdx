@@ -7,17 +7,14 @@ Functions are abstractions that describe compound operations on numbers independ
 Here are three functions. The first sums the integers from `a` to `b`, the second sums their cubes, and the third sums a sequence of terms that converges, very slowly, to π / 8.
 
 ```js
-function sum_integers(a, b) {
-  return a > b ? 0 : a + sum_integers(a + 1, b);
-}
+const sum_integers = (a, b) =>
+  a > b ? 0 : a + sum_integers(a + 1, b);
 
-function sum_cubes(a, b) {
-  return a > b ? 0 : cube(a) + sum_cubes(a + 1, b);
-}
+const sum_cubes = (a, b) =>
+  a > b ? 0 : cube(a) + sum_cubes(a + 1, b);
 
-function pi_sum(a, b) {
-  return a > b ? 0 : 1 / (a * (a + 2)) + pi_sum(a + 4, b);
-}
+const pi_sum = (a, b) =>
+  a > b ? 0 : 1 / (a * (a + 2)) + pi_sum(a + 4, b);
 ```
 
 They share a common pattern and differ only in the name, the function of `a` used to compute each term, and the function that gives the next value of `a`. Mathematicians long ago named the pattern *summation*, written with a sigma, and the power of the notation is that it lets one talk about the concept of summation itself rather than particular sums. We can do the same by turning the slots into parameters.

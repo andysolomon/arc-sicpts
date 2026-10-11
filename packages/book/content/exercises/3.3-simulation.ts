@@ -16,7 +16,7 @@ import type { ExerciseSpec } from './spec.ts';
 /** Exercises of §3.3.4–§3.3.5. Each export is an ExerciseSpec (see ./spec.ts). */
 
 /** Build a two-input gate on fresh wires, give it inputs x and y, and report the settled output or how long it took. */
-const gateHelpers = `function settled_output(gate, x, y) {
+const gateHelpers = `const settled_output = (gate, x, y) => {
   const a = make_wire();
   const b = make_wire();
   const out = make_wire();
@@ -25,9 +25,9 @@ const gateHelpers = `function settled_output(gate, x, y) {
   set_signal(b, y);
   propagate();
   return get_signal(out);
-}
+};
 
-function output_delay(gate, x, y) {
+const output_delay = (gate, x, y) => {
   const a = make_wire();
   const b = make_wire();
   const out = make_wire();
@@ -40,7 +40,7 @@ function output_delay(gate, x, y) {
   set_signal(b, y);
   propagate();
   return changed - start;
-}
+};
 `;
 
 /** The simulator without an or-gate: wires, agenda, inverter and and-gate. */
@@ -55,9 +55,9 @@ export const exercise_3_28: ExerciseSpec = {
   starter: `// make_wire, get_signal, set_signal, add_action, after_delay, propagate,
 // logical_or (and logical_and, logical_not) and or_gate_delay are provided.
 
-function or_gate(a1, a2, output) {
+const or_gate = (a1, a2, output) => {
   // your answer
-}
+};
 `,
   tests: [
     { name: '0 or 0 is 0', kind: 'value', expr: 'settled_output(or_gate, 0, 0)', expected: 0 },
@@ -66,15 +66,15 @@ function or_gate(a1, a2, output) {
     { name: '1 or 1 is 1', kind: 'value', expr: 'settled_output(or_gate, 1, 1)', expected: 1 },
     { name: 'the output changes or_gate_delay after an input', kind: 'value', expr: 'output_delay(or_gate, 0, 1) === or_gate_delay', expected: true },
   ],
-  solution: `function or_gate(a1, a2, output) {
-  function or_action_function() {
+  solution: `const or_gate = (a1, a2, output) => {
+  const or_action_function = () => {
     const new_value = logical_or(get_signal(a1), get_signal(a2));
     after_delay(or_gate_delay, () => set_signal(output, new_value));
-  }
+  };
   add_action(a1, or_action_function);
   add_action(a2, or_action_function);
   return "ok";
-}
+};
 `,
 };
 
@@ -84,9 +84,9 @@ export const exercise_3_29: ExerciseSpec = {
   starter: `// make_wire, and_gate, inverter, inverter_delay and and_gate_delay are provided.
 
 // An or-gate built from and-gates and inverters, with no or of its own.
-function or_gate(a1, a2, output) {
+const or_gate = (a1, a2, output) => {
   // your answer
-}
+};
 
 // The delay of your or-gate, in terms of inverter_delay and and_gate_delay.
 const compound_or_gate_delay = undefined;
@@ -102,7 +102,7 @@ const compound_or_gate_delay = undefined;
     { name: 'the delay in terms of the gates', kind: 'value', expr: 'compound_or_gate_delay === 2 * inverter_delay + and_gate_delay', expected: true },
   ],
   solution: `// a or b is not (not a and not b).
-function or_gate(a1, a2, output) {
+const or_gate = (a1, a2, output) => {
   const not_a1 = make_wire();
   const not_a2 = make_wire();
   const both_off = make_wire();
@@ -111,7 +111,7 @@ function or_gate(a1, a2, output) {
   and_gate(not_a1, not_a2, both_off);
   inverter(both_off, output);
   return "ok";
-}
+};
 
 const compound_or_gate_delay = 2 * inverter_delay + and_gate_delay;
 `,
@@ -120,23 +120,21 @@ const compound_or_gate_delay = 2 * inverter_delay + and_gate_delay;
 export const exercise_3_30: ExerciseSpec = {
   id: '3.30',
   prelude: `${circuitSimulatorDefinitions}
-function wires(n) {
-  return n === 0 ? null : pair(make_wire(), wires(n - 1));
-}
+const wires = (n) =>
+  n === 0 ? null : pair(make_wire(), wires(n - 1));
 
 // Set the wires (most significant first) to the n-bit binary digits of k.
-function set_number(ws, k, n) {
+const set_number = (ws, k, n) => {
   if (n > 0) {
     set_signal(head(ws), math_floor(k / math_pow(2, n - 1)) % 2);
     set_number(tail(ws), k, n - 1);
   } else {}
-}
+};
 
-function read_number(ws, so_far) {
-  return is_null(ws) ? so_far : read_number(tail(ws), 2 * so_far + get_signal(head(ws)));
-}
+const read_number = (ws, so_far) =>
+  is_null(ws) ? so_far : read_number(tail(ws), 2 * so_far + get_signal(head(ws)));
 
-function add_with_ripple(ripple_carry_adder, n, x, y) {
+const add_with_ripple = (ripple_carry_adder, n, x, y) => {
   const A = wires(n);
   const B = wires(n);
   const S = wires(n);
@@ -146,14 +144,14 @@ function add_with_ripple(ripple_carry_adder, n, x, y) {
   set_number(B, y, n);
   propagate();
   return get_signal(C) * math_pow(2, n) + read_number(S, 0);
-}
+};
 `,
   starter: `// make_wire, full_adder and the rest of the simulator are provided.
 // A, B and S are lists of n wires, most significant bit first; C is the carry out.
 
-function ripple_carry_adder(A, B, S, C) {
+const ripple_carry_adder = (A, B, S, C) => {
   // your answer
-}
+};
 `,
   tests: [
     { name: '1-bit: 1 + 1', kind: 'value', expr: 'add_with_ripple(ripple_carry_adder, 1, 1, 1)', expected: 2 },
@@ -164,14 +162,14 @@ function ripple_carry_adder(A, B, S, C) {
     { name: 'one full-adder per bit', kind: 'calls', call: 'ripple_carry_adder(wires(4), wires(4), wires(4), make_wire())', fn: 'full_adder', atMost: 4 },
   ],
   budget: 3_000_000,
-  solution: `function ripple_carry_adder(A, B, S, C) {
+  solution: `const ripple_carry_adder = (A, B, S, C) => {
   const c_in = make_wire();
   if (!is_null(tail(A))) {
     ripple_carry_adder(tail(A), tail(B), tail(S), c_in);
   } else {}
   full_adder(head(A), head(B), c_in, head(S), C);
   return "ok";
-}
+};
 `,
 };
 
@@ -250,7 +248,7 @@ const lifo_output = 1;
 };
 
 /** Build a three-terminal constraint box, tell two terminals, and read the third. */
-const constraintHelpers = `function third_of(box, a_value, b_value, c_value) {
+const constraintHelpers = `const third_of = (box, a_value, b_value, c_value) => {
   const a = make_connector();
   const b = make_connector();
   const c = make_connector();
@@ -259,7 +257,7 @@ const constraintHelpers = `function third_of(box, a_value, b_value, c_value) {
   if (b_value !== false) { set_value(b, b_value, "user"); } else {}
   if (c_value !== false) { set_value(c, c_value, "user"); } else {}
   return a_value === false ? get_value(a) : b_value === false ? get_value(b) : get_value(c);
-}
+};
 `;
 
 export const exercise_3_33: ExerciseSpec = {
@@ -269,9 +267,9 @@ ${constraintHelpers}`,
   starter: `// make_connector, adder, multiplier and constant are provided.
 
 // The constraint that c is the average of a and b.
-function averager(a, b, c) {
+const averager = (a, b, c) => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'c from a and b', kind: 'value', expr: 'third_of(averager, 10, 20, false)', expected: 15 },
@@ -280,14 +278,14 @@ function averager(a, b, c) {
     { name: 'built from one adder', kind: 'calls', call: 'averager(make_connector(), make_connector(), make_connector())', fn: 'adder', atMost: 1 },
   ],
   solution: `// a + b = u and u = 2c.
-function averager(a, b, c) {
+const averager = (a, b, c) => {
   const u = make_connector();
   const two = make_connector();
   adder(a, b, u);
   multiplier(c, two, u);
   constant(2, two);
   return "ok";
-}
+};
 `,
 };
 
@@ -324,23 +322,23 @@ const a_has_value_when_b_is_9 = false;
 export const exercise_3_35: ExerciseSpec = {
   id: '3.35',
   prelude: `${constraintSystemDefinitions}
-function square_root_of(squarer, b_value) {
+const square_root_of = (squarer, b_value) => {
   const a = make_connector();
   const b = make_connector();
   squarer(a, b);
   set_value(b, b_value, "user");
   return get_value(a);
-}
+};
 
-function square_of(squarer, a_value) {
+const square_of = (squarer, a_value) => {
   const a = make_connector();
   const b = make_connector();
   squarer(a, b);
   set_value(a, a_value, "user");
   return get_value(b);
-}
+};
 
-function forgets(squarer) {
+const forgets = (squarer) => {
   const a = make_connector();
   const b = make_connector();
   squarer(a, b);
@@ -349,13 +347,13 @@ function forgets(squarer) {
   const forgotten = !has_value(b);
   set_value(b, 49, "user");
   return forgotten && get_value(a) === 7;
-}
+};
 `,
   starter: `// make_connector, has_value, get_value, set_value, forget_value,
 // connect and error are provided.
 
-function squarer(a, b) {
-  function process_new_value() {
+const squarer = (a, b) => {
+  const process_new_value = () => {
     if (has_value(b)) {
       if (get_value(b) < 0) {
         error(get_value(b), "square less than 0 -- squarer");
@@ -365,16 +363,16 @@ function squarer(a, b) {
     } else {
       // alternative2
     }
-  }
-  function process_forget_value() {
+  };
+  const process_forget_value = () => {
     // body1
-  }
-  function me(request) {
+  };
+  const me = (request) => {
     // body2
-  }
+  };
   // statements
   return me;
-}
+};
 `,
   tests: [
     { name: 'the root of 9', kind: 'value', expr: 'square_root_of(squarer, 9)', expected: 3 },
@@ -382,8 +380,8 @@ function squarer(a, b) {
     { name: 'the square of 4', kind: 'value', expr: 'square_of(squarer, 4)', expected: 16 },
     { name: 'forgets, then works the other way', kind: 'value', expr: 'forgets(squarer)', expected: true },
   ],
-  solution: `function squarer(a, b) {
-  function process_new_value() {
+  solution: `const squarer = (a, b) => {
+  const process_new_value = () => {
     if (has_value(b)) {
       if (get_value(b) < 0) {
         error(get_value(b), "square less than 0 -- squarer");
@@ -395,13 +393,13 @@ function squarer(a, b) {
         set_value(b, get_value(a) * get_value(a), me);
       } else {}
     }
-  }
-  function process_forget_value() {
+  };
+  const process_forget_value = () => {
     forget_value(a, me);
     forget_value(b, me);
     process_new_value();
-  }
-  function me(request) {
+  };
+  const me = (request) => {
     if (request === "I have a value.") {
       process_new_value();
     } else if (request === "I lost my value.") {
@@ -409,11 +407,11 @@ function squarer(a, b) {
     } else {
       error(request, "unknown request -- squarer");
     }
-  }
+  };
   connect(a, me);
   connect(b, me);
   return me;
-}
+};
 `,
 };
 
@@ -461,34 +459,34 @@ const informed = 0;
 export const exercise_3_37: ExerciseSpec = {
   id: '3.37',
   prelude: `${constraintSystemDefinitions}
-function c_plus(x, y) {
+const c_plus = (x, y) => {
   const z = make_connector();
   adder(x, y, z);
   return z;
-}
+};
 
-function fahrenheit_of(celsius_fahrenheit_converter, celsius) {
+const fahrenheit_of = (celsius_fahrenheit_converter, celsius) => {
   const C = make_connector();
   const F = celsius_fahrenheit_converter(C);
   set_value(C, celsius, "user");
   return get_value(F);
-}
+};
 
-function celsius_of(celsius_fahrenheit_converter, fahrenheit) {
+const celsius_of = (celsius_fahrenheit_converter, fahrenheit) => {
   const C = make_connector();
   const F = celsius_fahrenheit_converter(C);
   set_value(F, fahrenheit, "user");
   return get_value(C);
-}
+};
 
-function backwards(op, z_value, y_value) {
+const backwards = (op, z_value, y_value) => {
   const x = make_connector();
   const y = make_connector();
   const z = op(x, y);
   set_value(z, z_value, "user");
   set_value(y, y_value, "user");
   return get_value(x);
-}
+};
 `,
   starter: `// make_connector, adder, multiplier, constant and c_plus are provided:
 //
@@ -498,25 +496,24 @@ function backwards(op, z_value, y_value) {
 //     return z;
 //   }
 
-function c_minus(x, y) {
+const c_minus = (x, y) => {
   // your answer
-}
+};
 
-function c_times(x, y) {
+const c_times = (x, y) => {
   // your answer
-}
+};
 
-function c_divide(x, y) {
+const c_divide = (x, y) => {
   // your answer
-}
+};
 
-function cv(value) {
+const cv = (value) => {
   // your answer
-}
+};
 
-function celsius_fahrenheit_converter(x) {
-  return c_plus(c_times(c_divide(cv(9), cv(5)), x), cv(32));
-}
+const celsius_fahrenheit_converter = (x) =>
+  c_plus(c_times(c_divide(cv(9), cv(5)), x), cv(32));
 `,
   tests: [
     { name: '25 °C is 77 °F', kind: 'value', expr: 'fahrenheit_of(celsius_fahrenheit_converter, 25)', expected: 77 },
@@ -526,32 +523,31 @@ function celsius_fahrenheit_converter(x) {
     { name: 'c_times works backwards: x · 3 = 12', kind: 'value', expr: 'backwards(c_times, 12, 3)', expected: 4 },
     { name: 'c_divide works backwards: x / 4 = 3', kind: 'value', expr: 'backwards(c_divide, 3, 4)', expected: 12 },
   ],
-  solution: `function c_minus(x, y) {
+  solution: `const c_minus = (x, y) => {
   const z = make_connector();
   adder(z, y, x);
   return z;
-}
+};
 
-function c_times(x, y) {
+const c_times = (x, y) => {
   const z = make_connector();
   multiplier(x, y, z);
   return z;
-}
+};
 
-function c_divide(x, y) {
+const c_divide = (x, y) => {
   const z = make_connector();
   multiplier(z, y, x);
   return z;
-}
+};
 
-function cv(value) {
+const cv = (value) => {
   const z = make_connector();
   constant(value, z);
   return z;
-}
+};
 
-function celsius_fahrenheit_converter(x) {
-  return c_plus(c_times(c_divide(cv(9), cv(5)), x), cv(32));
-}
+const celsius_fahrenheit_converter = (x) =>
+  c_plus(c_times(c_divide(cv(9), cv(5)), x), cv(32));
 `,
 };

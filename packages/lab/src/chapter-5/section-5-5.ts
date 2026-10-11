@@ -38,13 +38,13 @@ n === 0 ? 1 : n * 2;
 `;
 
 /** §5.5.2: a function whose body returns on every path, still followed by the appended return of undefined. */
-export const compiledFunctionProgram = `function abs(x) {
+export const compiledFunctionProgram = `const abs = (x) => {
     if (x < 0) {
         return -x;
     } else {
         return x;
     }
-}
+};
 `;
 
 /** §5.5.3: an argument list in which one argument is an application. */
@@ -58,9 +58,8 @@ display_instructions(instructions(compile(parse("f()(x);"), "val", "next")));
 `;
 
 /** §5.5.3: a call in a return statement is compiled with linkage "return". */
-export const compiledTailCallProgram = `function count_down(n) {
-    return n === 0 ? "done" : count_down(n - 1);
-}
+export const compiledTailCallProgram = `const count_down = (n) =>
+    n === 0 ? "done" : count_down(n - 1);
 count_down(3);
 `;
 
@@ -146,8 +145,8 @@ export const nameApplicationFragment = `const application_fragment = list(
 `;
 
 /** Exercise 5.35: a version of append_return_undefined that adds a return only where a path lacks one. */
-export const smarterAppendReturnUndefined = `function always_returns(stmt) {
-    return is_return_statement(stmt)
+export const smarterAppendReturnUndefined = `const always_returns = (stmt) =>
+    is_return_statement(stmt)
            ? true
            : is_sequence(stmt)
            ? accumulate((s, found) => found || always_returns(s),
@@ -158,13 +157,11 @@ export const smarterAppendReturnUndefined = `function always_returns(stmt) {
            ? always_returns(conditional_consequent(stmt)) &&
              always_returns(conditional_alternative(stmt))
            : false;
-}
 
-function append_return_undefined(body) {
-    return always_returns(body)
+const append_return_undefined = (body) =>
+    always_returns(body)
            ? body
            : list("sequence", list(body,
                                    list("return_statement",
                                         list("literal", undefined))));
-}
 `;

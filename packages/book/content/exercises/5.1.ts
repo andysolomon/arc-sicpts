@@ -9,29 +9,26 @@ import { close, type ExerciseSpec } from './spec.ts';
  * list of pairs of register name and value, runs it from a fresh stack and
  * returns the contents of one register.
  */
-const checkHelpers = `function check_run(machine, inputs, result) {
+const checkHelpers = `const check_run = (machine, inputs, result) => {
     machine("stack")("initialize");
     for_each(input => set_register_contents(machine, head(input), tail(input)),
              inputs);
     start(machine);
     return get_register_contents(machine, result);
-}
-function check_statistics(machine, inputs) {
+};
+const check_statistics = (machine, inputs) => {
     check_run(machine, inputs, head(head(inputs)));
     return machine("stack")("statistics");
-}
-function check_operation_names(machine) {
-    return filter(name => name !== "initialize_stack" &&
+};
+const check_operation_names = (machine) =>
+    filter(name => name !== "initialize_stack" &&
                           name !== "print_stack_statistics",
                   map(head, machine("operations")));
-}
-function check_only(names, allowed) {
-    return accumulate((name, ok) => ok && !is_null(member(name, allowed)),
+const check_only = (names, allowed) =>
+    accumulate((name, ok) => ok && !is_null(member(name, allowed)),
                       true, names);
-}
-function check_has(names, name) {
-    return !is_null(member(name, names));
-}
+const check_has = (names, name) =>
+    !is_null(member(name, names));
 const check_arithmetic =
     list("+", "-", "*", "/", "%", "=", "===", "!==", "<", ">", "<=", ">=", "abs");
 `;

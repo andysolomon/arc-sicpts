@@ -9,8 +9,8 @@ import { declaredNames, omit } from './source.ts';
  */
 
 /** `evaluate` with the one clause that changes: applications pass argument expressions and the environment. */
-export const lazyEvaluate = `function evaluate(component, env) {
-    return is_literal(component)
+export const lazyEvaluate = `const evaluate = (component, env) =>
+    is_literal(component)
            ? literal_value(component)
            : is_name(component)
            ? lookup_symbol_value(symbol_of_name(component), env)
@@ -38,15 +38,13 @@ export const lazyEvaluate = `function evaluate(component, env) {
            : is_assignment(component)
            ? eval_assignment(component, env)
            : error(component, "unknown syntax -- evaluate");
-}
 `;
 
 /** `actual_value`, the new `apply` and the two ways of handling arguments. */
-export const lazyApply = `function actual_value(exp, env) {
-    return force_it(evaluate(exp, env));
-}
+export const lazyApply = `const actual_value = (exp, env) =>
+    force_it(evaluate(exp, env));
 
-function apply(fun, args, env) {
+const apply = (fun, args, env) => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(
                    fun,
@@ -64,41 +62,34 @@ function apply(fun, args, env) {
     } else {
         return error(fun, "unknown function type -- apply");
     }
-}
+};
 
-function list_of_arg_values(exps, env) {
-    return map(exp => actual_value(exp, env), exps);
-}
-function list_of_delayed_args(exps, env) {
-    return map(exp => delay_it(exp, env), exps);
-}
+const list_of_arg_values = (exps, env) =>
+    map(exp => actual_value(exp, env), exps);
+const list_of_delayed_args = (exps, env) =>
+    map(exp => delay_it(exp, env), exps);
 
-function eval_conditional(component, env) {
-    return is_truthy(actual_value(conditional_predicate(component), env))
+const eval_conditional = (component, env) =>
+    is_truthy(actual_value(conditional_predicate(component), env))
            ? evaluate(conditional_consequent(component), env)
            : evaluate(conditional_alternative(component), env);
-}
 `;
 
 /** Thunks: an expression with its environment, replaced by its value when first forced. */
-export const thunks = `function delay_it(exp, env) {
-    return list("thunk", exp, env);
-}
-function is_thunk(obj) {
-    return is_tagged_list(obj, "thunk");
-}
-function thunk_exp(thunk) { return head(tail(thunk)); }
+export const thunks = `const delay_it = (exp, env) =>
+    list("thunk", exp, env);
+const is_thunk = (obj) =>
+    is_tagged_list(obj, "thunk");
+const thunk_exp = (thunk) => head(tail(thunk));
 
-function thunk_env(thunk) { return head(tail(tail(thunk))); }
+const thunk_env = (thunk) => head(tail(tail(thunk)));
 
-function is_evaluated_thunk(obj) {
-    return is_tagged_list(obj, "evaluated_thunk");
-}
-function thunk_value(evaluated_thunk) {
-    return head(tail(evaluated_thunk));
-}
+const is_evaluated_thunk = (obj) =>
+    is_tagged_list(obj, "evaluated_thunk");
+const thunk_value = (evaluated_thunk) =>
+    head(tail(evaluated_thunk));
 
-function force_it(obj) {
+const force_it = (obj) => {
     if (is_thunk(obj)) {
         const result = actual_value(thunk_exp(obj), thunk_env(obj));
         set_head(obj, "evaluated_thunk");
@@ -110,22 +101,21 @@ function force_it(obj) {
     } else {
         return obj;
     }
-}
+};
 `;
 
 /** The first `force_it` of §4.2.2, which evaluates a thunk's expression every time it is forced. */
-export const unmemoizedForceIt = `function force_it(obj) {
-    return is_thunk(obj)
+export const unmemoizedForceIt = `const force_it = (obj) =>
+    is_thunk(obj)
            ? actual_value(thunk_exp(obj), thunk_env(obj))
            : obj;
-}
 `;
 
 /** The driver loop forces what it prints. Like §4.1.4's, it takes its inputs from a list. */
 export const lazyDriverLoop = `const input_prompt = "L-evaluate input:";
 const output_prompt = "L-evaluate value:";
 
-function driver_loop(env, inputs) {
+const driver_loop = (env, inputs) => {
     if (is_null(inputs)) {
         display("evaluator terminated");
     } else {
@@ -137,10 +127,10 @@ function driver_loop(env, inputs) {
         user_print(output_prompt, output);
         return driver_loop(program_env, tail(inputs));
     }
-}
+};
 
 // One program, evaluated as the driver loop would, giving its value.
-function evaluate_program(input) {
+const evaluate_program = (input) => {
     const program = parse(input);
     const locals = scan_out_declarations(program);
     const program_env = extend_environment(
@@ -150,7 +140,7 @@ function evaluate_program(input) {
     return is_return_value(output)
            ? return_value_content(output)
            : output;
-}
+};
 `;
 
 /** Everything §4.2.2 declares anew, in the order the page shows it. */
@@ -200,9 +190,8 @@ export const unmemoizedLazyEvaluator = `${lazyEvaluatorWithout('force_it')}
 ${unmemoizedForceIt}`;
 
 /** §4.2.1: in ordinary, applicative-order Source, `head(null)` is evaluated before `try_me` is entered. */
-export const tryMeStrictProgram = `function try_me(a, b) {
-    return a === 0 ? 1 : b;
-}
+export const tryMeStrictProgram = `const try_me = (a, b) =>
+    a === 0 ? 1 : b;
 
 try_me(0, head(null));
 `;

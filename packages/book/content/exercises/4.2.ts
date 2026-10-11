@@ -5,15 +5,13 @@ import type { ExerciseSpec } from './spec.ts';
 
 export const exercise_4_23: ExerciseSpec = {
   id: '4.23',
-  starter: `function unless(condition, usual_value, exceptional_value) {
-    return condition ? exceptional_value : usual_value;
-}
+  starter: `const unless = (condition, usual_value, exceptional_value) =>
+    condition ? exceptional_value : usual_value;
 
-function factorial(n) {
-    return unless(n === 1,
+const factorial = (n) =>
+    unless(n === 1,
                   n * factorial(n - 1),
                   1);
-}
 
 // Work these out before running anything.
 // Does factorial(5) ever return a value in applicative order? true or false.
@@ -28,15 +26,13 @@ const lazy_calls = undefined;
     { name: 'the value in normal order', kind: 'value', expr: 'lazy_value', expected: 120 },
     { name: 'the calls in normal order', kind: 'value', expr: 'lazy_calls', expected: 5 },
   ],
-  solution: `function unless(condition, usual_value, exceptional_value) {
-    return condition ? exceptional_value : usual_value;
-}
+  solution: `const unless = (condition, usual_value, exceptional_value) =>
+    condition ? exceptional_value : usual_value;
 
-function factorial(n) {
-    return unless(n === 1,
+const factorial = (n) =>
+    unless(n === 1,
                   n * factorial(n - 1),
                   1);
-}
 
 // Applicative order evaluates n * factorial(n - 1) before unless is
 // entered, even when n is 1, so the recursion never stops.
@@ -70,13 +66,13 @@ ${omit(metacircularEvaluator, 'evaluate')}`,
 // Write the two functions, so that unless(condition, usual, exceptional)
 // is a derived component, like an operator combination.
 
-function is_unless(component) {
+const is_unless = (component) => {
     // your answer
-}
+};
 
-function unless_to_conditional(component) {
+const unless_to_conditional = (component) => {
     // your answer
-}
+};
 `,
   tests: [
     {
@@ -94,29 +90,28 @@ function unless_to_conditional(component) {
     {
       name: 'factorial written with unless',
       kind: 'value',
-      expr: 'evaluate_program("function factorial(n) { return unless(n === 1, n * factorial(n - 1), 1); } factorial(5);")',
+      expr: 'evaluate_program("const factorial = (n) => unless(n === 1, n * factorial(n - 1), 1); factorial(5);")',
       expected: 120,
     },
     {
       name: 'other applications are unchanged',
       kind: 'value',
-      expr: 'evaluate_program("function f(x) { return x + 1; } f(head(list(1)));")',
+      expr: 'evaluate_program("const f = (x) => x + 1; f(head(list(1)));")',
       expected: 2,
     },
   ],
-  solution: `function is_unless(component) {
-    return is_application(component) &&
+  solution: `const is_unless = (component) =>
+    is_application(component) &&
            is_name(function_expression(component)) &&
            symbol_of_name(function_expression(component)) === "unless";
-}
 
-function unless_to_conditional(component) {
+const unless_to_conditional = (component) => {
     const args = arg_expressions(component);
     return list("conditional_expression",
                 list_ref(args, 0),
                 list_ref(args, 2),
                 list_ref(args, 1));
-}
+};
 `,
 };
 
@@ -158,19 +153,19 @@ const countingFunctionThunks = `${lazyEvaluatorWithout().replace(
 )}
 let function_thunks = 0;
 
-function function_value(exp, env) {
+const function_value = (exp, env) => {
     const value = evaluate(exp, env);
     function_thunks = is_thunk(value) || is_evaluated_thunk(value)
                       ? function_thunks + 1
                       : function_thunks;
     return force_it(value);
-}
+};
 
-function thunks_applied(program) {
+const thunks_applied = (program) => {
     function_thunks = 0;
     evaluate_program(program);
     return function_thunks;
-}
+};
 `;
 
 export const exercise_4_26: ExerciseSpec = {
@@ -189,7 +184,7 @@ const example = "";
   solution: `// Inside apply_to_one, f names a thunk for the lambda expression.
 // Without actual_value, apply would be handed the thunk and report
 // "unknown function type".
-const example = "function apply_to_one(f) { return f(1); } apply_to_one(x => x + 1);";
+const example = "const apply_to_one = (f) => f(1); apply_to_one(x => x + 1);";
 `,
 };
 
@@ -201,7 +196,7 @@ const switchableMemo = `${lazyEvaluatorWithout('force_it').replace(
 let memoize = true;
 let evaluations = 0;
 
-function force_it(obj) {
+const force_it = (obj) => {
     if (is_thunk(obj)) {
         const result = actual_value(thunk_exp(obj), thunk_env(obj));
         if (memoize) {
@@ -215,21 +210,21 @@ function force_it(obj) {
     } else {
         return obj;
     }
-}
+};
 
-function work(program, memoizing) {
+const work = (program, memoizing) => {
     memoize = memoizing;
     evaluations = 0;
     evaluate_program(program);
     return evaluations;
-}
+};
 
-function same_value(program) {
+const same_value = (program) => {
     memoize = true;
     const with_memo = evaluate_program(program);
     memoize = false;
     return equal(with_memo, evaluate_program(program));
-}
+};
 `;
 
 export const exercise_4_27: ExerciseSpec = {
@@ -269,7 +264,7 @@ const count_without_memo = undefined;
 // evaluates the square inside it again, so the work doubles with every
 // level: the innermost square(2) is evaluated 2 to the 6th = 64 times.
 const slow_without_memo =
-    "function square(x) { return x * x; }" +
+    "const square = (x) => x * x;" +
     "square(square(square(square(square(square(square(2)))))));";
 
 // x * x forces x twice. Memoized, id(10) is evaluated once; otherwise twice.
@@ -335,23 +330,23 @@ export const exercise_4_29: ExerciseSpec = {
 // strict, and the evaluator's is_thunk, thunk_exp, thunk_env,
 // is_evaluated_thunk and thunk_value can be used.
 
-function apply(fun, args, env) {
+const apply = (fun, args, env) => {
     // your answer
-}
+};
 
-function delay_it(exp, env, memoize) {
+const delay_it = (exp, env, memoize) => {
     // your answer
-}
+};
 
-function force_it(obj) {
+const force_it = (obj) => {
     // your answer
-}
+};
 `,
   tests: [
     {
       name: 'parameters are strict by default',
       kind: 'value',
-      expr: 'evaluate_program("let count = 0; function f(a) { return 1; } f(count = count + 1); count;")',
+      expr: 'evaluate_program("let count = 0; const f = (a) => 1; f(count = count + 1); count;")',
       expected: 1,
     },
     {
@@ -381,17 +376,16 @@ function force_it(obj) {
     {
       name: 'ordinary recursive functions still work',
       kind: 'value',
-      expr: 'evaluate_program("function factorial(n) { return n === 1 ? 1 : n * factorial(n - 1); } factorial(6);")',
+      expr: 'evaluate_program("const factorial = (n) => n === 1 ? 1 : n * factorial(n - 1); factorial(6);")',
       expected: 720,
     },
   ],
   solution: `// The parameters(...) application that begins a function body, or null.
 // A body that declares no names is its statements alone, without a block.
-function body_statements(body) {
-    return is_block(body) ? block_body(body) : body;
-}
+const body_statements = (body) =>
+    is_block(body) ? block_body(body) : body;
 
-function parameter_declaration(body) {
+const parameter_declaration = (body) => {
     if (is_sequence(body_statements(body))) {
         const statements = sequence_statements(body_statements(body));
         if (is_null(statements)) {
@@ -407,14 +401,14 @@ function parameter_declaration(body) {
     } else {
         return null;
     }
-}
+};
 
-function body_after_declaration(body) {
+const body_after_declaration = (body) => {
     const rest = list("sequence", tail(sequence_statements(body_statements(body))));
     return is_block(body) ? list("block", rest) : rest;
-}
+};
 
-function list_of_args(kinds, exps, env) {
+const list_of_args = (kinds, exps, env) => {
     if (is_null(exps)) {
         return null;
     } else {
@@ -425,9 +419,9 @@ function list_of_args(kinds, exps, env) {
                     list_of_args(is_null(kinds) ? null : tail(kinds),
                                  tail(exps), env));
     }
-}
+};
 
-function apply(fun, args, env) {
+const apply = (fun, args, env) => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(fun, list_of_arg_values(args, env));
     } else if (is_compound_function(fun)) {
@@ -450,14 +444,13 @@ function apply(fun, args, env) {
     } else {
         return error(fun, "unknown function type -- apply");
     }
-}
+};
 
 // A plain thunk is evaluated whenever it is forced; a memo thunk once.
-function delay_it(exp, env, memoize) {
-    return list(memoize ? "memo_thunk" : "thunk", exp, env);
-}
+const delay_it = (exp, env, memoize) =>
+    list(memoize ? "memo_thunk" : "thunk", exp, env);
 
-function force_it(obj) {
+const force_it = (obj) => {
     if (is_thunk(obj)) {
         return actual_value(thunk_exp(obj), thunk_env(obj));
     } else if (is_tagged_list(obj, "memo_thunk")) {
@@ -471,7 +464,7 @@ function force_it(obj) {
     } else {
         return obj;
     }
-}
+};
 `,
 };
 
@@ -489,7 +482,7 @@ export const exercise_4_31: ExerciseSpec = {
 // their programs, then use list. Change apply so that the primitive list
 // makes lists of those lazy pairs.
 
-function apply(fun, args, env) {
+const apply = (fun, args, env) => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(
                    fun,
@@ -507,7 +500,7 @@ function apply(fun, args, env) {
     } else {
         return error(fun, "unknown function type -- apply");
     }
-}
+};
 `,
   tests: [
     {
@@ -544,15 +537,14 @@ function apply(fun, args, env) {
   solution: `// list(a, b, c) becomes pair(a, pair(b, pair(c, null))), evaluated in the
 // environment of the application, so pair is whatever pair is there: the
 // lazy one, once it has been declared. The arguments stay unevaluated.
-function list_to_pairs(exps) {
-    return is_null(exps)
+const list_to_pairs = (exps) =>
+    is_null(exps)
            ? list("literal", null)
            : list("application",
                   list("name", "pair"),
                   list(head(exps), list_to_pairs(tail(exps))));
-}
 
-function apply(fun, args, env) {
+const apply = (fun, args, env) => {
     if (is_primitive_function(fun) && primitive_implementation(fun) === list) {
         return actual_value(list_to_pairs(args), env);
     } else if (is_primitive_function(fun)) {
@@ -572,7 +564,7 @@ function apply(fun, args, env) {
     } else {
         return error(fun, "unknown function type -- apply");
     }
-}
+};
 `,
 };
 
@@ -589,9 +581,9 @@ export const exercise_4_32: ExerciseSpec = {
 //   - a lazy pair whose tail is not a list ends in that forced tail;
 //   - any other value is left as it is.
 
-function print_form(object) {
+const print_form = (object) => {
     // your answer
-}
+};
 `,
   tests: [
     {
@@ -622,19 +614,17 @@ function print_form(object) {
   ],
   solution: `// The text's lazy pair is a compound function m => m(x, y). Applying it
 // to the expression (p, q) => p gives the head, still to be forced.
-function is_lazy_pair(object) {
-    return is_compound_function(object) &&
+const is_lazy_pair = (object) =>
+    is_compound_function(object) &&
            equal(function_parameters(object), list("m"));
-}
 
-function lazy_part(object, selector) {
-    return force_it(apply(object, list(parse(selector)),
+const lazy_part = (object, selector) =>
+    force_it(apply(object, list(parse(selector)),
                           the_global_environment));
-}
 
-function print_form(object) {
-    function elements(object, n) {
-        return is_null(object)
+const print_form = (object) => {
+    const elements = (object, n) =>
+        is_null(object)
                ? null
                : !is_lazy_pair(object)
                ? object
@@ -642,9 +632,8 @@ function print_form(object) {
                ? list("...")
                : pair(lazy_part(object, "(p, q) => p;"),
                       elements(lazy_part(object, "(p, q) => q;"), n - 1));
-    }
     return is_lazy_pair(object) ? elements(object, 10) : object;
-}
+};
 `,
 };
 

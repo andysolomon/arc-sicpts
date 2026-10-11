@@ -7,8 +7,8 @@ In §4.1.7 we modified our original metacircular interpreter to separate analysi
 The function `compile` is the top-level dispatch in the compiler. It corresponds to the `evaluate` function of §4.1.1, the `analyze` function of §4.1.7, and the `eval_dispatch` entry point of the explicit-control evaluator in §5.4.1. The compiler, like the interpreters, uses the component-syntax functions defined in §4.1.2. (Our compiler is a JavaScript program, and the syntax functions it uses are the actual JavaScript functions used with the metacircular evaluator. For the explicit-control evaluator, in contrast, we assumed that equivalent syntax operations were available as operations for the register machine.) The function `compile` performs a case analysis on the syntactic type of the component to be compiled. For each type of component, it dispatches to a specialised *code generator*:
 
 ```js
-function compile(component, target, linkage) {
-    return is_literal(component)
+const compile = (component, target, linkage) =>
+    is_literal(component)
            ? compile_literal(component, target, linkage)
            : is_name(component)
            ? compile_name(component, target, linkage)
@@ -36,7 +36,6 @@ function compile(component, target, linkage) {
            : is_assignment(component)
            ? compile_assignment(component, target, linkage)
            : error(component, "unknown component type -- compile");
-}
 ```
 
 ## Targets and linkages
@@ -115,9 +114,8 @@ An instruction sequence will contain three pieces of information:
 We will represent an instruction sequence as a list of its three parts. The constructor for instruction sequences is thus
 
 ```js
-function make_instruction_sequence(needs, modifies, instructions) {
-    return list(needs, modifies, instructions);
-}
+const make_instruction_sequence = (needs, modifies, instructions) =>
+    list(needs, modifies, instructions);
 ```
 
 For example, the two-instruction sequence that looks up the value of the symbol `"x"` in the current environment, assigns the result to `val`, and then proceeds to the continuation, requires registers `env` and `continue` to have been initialised, and modifies register `val`. This sequence would therefore be constructed as

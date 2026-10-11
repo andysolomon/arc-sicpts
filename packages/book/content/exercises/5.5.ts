@@ -14,12 +14,11 @@ import type { ExerciseSpec } from './spec.ts';
 
 export const exercise_5_32: ExerciseSpec = {
   id: '5.32',
-  prelude: `function check_same_set(xs, ys) {
-    function within(as, bs) {
-        return accumulate((a, ok) => ok && ! is_null(member(a, bs)), true, as);
-    }
+  prelude: `const check_same_set = (xs, ys) => {
+    const within = (as, bs) =>
+        accumulate((a, ok) => ok && ! is_null(member(a, bs)), true, as);
     return is_list(xs) && within(xs, ys) && within(ys, xs);
-}`,
+};`,
   starter: `// For each application, list the registers among "env", "argl"
 // and "fun" that the compiled code still saves and restores
 // (null if it saves none of them). The evaluator saves all three.
@@ -41,17 +40,16 @@ const saves_4 = list("argl", "fun");  // f(g("x"), "y")
 `,
 };
 
-const recursiveFactorial = `function factorial(n) {
-    return n === 1
+const recursiveFactorial = `const factorial = (n) =>
+    n === 1
            ? 1
-           : factorial(n - 1) * n;
-}`;
+           : factorial(n - 1) * n;`;
 
 /** Runs the evaluator built with the reader's application block, recording what it prints. */
 const ecevalChecks = `${ecevalControllerWithout(['ev_operator_combination'])}
 let check_values = null;
 let check_statistics = null;
-function check_run(inputs) {
+const check_run = (inputs) => {
     check_values = null;
     check_statistics = null;
     const machine = make_machine(
@@ -71,15 +69,15 @@ function check_run(inputs) {
     set_inputs(inputs);
     start(machine);
     return check_values;
-}
-function check_value(inputs) {
+};
+const check_value = (inputs) => {
     check_run(inputs);
     return head(check_values);
-}
-function check_pushes(inputs) {
+};
+const check_pushes = (inputs) => {
     check_run(inputs);
     return head(head(check_statistics));
-}
+};
 `;
 
 const quoted = (text: string) => JSON.stringify(text);
@@ -109,38 +107,38 @@ ${ecevalApplicationFragment}`,
     {
       name: 'an application as function expression',
       kind: 'value',
-      expr: 'check_value(list("function g() { return math_max; } g()(1, 7);"))',
+      expr: 'check_value(list("const g = () => math_max; g()(1, 7);"))',
       expected: 7,
     },
-    { name: 'no arguments', kind: 'value', expr: 'check_value(list("function f() { return 5; } f();"))', expected: 5 },
+    { name: 'no arguments', kind: 'value', expr: 'check_value(list("const f = () => 5; f();"))', expected: 5 },
     { name: 'a primitive function', kind: 'value', expr: 'check_value(list("math_abs(-4) + 1;"))', expected: 5 },
   ],
   budget: 5_000_000,
   solution: nameApplicationFragment,
 };
 
-const tBody = `function t(b) {
+const tBody = `const t = (b) => {
     if (b) {
         display("s1");
     } else {
         display("s2");
     }
-}`;
-const wBody = `function w(b) {
+};`;
+const wBody = `const w = (b) => {
     if (b) {
         return 1;
     } else {
         display("s1");
     }
-}`;
-const mBody = `function m(b) {
+};`;
+const mBody = `const m = (b) => {
     if (b) {
         return 1;
     } else {
         return 2;
     }
-}`;
-const hBody = `function h(b1, b2) {
+};`;
+const hBody = `const h = (b1, b2) => {
     if (b1) {
         return 1;
     } else {
@@ -150,7 +148,7 @@ const hBody = `function h(b1, b2) {
             return 2;
         }
     }
-}`;
+};`;
 
 /** The compiler without append_return_undefined, the evaluator of §5.5.7, and helpers that count and run. */
 const compilerChecks = `${withoutDeclarations(compilerSource, ['append_return_undefined'])}
@@ -159,8 +157,8 @@ const check_t = ${quoted(tBody)};
 const check_w = ${quoted(wBody)};
 const check_m = ${quoted(mBody)};
 const check_h = ${quoted(hBody)};
-function check_count_undefined_returns(component) {
-    return is_return_statement(component)
+const check_count_undefined_returns = (component) =>
+    is_return_statement(component)
            ? (is_literal(return_expression(component)) &&
               is_undefined(literal_value(return_expression(component)))
               ? 1 : 0)
@@ -173,14 +171,13 @@ function check_count_undefined_returns(component) {
            ? check_count_undefined_returns(conditional_consequent(component)) +
              check_count_undefined_returns(conditional_alternative(component))
            : 0;
-}
-function check_added(declaration) {
+const check_added = (declaration) => {
     const body = lambda_body(declaration_value_expression(
                      function_decl_to_constant_decl(parse(declaration))));
     return check_count_undefined_returns(append_return_undefined(body));
-}
+};
 let check_printed = null;
-function check_run(program, input) {
+const check_run = (program, input) => {
     check_printed = null;
     const machine = make_machine(
         list("comp", "env", "val", "fun", "argl", "continue", "unev"),
@@ -200,7 +197,7 @@ function check_run(program, input) {
     set_inputs(list(input));
     start(machine);
     return check_printed;
-}
+};
 `;
 
 export const exercise_5_35: ExerciseSpec = {
@@ -215,11 +212,11 @@ ${onlyDeclarations(compilerSource, ['append_return_undefined'])}
     { name: 'w gets one return', kind: 'value', expr: 'check_added(check_w)', expected: 1 },
     { name: 'm gets no return', kind: 'value', expr: 'check_added(check_m)', expected: 0 },
     { name: 'h gets one return', kind: 'value', expr: 'check_added(check_h)', expected: 1 },
-    { name: 'a body that is a return statement gets none', kind: 'value', expr: 'check_added("function f(x) { return x; }")', expected: 0 },
+    { name: 'a body that is a return statement gets none', kind: 'value', expr: 'check_added("const f = (x) => x;")', expected: 0 },
     {
       name: 'a body with declarations',
       kind: 'value',
-      expr: 'check_added("function f(x) { const y = x; display(y); }")',
+      expr: 'check_added("const f = (x) => { const y = x; display(y); };")',
       expected: 1,
     },
     { name: 'compiled t returns undefined', kind: 'value', expr: 'check_run(check_t, "t(true);") === undefined', expected: true },

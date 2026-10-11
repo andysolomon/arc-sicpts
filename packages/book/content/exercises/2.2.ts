@@ -3,18 +3,15 @@ import { type ExerciseSpec } from './spec.ts';
 
 /** Exercises of §2.2.1 – §2.2.3. */
 
-const square = `function square(x) {
-  return x * x;
-}
+const square = `const square = (x) =>
+  x * x;
 `;
 
-const plusTimes = `function plus(x, y) {
-  return x + y;
-}
+const plusTimes = `const plus = (x, y) =>
+  x + y;
 
-function times(x, y) {
-  return x * y;
-}
+const times = (x, y) =>
+  x * y;
 `;
 
 // §2.2.1
@@ -22,9 +19,9 @@ function times(x, y) {
 export const exercise_2_17: ExerciseSpec = {
   id: '2.17',
   starter: `// The list that holds only the last element of a nonempty list.
-function last_pair(items) {
+const last_pair = (items) => {
   // your answer
-}
+};
 
 last_pair(list(23, 72, 149, 34));
 `,
@@ -33,11 +30,10 @@ last_pair(list(23, 72, 149, 34));
     { name: 'a list of one', kind: 'value', expr: 'equal(last_pair(list("only")), list("only"))', expected: true },
     { name: 'the last pair itself, not a copy', kind: 'value', expr: '(xs => last_pair(xs) === tail(tail(xs)))(list(1, 2, 3))', expected: true },
   ],
-  solution: `function last_pair(items) {
-  return is_null(tail(items))
+  solution: `const last_pair = (items) =>
+  is_null(tail(items))
     ? items
     : last_pair(tail(items));
-}
 
 last_pair(list(23, 72, 149, 34));
 `,
@@ -46,9 +42,9 @@ last_pair(list(23, 72, 149, 34));
 export const exercise_2_18: ExerciseSpec = {
   id: '2.18',
   starter: `// Your reverse takes the place of the library's.
-function reverse(items) {
+const reverse = (items) => {
   // your answer
-}
+};
 
 reverse(list(1, 4, 9, 16, 25));
 `,
@@ -57,27 +53,25 @@ reverse(list(1, 4, 9, 16, 25));
     { name: 'the empty list', kind: 'value', expr: 'reverse(null)', expected: null },
     { name: 'only the top level is reversed', kind: 'value', expr: 'equal(reverse(list(list(1, 2), 3)), list(3, list(1, 2)))', expected: true },
   ],
-  solution: `function reverse(items) {
-  function iter(rest, reversed) {
-    return is_null(rest)
+  solution: `const reverse = (items) => {
+  const iter = (rest, reversed) =>
+    is_null(rest)
       ? reversed
       : iter(tail(rest), pair(head(rest), reversed));
-  }
   return iter(items, null);
-}
+};
 
 reverse(list(1, 4, 9, 16, 25));
 `,
 };
 
-const ccWithLists = `function cc(amount, coin_values) {
-  return amount === 0
+const ccWithLists = `const cc = (amount, coin_values) =>
+  amount === 0
     ? 1
     : amount < 0 || no_more(coin_values)
     ? 0
     : cc(amount, except_first_denomination(coin_values)) +
       cc(amount - first_denomination(coin_values), coin_values);
-}
 
 const us_coins = list(50, 25, 10, 5, 1);
 const uk_coins = list(100, 50, 20, 10, 5, 2, 1);
@@ -86,17 +80,17 @@ const uk_coins = list(100, 50, 20, 10, 5, 2, 1);
 export const exercise_2_19: ExerciseSpec = {
   id: '2.19',
   starter: `${ccWithLists}
-function first_denomination(coin_values) {
+const first_denomination = (coin_values) => {
   // your answer
-}
+};
 
-function except_first_denomination(coin_values) {
+const except_first_denomination = (coin_values) => {
   // your answer
-}
+};
 
-function no_more(coin_values) {
+const no_more = (coin_values) => {
   // your answer
-}
+};
 
 // Does the order of coin_values affect the answer? true or false.
 const order_matters = undefined;
@@ -111,17 +105,14 @@ cc(100, us_coins);
   ],
   budget: 3_000_000,
   solution: `${ccWithLists}
-function first_denomination(coin_values) {
-  return head(coin_values);
-}
+const first_denomination = (coin_values) =>
+  head(coin_values);
 
-function except_first_denomination(coin_values) {
-  return tail(coin_values);
-}
+const except_first_denomination = (coin_values) =>
+  tail(coin_values);
 
-function no_more(coin_values) {
-  return is_null(coin_values);
-}
+const no_more = (coin_values) =>
+  is_null(coin_values);
 
 const order_matters = false;
 
@@ -129,23 +120,22 @@ cc(100, us_coins);
 `,
 };
 
-const plusCurried = `function plus_curried(x) {
-  return y => x + y;
-}
+const plusCurried = `const plus_curried = (x) =>
+  y => x + y;
 `;
 
 export const exercise_2_20: ExerciseSpec = {
   id: '2.20',
   starter: `${plusCurried}
 // Apply the curried function f to the arguments in args, one by one.
-function brooks(f, args) {
+const brooks = (f, args) => {
   // your answer
-}
+};
 
 // brooks, curried: brooks_curried(list(f, a, b, ...)).
-function brooks_curried(xs) {
+const brooks_curried = (xs) => {
   // your answer
-}
+};
 
 // Predict these before you evaluate them.
 // result_1: brooks_curried(list(brooks_curried, list(plus_curried, 3, 4)))
@@ -162,15 +152,13 @@ const result_2 = undefined;
     { name: 'the two predictions', kind: 'value', expr: 'result_1 === 7 && result_2 === 7', expected: true },
   ],
   solution: `${plusCurried}
-function brooks(f, args) {
-  return is_null(args)
+const brooks = (f, args) =>
+  is_null(args)
     ? f
     : brooks(f(head(args)), tail(args));
-}
 
-function brooks_curried(xs) {
-  return brooks(head(xs), tail(xs));
-}
+const brooks_curried = (xs) =>
+  brooks(head(xs), tail(xs));
 
 const result_1 = 7;
 const result_2 = 7;
@@ -182,15 +170,13 @@ export const exercise_2_21: ExerciseSpec = {
   prelude: square,
   starter: `// square is provided. Replace each undefined.
 
-function square_list(items) {
-  return is_null(items)
+const square_list = (items) =>
+  is_null(items)
     ? null
     : pair(undefined, undefined);
-}
 
-function square_list_map(items) {
-  return map(undefined, undefined);
-}
+const square_list_map = (items) =>
+  map(undefined, undefined);
 
 square_list(list(1, 2, 3, 4));
 `,
@@ -200,15 +186,13 @@ square_list(list(1, 2, 3, 4));
     { name: 'square_list_map uses map', kind: 'calls', call: 'square_list_map(list(1, 2, 3))', fn: 'map', atMost: 4 },
     { name: 'square_list recurses once per element', kind: 'calls', call: 'square_list(list(1, 2, 3))', fn: 'square_list', atMost: 4 },
   ],
-  solution: `function square_list(items) {
-  return is_null(items)
+  solution: `const square_list = (items) =>
+  is_null(items)
     ? null
     : pair(square(head(items)), square_list(tail(items)));
-}
 
-function square_list_map(items) {
-  return map(square, items);
-}
+const square_list_map = (items) =>
+  map(square, items);
 
 square_list(list(1, 2, 3, 4));
 `,
@@ -220,24 +204,23 @@ export const exercise_2_22: ExerciseSpec = {
   starter: `// square is provided.
 
 // Louis's first attempt.
-function square_list_louis(items) {
-  function iter(things, answer) {
-    return is_null(things)
+const square_list_louis = (items) => {
+  const iter = (things, answer) =>
+    is_null(things)
       ? answer
       : iter(tail(things),
              pair(square(head(things)),
                   answer));
-  }
   return iter(items, null);
-}
+};
 
 // What square_list_louis(list(1, 2, 3)) returns, written out with list(...).
 const louis_result = undefined;
 
 // An iterative square_list that gets the order right.
-function square_list(items) {
+const square_list = (items) => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'Louis’s result', kind: 'value', expr: 'equal(louis_result, list(9, 4, 1))', expected: true },
@@ -245,32 +228,30 @@ function square_list(items) {
     { name: 'the empty list', kind: 'value', expr: 'square_list(null)', expected: null },
     { name: 'an iterative process', kind: 'shape', expr: '"iterative"', call: 'square_list(list(1, 2, 3, 4, 5, 6, 7, 8))' },
   ],
-  solution: `function square_list_louis(items) {
-  function iter(things, answer) {
-    return is_null(things)
+  solution: `const square_list_louis = (items) => {
+  const iter = (things, answer) =>
+    is_null(things)
       ? answer
       : iter(tail(things),
              pair(square(head(things)),
                   answer));
-  }
   return iter(items, null);
-}
+};
 
 const louis_result = list(9, 4, 1);
 
 // Louis's iteration on the reversed list puts the squares back in order.
-function square_list(items) {
-  return square_list_louis(reverse(items));
-}
+const square_list = (items) =>
+  square_list_louis(reverse(items));
 `,
 };
 
 export const exercise_2_23: ExerciseSpec = {
   id: '2.23',
   starter: `// Your for_each takes the place of the library's.
-function for_each(f, items) {
+const for_each = (f, items) => {
   // your answer
-}
+};
 
 for_each(x => display(x), list(57, 321, 88));
 `,
@@ -284,14 +265,14 @@ for_each(x => display(x), list(57, 321, 88));
     { name: 'returns true', kind: 'value', expr: 'for_each(x => x, list(1, 2))', expected: true },
     { name: 'the empty list', kind: 'value', expr: 'for_each(x => error("never"), null)', expected: true },
   ],
-  solution: `function for_each(f, items) {
+  solution: `const for_each = (f, items) => {
   if (is_null(items)) {
     return true;
   } else {
     f(head(items));
     return for_each(f, tail(items));
   }
-}
+};
 
 for_each(x => display(x), list(57, 321, 88));
 `,
@@ -325,19 +306,19 @@ export const exercise_2_25: ExerciseSpec = {
   starter: `// Using only head and tail, pick out the element where 7 stands.
 
 // list(1, 3, list(5, 7), 9)
-function pick_a(xs) {
+const pick_a = (xs) => {
   // your answer
-}
+};
 
 // list(list(7))
-function pick_b(xs) {
+const pick_b = (xs) => {
   // your answer
-}
+};
 
 // list(1, list(2, list(3, list(4, list(5, list(6, 7))))))
-function pick_c(xs) {
+const pick_c = (xs) => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'the first list', kind: 'value', expr: 'pick_a(list(1, 3, list(5, 7), 9))', expected: 7 },
@@ -346,17 +327,14 @@ function pick_c(xs) {
     { name: 'the third list', kind: 'value', expr: 'pick_c(list(1, list(2, list(3, list(4, list(5, list(6, 7)))))))', expected: 7 },
     { name: 'the third shape, another value', kind: 'value', expr: 'pick_c(list(1, list(2, list(3, list(4, list(5, list(6, 9)))))))', expected: 9 },
   ],
-  solution: `function pick_a(xs) {
-  return head(tail(head(tail(tail(xs)))));
-}
+  solution: `const pick_a = (xs) =>
+  head(tail(head(tail(tail(xs)))));
 
-function pick_b(xs) {
-  return head(head(xs));
-}
+const pick_b = (xs) =>
+  head(head(xs));
 
-function pick_c(xs) {
-  return head(tail(head(tail(head(tail(head(tail(head(tail(head(tail(xs))))))))))));
-}
+const pick_c = (xs) =>
+  head(tail(head(tail(head(tail(head(tail(head(tail(head(tail(xs))))))))))));
 `,
 };
 
@@ -397,9 +375,9 @@ export const exercise_2_27: ExerciseSpec = {
   starter: `const x = list(list(1, 2), list(3, 4));
 
 // Reverse the list, and every sublist within it.
-function deep_reverse(items) {
+const deep_reverse = (items) => {
   // your answer
-}
+};
 
 deep_reverse(x);
 `,
@@ -411,16 +389,15 @@ deep_reverse(x);
   ],
   solution: `const x = list(list(1, 2), list(3, 4));
 
-function deep_reverse(items) {
-  function iter(rest, reversed) {
-    return is_null(rest)
+const deep_reverse = (items) => {
+  const iter = (rest, reversed) =>
+    is_null(rest)
       ? reversed
       : iter(tail(rest),
              pair(is_pair(head(rest)) ? deep_reverse(head(rest)) : head(rest),
                   reversed));
-  }
   return iter(items, null);
-}
+};
 
 deep_reverse(x);
 `,
@@ -431,9 +408,9 @@ export const exercise_2_28: ExerciseSpec = {
   starter: `const x = list(list(1, 2), list(3, 4));
 
 // The leaves of a tree, left to right.
-function fringe(tree) {
+const fringe = (tree) => {
   // your answer
-}
+};
 
 fringe(x);
 `,
@@ -444,25 +421,22 @@ fringe(x);
   ],
   solution: `const x = list(list(1, 2), list(3, 4));
 
-function fringe(tree) {
-  return is_null(tree)
+const fringe = (tree) =>
+  is_null(tree)
     ? null
     : ! is_pair(tree)
     ? list(tree)
     : append(fringe(head(tree)), fringe(tail(tree)));
-}
 
 fringe(x);
 `,
 };
 
-const mobiles = `function make_mobile(left, right) {
-  return list(left, right);
-}
+const mobiles = `const make_mobile = (left, right) =>
+  list(left, right);
 
-function make_branch(length, structure) {
-  return list(length, structure);
-}
+const make_branch = (length, structure) =>
+  list(length, structure);
 `;
 
 /** Two 1-weights on rods of 1: balanced, weight 2. */
@@ -471,29 +445,29 @@ const small = 'make_mobile(make_branch(1, 1), make_branch(1, 1))';
 export const exercise_2_29: ExerciseSpec = {
   id: '2.29',
   starter: `${mobiles}
-function left_branch(mobile) {
+const left_branch = (mobile) => {
   // your answer
-}
+};
 
-function right_branch(mobile) {
+const right_branch = (mobile) => {
   // your answer
-}
+};
 
-function branch_length(branch) {
+const branch_length = (branch) => {
   // your answer
-}
+};
 
-function branch_structure(branch) {
+const branch_structure = (branch) => {
   // your answer
-}
+};
 
-function total_weight(mobile) {
+const total_weight = (mobile) => {
   // your answer
-}
+};
 
-function is_balanced(mobile) {
+const is_balanced = (mobile) => {
   // your answer
-}
+};
 
 // If the constructors used pair instead of list, which of the functions
 // above would have to change? A list of their names, as strings.
@@ -523,43 +497,37 @@ const changes = null;
     },
   ],
   solution: `${mobiles}
-function left_branch(mobile) {
-  return head(mobile);
-}
+const left_branch = (mobile) =>
+  head(mobile);
 
-function right_branch(mobile) {
-  return head(tail(mobile));
-}
+const right_branch = (mobile) =>
+  head(tail(mobile));
 
-function branch_length(branch) {
-  return head(branch);
-}
+const branch_length = (branch) =>
+  head(branch);
 
-function branch_structure(branch) {
-  return head(tail(branch));
-}
+const branch_structure = (branch) =>
+  head(tail(branch));
 
-function branch_weight(branch) {
+const branch_weight = (branch) => {
   const structure = branch_structure(branch);
   return is_number(structure) ? structure : total_weight(structure);
-}
+};
 
-function total_weight(mobile) {
-  return branch_weight(left_branch(mobile)) + branch_weight(right_branch(mobile));
-}
+const total_weight = (mobile) =>
+  branch_weight(left_branch(mobile)) + branch_weight(right_branch(mobile));
 
-function is_balanced(mobile) {
-  function torque(branch) {
-    return branch_length(branch) * branch_weight(branch);
-  }
-  function branch_balanced(branch) {
+const is_balanced = (mobile) => {
+  const torque = (branch) =>
+    branch_length(branch) * branch_weight(branch);
+  const branch_balanced = (branch) => {
     const structure = branch_structure(branch);
     return is_number(structure) || is_balanced(structure);
-  }
+  };
   return torque(left_branch(mobile)) === torque(right_branch(mobile)) &&
          branch_balanced(left_branch(mobile)) &&
          branch_balanced(right_branch(mobile));
-}
+};
 
 // With pair, the right part is the tail itself.
 const changes = list("right_branch", "branch_structure");
@@ -575,14 +543,14 @@ export const exercise_2_30: ExerciseSpec = {
   starter: `// square is provided.
 
 // Directly, without higher-order functions.
-function square_tree(tree) {
+const square_tree = (tree) => {
   // your answer
-}
+};
 
 // With map and recursion.
-function square_tree_map(tree) {
+const square_tree_map = (tree) => {
   // your answer
-}
+};
 
 square_tree(${sampleTree});
 `,
@@ -592,20 +560,18 @@ square_tree(${sampleTree});
     { name: 'the empty tree', kind: 'value', expr: 'is_null(square_tree(null)) && is_null(square_tree_map(null))', expected: true },
     { name: 'square_tree_map uses map', kind: 'calls', call: 'square_tree_map(list(1, list(2, 3)))', fn: 'map', atMost: 6 },
   ],
-  solution: `function square_tree(tree) {
-  return is_null(tree)
+  solution: `const square_tree = (tree) =>
+  is_null(tree)
     ? null
     : ! is_pair(tree)
     ? square(tree)
     : pair(square_tree(head(tree)), square_tree(tail(tree)));
-}
 
-function square_tree_map(tree) {
-  return map(sub_tree => is_pair(sub_tree)
+const square_tree_map = (tree) =>
+  map(sub_tree => is_pair(sub_tree)
                          ? square_tree_map(sub_tree)
                          : square(sub_tree),
              tree);
-}
 
 square_tree(${sampleTree});
 `,
@@ -617,13 +583,12 @@ export const exercise_2_31: ExerciseSpec = {
   starter: `// square is provided.
 
 // Apply f to every leaf of the tree, keeping its shape.
-function tree_map(f, tree) {
+const tree_map = (f, tree) => {
   // your answer
-}
+};
 
-function square_tree(tree) {
-  return tree_map(square, tree);
-}
+const square_tree = (tree) =>
+  tree_map(square, tree);
 
 square_tree(${sampleTree});
 `,
@@ -632,16 +597,14 @@ square_tree(${sampleTree});
     { name: 'any function', kind: 'value', expr: `equal(tree_map(x => x * 10, ${sampleTree}), list(10, list(20, list(30, 40), 50), list(60, 70)))`, expected: true },
     { name: 'strings as leaves', kind: 'value', expr: 'equal(tree_map(s => s + "!", list("a", list("b"))), list("a!", list("b!")))', expected: true },
   ],
-  solution: `function tree_map(f, tree) {
-  return map(sub_tree => is_pair(sub_tree)
+  solution: `const tree_map = (f, tree) =>
+  map(sub_tree => is_pair(sub_tree)
                          ? tree_map(f, sub_tree)
                          : f(sub_tree),
              tree);
-}
 
-function square_tree(tree) {
-  return tree_map(square, tree);
-}
+const square_tree = (tree) =>
+  tree_map(square, tree);
 
 square_tree(${sampleTree});
 `,
@@ -649,7 +612,7 @@ square_tree(${sampleTree});
 
 export const exercise_2_32: ExerciseSpec = {
   id: '2.32',
-  starter: `function subsets(s) {
+  starter: `const subsets = (s) => {
   if (is_null(s)) {
     return list(null);
   } else {
@@ -657,7 +620,7 @@ export const exercise_2_32: ExerciseSpec = {
     // your answer: replace undefined with the function to map over rest
     return append(rest, map(undefined, rest));
   }
-}
+};
 
 subsets(list(1, 2, 3));
 `,
@@ -671,14 +634,14 @@ subsets(list(1, 2, 3));
     { name: 'the empty set', kind: 'value', expr: 'equal(subsets(null), list(null))', expected: true },
     { name: '2⁶ subsets of six elements', kind: 'value', expr: 'length(subsets(list(1, 2, 3, 4, 5, 6)))', expected: 64 },
   ],
-  solution: `function subsets(s) {
+  solution: `const subsets = (s) => {
   if (is_null(s)) {
     return list(null);
   } else {
     const rest = subsets(tail(s));
     return append(rest, map(subset => pair(head(s), subset), rest));
   }
-}
+};
 
 subsets(list(1, 2, 3));
 `,
@@ -692,17 +655,14 @@ export const exercise_2_33: ExerciseSpec = {
 // accumulate is the library's, with the book's argument order.
 // Replace each undefined.
 
-function map(f, sequence) {
-  return accumulate((x, y) => undefined, null, sequence);
-}
+const map = (f, sequence) =>
+  accumulate((x, y) => undefined, null, sequence);
 
-function append(seq1, seq2) {
-  return accumulate(pair, undefined, undefined);
-}
+const append = (seq1, seq2) =>
+  accumulate(pair, undefined, undefined);
 
-function length(sequence) {
-  return accumulate(undefined, 0, sequence);
-}
+const length = (sequence) =>
+  accumulate(undefined, 0, sequence);
 `,
   tests: [
     { name: 'map', kind: 'value', expr: 'equal(map(x => x * x, list(1, 2, 3)), list(1, 4, 9))', expected: true },
@@ -711,28 +671,24 @@ function length(sequence) {
     { name: 'length is an accumulation', kind: 'calls', call: 'length(list(1, 2, 3))', fn: 'accumulate', atMost: 4 },
     { name: 'append is an accumulation', kind: 'calls', call: 'append(list(1, 2), list(3))', fn: 'accumulate', atMost: 3 },
   ],
-  solution: `function map(f, sequence) {
-  return accumulate((x, y) => pair(f(x), y), null, sequence);
-}
+  solution: `const map = (f, sequence) =>
+  accumulate((x, y) => pair(f(x), y), null, sequence);
 
-function append(seq1, seq2) {
-  return accumulate(pair, seq2, seq1);
-}
+const append = (seq1, seq2) =>
+  accumulate(pair, seq2, seq1);
 
-function length(sequence) {
-  return accumulate((x, y) => y + 1, 0, sequence);
-}
+const length = (sequence) =>
+  accumulate((x, y) => y + 1, 0, sequence);
 `,
 };
 
 export const exercise_2_34: ExerciseSpec = {
   id: '2.34',
   starter: `// Coefficients from a_0 up to a_n. Replace undefined.
-function horner_eval(x, coefficient_sequence) {
-  return accumulate((this_coeff, higher_terms) => undefined,
+const horner_eval = (x, coefficient_sequence) =>
+  accumulate((this_coeff, higher_terms) => undefined,
                     0,
                     coefficient_sequence);
-}
 
 // 1 + 3x + 5x³ + x⁵ at x = 2
 horner_eval(2, list(1, 3, 0, 5, 0, 1));
@@ -742,11 +698,10 @@ horner_eval(2, list(1, 3, 0, 5, 0, 1));
     { name: '1 + x + x² at 3', kind: 'value', expr: 'horner_eval(3, list(1, 1, 1))', expected: 13 },
     { name: 'a constant', kind: 'value', expr: 'horner_eval(10, list(4))', expected: 4 },
   ],
-  solution: `function horner_eval(x, coefficient_sequence) {
-  return accumulate((this_coeff, higher_terms) => this_coeff + x * higher_terms,
+  solution: `const horner_eval = (x, coefficient_sequence) =>
+  accumulate((this_coeff, higher_terms) => this_coeff + x * higher_terms,
                     0,
                     coefficient_sequence);
-}
 
 horner_eval(2, list(1, 3, 0, 5, 0, 1));
 `,
@@ -756,9 +711,8 @@ export const exercise_2_35: ExerciseSpec = {
   id: '2.35',
   prelude: plusTimes,
   starter: `// plus and times are provided. Replace each undefined.
-function count_leaves(t) {
-  return accumulate(undefined, undefined, map(undefined, undefined));
-}
+const count_leaves = (t) =>
+  accumulate(undefined, undefined, map(undefined, undefined));
 
 const x = pair(list(1, 2), list(3, 4));
 count_leaves(x);
@@ -769,33 +723,30 @@ count_leaves(x);
     { name: 'deeper', kind: 'value', expr: 'count_leaves(list(1, list(2, list(3, 4)), 5))', expected: 5 },
     { name: 'an accumulation', kind: 'calls', call: 'count_leaves(list(1, 2, 3))', fn: 'accumulate', atMost: 8 },
   ],
-  solution: `function count_leaves(t) {
-  return accumulate(plus, 0, map(sub => is_pair(sub) ? count_leaves(sub) : 1, t));
-}
+  solution: `const count_leaves = (t) =>
+  accumulate(plus, 0, map(sub => is_pair(sub) ? count_leaves(sub) : 1, t));
 
 const x = pair(list(1, 2), list(3, 4));
 count_leaves(x);
 `,
 };
 
-const accumulateN = `function accumulate_n(op, init, seqs) {
-  return is_null(head(seqs))
+const accumulateN = `const accumulate_n = (op, init, seqs) =>
+  is_null(head(seqs))
     ? null
     : pair(accumulate(op, init, map(head, seqs)),
            accumulate_n(op, init, map(tail, seqs)));
-}
 `;
 
 export const exercise_2_36: ExerciseSpec = {
   id: '2.36',
   prelude: plusTimes,
   starter: `// plus and times are provided. Replace each undefined.
-function accumulate_n(op, init, seqs) {
-  return is_null(head(seqs))
+const accumulate_n = (op, init, seqs) =>
+  is_null(head(seqs))
     ? null
     : pair(accumulate(op, init, undefined),
            accumulate_n(op, init, undefined));
-}
 
 const s = list(list(1, 2, 3), list(4, 5, 6), list(7, 8, 9), list(10, 11, 12));
 accumulate_n(plus, 0, s);
@@ -817,23 +768,20 @@ export const exercise_2_37: ExerciseSpec = {
   id: '2.37',
   prelude: `${plusTimes}
 ${accumulateN}
-function dot_product(v, w) {
-  return accumulate(plus, 0, accumulate_n(times, 1, list(v, w)));
-}`,
+const dot_product = (v, w) =>
+  accumulate(plus, 0, accumulate_n(times, 1, list(v, w)));`,
   starter: `// plus, times, accumulate_n and dot_product are provided. Replace each undefined.
 
-function matrix_times_vector(m, v) {
-  return map(undefined, m);
-}
+const matrix_times_vector = (m, v) =>
+  map(undefined, m);
 
-function transpose(mat) {
-  return accumulate_n(undefined, undefined, mat);
-}
+const transpose = (mat) =>
+  accumulate_n(undefined, undefined, mat);
 
-function matrix_times_matrix(m, n) {
+const matrix_times_matrix = (m, n) => {
   const cols = transpose(n);
   return map(undefined, m);
-}
+};
 
 const m = ${matrix};
 matrix_times_vector(m, list(1, 2, 3, 4));
@@ -854,18 +802,16 @@ matrix_times_vector(m, list(1, 2, 3, 4));
       expected: true,
     },
   ],
-  solution: `function matrix_times_vector(m, v) {
-  return map(row => dot_product(row, v), m);
-}
+  solution: `const matrix_times_vector = (m, v) =>
+  map(row => dot_product(row, v), m);
 
-function transpose(mat) {
-  return accumulate_n(pair, null, mat);
-}
+const transpose = (mat) =>
+  accumulate_n(pair, null, mat);
 
-function matrix_times_matrix(m, n) {
+const matrix_times_matrix = (m, n) => {
   const cols = transpose(n);
   return map(row => matrix_times_vector(cols, row), m);
-}
+};
 
 const m = ${matrix};
 matrix_times_vector(m, list(1, 2, 3, 4));
@@ -873,27 +819,23 @@ matrix_times_vector(m, list(1, 2, 3, 4));
 };
 
 const folds = `${plusTimes}
-function minus(x, y) {
-  return x - y;
-}
+const minus = (x, y) =>
+  x - y;
 
-function divide(x, y) {
-  return x / y;
-}
+const divide = (x, y) =>
+  x / y;
 
-function fold_right(op, initial, sequence) {
-  return accumulate(op, initial, sequence);
-}
+const fold_right = (op, initial, sequence) =>
+  accumulate(op, initial, sequence);
 
-function fold_left(op, initial, sequence) {
-  function iter(result, rest) {
-    return is_null(rest)
+const fold_left = (op, initial, sequence) => {
+  const iter = (result, rest) =>
+    is_null(rest)
       ? result
       : iter(op(result, head(rest)),
              tail(rest));
-  }
   return iter(initial, sequence);
-}
+};
 `;
 
 export const exercise_2_38: ExerciseSpec = {
@@ -941,13 +883,11 @@ export const exercise_2_39: ExerciseSpec = {
   prelude: folds,
   starter: `// fold_right and fold_left are provided. Replace each undefined.
 
-function reverse_right(sequence) {
-  return fold_right((x, y) => undefined, null, sequence);
-}
+const reverse_right = (sequence) =>
+  fold_right((x, y) => undefined, null, sequence);
 
-function reverse_left(sequence) {
-  return fold_left((x, y) => undefined, null, sequence);
-}
+const reverse_left = (sequence) =>
+  fold_left((x, y) => undefined, null, sequence);
 
 reverse_left(list(1, 2, 3, 4));
 `,
@@ -958,26 +898,22 @@ reverse_left(list(1, 2, 3, 4));
     { name: 'reverse_right folds right', kind: 'calls', call: 'reverse_right(list(1, 2))', fn: 'fold_right', atMost: 1 },
     { name: 'reverse_left folds left', kind: 'calls', call: 'reverse_left(list(1, 2))', fn: 'fold_left', atMost: 1 },
   ],
-  solution: `function reverse_right(sequence) {
-  return fold_right((x, y) => append(y, list(x)), null, sequence);
-}
+  solution: `const reverse_right = (sequence) =>
+  fold_right((x, y) => append(y, list(x)), null, sequence);
 
-function reverse_left(sequence) {
-  return fold_left((x, y) => pair(y, x), null, sequence);
-}
+const reverse_left = (sequence) =>
+  fold_left((x, y) => pair(y, x), null, sequence);
 
 reverse_left(list(1, 2, 3, 4));
 `,
 };
 
-const primeSumParts = `function is_prime_sum(pair) {
-  return is_prime(head(pair) + head(tail(pair)));
-}
+const primeSumParts = `const is_prime_sum = (pair) =>
+  is_prime(head(pair) + head(tail(pair)));
 
-function make_pair_sum(pair) {
-  return list(head(pair), head(tail(pair)),
+const make_pair_sum = (pair) =>
+  list(head(pair), head(tail(pair)),
               head(pair) + head(tail(pair)));
-}
 `;
 
 export const exercise_2_40: ExerciseSpec = {
@@ -988,13 +924,13 @@ ${primeSumParts}`,
 // are provided.
 
 // The pairs list(i, j) with 1 <= j < i <= n.
-function unique_pairs(n) {
+const unique_pairs = (n) => {
   // your answer
-}
+};
 
-function prime_sum_pairs(n) {
+const prime_sum_pairs = (n) => {
   // your answer, using unique_pairs
-}
+};
 
 prime_sum_pairs(6);
 `,
@@ -1009,16 +945,14 @@ prime_sum_pairs(6);
     },
     { name: 'prime_sum_pairs uses unique_pairs', kind: 'calls', call: 'prime_sum_pairs(4)', fn: 'unique_pairs', atMost: 1 },
   ],
-  solution: `function unique_pairs(n) {
-  return flatmap(i => map(j => list(i, j),
+  solution: `const unique_pairs = (n) =>
+  flatmap(i => map(j => list(i, j),
                           enumerate_interval(1, i - 1)),
                  enumerate_interval(1, n));
-}
 
-function prime_sum_pairs(n) {
-  return map(make_pair_sum,
+const prime_sum_pairs = (n) =>
+  map(make_pair_sum,
              filter(is_prime_sum, unique_pairs(n)));
-}
 
 prime_sum_pairs(6);
 `,
@@ -1030,14 +964,14 @@ export const exercise_2_41: ExerciseSpec = {
   starter: `// enumerate_interval and flatmap are provided.
 
 // The triples list(i, j, k) with n >= i > j > k >= 1.
-function unique_triples(n) {
+const unique_triples = (n) => {
   // your answer
-}
+};
 
 // Those triples whose elements sum to s.
-function triples_with_sum(n, s) {
+const triples_with_sum = (n, s) => {
   // your answer
-}
+};
 
 triples_with_sum(6, 10);
 `,
@@ -1053,22 +987,19 @@ triples_with_sum(6, 10);
     },
     { name: 'and none is missed', kind: 'value', expr: 'length(triples_with_sum(10, 15))', expected: 10 },
   ],
-  solution: `function unique_pairs(n) {
-  return flatmap(i => map(j => list(i, j),
+  solution: `const unique_pairs = (n) =>
+  flatmap(i => map(j => list(i, j),
                           enumerate_interval(1, i - 1)),
                  enumerate_interval(1, n));
-}
 
-function unique_triples(n) {
-  return flatmap(i => map(jk => pair(i, jk),
+const unique_triples = (n) =>
+  flatmap(i => map(jk => pair(i, jk),
                           unique_pairs(i - 1)),
                  enumerate_interval(1, n));
-}
 
-function triples_with_sum(n, s) {
-  return filter(t => head(t) + head(tail(t)) + head(tail(tail(t))) === s,
+const triples_with_sum = (n, s) =>
+  filter(t => head(t) + head(tail(t)) + head(tail(tail(t))) === s,
                 unique_triples(n));
-}
 
 triples_with_sum(6, 10);
 `,
@@ -1083,14 +1014,14 @@ ${queensDefinition}
 // Your representation of a set of board positions.
 const empty_board = undefined;
 
-function adjoin_position(row, col, positions) {
+const adjoin_position = (row, col, positions) => {
   // your answer
-}
+};
 
 // Is the queen in column k safe from the others?
-function is_safe(k, positions) {
+const is_safe = (k, positions) => {
   // your answer
-}
+};
 
 length(queens(6));
 `,
@@ -1106,21 +1037,19 @@ length(queens(6));
 // A set of positions is the list of rows, newest column first.
 const empty_board = null;
 
-function adjoin_position(row, col, positions) {
-  return pair(row, positions);
-}
+const adjoin_position = (row, col, positions) =>
+  pair(row, positions);
 
-function is_safe(k, positions) {
+const is_safe = (k, positions) => {
   const new_row = head(positions);
-  function safe_from(rest, distance) {
-    return is_null(rest)
+  const safe_from = (rest, distance) =>
+    is_null(rest)
       ? true
       : head(rest) !== new_row &&
         math_abs(head(rest) - new_row) !== distance &&
         safe_from(tail(rest), distance + 1);
-  }
   return safe_from(tail(positions), 1);
-}
+};
 
 length(queens(6));
 `,
@@ -1137,9 +1066,9 @@ export const exercise_2_43: ExerciseSpec = {
 // Louis's queens: fix it.
 ${louisQueens}
 // How many times does Louis's version apply queen_cols on an n × n board?
-function louis_calls(n) {
+const louis_calls = (n) => {
   // your answer
-}
+};
 
 // Louis's time for eight queens, in units of T.
 const louis_estimate = 0;
@@ -1157,9 +1086,8 @@ length(queens(4));
   solution: `${queensDefinition}
 // queen_cols(k) applies queen_cols(k - 1) once for each of the n rows,
 // so queen_cols(k) is applied n^(n - k) times: 1 + n + ... + n^n in all.
-function louis_calls(n) {
-  return (math_pow(n, n + 1) - 1) / (n - 1);
-}
+const louis_calls = (n) =>
+  (math_pow(n, n + 1) - 1) / (n - 1);
 
 // The original tries 15 720 positions on the 8 × 8 board; Louis's tries the
 // positions of column k again 8^(8 - k) times, about 51 million in all.

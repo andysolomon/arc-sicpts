@@ -169,30 +169,28 @@ Implement register machines for the following functions, assuming that the list-
 Recursive `count_leaves`:
 
 ```js
-function count_leaves(tree) {
-    return is_null(tree)
+const count_leaves = (tree) =>
+    is_null(tree)
            ? 0
            : ! is_pair(tree)
            ? 1
            : count_leaves(head(tree)) +
              count_leaves(tail(tree));
-}
 ```
 
 Recursive `count_leaves` with explicit counter:
 
 ```js
-function count_leaves(tree) {
-    function count_iter(tree, n) {
-        return is_null(tree)
+const count_leaves = (tree) => {
+    const count_iter = (tree, n) =>
+        is_null(tree)
                ? n
                : ! is_pair(tree)
                ? n + 1
                : count_iter(tail(tree),
                             count_iter(head(tree), n));
-    }
     return count_iter(tree, 0);
-}
+};
 ```
 
 The checker runs both machines on six trees, from `null` and a lone leaf to nested lists, checks that the recursive one uses the stack, and checks the operations each machine was given.

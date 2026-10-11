@@ -1,10 +1,9 @@
 /** Section 1.2.5: Euclid's algorithm. */
 
-export const gcdDefinitions = `function gcd(a, b) {
-  return b === 0
+export const gcdDefinitions = `const gcd = (a, b) =>
+  b === 0
     ? a
     : gcd(b, a % b);
-}
 `;
 
 export const gcdProgram = `${gcdDefinitions}

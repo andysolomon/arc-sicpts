@@ -5,11 +5,10 @@ import { dataAsProgramProgram, factorialMachineProgram, metacircularPrelude } fr
 One way to see what a program means is as the description of an abstract machine, perhaps an infinitely large one. The familiar factorial
 
 ```js
-function factorial(n) {
-    return n === 1
+const factorial = (n) =>
+    n === 1
            ? 1
            : factorial(n - 1) * n;
-}
 ```
 
 describes a machine with parts that decrement, multiply and test for equality, a two-position switch, and another factorial machine inside it. The machine is infinite because it contains a copy of itself.
@@ -52,13 +51,12 @@ The programs of these pages are in `chapter-4/metacircularPrograms.ts`. The test
 Given a one-argument function `f` and an object `a`, `f` is said to *halt* on `a` if evaluating `f(a)` returns a value (as opposed to terminating with an error message or running forever). Show that it is impossible to write a function `halts` that correctly determines whether `f` halts on `a` for any function `f` and object `a`. Use the following reasoning: if you had such a function `halts`, you could implement the following program:
 
 ```js
-function run_forever() { return run_forever(); }
+const run_forever = () => run_forever();
 
-function strange(f) {
-    return halts(f, f)
+const strange = (f) =>
+    halts(f, f)
            ? run_forever()
            : "halted";
-}
 ```
 
 Now consider evaluating `strange(strange)` and show that any possible outcome, either halting or running forever, violates the intended behavior of `halts`. The checker asks what `strange(strange)` does for each answer `halts` could give.

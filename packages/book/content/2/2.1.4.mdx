@@ -27,17 +27,14 @@ Alyssa postulates an abstract object called an interval that has two endpoints, 
 After debugging her program, Alyssa shows it to a potential user, who complains that it solves the wrong problem. He wants to work with numbers represented as a center value and an additive tolerance, such as 3.5 ± 0.15 rather than [3.35, 3.65]. Alyssa returns to her desk and supplies an alternate constructor and alternate selectors:
 
 ```js
-function make_center_width(c, w) {
-  return make_interval(c - w, c + w);
-}
+const make_center_width = (c, w) =>
+  make_interval(c - w, c + w);
 
-function center(i) {
-  return (lower_bound(i) + upper_bound(i)) / 2;
-}
+const center = (i) =>
+  (lower_bound(i) + upper_bound(i)) / 2;
 
-function width(i) {
-  return (upper_bound(i) - lower_bound(i)) / 2;
-}
+const width = (i) =>
+  (upper_bound(i) - lower_bound(i)) / 2;
 ```
 
 Unfortunately, most of Alyssa's users are engineers. Real engineering situations usually involve measurements with only a small uncertainty, measured as the ratio of the width of the interval to its midpoint. Engineers usually specify percentage tolerances on the parameters of devices, as in the resistor specifications above.

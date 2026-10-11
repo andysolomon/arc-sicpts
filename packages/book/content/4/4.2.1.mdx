@@ -7,9 +7,8 @@ Now that we have an evaluator expressed as a JavaScript program, we can experime
 In section 1.1, where we began our discussion of models of evaluation, we noted that JavaScript is an *applicative-order* language: all the arguments to a function are evaluated when the function is applied. In contrast, *normal-order* languages delay evaluating arguments until their values are actually needed. Delaying evaluation of arguments until the last possible moment, for example until a primitive operation needs them, is called *lazy evaluation*. Consider the function
 
 ```js
-function try_me(a, b) {
-    return a === 0 ? 1 : b;
-}
+const try_me = (a, b) =>
+    a === 0 ? 1 : b;
 ```
 
 Evaluating `try_me(0, head(null))` signals an error in JavaScript, and in this Laboratory:
@@ -39,9 +38,8 @@ Both arguments are wrapped in *thunks* when `try_me` is applied. The predicate `
 An example that exploits lazy evaluation is the declaration of a function `unless`
 
 ```js
-function unless(condition, usual_value, exceptional_value) {
-    return condition ? exceptional_value : usual_value;
-}
+const unless = (condition, usual_value, exceptional_value) =>
+    condition ? exceptional_value : usual_value;
 ```
 
 that can be used in statements such as

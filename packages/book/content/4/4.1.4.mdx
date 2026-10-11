@@ -7,13 +7,12 @@ With the evaluator we hold a description, in JavaScript, of the process by which
 Our evaluator reduces everything, in the end, to the application of primitive functions. All it needs in order to run is a way to call on the underlying system for those. There must be a binding for each primitive function and each operator, so that when `evaluate` meets the name `head` or `+` it finds an object to pass to `apply`. The global environment provides them, together with constants such as `undefined`:
 
 ```js
-function setup_environment() {
-    return extend_environment(append(primitive_function_symbols,
+const setup_environment = () =>
+    extend_environment(append(primitive_function_symbols,
                                      primitive_constant_symbols),
                               append(primitive_function_objects,
                                      primitive_constant_values),
                               the_empty_environment);
-}
 const the_global_environment = setup_environment();
 ```
 
@@ -42,10 +41,9 @@ const primitive_function_objects =
 The constants are set up the same way from `primitive_constants`. To apply a primitive we apply its implementation with the underlying system:
 
 ```js
-function apply_primitive_function(fun, arglist) {
-    return apply_in_underlying_javascript(
+const apply_primitive_function = (fun, arglist) =>
+    apply_in_underlying_javascript(
                primitive_implementation(fun), arglist);
-}
 ```
 
 `apply_in_underlying_javascript` takes a function and a *list* of arguments; in JavaScript it turns the list into an array and uses the function’s `apply` method.
@@ -55,7 +53,7 @@ function apply_primitive_function(fun, arglist) {
 The book gives the evaluator a *driver loop*, modelled on the read-evaluate-print loop of the underlying system: it prompts for a program, parses it, evaluates it, prints the result after an *output prompt*, and goes round again. Like a JavaScript program, each input is treated as if it were in a block: its declarations are scanned out and bound to `"*unassigned*"` in a new frame, and the environment it ends with is passed on to the next input. A page cannot stop and wait for typing, so here the inputs come from a list instead of from `prompt`:
 
 ```js
-function driver_loop(env, inputs) {
+const driver_loop = (env, inputs) => {
     if (is_null(inputs)) {
        display("evaluator terminated");
     } else {
@@ -67,7 +65,7 @@ function driver_loop(env, inputs) {
        user_print(output_prompt, output);
        return driver_loop(program_env, tail(inputs));
     }
-}
+};
 ```
 
 `user_print` prints compound functions as `"< compound-function >"` rather than printing their environments, which are very long lists and may even contain cycles.

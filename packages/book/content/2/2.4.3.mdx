@@ -27,13 +27,13 @@ Because his function declarations are internal to the installation function, Ben
 The complex-arithmetic selectors reach the table through one general function, `apply_generic`, which looks in the table under the name of the operation and the types of the arguments, and applies the function it finds to the contents of the arguments:
 
 ```js
-function apply_generic(op, args) {
+const apply_generic = (op, args) => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   return ! is_undefined(fun)
     ? apply(fun, map(contents, args))
     : error(list(op, type_tags), "no method for these types -- apply_generic");
-}
+};
 ```
 
 The book's JavaScript calls a function on a list of arguments with `apply_in_underlying_javascript`. Source cannot spread a list into arguments, so `apply` here takes the list apart by hand for one, two or three arguments, which is all the generic operations of this chapter need. The generic selectors are now one line each, and they do not change at all when a representation is added: `real_part(z)` is `apply_generic("real_part", list(z))`. The constructors are extracted from the table too, rectangular from real and imaginary parts and polar from magnitude and angle, as before.
@@ -78,13 +78,12 @@ The table, the tags and `apply` are Source declarations shared with §2.5, in `c
 Section 2.3.2 described a program that performs symbolic differentiation. We can regard it as dispatching on the type of the expression to be differentiated, where the "type tag" is the algebraic operator, such as `"+"`, and the operation is `deriv`. In data-directed style, the basic derivative function becomes
 
 ```js
-function deriv(exp, variable) {
-  return is_number(exp)
+const deriv = (exp, variable) =>
+  is_number(exp)
     ? 0
     : is_variable(exp)
     ? is_same_variable(exp, variable) ? 1 : 0
     : get("deriv", operator(exp))(operands(exp), variable);
-}
 ```
 
 with `operator(exp)` the head of the expression and `operands(exp)` its tail.

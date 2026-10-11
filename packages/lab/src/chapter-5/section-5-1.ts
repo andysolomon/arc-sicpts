@@ -8,9 +8,8 @@
  * The GCD function of §1.2.5 next to the machine that carries it out (§5.1),
  * so the two answers can be compared.
  */
-export const gcdFunctionAndMachineProgram = `function gcd(a, b) {
-    return b === 0 ? a : gcd(b, a % b);
-}
+export const gcdFunctionAndMachineProgram = `const gcd = (a, b) =>
+    b === 0 ? a : gcd(b, a % b);
 
 const gcd_machine =
     make_machine(

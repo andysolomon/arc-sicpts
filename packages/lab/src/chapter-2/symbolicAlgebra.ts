@@ -15,13 +15,13 @@ export const symbolicArithmeticDefinitions = `// The operation table: a list of 
 // put adds to the front, so a later put for the same key wins.
 let operation_table = null;
 
-function put(op, type, item) {
+const put = (op, type, item) => {
   operation_table = pair(pair(pair(op, type), item), operation_table);
   return "ok";
-}
+};
 
-function get(op, type) {
-  function lookup(entries) {
+const get = (op, type) => {
+  const lookup = (entries) => {
     if (is_null(entries)) {
       return undefined;
     } else {
@@ -30,53 +30,49 @@ function get(op, type) {
         ? tail(head(entries))
         : lookup(tail(entries));
     }
-  }
+  };
   return lookup(operation_table);
-}
+};
 
 // Type tags, with numbers left untagged (Exercise 2.78).
-function attach_tag(type_tag, contents) {
-  return is_number(contents) ? contents : pair(type_tag, contents);
-}
+const attach_tag = (type_tag, contents) =>
+  is_number(contents) ? contents : pair(type_tag, contents);
 
-function type_tag(datum) {
-  return is_number(datum)
+const type_tag = (datum) =>
+  is_number(datum)
     ? "javascript_number"
     : is_pair(datum)
     ? head(datum)
     : error("bad tagged datum -- type_tag", datum);
-}
 
-function contents(datum) {
-  return is_number(datum)
+const contents = (datum) =>
+  is_number(datum)
     ? datum
     : is_pair(datum)
     ? tail(datum)
     : error("bad tagged datum -- contents", datum);
-}
 
 // Source cannot spread a list into arguments; our operations take one or two.
-function apply_in_underlying_javascript(fun, args) {
-  return is_null(tail(args))
+const apply_in_underlying_javascript = (fun, args) =>
+  is_null(tail(args))
     ? fun(head(args))
     : fun(head(args), head(tail(args)));
-}
 
-function apply_generic(op, args) {
+const apply_generic = (op, args) => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   return is_undefined(fun)
     ? error("no method for these types -- apply_generic", list(op, type_tags))
     : apply_in_underlying_javascript(fun, map(contents, args));
-}
+};
 
-function add(x, y) { return apply_generic("add", list(x, y)); }
-function sub(x, y) { return apply_generic("sub", list(x, y)); }
-function mul(x, y) { return apply_generic("mul", list(x, y)); }
-function div(x, y) { return apply_generic("div", list(x, y)); }
-function is_equal_to_zero(x) { return apply_generic("is_equal_to_zero", list(x)); }
+const add = (x, y) => apply_generic("add", list(x, y));
+const sub = (x, y) => apply_generic("sub", list(x, y));
+const mul = (x, y) => apply_generic("mul", list(x, y));
+const div = (x, y) => apply_generic("div", list(x, y));
+const is_equal_to_zero = (x) => apply_generic("is_equal_to_zero", list(x));
 
-function install_javascript_number_package() {
+const install_javascript_number_package = () => {
   const nn = list("javascript_number", "javascript_number");
   put("add", nn, (x, y) => x + y);
   put("sub", nn, (x, y) => x - y);
@@ -84,34 +80,29 @@ function install_javascript_number_package() {
   put("div", nn, (x, y) => x / y);
   put("is_equal_to_zero", list("javascript_number"), x => x === 0);
   return "done";
-}
+};
 
-function gcd(a, b) {
-  return b === 0 ? a : gcd(b, a % b);
-}
+const gcd = (a, b) =>
+  b === 0 ? a : gcd(b, a % b);
 
-function install_rational_package() {
-  function numer(x) { return head(x); }
-  function denom(x) { return tail(x); }
-  function make_rat(n, d) {
+const install_rational_package = () => {
+  const numer = (x) => head(x);
+  const denom = (x) => tail(x);
+  const make_rat = (n, d) => {
     const g = gcd(n, d);
     return pair(n / g, d / g);
-  }
-  function add_rat(x, y) {
-    return make_rat(numer(x) * denom(y) + numer(y) * denom(x),
+  };
+  const add_rat = (x, y) =>
+    make_rat(numer(x) * denom(y) + numer(y) * denom(x),
                     denom(x) * denom(y));
-  }
-  function sub_rat(x, y) {
-    return make_rat(numer(x) * denom(y) - numer(y) * denom(x),
+  const sub_rat = (x, y) =>
+    make_rat(numer(x) * denom(y) - numer(y) * denom(x),
                     denom(x) * denom(y));
-  }
-  function mul_rat(x, y) {
-    return make_rat(numer(x) * numer(y), denom(x) * denom(y));
-  }
-  function div_rat(x, y) {
-    return make_rat(numer(x) * denom(y), denom(x) * numer(y));
-  }
-  function tag(x) { return attach_tag("rational", x); }
+  const mul_rat = (x, y) =>
+    make_rat(numer(x) * numer(y), denom(x) * denom(y));
+  const div_rat = (x, y) =>
+    make_rat(numer(x) * denom(y), denom(x) * numer(y));
+  const tag = (x) => attach_tag("rational", x);
   const rr = list("rational", "rational");
   put("add", rr, (x, y) => tag(add_rat(x, y)));
   put("sub", rr, (x, y) => tag(sub_rat(x, y)));
@@ -120,36 +111,34 @@ function install_rational_package() {
   put("is_equal_to_zero", list("rational"), x => numer(x) === 0);
   put("make", "rational", (n, d) => tag(make_rat(n, d)));
   return "done";
-}
+};
 
-function make_rational(n, d) {
-  return get("make", "rational")(n, d);
-}
+const make_rational = (n, d) =>
+  get("make", "rational")(n, d);
 
 install_javascript_number_package();
 install_rational_package();
 `;
 
 /** Terms and sparse term lists, highest order first. */
-export const sparseTermListDefinitions = `function adjoin_term(term, term_list) {
-  return is_equal_to_zero(coeff(term))
+export const sparseTermListDefinitions = `const adjoin_term = (term, term_list) =>
+  is_equal_to_zero(coeff(term))
     ? term_list
     : pair(term, term_list);
-}
 
 const the_empty_termlist = null;
 
-function first_term(term_list) { return head(term_list); }
+const first_term = (term_list) => head(term_list);
 
-function rest_terms(term_list) { return tail(term_list); }
+const rest_terms = (term_list) => tail(term_list);
 
-function is_empty_termlist(term_list) { return is_null(term_list); }
+const is_empty_termlist = (term_list) => is_null(term_list);
 
-function make_term(order, coeff) { return list(order, coeff); }
+const make_term = (order, coeff) => list(order, coeff);
 
-function order(term) { return head(term); }
+const order = (term) => head(term);
 
-function coeff(term) { return head(tail(term)); }
+const coeff = (term) => head(tail(term));
 `;
 
 /**
@@ -158,27 +147,24 @@ function coeff(term) { return head(tail(term)); }
  * declared at the top level so that the exercises can extend them, and the
  * installation function only puts the interface into the table.
  */
-export const polynomialPackageDefinitions = `function make_poly(variable, term_list) {
-  return pair(variable, term_list);
-}
+export const polynomialPackageDefinitions = `const make_poly = (variable, term_list) =>
+  pair(variable, term_list);
 
-function variable(p) { return head(p); }
+const variable = (p) => head(p);
 
-function term_list(p) { return tail(p); }
+const term_list = (p) => tail(p);
 
-function is_variable(x) { return is_string(x); }
+const is_variable = (x) => is_string(x);
 
-function is_same_variable(v1, v2) {
-  return is_variable(v1) && is_variable(v2) && v1 === v2;
-}
+const is_same_variable = (v1, v2) =>
+  is_variable(v1) && is_variable(v2) && v1 === v2;
 
-function add_poly(p1, p2) {
-  return is_same_variable(variable(p1), variable(p2))
+const add_poly = (p1, p2) =>
+  is_same_variable(variable(p1), variable(p2))
     ? make_poly(variable(p1), add_terms(term_list(p1), term_list(p2)))
     : error("polys not in same var -- add_poly", list(p1, p2));
-}
 
-function add_terms(L1, L2) {
+const add_terms = (L1, L2) => {
   if (is_empty_termlist(L1)) {
     return L2;
   } else if (is_empty_termlist(L2)) {
@@ -193,22 +179,20 @@ function add_terms(L1, L2) {
       : adjoin_term(make_term(order(t1), add(coeff(t1), coeff(t2))),
                     add_terms(rest_terms(L1), rest_terms(L2)));
   }
-}
+};
 
-function mul_poly(p1, p2) {
-  return is_same_variable(variable(p1), variable(p2))
+const mul_poly = (p1, p2) =>
+  is_same_variable(variable(p1), variable(p2))
     ? make_poly(variable(p1), mul_terms(term_list(p1), term_list(p2)))
     : error("polys not in same var -- mul_poly", list(p1, p2));
-}
 
-function mul_terms(L1, L2) {
-  return is_empty_termlist(L1)
+const mul_terms = (L1, L2) =>
+  is_empty_termlist(L1)
     ? the_empty_termlist
     : add_terms(mul_term_by_all_terms(first_term(L1), L2),
                 mul_terms(rest_terms(L1), L2));
-}
 
-function mul_term_by_all_terms(t1, L) {
+const mul_term_by_all_terms = (t1, L) => {
   if (is_empty_termlist(L)) {
     return the_empty_termlist;
   } else {
@@ -217,10 +201,10 @@ function mul_term_by_all_terms(t1, L) {
                                  mul(coeff(t1), coeff(t2))),
                        mul_term_by_all_terms(t1, rest_terms(L)));
   }
-}
+};
 
-function install_polynomial_package() {
-  function tag(p) { return attach_tag("polynomial", p); }
+const install_polynomial_package = () => {
+  const tag = (p) => attach_tag("polynomial", p);
   put("add", list("polynomial", "polynomial"),
       (p1, p2) => tag(add_poly(p1, p2)));
   put("mul", list("polynomial", "polynomial"),
@@ -228,13 +212,12 @@ function install_polynomial_package() {
   put("make", "polynomial",
       (variable, terms) => tag(make_poly(variable, terms)));
   return "done";
-}
+};
 
 install_polynomial_package();
 
-function make_polynomial(variable, terms) {
-  return get("make", "polynomial")(variable, terms);
-}
+const make_polynomial = (variable, terms) =>
+  get("make", "polynomial")(variable, terms);
 `;
 
 /** The whole system of this section: generic arithmetic, term lists and the polynomial package. */
@@ -268,9 +251,8 @@ export const nestedCoefficientsProgram = `// adjoin_term asks whether each new c
 put("is_equal_to_zero", list("polynomial"),
     p => is_empty_termlist(term_list(p)));
 
-function poly_y(terms) {
-  return make_polynomial("y", terms);
-}
+const poly_y = (terms) =>
+  make_polynomial("y", terms);
 
 // (y + 1)x² + (y² + 1)x + (y − 1)
 const a = make_polynomial("x", list(
@@ -289,9 +271,8 @@ product;
 `;
 
 /** The dense and the sparse term lists of A and B. */
-export const termListsProgram = `function make_term(order, coeff) {
-  return list(order, coeff);
-}
+export const termListsProgram = `const make_term = (order, coeff) =>
+  list(order, coeff);
 
 // A: x⁵ + 2x⁴ + 3x² − 2x − 5
 const A_dense = list(1, 2, 0, 3, -2, -5);

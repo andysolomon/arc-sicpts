@@ -5,30 +5,26 @@ import { close, type ExerciseSpec } from './spec.ts';
 
 /** §2.3.2's variables and simplifying constructors, and a way to evaluate an expression at a point. */
 const derivSupport = `${operationTableDefinitions}
-function is_variable(x) {
-  return is_string(x);
-}
+const is_variable = (x) =>
+  is_string(x);
 
-function is_same_variable(v1, v2) {
-  return is_variable(v1) && is_variable(v2) && v1 === v2;
-}
+const is_same_variable = (v1, v2) =>
+  is_variable(v1) && is_variable(v2) && v1 === v2;
 
-function number_equal(exp, num) {
-  return is_number(exp) && exp === num;
-}
+const number_equal = (exp, num) =>
+  is_number(exp) && exp === num;
 
-function make_sum(a1, a2) {
-  return number_equal(a1, 0)
+const make_sum = (a1, a2) =>
+  number_equal(a1, 0)
     ? a2
     : number_equal(a2, 0)
     ? a1
     : is_number(a1) && is_number(a2)
     ? a1 + a2
     : list("+", a1, a2);
-}
 
-function make_product(m1, m2) {
-  return number_equal(m1, 0) || number_equal(m2, 0)
+const make_product = (m1, m2) =>
+  number_equal(m1, 0) || number_equal(m2, 0)
     ? 0
     : number_equal(m1, 1)
     ? m2
@@ -37,13 +33,11 @@ function make_product(m1, m2) {
     : is_number(m1) && is_number(m2)
     ? m1 * m2
     : list("*", m1, m2);
-}
 
 // The value of an expression in x and y at the given point; the checker's own tool.
-function value_at(exp, x, y) {
-  function arg(n) {
-    return value_at(list_ref(exp, n), x, y);
-  }
+const value_at = (exp, x, y) => {
+  const arg = (n) =>
+    value_at(list_ref(exp, n), x, y);
   return is_number(exp)
     ? exp
     : exp === "x"
@@ -57,29 +51,27 @@ function value_at(exp, x, y) {
     : head(exp) === "**"
     ? math_pow(arg(1), arg(2))
     : error(exp, "unknown expression -- value_at");
-}
+};
 `;
 
-const derivDispatch = `function deriv(exp, variable) {
-  return is_number(exp)
+const derivDispatch = `const deriv = (exp, variable) =>
+  is_number(exp)
     ? 0
     : is_variable(exp)
     ? is_same_variable(exp, variable) ? 1 : 0
     : get("deriv", operator(exp))(operands(exp), variable);
-}
 
-function operator(exp) { return head(exp); }
+const operator = (exp) => head(exp);
 
-function operands(exp) { return tail(exp); }
+const operands = (exp) => tail(exp);
 `;
 
-const derivSwapped = `function deriv_swapped(exp, variable) {
-  return is_number(exp)
+const derivSwapped = `const deriv_swapped = (exp, variable) =>
+  is_number(exp)
     ? 0
     : is_variable(exp)
     ? is_same_variable(exp, variable) ? 1 : 0
     : get(operator(exp), "deriv")(operands(exp), variable);
-}
 `;
 
 const reasons = `// (a) Why can't is_number and is_variable be assimilated into the
@@ -103,17 +95,17 @@ const why = "";
 
 // (b) Install the rules for sums, list("+", u, v), and products,
 // list("*", u, v). A rule receives the operands and the variable.
-function install_sum_and_product() {
+const install_sum_and_product = () => {
   // your answer
-}
+};
 
 // (c) Install the rule for exponentiation, list("**", u, n), with n a
 // number: the derivative of u to the n is n times u to the n - 1 times
 // the derivative of u. Anything to the power 0 is 1, and to the power 1
 // is itself.
-function install_exponentiation() {
+const install_exponentiation = () => {
   // your answer
-}
+};
 
 install_sum_and_product();
 install_exponentiation();
@@ -122,9 +114,9 @@ install_exponentiation();
 // as deriv_swapped does. Make it work by installing the same rules
 // under swapped keys, without rewriting them.
 ${derivSwapped}
-function install_swapped() {
+const install_swapped = () => {
   // your answer
-}
+};
 
 install_swapped();
 `,
@@ -162,54 +154,52 @@ install_swapped();
   solution: `${derivDispatch}
 const why = "a number or a variable has no operator to dispatch on";
 
-function deriv_sum(operands, variable) {
-  return make_sum(deriv(head(operands), variable),
+const deriv_sum = (operands, variable) =>
+  make_sum(deriv(head(operands), variable),
                   deriv(head(tail(operands)), variable));
-}
 
-function deriv_product(operands, variable) {
+const deriv_product = (operands, variable) => {
   const u = head(operands);
   const v = head(tail(operands));
   return make_sum(make_product(u, deriv(v, variable)),
                   make_product(deriv(u, variable), v));
-}
+};
 
-function install_sum_and_product() {
+const install_sum_and_product = () => {
   put("deriv", "+", deriv_sum);
   put("deriv", "*", deriv_product);
   return "done";
-}
+};
 
-function make_exp(base, exponent) {
-  return number_equal(exponent, 0)
+const make_exp = (base, exponent) =>
+  number_equal(exponent, 0)
     ? 1
     : number_equal(exponent, 1)
     ? base
     : list("**", base, exponent);
-}
 
-function deriv_exponentiation(operands, variable) {
+const deriv_exponentiation = (operands, variable) => {
   const u = head(operands);
   const n = head(tail(operands));
   return make_product(make_product(n, make_exp(u, n - 1)),
                       deriv(u, variable));
-}
+};
 
-function install_exponentiation() {
+const install_exponentiation = () => {
   put("deriv", "**", deriv_exponentiation);
   return "done";
-}
+};
 
 install_sum_and_product();
 install_exponentiation();
 
 ${derivSwapped}
-function install_swapped() {
+const install_swapped = () => {
   put("+", "deriv", deriv_sum);
   put("*", "deriv", deriv_product);
   put("**", "deriv", deriv_exponentiation);
   return "done";
-}
+};
 
 install_swapped();
 `,
@@ -224,38 +214,34 @@ const london_records = list(
   list("Alyssa P. Hacker", "Cambridge", 40000),
   list("Louis Reasoner", "Slumerville", 30000));
 
-function install_london_package() {
-  function get_record(name, file) {
-    return is_null(file)
+const install_london_package = () => {
+  const get_record = (name, file) =>
+    is_null(file)
       ? null
       : head(head(file)) === name
       ? head(file)
       : get_record(name, tail(file));
-  }
-  function get_salary(record) {
-    return head(tail(tail(record)));
-  }
+  const get_salary = (record) =>
+    head(tail(tail(record)));
   put("get_record", list("london"), get_record);
   put("get_salary", list("london"), get_salary);
   return "done";
-}
+};
 
 // Tokyo: a binary tree ordered by name, each node list(record, left, right),
 // and each record a list of pairs keyed "name", "address" and "salary".
-function tokyo_record(name, address, salary) {
-  return list(pair("name", name), pair("address", address), pair("salary", salary));
-}
+const tokyo_record = (name, address, salary) =>
+  list(pair("name", name), pair("address", address), pair("salary", salary));
 
 const tokyo_records = list(
   tokyo_record("Eva Lu Ator", "Weston", 40000),
   list(tokyo_record("Cy D. Fect", "Cambridge", 35000), null, null),
   list(tokyo_record("Lem E. Tweakit", "Boston", 25000), null, null));
 
-function install_tokyo_package() {
-  function lookup(key, record) {
-    return head(head(record)) === key ? tail(head(record)) : lookup(key, tail(record));
-  }
-  function get_record(name, tree) {
+const install_tokyo_package = () => {
+  const lookup = (key, record) =>
+    head(head(record)) === key ? tail(head(record)) : lookup(key, tail(record));
+  const get_record = (name, tree) => {
     if (is_null(tree)) {
       return null;
     } else {
@@ -267,11 +253,11 @@ function install_tokyo_package() {
         ? get_record(name, head(tail(tree)))
         : get_record(name, head(tail(tail(tree))));
     }
-  }
+  };
   put("get_record", list("tokyo"), get_record);
   put("get_salary", list("tokyo"), record => lookup("salary", record));
   return "done";
-}
+};
 
 install_london_package();
 install_tokyo_package();
@@ -300,26 +286,26 @@ export const exercise_2_74: ExerciseSpec = {
 const london_file = london_records;  // your answer
 const tokyo_file = tokyo_records;    // your answer
 
-function get_record(name, file) {
+const get_record = (name, file) => {
   // your answer
-}
+};
 
 // (b) The salary in a record that get_record returned, from any division.
-function get_salary(record) {
+const get_salary = (record) => {
   // your answer
-}
+};
 
 // (c) Search a list of division files; return the record, or null.
-function find_employee_record(name, files) {
+const find_employee_record = (name, files) => {
   // your answer
-}
+};
 
 // (d) Insatiable takes over a company in Lagos. Its file, lagos_records,
 // is a list of pairs, each pair(name, pair(salary, address)). Bring it
 // into the system without changing anything above.
-function install_lagos_package() {
+const install_lagos_package = () => {
   // your answer
-}
+};
 
 install_lagos_package();
 const lagos_file = lagos_records;    // your answer
@@ -365,17 +351,16 @@ const lagos_file = lagos_records;    // your answer
   solution: `const london_file = attach_tag("london", london_records);
 const tokyo_file = attach_tag("tokyo", tokyo_records);
 
-function get_record(name, file) {
+const get_record = (name, file) => {
   const division = type_tag(file);
   const record = get("get_record", list(division))(name, contents(file));
   return is_null(record) ? null : attach_tag(division, record);
-}
+};
 
-function get_salary(record) {
-  return get("get_salary", list(type_tag(record)))(contents(record));
-}
+const get_salary = (record) =>
+  get("get_salary", list(type_tag(record)))(contents(record));
 
-function find_employee_record(name, files) {
+const find_employee_record = (name, files) => {
   if (is_null(files)) {
     return null;
   } else {
@@ -384,20 +369,19 @@ function find_employee_record(name, files) {
       ? find_employee_record(name, tail(files))
       : record;
   }
-}
+};
 
-function install_lagos_package() {
-  function get_record(name, file) {
-    return is_null(file)
+const install_lagos_package = () => {
+  const get_record = (name, file) =>
+    is_null(file)
       ? null
       : head(head(file)) === name
       ? tail(head(file))
       : get_record(name, tail(file));
-  }
   put("get_record", list("lagos"), get_record);
   put("get_salary", list("lagos"), record => head(record));
   return "done";
-}
+};
 
 install_lagos_package();
 const lagos_file = attach_tag("lagos", lagos_records);
@@ -405,13 +389,12 @@ const lagos_file = attach_tag("lagos", lagos_records);
 };
 
 /** Message-passing complex numbers from rectangular parts, and the generic selectors. */
-const messagePassingSupport = `function square(x) {
-  return x * x;
-}
+const messagePassingSupport = `const square = (x) =>
+  x * x;
 
-function make_from_real_imag(x, y) {
-  function dispatch(op) {
-    return op === "real_part"
+const make_from_real_imag = (x, y) => {
+  const dispatch = (op) =>
+    op === "real_part"
       ? x
       : op === "imag_part"
       ? y
@@ -420,19 +403,18 @@ function make_from_real_imag(x, y) {
       : op === "angle"
       ? math_atan2(y, x)
       : error(op, "unknown op -- make_from_real_imag");
-  }
   return dispatch;
-}
+};
 
-function apply_generic(op, arg) { return head(arg)(op); }
+const apply_generic = (op, arg) => head(arg)(op);
 
-function real_part(z) { return apply_generic("real_part", list(z)); }
+const real_part = (z) => apply_generic("real_part", list(z));
 
-function imag_part(z) { return apply_generic("imag_part", list(z)); }
+const imag_part = (z) => apply_generic("imag_part", list(z));
 
-function magnitude(z) { return apply_generic("magnitude", list(z)); }
+const magnitude = (z) => apply_generic("magnitude", list(z));
 
-function angle(z) { return apply_generic("angle", list(z)); }
+const angle = (z) => apply_generic("angle", list(z));
 `;
 
 export const exercise_2_75: ExerciseSpec = {
@@ -441,9 +423,9 @@ export const exercise_2_75: ExerciseSpec = {
   starter: `// square, the message-passing make_from_real_imag, apply_generic, and the
 // selectors real_part, imag_part, magnitude and angle are provided.
 
-function make_from_mag_ang(r, a) {
+const make_from_mag_ang = (r, a) => {
   // your answer
-}
+};
 `,
   tests: [
     { name: 'magnitude and angle as given', kind: 'value', expr: 'magnitude(make_from_mag_ang(5, 0.5)) * 10 + angle(make_from_mag_ang(5, 0.5))', expected: 50.5 },
@@ -462,9 +444,9 @@ function make_from_mag_ang(r, a) {
       expected: true,
     },
   ],
-  solution: `function make_from_mag_ang(r, a) {
-  function dispatch(op) {
-    return op === "real_part"
+  solution: `const make_from_mag_ang = (r, a) => {
+  const dispatch = (op) =>
+    op === "real_part"
       ? r * math_cos(a)
       : op === "imag_part"
       ? r * math_sin(a)
@@ -473,9 +455,8 @@ function make_from_mag_ang(r, a) {
       : op === "angle"
       ? a
       : error(op, "unknown op -- make_from_mag_ang");
-  }
   return dispatch;
-}
+};
 `,
 };
 
@@ -491,10 +472,10 @@ export const exercise_2_76: ExerciseSpec = {
 //   "every type"               each type's code gains a case
 // Take a data-directed package's internal functions to be local to its
 // installation function, as Ben's and Alyssa's are.
-function edits(strategy, addition) {
+const edits = (strategy, addition) => {
   // your answer
   return "";
-}
+};
 
 // Which organization suits a system to which new types must often be
 // added? Which suits one to which new operations must often be added?
@@ -533,13 +514,12 @@ const for_new_operations = "";  // your answer
       expected: true,
     },
   ],
-  solution: `function edits(strategy, addition) {
-  return strategy === "explicit dispatch"
+  solution: `const edits = (strategy, addition) =>
+  strategy === "explicit dispatch"
     ? (addition === "new type" ? "every generic operation" : "nothing")
     : addition === "new type"
     ? "nothing"
     : "every type";
-}
 
 const for_new_types = "message passing";
 const for_new_operations = "explicit dispatch";

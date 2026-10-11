@@ -21,9 +21,8 @@ The environment is what gives an expression its meaning. `x + 1` has no value by
 In the environment model, a function is a pair: some code, and a pointer to an environment. There is only one way to make one, which is to evaluate a lambda expression. The code comes from the lambda expression's text, and the environment is the one the lambda expression was evaluated in. A function declaration such as
 
 ```js
-function square(x) {
-  return x * x;
-}
+const square = (x) =>
+  x * x;
 ```
 
 is sugar for a constant declaration of a lambda expression,

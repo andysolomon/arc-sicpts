@@ -34,13 +34,12 @@ We store the current environment, initially the global environment, in the varia
 ```js
 let current_environment = the_global_environment;
 
-function get_current_environment() {
-    return current_environment;
-}
+const get_current_environment = () =>
+    current_environment;
 
-function set_current_environment(env) {
+const set_current_environment = (env) => {
     current_environment = env;
-}
+};
 ```
 
 When we encounter an error in a function (such as the unknown function type error indicated at `apply_dispatch`), we print an error message and return to the driver loop. A component the dispatcher does not recognise is reported the same way; among them are logical compositions such as `a && b`, derived components that this evaluator does not handle. (Other errors are not so simple to handle; see exercise 5.31.)
@@ -127,15 +126,14 @@ During the iterative computation the depth plot is a row of identical teeth: eac
 Use the monitored stack to explore the tail-recursive property of the evaluator (§5.4.2). Define the iterative `factorial` function of §1.2.1:
 
 ```js
-function factorial(n) {
-    function iter(product, counter) {
-        return counter > n
+const factorial = (n) => {
+    const iter = (product, counter) =>
+        counter > n
                ? product
                : iter(counter * product,
                       counter + 1);
-    }
     return iter(1, 1);
-}
+};
 ```
 
 Run it with some small values of *n*, by editing the inputs of the second Example above. Record the maximum stack depth and the number of pushes required to compute *n*! for each of these values.
@@ -154,11 +152,10 @@ Run it with some small values of *n*, by editing the inputs of the second Exampl
 For comparison with exercise 5.27, explore the behaviour of the following function for computing factorials recursively:
 
 ```js
-function factorial(n) {
-    return n === 1
+const factorial = (n) =>
+    n === 1
            ? 1
            : factorial(n - 1) * n;
-}
 ```
 
 By running this function with the monitored stack, determine, as a function of *n*, the maximum depth of the stack and the total number of pushes used in evaluating *n*! for *n* ≥ 1. (Again, these functions will be linear.) Write `recursive_depth(n)` and `recursive_pushes(n)`. Then summarise your experiments by filling in this table with the appropriate expressions in terms of *n*:
@@ -198,9 +195,8 @@ Modify the definition of the evaluator by changing `ev_return` as described in �
 Monitor the stack operations in the tree-recursive Fibonacci computation:
 
 ```js
-function fib(n) {
-    return n < 2 ? n : fib(n - 1) + fib(n - 2);
-}
+const fib = (n) =>
+    n < 2 ? n : fib(n - 1) + fib(n - 2);
 ```
 
 - Give a formula in terms of *n* for the maximum depth of the stack required to compute Fib(*n*) for *n* ≥ 2: write `fib_depth(n)`. Hint: in §1.2.2 we argued that the space used by this process grows linearly with *n*.

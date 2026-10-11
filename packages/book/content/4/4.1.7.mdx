@@ -7,16 +7,15 @@ The evaluator so far is simple but very inefficient, because the syntactic analy
 We can arrange for analysis to happen only once. `evaluate` is split in two. `analyze` takes only the component; it performs the syntactic analysis and returns an *execution function*, which takes an environment and completes the evaluation. A function body is analyzed once, however many times the function is applied.
 
 ```js
-function evaluate(component, env) {
-    return analyze(component)(env);
-}
+const evaluate = (component, env) =>
+    analyze(component)(env);
 ```
 
 `analyze` is the same case analysis as `evaluate`, but the functions it dispatches to only analyze:
 
 ```js
-function analyze(component) {
-    return is_literal(component)
+const analyze = (component) =>
+    is_literal(component)
            ? analyze_literal(component)
            : is_name(component)
            ? analyze_name(component)
@@ -41,30 +40,27 @@ function analyze(component) {
            : is_assignment(component)
            ? analyze_assignment(component)
            : error(component, "unknown syntax -- analyze");
-}
 ```
 
 The simplest analysis is of a literal: its execution function ignores the environment. A name must still be looked up at execution time, since the value depends on the environment.
 
 ```js
-function analyze_literal(component) {
-    return env => literal_value(component);
-}
-function analyze_name(component) {
-    return env => lookup_symbol_value(symbol_of_name(component), env);
-}
+const analyze_literal = (component) =>
+    env => literal_value(component);
+const analyze_name = (component) =>
+    env => lookup_symbol_value(symbol_of_name(component), env);
 ```
 
 To analyze an application we analyze its function expression and argument expressions, and build an execution function that runs them and passes the results to `execute_application`, the analogue of `apply`. Since the body of a compound function has already been analyzed, `execute_application` just calls the body’s execution function on the extended environment.
 
 ```js
-function analyze_application(component) {
+const analyze_application = (component) => {
     const ffun = analyze(function_expression(component));
     const afuns = map(analyze, arg_expressions(component));
     return env => execute_application(ffun(env),
                                       map(afun => afun(env), afuns));
-}
-function execute_application(fun, args) {
+};
+const execute_application = (fun, args) => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(fun, args);
     } else if (is_compound_function(fun)) {
@@ -78,42 +74,40 @@ function execute_application(fun, args) {
     } else {
         error(fun, "unknown function type -- execute_application");
     }
-}
+};
 ```
 
 Conditionals, lambda expressions, blocks, return statements, assignments and declarations are analyzed in the same spirit: analyze the parts now, and return a function that does only what depends on the environment. Analyzing a lambda expression is a major gain, since its body is analyzed once however many times the function is applied:
 
 ```js
-function analyze_lambda_expression(component) {
+const analyze_lambda_expression = (component) => {
     const params = lambda_parameter_symbols(component);
     const bfun = analyze(lambda_body(component));
     return env => make_function(params, bfun, env);
-}
+};
 ```
 
 A sequence is more involved. Each statement is analyzed into an execution function, and these are chained into one function that calls them in order, stopping at a return value:
 
 ```js
-function analyze_sequence(stmts) {
-    function sequentially(fun1, fun2) {
-        return env => {
+const analyze_sequence = (stmts) => {
+    const sequentially = (fun1, fun2) =>
+        env => {
                    const fun1_val = fun1(env);
                    return is_return_value(fun1_val)
                           ? fun1_val
                           : fun2(env);
                };
-    }
-    function loop(first_fun, rest_funs) {
-        return is_null(rest_funs)
+    const loop = (first_fun, rest_funs) =>
+        is_null(rest_funs)
                ? first_fun
                : loop(sequentially(first_fun, head(rest_funs)),
                       tail(rest_funs));
-    }
     const funs = map(analyze, stmts);
     return is_null(funs)
            ? env => undefined
            : loop(head(funs), tail(funs));
-}
+};
 ```
 
 The new evaluator uses the same syntax functions, data structures and setup as §4.1.2 to §4.1.4. Both evaluators are below, each running the same program: compare the step counts in their output headers.
@@ -154,8 +148,8 @@ Extend the evaluator of this section to support while loops (exercise 4.7).
 Alyssa P. Hacker doesn’t understand why `analyze_sequence` needs to be so complicated. She expected it to look like this:
 
 ```js
-function analyze_sequence(stmts) {
-    function execute_sequence(funs, env) {
+const analyze_sequence = (stmts) => {
+    const execute_sequence = (funs, env) => {
         if (is_null(funs)) {
             return undefined;
         } else if (is_null(tail(funs))) {
@@ -166,10 +160,10 @@ function analyze_sequence(stmts) {
                    ? head_val
                    : execute_sequence(tail(funs), env);
         }
-    }
+    };
     const funs = map(analyze, stmts);
     return env => execute_sequence(funs, env);
-}
+};
 ```
 
 Eva Lu Ator explains that the version in the text does more of the work at analysis time: Alyssa’s execution function loops through the list of execution functions, so although the statements have been analyzed, the sequence itself has not. Compare the two. (The book asks about a sequence of one statement, typical of function bodies; our `parse` gives a single statement as itself, never as a sequence, so consider sequences of *n* ≥ 2 statements.) How many times does each version call a function of its own each time the sequence is executed?

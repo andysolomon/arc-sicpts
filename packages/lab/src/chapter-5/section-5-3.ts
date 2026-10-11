@@ -8,9 +8,8 @@
  * The computation the section uses to show how much garbage a program makes:
  * two lists built only to be summed.
  */
-export const memoryGarbageProgram = `function is_odd(n) {
-    return n % 2 === 1;
-}
+export const memoryGarbageProgram = `const is_odd = (n) =>
+    n % 2 === 1;
 
 const sum = accumulate((x, y) => x + y,
                        0,
@@ -24,15 +23,15 @@ export const memoryFigureProgram = `const x = list(list(1, 2), 3, 4);
 /** A stack represented as a list of the saved values (§5.3.1). */
 export const memoryStackProgram = `let the_stack = null;
 
-function save(value) {
+const save = (value) => {
     the_stack = pair(value, the_stack);
-}
+};
 
-function restore() {
+const restore = () => {
     const value = head(the_stack);
     the_stack = tail(the_stack);
     return value;
-}
+};
 
 save(1);
 save(2);

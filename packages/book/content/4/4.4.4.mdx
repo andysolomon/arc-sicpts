@@ -13,7 +13,7 @@ Section 4.4.2 described how the query system works. Here are the details: the co
 The driver reads an input. If it is an assertion or rule to be added, it is added; otherwise it is a query. The driver passes the query to `evaluate_query` with an initial frame stream holding one empty frame, and turns each resulting frame into a copy of the query with its variables instantiated. The book’s loop reads with a prompt; the Laboratory’s driver takes the input as a string and returns the number of answers:
 
 ```js
-function query(input) {
+const query = (input) => {
     const expression = parse(input + ";");
     const query_syntax = convert_to_query_syntax(expression);
     if (is_assertion(query_syntax)) {
@@ -27,7 +27,7 @@ function query(input) {
                          unparse(instantiate_expression(expression, frame)),
                        evaluate_query(query_syntax, singleton_stream(null))));
     }
-}
+};
 ```
 
 As in the other evaluators of this chapter, `parse` turns the input string into the JavaScript syntax representation of §4.1.2, and `convert_to_query_syntax` (§4.4.4.7) turns that into the query language’s own representation. The frames instantiate the syntax representation, and `unparse` writes it back as a string.
@@ -47,65 +47,61 @@ The driver’s steps one at a time. In the query syntax the predicate `job` has 
 `evaluate_query` takes a query and a stream of frames and returns a stream of extended frames. It identifies syntactic forms by data-directed dispatch with `get` and `put`, as in the generic operations of chapter 2. Anything that is not a syntactic form is a simple query.
 
 ```js
-function evaluate_query(query, frame_stream) {
+const evaluate_query = (query, frame_stream) => {
     const qfun = get(type(query), "evaluate_query");
     return is_undefined(qfun)
            ? simple_query(query, frame_stream)
            : qfun(contents(query), frame_stream);
-}
+};
 ```
 
 For each frame of the input, `simple_query` matches the pattern against all assertions with `find_assertions` and applies all possible rules with `apply_rules`, and combines the two streams with `stream_append_delayed`. `stream_flatmap` combines the streams for the individual frames.
 
 ```js
-function simple_query(query_pattern, frame_stream) {
-    return stream_flatmap(
+const simple_query = (query_pattern, frame_stream) =>
+    stream_flatmap(
                frame =>
                  stream_append_delayed(
                      find_assertions(query_pattern, frame),
                      () => apply_rules(query_pattern, frame)),
                frame_stream);
-}
 ```
 
 `conjoin` handles `and` as a series combination: it finds the extensions that satisfy the first conjunct, and uses that stream as the input of the rest. `disjoin` handles `or` in parallel, merging the streams with `interleave_delayed`. `put` makes `evaluate_query` dispatch to them.
 
 ```js
-function conjoin(conjuncts, frame_stream) {
-    return is_empty_conjunction(conjuncts)
+const conjoin = (conjuncts, frame_stream) =>
+    is_empty_conjunction(conjuncts)
            ? frame_stream
            : conjoin(rest_conjuncts(conjuncts),
                      evaluate_query(first_conjunct(conjuncts),
                                     frame_stream));
-}
 put("and", "evaluate_query", conjoin);
 
-function disjoin(disjuncts, frame_stream) {
-    return is_empty_disjunction(disjuncts)
+const disjoin = (disjuncts, frame_stream) =>
+    is_empty_disjunction(disjuncts)
            ? null
            : interleave_delayed(
                  evaluate_query(first_disjunct(disjuncts), frame_stream),
                  () => disjoin(rest_disjuncts(disjuncts), frame_stream));
-}
 put("or", "evaluate_query", disjoin);
 ```
 
 `not` is a filter: a frame stays in the stream only if the negated query cannot extend it. `javascript_predicate` is a similar filter. It instantiates the predicate’s variables with the frame and evaluates the result with `evaluate` from §4.1, in `the_global_environment`, so it can use any JavaScript expression the metacircular evaluator handles, as long as its variables are bound. `always_true`, the body of a rule without one, passes every frame.
 
 ```js
-function negate(exps, frame_stream) {
-    return stream_flatmap(
+const negate = (exps, frame_stream) =>
+    stream_flatmap(
                frame =>
                  is_null(evaluate_query(negated_query(exps),
                                         singleton_stream(frame)))
                  ? singleton_stream(frame)
                  : null,
                frame_stream);
-}
 put("not", "evaluate_query", negate);
 
-function javascript_predicate(exps, frame_stream) {
-    return stream_flatmap(
+const javascript_predicate = (exps, frame_stream) =>
+    stream_flatmap(
                frame =>
                  evaluate(instantiate_expression(
                               javascript_predicate_expression(exps),
@@ -114,7 +110,6 @@ function javascript_predicate(exps, frame_stream) {
                  ? singleton_stream(frame)
                  : null,
                frame_stream);
-}
 put("javascript_predicate", "evaluate_query", javascript_predicate);
 ```
 
@@ -123,8 +118,8 @@ put("javascript_predicate", "evaluate_query", javascript_predicate);
 `find_assertions` fetches the assertions worth checking (§4.4.4.5) and checks each against the pattern and frame; `check_an_assertion` returns a one-frame stream or the empty stream. The matcher itself checks the pattern against the data element by element, accumulating bindings, and returns either a frame or the string `"failed"`:
 
 ```js
-function pattern_match(pattern, data, frame) {
-    return frame === "failed"
+const pattern_match = (pattern, data, frame) =>
+    frame === "failed"
            ? "failed"
            : equal(pattern, data)
            ? frame
@@ -137,14 +132,13 @@ function pattern_match(pattern, data, frame) {
                                          head(data),
                                          frame))
            : "failed";
-}
 
-function extend_if_consistent(variable, data, frame) {
+const extend_if_consistent = (variable, data, frame) => {
     const binding = binding_in_frame(variable, frame);
     return is_undefined(binding)
            ? extend(variable, data, frame)
            : pattern_match(binding_value(binding), data, frame);
-}
+};
 ```
 
 If the variable has no binding, it is bound to the data. Otherwise the data is matched against the stored value in the same frame. A value stored by pattern matching contains only constants, so this just tests equality, but one stored by unification may contain variables, and the match then binds or checks them. A stored binding is never modified, and a variable never has two.
@@ -154,7 +148,7 @@ If the variable has no binding, it is bound to the data. Otherwise the data is m
 `apply_rules` is the rule analogue of `find_assertions`. `apply_a_rule` unifies the pattern with the conclusion of the rule and, if that succeeds, evaluates the body in the unified frame. First, though, it renames all the rule’s variables, combining each name with a number unique to this application, so that `$x` becomes, say, `$x_7`. Two applications of a rule, or two rules that both say `$x`, must not have their variables confused.
 
 ```js
-function apply_a_rule(rule, query_pattern, query_frame) {
+const apply_a_rule = (rule, query_pattern, query_frame) => {
     const clean_rule = rename_variables_in(rule);
     const unify_result = unify_match(query_pattern,
                                      conclusion(clean_rule),
@@ -163,13 +157,13 @@ function apply_a_rule(rule, query_pattern, query_frame) {
            ? null
            : evaluate_query(rule_body(clean_rule),
                             singleton_stream(unify_result));
-}
+};
 ```
 
 The unifier is the pattern matcher made symmetric: it has an extra clause for a variable on the right. `extend_if_possible` is `extend_if_consistent` with two more checks. If the variable is unbound and the value is another variable that is bound, it unifies with that variable’s value. And it refuses to bind a variable to a pattern that contains it, which `depends_on` detects: unifying `list($x, $x)` with `list($y, ⟨expression involving $y⟩)` would mean finding a `$y` equal to an expression involving `$y`.
 
 ```js
-function extend_if_possible(variable, value, frame) {
+const extend_if_possible = (variable, value, frame) => {
     const binding = binding_in_frame(variable, frame);
     if (! is_undefined(binding)) {
         return unify_match(binding_value(binding),
@@ -186,7 +180,7 @@ function extend_if_possible(variable, value, frame) {
     } else {
         return extend(variable, value, frame);
     }
-}
+};
 ```
 
 </Prose>
@@ -204,13 +198,13 @@ function extend_if_possible(variable, value, frame) {
 To examine as few irrelevant entries as possible, assertions are stored in streams, one for each kind of information, in a table indexed by the kind: `get_stream(key, "assertion-stream")`. Rules are stored likewise by the kind in their conclusion. Fetching the candidates for a pattern returns everything with the same first symbol. `add_rule_or_assertion` stores a new item at the *front* of its stream:
 
 ```js
-function store_assertion_in_index(assertion) {
+const store_assertion_in_index = (assertion) => {
     const key = index_key_of(assertion);
     const current_assertion_stream =
                 get_stream(key, "assertion-stream");
     put(key, "assertion-stream",
         pair(assertion, () => current_assertion_stream));
-}
+};
 ```
 
 So the most recent assertion or rule of a kind is tried first. The table is the two-dimensional table of §3.3.3, written in Source alongside the system.
@@ -220,16 +214,14 @@ So the most recent assertion or rule of a kind is tried first. The table is the 
 `stream_append_delayed` and `interleave_delayed` are `stream_append` and `interleave` of §3.5.3 with a delayed second argument, which postpones looping in some cases. `stream_flatmap` maps a function over a stream of frames and combines the resulting streams, interleaving them rather than appending:
 
 ```js
-function stream_flatmap(fun, s) {
-    return flatten_stream(stream_map(fun, s));
-}
-function flatten_stream(stream) {
-    return is_null(stream)
+const stream_flatmap = (fun, s) =>
+    flatten_stream(stream_map(fun, s));
+const flatten_stream = (stream) =>
+    is_null(stream)
            ? null
            : interleave_delayed(
                  head(stream),
                  () => flatten_stream(stream_tail(stream)));
-}
 ```
 
 The delays and the interleaving matter, in ways exercises 4.68 to 4.70 explore: without them, some queries that have answers never produce one.
@@ -253,12 +245,10 @@ Finally, the syntactic forms are identified by their tags through `type` and `co
 A frame is a list of bindings, each a pair of a variable and a value:
 
 ```js
-function binding_in_frame(variable, frame) {
-    return assoc(variable, frame);
-}
-function extend(variable, value, frame) {
-    return pair(make_binding(variable, value), frame);
-}
+const binding_in_frame = (variable, frame) =>
+    assoc(variable, frame);
+const extend = (variable, value, frame) =>
+    pair(make_binding(variable, value), frame);
 ```
 
 </Prose>
@@ -275,20 +265,18 @@ function extend(variable, value, frame) {
 Louis Reasoner wonders why `simple_query` and `disjoin` are implemented using delayed expressions rather than being defined as follows:
 
 ```js
-function simple_query(query_pattern, frame_stream) {
-    return stream_flatmap(
+const simple_query = (query_pattern, frame_stream) =>
+    stream_flatmap(
                frame =>
                  stream_append(find_assertions(query_pattern, frame),
                                apply_rules(query_pattern, frame)),
                frame_stream);
-}
-function disjoin(disjuncts, frame_stream) {
-    return is_empty_disjunction(disjuncts)
+const disjoin = (disjuncts, frame_stream) =>
+    is_empty_disjunction(disjuncts)
            ? null
            : interleave(
                  evaluate_query(first_disjunct(disjuncts), frame_stream),
                  disjoin(rest_disjuncts(disjuncts), frame_stream));
-}
 ```
 
 Can you give examples of queries where these simpler definitions would lead to undesirable behaviour? The check runs your query in the real system, which must find an answer, and in Louis’s, which must give up without one after 100 rule applications.
@@ -314,12 +302,11 @@ Why do `disjoin` and `stream_flatmap` interleave the streams rather than simply 
 Why does `flatten_stream` use a delayed expression in its body? What would be wrong with defining it as follows?
 
 ```js
-function flatten_stream(stream) {
-    return is_null(stream)
+const flatten_stream = (stream) =>
+    is_null(stream)
            ? null
            : interleave(head(stream),
                         flatten_stream(stream_tail(stream)));
-}
 ```
 
 Give a query that has an answer which this version cannot produce. The check runs it in the real system and in one with this `flatten_stream`, which gives up after 100 rule applications.

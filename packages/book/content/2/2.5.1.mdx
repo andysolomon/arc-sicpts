@@ -9,13 +9,13 @@ The system has several abstraction barriers. To someone using "numbers" there is
 We would like a generic addition `add` that acts like `+` on ordinary numbers, like `add_rat` on rational numbers and like `add_complex` on complex numbers. We get it by the strategy of §2.4.3: attach a type tag to each kind of number, and have the generic function dispatch to the right package according to the types of its arguments.
 
 ```js
-function add(x, y) { return apply_generic("add", list(x, y)); }
+const add = (x, y) => apply_generic("add", list(x, y));
 
-function sub(x, y) { return apply_generic("sub", list(x, y)); }
+const sub = (x, y) => apply_generic("sub", list(x, y));
 
-function mul(x, y) { return apply_generic("mul", list(x, y)); }
+const mul = (x, y) => apply_generic("mul", list(x, y));
 
-function div(x, y) { return apply_generic("div", list(x, y)); }
+const div = (x, y) => apply_generic("div", list(x, y));
 ```
 
 The first package handles *ordinary* numbers, the primitive numbers of the language, tagged with the string `"javascript_number"`. Its operations are the primitive arithmetic operations, so there is nothing new to define for the untagged numbers. Since each operation takes two arguments, each is installed in the table under the list `list("javascript_number", "javascript_number")`. Users of the package make tagged ordinary numbers with `make_javascript_number`.

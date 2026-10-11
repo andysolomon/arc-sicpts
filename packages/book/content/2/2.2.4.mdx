@@ -53,10 +53,10 @@ In building up a complex image this way we exploit the fact that painters are cl
 Once we can combine painters, we want to abstract typical patterns of combining them. We implement the painter operations as JavaScript functions, so we need no special abstraction mechanism: since the means of combination are ordinary functions, we can do anything with painter operations that we can do with functions. For example, we can abstract the pattern in `wave4` as
 
 ```js
-function flipped_pairs(painter) {
+const flipped_pairs = (painter) => {
     const painter2 = beside(painter, flip_vert(painter));
     return below(painter2, painter2);
-}
+};
 ```
 
 and declare `wave4` as an instance of this pattern, `const wave4 = flipped_pairs(wave);`. We can also define recursive operations. Here is one that makes painters split and branch towards the right:
@@ -224,13 +224,11 @@ The starter includes `frame_coord_map`, which should then work with your vectors
 Here are two possible constructors for frames:
 
 ```js
-function make_frame(origin, edge1, edge2) {
-    return list(origin, edge1, edge2);
-}
+const make_frame = (origin, edge1, edge2) =>
+    list(origin, edge1, edge2);
 
-function make_frame(origin, edge1, edge2) {
-    return pair(origin, pair(edge1, edge2));
-}
+const make_frame = (origin, edge1, edge2) =>
+    pair(origin, pair(edge1, edge2));
 ```
 
 For each constructor supply the appropriate selectors to produce an implementation for frames. So that both fit in one program, the editor calls them `make_frame_1` and `make_frame_2`, with selectors `origin_frame_1`, …, `edge2_frame_2`.

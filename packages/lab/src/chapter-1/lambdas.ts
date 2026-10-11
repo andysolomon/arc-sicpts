@@ -3,9 +3,8 @@
  * conditional statements.
  */
 
-export const lambdaProgram = `function square(x) {
-  return x * x;
-}
+export const lambdaProgram = `const square = (x) =>
+  x * x;
 
 const plus4 = x => x + 4;
 
@@ -13,24 +12,22 @@ display(plus4(3));
 ((x, y, z) => x + y + square(z))(1, 2, 3);
 `;
 
-export const localNamesProgram = `function square(x) {
-  return x * x;
-}
+export const localNamesProgram = `const square = (x) =>
+  x * x;
 
-function f(x, y) {
+const f = (x, y) => {
   const a = 1 + x * y;
   const b = 1 - y;
   return x * square(a) + y * b + a * b;
-}
+};
 
 f(2, 3);
 `;
 
-export const conditionalStatementProgram = `function is_even(n) {
-  return n % 2 === 0;
-}
+export const conditionalStatementProgram = `const is_even = (n) =>
+  n % 2 === 0;
 
-function expmod(base, exp, m) {
+const expmod = (base, exp, m) => {
   if (exp === 0) {
     return 1;
   } else if (is_even(exp)) {
@@ -39,7 +36,7 @@ function expmod(base, exp, m) {
   } else {
     return base * expmod(base, exp - 1, m) % m;
   }
-}
+};
 
 expmod(3, 13, 13);
 `;

@@ -9,12 +9,11 @@ Besides the representation of components, the evaluator needs data structures of
 We keep the predicates of conditionals proper: they must evaluate to a boolean, and only `true` is truthy.
 
 ```js
-function is_truthy(x) {
-    return is_boolean(x)
+const is_truthy = (x) =>
+    is_boolean(x)
            ? x
            : error(x, "boolean expected, received");
-}
-function is_falsy(x) { return ! is_truthy(x); }
+const is_falsy = (x) => ! is_truthy(x);
 ```
 
 Full JavaScript accepts any value as a predicate, and treats `false`, 0, `NaN`, `""`, `null` and `undefined` as false. That rule would be one change to `is_truthy`.
@@ -24,17 +23,15 @@ Full JavaScript accepts any value as a predicate, and treats `false`, 0, `NaN`, 
 Primitive functions are applied by `apply_primitive_function` and recognized by `is_primitive_function`; §4.1.4 describes them. A compound function is made from parameters, a body and an environment:
 
 ```js
-function make_function(parameters, body, env) {
-    return list("compound_function", parameters, body, env);
-}
-function is_compound_function(f) {
-    return is_tagged_list(f, "compound_function");
-}
-function function_parameters(f) { return list_ref(f, 1); }
+const make_function = (parameters, body, env) =>
+    list("compound_function", parameters, body, env);
+const is_compound_function = (f) =>
+    is_tagged_list(f, "compound_function");
+const function_parameters = (f) => list_ref(f, 1);
 
-function function_body(f) { return list_ref(f, 2); }
+const function_body = (f) => list_ref(f, 2);
 
-function function_environment(f) { return list_ref(f, 3); }
+const function_environment = (f) => list_ref(f, 3);
 ```
 
 ## Representing return values
@@ -42,15 +39,12 @@ function function_environment(f) { return list_ref(f, 3); }
 A return statement’s value is wrapped, so that `eval_sequence` and `apply` can recognize it:
 
 ```js
-function make_return_value(content) {
-    return list("return_value", content);
-}
-function is_return_value(value) {
-    return is_tagged_list(value, "return_value");
-}
-function return_value_content(value) {
-    return head(tail(value));
-}
+const make_return_value = (content) =>
+    list("return_value", content);
+const is_return_value = (value) =>
+    is_tagged_list(value, "return_value");
+const return_value_content = (value) =>
+    head(tail(value));
 ```
 
 </Prose>
@@ -74,49 +68,47 @@ The evaluator needs three operations on environments:
 An environment is a list of frames; its enclosing environment is its `tail`, and the empty environment is the empty list. Each frame is a pair of lists: the names bound in it and their values.
 
 ```js
-function enclosing_environment(env) { return tail(env); }
+const enclosing_environment = (env) => tail(env);
 
-function first_frame(env) { return head(env); }
+const first_frame = (env) => head(env);
 
 const the_empty_environment = null;
 
-function make_frame(symbols, values) { return pair(symbols, values); }
+const make_frame = (symbols, values) => pair(symbols, values);
 
-function frame_symbols(frame) { return head(frame); }
+const frame_symbols = (frame) => head(frame);
 
-function frame_values(frame) { return tail(frame); }
+const frame_values = (frame) => tail(frame);
 
-function extend_environment(symbols, vals, base_env) {
-    return length(symbols) === length(vals)
+const extend_environment = (symbols, vals, base_env) =>
+    length(symbols) === length(vals)
            ? pair(make_frame(symbols, vals), base_env)
            : error(pair(symbols, vals),
                    length(symbols) < length(vals)
                    ? "too many arguments supplied"
                    : "too few arguments supplied");
-}
 ```
 
 To look up a symbol we scan the names of the first frame; if we find it, the value is the corresponding element of the values. Otherwise we search the enclosing environment, and so on; reaching the empty environment is an `"unbound name"` error.
 
 ```js
-function lookup_symbol_value(symbol, env) {
-    function env_loop(env) {
-        function scan(symbols, vals) {
-            return is_null(symbols)
+const lookup_symbol_value = (symbol, env) => {
+    const env_loop = (env) => {
+        const scan = (symbols, vals) =>
+            is_null(symbols)
                    ? env_loop(enclosing_environment(env))
                    : symbol === head(symbols)
                    ? head(vals)
                    : scan(tail(symbols), tail(vals));
-        }
         if (env === the_empty_environment) {
             error(symbol, "unbound name");
         } else {
             const frame = first_frame(env);
             return scan(frame_symbols(frame), frame_values(frame));
         }
-    }
+    };
     return env_loop(env);
-}
+};
 ```
 
 `assign_symbol_value` scans in the same way, and changes the value it finds with `set_head` instead of returning it. Frames are therefore not quite a data abstraction: assignment reaches into them.

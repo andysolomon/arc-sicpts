@@ -339,12 +339,11 @@ export function ecevalControllerWithout(blocks: readonly string[], { compiled = 
     .map(([, text]) => text);
   const head = compiled ? [`branch(label("external_entry")),`] : [];
   const tail = compiled ? [ecevalExternalEntry] : [];
-  return `function eceval_controller_with(fragment) {
-    return append(list(
+  return `const eceval_controller_with = (fragment) =>
+    append(list(
 ${indent(indent([...head, ...kept, ...tail].join('\n').replace(/,\s*$/, '')))}
            ),
            append(fragment, list("evaluator_done")));
-}
 `;
 }
 

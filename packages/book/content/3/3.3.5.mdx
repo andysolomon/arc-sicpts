@@ -21,7 +21,7 @@ The network computes like this. When a connector is given a value, by the user o
 **Using the constraint system.** We build the network by making connectors with `make_connector` and attaching constraints to them, packaged as a function in the usual way:
 
 ```js
-function celsius_fahrenheit_converter(c, f) {
+const celsius_fahrenheit_converter = (c, f) => {
   const u = make_connector();
   const v = make_connector();
   const w = make_connector();
@@ -34,7 +34,7 @@ function celsius_fahrenheit_converter(c, f) {
   constant(5, x);
   constant(32, y);
   return "ok";
-}
+};
 
 const C = make_connector();
 const F = make_connector();
@@ -76,8 +76,8 @@ Connectors talk to their constraints through two functions: `inform_about_value(
 The adder is a function `me` that answers those two messages. When told of a new value, it looks for two connectors with values and sets the third from them; for that it names itself, `me`, as the informant. When told that a value was lost, it asks all three connectors to forget the values that *it* set (the other values are not its to retract), and then checks whether it can still derive something from what is left:
 
 ```js
-function adder(a1, a2, sum) {
-  function process_new_value() {
+const adder = (a1, a2, sum) => {
+  const process_new_value = () => {
     if (has_value(a1) && has_value(a2)) {
       set_value(sum, get_value(a1) + get_value(a2), me);
     } else if (has_value(a1) && has_value(sum)) {
@@ -85,14 +85,14 @@ function adder(a1, a2, sum) {
     } else if (has_value(a2) && has_value(sum)) {
       set_value(a1, get_value(sum) - get_value(a2), me);
     } else {}
-  }
-  function process_forget_value() {
+  };
+  const process_forget_value = () => {
     forget_value(sum, me);
     forget_value(a1, me);
     forget_value(a2, me);
     process_new_value();
-  }
-  function me(request) {
+  };
+  const me = (request) => {
     if (request === "I have a value.") {
       process_new_value();
     } else if (request === "I lost my value.") {
@@ -100,12 +100,12 @@ function adder(a1, a2, sum) {
     } else {
       error(request, "unknown request -- adder");
     }
-  }
+  };
   connect(a1, me);
   connect(a2, me);
   connect(sum, me);
   return me;
-}
+};
 ```
 
 The multiplier has the same shape, with one extra rule. If either factor is 0, the product is 0, even when the other factor is unknown. A constant sets its connector once, when it is created, and treats any message it later receives as an error. A probe prints `"Probe: "`, the name and the value whenever it is told of a value, and `?` when told that the value is gone. All of them are in the program above.
@@ -113,11 +113,11 @@ The multiplier has the same shape, with one extra rule. If either factor is 0, t
 **Representing connectors.** A connector is an object with three pieces of local state: its `value`, the `informant` that set it (`false` when it has no value), and the list of `constraints` it takes part in.
 
 ```js
-function make_connector() {
+const make_connector = () => {
   let value = false;
   let informant = false;
   let constraints = null;
-  function set_my_value(newval, setter) {
+  const set_my_value = (newval, setter) => {
     if (!has_value(me)) {
       value = newval;
       informant = setter;
@@ -127,16 +127,16 @@ function make_connector() {
     } else {
       return "ignored";
     }
-  }
-  function forget_my_value(retractor) {
+  };
+  const forget_my_value = (retractor) => {
     if (retractor === informant) {
       informant = false;
       return for_each_except(retractor, inform_about_no_value, constraints);
     } else {
       return "ignored";
     }
-  }
-  function connect(new_constraint) {
+  };
+  const connect = (new_constraint) => {
     if (is_null(member(new_constraint, constraints))) {
       constraints = pair(new_constraint, constraints);
     } else {}
@@ -144,8 +144,8 @@ function make_connector() {
       inform_about_value(new_constraint);
     } else {}
     return "done";
-  }
-  function me(request) {
+  };
+  const me = (request) => {
     if (request === "has_value") {
       return informant !== false;
     } else if (request === "value") {
@@ -159,9 +159,9 @@ function make_connector() {
     } else {
       error(request, "unknown operation -- connector");
     }
-  }
+  };
   return me;
-}
+};
 ```
 
 Setting a value is accepted only when the connector has none; offering the same value again is ignored, and offering a different one is a contradiction. Forgetting is honoured only when the request comes from the informant. Either way, the news goes to every constraint *except* the one that caused it, which `for_each_except` arranges by comparing constraints with `===`: two references to the same function object are equal, and no others are. A constraint connected to a connector that already holds a value is told about it at once, much as a wire runs a new action straight away in §3.3.4.
@@ -198,9 +198,8 @@ Using the primitive constraints `adder`, `multiplier` and `constant`, declare a 
 Louis Reasoner wants a squarer, a constraint with two terminals such that the value of connector `b` is the square of the value of `a`. He proposes
 
 ```js
-function squarer(a, b) {
-  return multiplier(a, a, b);
-}
+const squarer = (a, b) =>
+  multiplier(a, a, b);
 ```
 
 There is a serious flaw in this idea. Find what `b` becomes when `a` is set to 3, and whether `a` gets a value when, on a fresh network, `b` is set to 9.
@@ -244,19 +243,18 @@ At some point during the evaluation of `set_value`, the expression `for_each_exc
 The converter is clumsy to write in the style of a network. With an *expression-oriented* style it can be written as
 
 ```js
-function celsius_fahrenheit_converter(x) {
-  return c_plus(c_times(c_divide(cv(9), cv(5)), x), cv(32));
-}
+const celsius_fahrenheit_converter = (x) =>
+  c_plus(c_times(c_divide(cv(9), cv(5)), x), cv(32));
 ```
 
 Here `c_plus`, `c_times` and so on are the constraint versions of the arithmetic operations. `c_plus` takes two connectors and returns a new connector constrained by an adder to be their sum:
 
 ```js
-function c_plus(x, y) {
+const c_plus = (x, y) => {
   const z = make_connector();
   adder(x, y, z);
   return z;
-}
+};
 ```
 
 Declare the analogous functions `c_minus`, `c_times`, `c_divide` and `cv` (constant value), so that compound constraints can be written like this.

@@ -3,25 +3,21 @@
  * function it works on as an argument.
  */
 
-export const averageDefinition = `function average(x, y) {
-  return (x + y) / 2;
-}
+export const averageDefinition = `const average = (x, y) =>
+  (x + y) / 2;
 `;
 
 export const halfIntervalDefinitions = `${averageDefinition}
-function positive(x) {
-  return x > 0;
-}
+const positive = (x) =>
+  x > 0;
 
-function negative(x) {
-  return x < 0;
-}
+const negative = (x) =>
+  x < 0;
 
-function close_enough(x, y) {
-  return math_abs(x - y) < 0.001;
-}
+const close_enough = (x, y) =>
+  math_abs(x - y) < 0.001;
 
-function search(f, neg_point, pos_point) {
+const search = (f, neg_point, pos_point) => {
   const midpoint = average(neg_point, pos_point);
   if (close_enough(neg_point, pos_point)) {
     return midpoint;
@@ -33,9 +29,9 @@ function search(f, neg_point, pos_point) {
         ? search(f, midpoint, pos_point)
         : midpoint;
   }
-}
+};
 
-function half_interval_method(f, a, b) {
+const half_interval_method = (f, a, b) => {
   const a_value = f(a);
   const b_value = f(b);
   return negative(a_value) && positive(b_value)
@@ -43,7 +39,7 @@ function half_interval_method(f, a, b) {
     : negative(b_value) && positive(a_value)
       ? search(f, b, a)
       : error("values are not of opposite sign");
-}
+};
 `;
 
 export const halfIntervalProgram = `${halfIntervalDefinitions}
@@ -52,18 +48,17 @@ half_interval_method(math_sin, 2, 4);
 
 export const fixedPointDefinitions = `const tolerance = 0.00001;
 
-function fixed_point(f, first_guess) {
-  function close_enough(x, y) {
-    return math_abs(x - y) < tolerance;
-  }
-  function try_with(guess) {
+const fixed_point = (f, first_guess) => {
+  const close_enough = (x, y) =>
+    math_abs(x - y) < tolerance;
+  const try_with = (guess) => {
     const next = f(guess);
     return close_enough(guess, next)
       ? next
       : try_with(next);
-  }
+  };
   return try_with(first_guess);
-}
+};
 `;
 
 export const fixedPointProgram = `${fixedPointDefinitions}

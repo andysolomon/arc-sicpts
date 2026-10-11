@@ -12,36 +12,32 @@ import { onlyDeclarations, withoutDeclarations } from './pieces.ts';
 // §5.5.5 An Example of Compiled Code
 
 /** The declaration the book compiles in §5.5.5. */
-export const compiledCodeFactorialProgram = `function factorial(n) {
-    return n === 1
+export const compiledCodeFactorialProgram = `const factorial = (n) =>
+    n === 1
            ? 1
            : factorial(n - 1) * n;
-}
 `;
 
 /** The declaration of exercise 5.36. */
-export const compiledCodeAlternativeProgram = `function factorial_alt(n) {
-    return n === 1
+export const compiledCodeAlternativeProgram = `const factorial_alt = (n) =>
+    n === 1
            ? 1
            : n * factorial_alt(n - 1);
-}
 `;
 
 /** The iterative factorial of exercise 5.37. */
-export const compiledCodeIterativeProgram = `function factorial(n) {
-    function iter(product, counter) {
-        return counter > n
+export const compiledCodeIterativeProgram = `const factorial = (n) => {
+    const iter = (product, counter) =>
+        counter > n
                ? product
                : iter(product * counter, counter + 1);
-    }
     return iter(1, 1);
-}
+};
 `;
 
 /** The program the code of exercise 5.38 was compiled from. */
-export const compiledCodeMysteryProgram = `function f(x) {
-    return x + g(x + 2);
-}`;
+export const compiledCodeMysteryProgram = `const f = (x) =>
+    x + g(x + 2);`;
 
 /**
  * The code of the figure in exercise 5.38, one instruction per line, in the
@@ -120,13 +116,13 @@ export const compiledCodeFigureText = compiledCodeFigure
   .join('');
 
 /** For exercise 5.38: compiling a program from a fresh label counter and comparing it with the figure. */
-export const compiledCodeCompareHelpers = `function check_code_text(program) {
+export const compiledCodeCompareHelpers = `const check_code_text = (program) => {
     label_counter = 0;
     return accumulate((instruction, rest) =>
                           stringify_instruction(instruction) + "\\n" + rest,
                       "",
                       instructions(compile(parse(program), "val", "next")));
-}
+};
 `;
 
 /** Exercise 5.38: the compiler, and a check that a program compiles to the figure's code. */
@@ -134,29 +130,27 @@ export const compiledCodeFigurePrelude = `${compilerSource}
 ${compiledCodeCompareHelpers}
 const check_figure = ${quote(compiledCodeFigureText)};
 
-function check_same_code(program) {
-    return check_code_text(program) === check_figure;
-}
+const check_same_code = (program) =>
+    check_code_text(program) === check_figure;
 `;
 
 /** Counting instructions of a kind (`"save"`, `"restore"`) in compiled code. */
-export const compiledCodeCountHelpers = `function check_count(kind, program) {
-    return length(filter(instruction => is_pair(instruction) &&
+export const compiledCodeCountHelpers = `const check_count = (kind, program) =>
+    length(filter(instruction => is_pair(instruction) &&
                                         head(instruction) === kind,
                          instructions(compile(parse(program),
                                               "val", "next"))));
-}
 `;
 
 /**
  * Running a program with \`compile_and_go\` on the inputs, and returning what
  * the evaluator last printed (the value left in \`val\`).
  */
-export const compileAndGoHelpers = `function check_compile_and_go(program, inputs) {
+export const compileAndGoHelpers = `const check_compile_and_go = (program, inputs) => {
     set_inputs(inputs);
     compile_and_go(parse(program));
     return get_register_contents(eceval, "val");
-}
+};
 `;
 
 /** Exercise 5.39: the compiler and evaluator without the functions that build argument lists. */
@@ -194,7 +188,7 @@ const eceval =
 `;
 
 /** Which names compiled code looks up with `lookup_symbol_value`. */
-export const lookupHelpers = `function check_looks_up(symbol, program) {
+export const lookupHelpers = `const check_looks_up = (symbol, program) => {
     label_counter = 0;
     return ! is_null(filter(instruction =>
                                 is_pair(instruction) &&
@@ -206,7 +200,7 @@ export const lookupHelpers = `function check_looks_up(symbol, program) {
                                       constant(symbol)),
                             instructions(compile(parse(program),
                                                  "val", "next"))));
-}
+};
 `;
 
 export const openCodingContext = `${withoutDeclarations(compileAndGoPrelude, ['compile', 'all_regs', 'eceval'])}
@@ -251,36 +245,34 @@ export const lexicalAddressingSearchProgram = `const env =
                                the_global_environment)));
 
 // How many symbols lookup_symbol_value compares before it finds one.
-function comparisons(symbol, env) {
-    function scan(symbols, count, env) {
-        return is_null(symbols)
+const comparisons = (symbol, env) => {
+    const scan = (symbols, count, env) =>
+        is_null(symbols)
                ? scan(frame_symbols(first_frame(enclosing_environment(env))),
                       count, enclosing_environment(env))
                : head(symbols) === symbol
                ? count + 1
                : scan(tail(symbols), count + 1, env);
-    }
     return scan(frame_symbols(first_frame(env)), 0, env);
-}
+};
 
 display(lookup_symbol_value("x", env));
 comparisons("x", env);
 `;
 
 /** Exercise 5.42: a runtime environment with an unassigned name in it. */
-export const lexicalAddressEnvironment = `function check_environment() {
-    return extend_environment(list("y", "z"), list(6, 10),
+export const lexicalAddressEnvironment = `const check_environment = () =>
+    extend_environment(list("y", "z"), list(6, 10),
                extend_environment(list("a", "b", "c", "d", "e"),
                                   list(1, 2, 3, 4, "*unassigned*"),
                    extend_environment(list("x", "y"), list(3, 4),
                                       the_global_environment)));
-}
 
-function check_assign_then_lookup(address, value) {
+const check_assign_then_lookup = (address, value) => {
     const env = check_environment();
     lexical_address_assign(address, value, env);
     return lexical_address_lookup(address, env);
-}
+};
 `;
 
 // §5.5.7 Interfacing Compiled Code to the Evaluator
@@ -288,18 +280,16 @@ function check_assign_then_lookup(address, value) {
 /** The book's first use of `compile_and_go`, followed by a call typed at the evaluator. */
 export const interfacingCompileAndGoProgram = `set_inputs(list("factorial(5);"));
 compile_and_go(parse(\`
-function factorial(n) {
-    return n === 1
+const factorial = (n) =>
+    n === 1
            ? 1
-           : factorial(n - 1) * n;
-}\`));
+           : factorial(n - 1) * n;\`));
 `;
 
-export const interfacingCompareProgram = `function factorial(n) {
-    return n === 1
+export const interfacingCompareProgram = `const factorial = (n) =>
+    n === 1
            ? 1
            : factorial(n - 1) * n;
-}
 factorial(2);
 factorial(4);
 factorial(6);
@@ -316,19 +306,18 @@ const factorial_machine =
                       list("-", (a, b) => a - b)),
                  controller_sequence(factorial_recursive_controller));
 
-function special_statistics(n) {
+const special_statistics = (n) => {
     factorial_machine("stack")("initialize");
     set_register_contents(factorial_machine, "n", n);
     start(factorial_machine);
     const statistics = factorial_machine("stack")("statistics");
     return list(get_register_contents(factorial_machine, "val"),
                 head(statistics), head(tail(statistics)));
-}
+};
 `;
 
-export const interfacingFibCompareProgram = `function fib(n) {
-    return n < 2 ? n : fib(n - 1) + fib(n - 2);
-}
+export const interfacingFibCompareProgram = `const fib = (n) =>
+    n < 2 ? n : fib(n - 1) + fib(n - 2);
 fib(2);
 fib(4);
 fib(6);
@@ -345,12 +334,12 @@ const fib_machine =
                       list("+", (a, b) => a + b)),
                  controller_sequence(fib_recursive_controller));
 
-function special_statistics(n) {
+const special_statistics = (n) => {
     fib_machine("stack")("initialize");
     set_register_contents(fib_machine, "n", n);
     start(fib_machine);
     const statistics = fib_machine("stack")("statistics");
     return list(get_register_contents(fib_machine, "val"),
                 head(statistics), head(tail(statistics)));
-}
+};
 `;

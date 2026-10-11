@@ -17,9 +17,8 @@ x => 1 / (x * (x + 2))
 A lambda expression has parameters, an arrow, and a body, and its value is a function. The only difference from a function declaration is that the function is not bound to any name. Then `pi_sum` needs no helpers at all:
 
 ```js
-function pi_sum(a, b) {
-  return sum(x => 1 / (x * (x + 2)), a, x => x + 4, b);
-}
+const pi_sum = (a, b) =>
+  sum(x => 1 / (x * (x + 2)), a, x => x + 4, b);
 ```
 
 In fact a function declaration is just a convenient way to write a constant declaration whose value is a lambda expression: `function plus4(x) { return x + 4; }` and `const plus4 = x => x + 4;` both make a function and bind `plus4` to it. And like any expression that has a function as its value, a lambda expression can be applied directly, without ever being named.

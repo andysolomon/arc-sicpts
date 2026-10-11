@@ -31,47 +31,46 @@ export const exercise_4_1: ExerciseSpec = {
   id: '4.1',
   postlude: `${rest('list_of_values')}
 let list_of_values_in_use = list_of_values_left_to_right;
-function list_of_values(exps, env) {
-    return list_of_values_in_use(exps, env);
-}
-function evaluate_in_order(order, program) {
+const list_of_values = (exps, env) =>
+    list_of_values_in_use(exps, env);
+const evaluate_in_order = (order, program) => {
     list_of_values_in_use = order;
     return evaluate_program(program);
-}`,
+};`,
   starter: `// The rest of the evaluator is provided; both functions are used in place
 // of list_of_values. evaluate, head, tail, pair and is_null are available.
 
-function list_of_values_left_to_right(exps, env) {
+const list_of_values_left_to_right = (exps, env) => {
     // your answer
-}
+};
 
-function list_of_values_right_to_left(exps, env) {
+const list_of_values_right_to_left = (exps, env) => {
     // your answer
-}
+};
 `,
   tests: [
     {
       name: 'left to right',
       kind: 'value',
-      expr: `equal(evaluate_in_order(list_of_values_left_to_right, "let x = 1; function f(a, b) { return list(a, b); } f(x = x + 1, x = x * 10);"), list(2, 20))`,
+      expr: `equal(evaluate_in_order(list_of_values_left_to_right, "let x = 1; const f = (a, b) => list(a, b); f(x = x + 1, x = x * 10);"), list(2, 20))`,
       expected: true,
     },
     {
       name: 'right to left',
       kind: 'value',
-      expr: `equal(evaluate_in_order(list_of_values_right_to_left, "let x = 1; function f(a, b) { return list(a, b); } f(x = x + 1, x = x * 10);"), list(11, 10))`,
+      expr: `equal(evaluate_in_order(list_of_values_right_to_left, "let x = 1; const f = (a, b) => list(a, b); f(x = x + 1, x = x * 10);"), list(11, 10))`,
       expected: true,
     },
     {
       name: 'right to left still applies functions to their arguments in order',
       kind: 'value',
-      expr: `evaluate_in_order(list_of_values_right_to_left, "function f(a, b, c) { return a - b * c; } f(10, 2, 3);")`,
+      expr: `evaluate_in_order(list_of_values_right_to_left, "const f = (a, b, c) => a - b * c; f(10, 2, 3);")`,
       expected: 4,
     },
     { name: 'no arguments', kind: 'value', expr: `evaluate_in_order(list_of_values_right_to_left, "(() => 7)();")`, expected: 7 },
   ],
   budget: BUDGET,
-  solution: `function list_of_values_left_to_right(exps, env) {
+  solution: `const list_of_values_left_to_right = (exps, env) => {
     if (is_null(exps)) {
         return null;
     } else {
@@ -79,9 +78,9 @@ function list_of_values_right_to_left(exps, env) {
         const rest = list_of_values_left_to_right(tail(exps), env);
         return pair(first, rest);
     }
-}
+};
 
-function list_of_values_right_to_left(exps, env) {
+const list_of_values_right_to_left = (exps, env) => {
     if (is_null(exps)) {
         return null;
     } else {
@@ -89,19 +88,19 @@ function list_of_values_right_to_left(exps, env) {
         const first = evaluate(head(exps), env);
         return pair(first, rest);
     }
-}
+};
 `,
 };
 
 /** True when `unparse` turns a program back into text that parses to the same tagged list. */
-const roundTrip = `function round_trips(text) {
+const roundTrip = `const round_trips = (text) => {
     const component = parse(text);
     const statement = is_sequence(component) || is_block(component) ||
                       is_declaration(component) || is_return_statement(component) ||
                       is_tagged_list(component, "conditional_statement");
     const back = unparse(component);
     return equal(parse(statement ? back : back + ";"), component);
-}`;
+};`;
 
 export const exercise_4_2: ExerciseSpec = {
   id: '4.2',
@@ -113,9 +112,9 @@ export const exercise_4_2: ExerciseSpec = {
 // A lambda expression whose body is a return statement was written with an
 // expression as its body.
 
-function unparse(component) {
+const unparse = (component) => {
     // your answer
-}
+};
 `,
   tests: [
     { name: 'literals and names', kind: 'value', expr: 'round_trips("\\"hello\\";") && round_trips("null;") && round_trips("size;")', expected: true },
@@ -124,35 +123,33 @@ function unparse(component) {
     {
       name: 'functions, conditionals and returns',
       kind: 'value',
-      expr: 'round_trips("function f(x) { if (x > 0) { return x; } else { return x === 0 ? 1 : -x; } } f(3);")',
+      expr: 'round_trips("const f = (x) => { if (x > 0) { return x; } else { return x === 0 ? 1 : -x; } }; f(3);")',
       expected: true,
     },
     { name: 'lambda expressions and applications', kind: 'value', expr: 'round_trips("(x => x * x)(f(1, 2)) && (() => { const y = 1; return y; })();")', expected: true },
   ],
-  solution: `function comma_separated(strings) {
-    return is_null(strings)
+  solution: `const comma_separated = (strings) =>
+    is_null(strings)
            ? ""
            : is_null(tail(strings))
            ? head(strings)
            : head(strings) + ", " + comma_separated(tail(strings));
-}
 
-function unparse_statement(component) {
+const unparse_statement = (component) => {
     const is_statement = is_sequence(component) || is_block(component) ||
                          is_declaration(component) || is_return_statement(component) ||
                          is_tagged_list(component, "conditional_statement");
     return is_statement ? unparse(component) : unparse(component) + ";";
-}
+};
 
 // A body or branch in braces: parse leaves out the block when it declares nothing.
-function unparse_body(component) {
-    return is_block(component)
+const unparse_body = (component) =>
+    is_block(component)
            ? unparse(component)
            : "{ " + unparse_statement(component) + " }";
-}
 
-function unparse(component) {
-    return is_literal(component)
+const unparse = (component) =>
+    is_literal(component)
            ? stringify(literal_value(component))
            : is_name(component)
            ? symbol_of_name(component)
@@ -202,35 +199,33 @@ function unparse(component) {
            ? "(" + assignment_symbol(component) + " = " +
              unparse(assignment_value_expression(component)) + ")"
            : error(component, "unknown syntax -- unparse");
-}
 `,
 };
 
 const table = `let the_table = null;
-function put(op, type, item) {
+const put = (op, type, item) => {
     the_table = pair(pair(pair(op, type), item), the_table);
-}
-function get(op, type) {
-    function find(entries) {
-        return is_null(entries)
+};
+const get = (op, type) => {
+    const find = (entries) =>
+        is_null(entries)
                ? undefined
                : head(head(head(entries))) === op &&
                  tail(head(head(entries))) === type
                ? tail(head(entries))
                : find(tail(entries));
-    }
     return find(the_table);
-}`;
+};`;
 
 export const exercise_4_3: ExerciseSpec = {
   id: '4.3',
   prelude: `${table}`,
   postlude: `${rest('evaluate')}
-function evaluate_double(n) {
+const evaluate_double = (n) => {
     put("evaluate", "double",
         (component, env) => 2 * evaluate(head(tail(component)), env));
     return evaluate(list("double", make_literal(n)), the_global_environment);
-}`,
+};`,
   starter: `// put(op, type, item) and get(op, type) are provided; get gives undefined
 // when nothing was put. The rest of the evaluator is provided too. Make
 // evaluate look up what to do under ("evaluate", tag), where the tag is
@@ -244,24 +239,24 @@ ${book('evaluate')}`,
     {
       name: 'declarations, conditionals, recursion',
       kind: 'value',
-      expr: run('function fact(n) { return n === 0 ? 1 : n * fact(n - 1); } fact(5);'),
+      expr: run('const fact = (n) => n === 0 ? 1 : n * fact(n - 1); fact(5);'),
       expected: 120,
     },
     {
       name: 'blocks, assignment and conditional statements',
       kind: 'value',
-      expr: run('let k = 0; function f(x) { if (x > 0) { k = k + x; return k; } else { return -1; } } f(2); f(3);'),
+      expr: run('let k = 0; const f = (x) => { if (x > 0) { k = k + x; return k; } else { return -1; } }; f(2); f(3);'),
       expected: 5,
     },
     { name: 'a new syntactic form needs no change to evaluate', kind: 'value', expr: 'evaluate_double(21)', expected: 42 },
   ],
   budget: BUDGET,
-  solution: `function evaluate(component, env) {
+  solution: `const evaluate = (component, env) => {
     const handler = get("evaluate", head(component));
     return is_undefined(handler)
            ? error(component, "unknown syntax -- evaluate")
            : handler(component, env);
-}
+};
 
 put("evaluate", "literal", (component, env) => literal_value(component));
 put("evaluate", "name",
@@ -312,8 +307,8 @@ ${book('evaluate')}`,
     { name: 'nested', kind: 'value', expr: run('const a = true; const b = false; (a && !b) || (!a && b);'), expected: true },
   ],
   budget: BUDGET,
-  solution: `function evaluate(component, env) {
-    return is_literal(component)
+  solution: `const evaluate = (component, env) =>
+    is_literal(component)
            ? literal_value(component)
            : is_name(component)
            ? lookup_symbol_value(symbol_of_name(component), env)
@@ -345,25 +340,21 @@ ${book('evaluate')}`,
            : is_assignment(component)
            ? eval_assignment(component, env)
            : error(component, "unknown syntax -- evaluate");
-}
 
-function is_logical_composition(component) {
-    return is_tagged_list(component, "logical_composition");
-}
-function logical_operation(component) { return list_ref(component, 1); }
-function first_conjunct(component) { return list_ref(component, 2); }
-function second_conjunct(component) { return list_ref(component, 3); }
+const is_logical_composition = (component) =>
+    is_tagged_list(component, "logical_composition");
+const logical_operation = (component) => list_ref(component, 1);
+const first_conjunct = (component) => list_ref(component, 2);
+const second_conjunct = (component) => list_ref(component, 3);
 
-function eval_and(component, env) {
-    return is_truthy(evaluate(first_conjunct(component), env))
+const eval_and = (component, env) =>
+    is_truthy(evaluate(first_conjunct(component), env))
            ? evaluate(second_conjunct(component), env)
            : false;
-}
-function eval_or(component, env) {
-    return is_truthy(evaluate(first_conjunct(component), env))
+const eval_or = (component, env) =>
+    is_truthy(evaluate(first_conjunct(component), env))
            ? true
            : evaluate(second_conjunct(component), env);
-}
 `,
 };
 
@@ -377,37 +368,36 @@ export const exercise_4_5: ExerciseSpec = {
 // declaration in the component has two equal parameters, or a parameter
 // that is also declared directly in its body block; false otherwise.
 
-function verify(component) {
+const verify = (component) => {
     // your answer
-}
+};
 `,
   tests: [
-    { name: 'a correct program', kind: 'value', expr: 'verify(parse("function f(x, y) { return x + y; } f(1, (a, b) => a);"))', expected: true },
+    { name: 'a correct program', kind: 'value', expr: 'verify(parse("const f = (x, y) => x + y; f(1, (a, b) => a);"))', expected: true },
     { name: 'duplicate parameters', kind: 'value', expr: `verify(${duplicateLambda})`, expected: false },
     { name: 'duplicate parameters deep inside an application', kind: 'value', expr: `verify(make_application(make_name("g"), list(make_literal(1), ${duplicateLambda})))`, expected: false },
-    { name: 'a parameter declared again in the body', kind: 'value', expr: 'verify(parse("function f(x) { const x = 1; return x; }"))', expected: false },
+    { name: 'a parameter declared again in the body', kind: 'value', expr: 'verify(parse("const f = (x) => { const x = 1; return x; };"))', expected: false },
     { name: 'the same in a lambda expression', kind: 'value', expr: 'verify(parse("const g = (a, b) => { let b = 2; return a; };"))', expected: false },
-    { name: 'an inner block may reuse the name', kind: 'value', expr: 'verify(parse("function f(x) { if (x > 0) { const x = 1; return x; } else { return x; } }"))', expected: true },
+    { name: 'an inner block may reuse the name', kind: 'value', expr: 'verify(parse("const f = (x) => { if (x > 0) { const x = 1; return x; } else { return x; } };"))', expected: true },
   ],
-  solution: `function has_duplicates(symbols) {
-    return !is_null(symbols) &&
+  solution: `const has_duplicates = (symbols) =>
+    !is_null(symbols) &&
            (!is_null(member(head(symbols), tail(symbols))) ||
             has_duplicates(tail(symbols)));
-}
 
-function verify_function(parameters, body) {
+const verify_function = (parameters, body) => {
     const symbols = map(symbol_of_name, parameters);
     const declared = is_block(body) ? scan_out_declarations(block_body(body)) : null;
     return !has_duplicates(symbols) &&
            is_null(filter(name => !is_null(member(name, symbols)), declared)) &&
            verify(body);
-}
+};
 
 // Checking the whole program before evaluating it finds every mistake,
 // including those in functions that are never applied; checking in apply
 // finds them late, and again at every application.
-function verify(component) {
-    return is_lambda_expression(component)
+const verify = (component) =>
+    is_lambda_expression(component)
            ? verify_function(head(tail(component)), lambda_body(component))
            : is_function_declaration(component)
            ? verify_function(function_declaration_parameters(component),
@@ -415,28 +405,26 @@ function verify(component) {
            : is_pair(component)
            ? verify(head(component)) && verify(tail(component))
            : true;
-}
 `,
 };
 
-const letStar = `function let_star(text) {
-    function convert(component) {
-        return !is_pair(component)
+const letStar = `const let_star = (text) => {
+    const convert = (component) =>
+        !is_pair(component)
                ? component
                : head(component) === "variable_declaration"
                ? pair("let_star_declaration", convert(tail(component)))
                : pair(convert(head(component)), convert(tail(component)));
-    }
     return convert(parse(text));
-}
-function evaluate_let_star(text) {
+};
+const evaluate_let_star = (text) => {
     const program = let_star_to_nested_let(let_star(text));
     const locals = scan_out_declarations(program);
     const output = evaluate(program,
                             extend_environment(locals, list_of_unassigned(locals),
                                                the_global_environment));
     return is_return_value(output) ? return_value_content(output) : output;
-}`;
+};`;
 
 export const exercise_4_6: ExerciseSpec = {
   id: '4.6',
@@ -448,34 +436,32 @@ export const exercise_4_6: ExerciseSpec = {
 // provided. Return a program in which each let* has become a let at the
 // start of a new block holding the rest of its statement sequence.
 
-function let_star_to_nested_let(component) {
+const let_star_to_nested_let = (component) => {
     // your answer
-}
+};
 `,
   tests: [
     { name: 'the program of the text displays 39', kind: 'value', expr: 'evaluate_let_star("let x = 3; let y = x + 2; let z = x + y + 5; x * z;")', expected: 39 },
-    { name: 'inside a function body', kind: 'value', expr: 'evaluate_let_star("function f(a) { let b = a + 1; let c = b * 2; return c; } f(3);")', expected: 8 },
+    { name: 'inside a function body', kind: 'value', expr: 'evaluate_let_star("const f = (a) => { let b = a + 1; let c = b * 2; return c; }; f(3);")', expected: 8 },
     {
       name: 'a later let* shadows, so earlier functions keep the earlier binding',
       kind: 'value',
-      expr: 'evaluate_let_star("let x = 1; function get() { return x; } let x = 2; get() * 10 + x;")',
+      expr: 'evaluate_let_star("let x = 1; const get = () => x; let x = 2; get() * 10 + x;")',
       expected: 12,
     },
   ],
   budget: BUDGET,
-  solution: `function is_let_star(component) {
-    return is_tagged_list(component, "let_star_declaration");
-}
+  solution: `const is_let_star = (component) =>
+    is_tagged_list(component, "let_star_declaration");
 
-function let_star_to_let(component) {
-    return list("variable_declaration",
+const let_star_to_let = (component) =>
+    list("variable_declaration",
                 head(tail(component)),
                 let_star_to_nested_let(head(tail(tail(component)))));
-}
 
 // A let* and the statements after it become a block.
-function nest_statements(stmts) {
-    return is_null(stmts)
+const nest_statements = (stmts) =>
+    is_null(stmts)
            ? null
            : is_let_star(head(stmts))
            ? list(list("block",
@@ -484,10 +470,9 @@ function nest_statements(stmts) {
                                  nest_statements(tail(stmts))))))
            : pair(let_star_to_nested_let(head(stmts)),
                   nest_statements(tail(stmts)));
-}
 
-function let_star_to_nested_let(component) {
-    return is_sequence(component)
+const let_star_to_nested_let = (component) =>
+    is_sequence(component)
            ? list("sequence", nest_statements(sequence_statements(component)))
            : is_let_star(component)
            ? list("block", let_star_to_let(component))
@@ -495,7 +480,6 @@ function let_star_to_nested_let(component) {
            ? pair(let_star_to_nested_let(head(component)),
                   let_star_to_nested_let(tail(component)))
            : component;
-}
 `,
 };
 
@@ -503,11 +487,11 @@ export const exercise_4_7: ExerciseSpec = {
   id: '4.7',
   starter: `// while_loop(predicate, body) applies body as long as predicate()
 // is true, and should generate an iterative process.
-function while_loop(predicate, body) {
+const while_loop = (predicate, body) => {
     // your answer
-}
+};
 
-function factorial(n) {
+const factorial = (n) => {
     let product = 1;
     let counter = 1;
     while_loop(() => counter <= n,
@@ -516,7 +500,7 @@ function factorial(n) {
                    counter = counter + 1;
                });
     return product;
-}
+};
 `,
   tests: [
     { name: 'factorial', kind: 'value', expr: 'factorial(10)', expected: 3628800 },
@@ -524,16 +508,16 @@ function factorial(n) {
     { name: 'a sum', kind: 'value', expr: '(() => { let i = 0; let s = 0; while_loop(() => i < 100, () => { i = i + 1; s = s + i; }); return s; })()', expected: 5050 },
     { name: 'an iterative process', kind: 'shape', expr: '"iterative"', call: 'factorial(40)' },
   ],
-  solution: `function while_loop(predicate, body) {
+  solution: `const while_loop = (predicate, body) => {
     if (predicate()) {
         body();
         return while_loop(predicate, body);
     } else {
         return undefined;
     }
-}
+};
 
-function factorial(n) {
+const factorial = (n) => {
     let product = 1;
     let counter = 1;
     while_loop(() => counter <= n,
@@ -542,7 +526,7 @@ function factorial(n) {
                    counter = counter + 1;
                });
     return product;
-}
+};
 `,
 };
 
@@ -564,7 +548,7 @@ ${book('eval_sequence')}`,
     { name: 'nor does a block of declarations', kind: 'value', expr: run('1; { const y = 2; } const z = 3;'), expected: 1 },
     { name: 'a conditional statement does', kind: 'value', expr: `is_undefined(${run('1; { if (true) {} else { 2; } }')})`, expected: true },
     { name: 'the last value-producing statement wins', kind: 'value', expr: run('1; { let x = 2; { x = x + 3; } }'), expected: 5 },
-    { name: 'functions still return what they return', kind: 'value', expr: run('function f() { 1; return 2; } function g() { 3; } f() + (g() === undefined ? 10 : 20);'), expected: 12 },
+    { name: 'functions still return what they return', kind: 'value', expr: run('const f = () => { 1; return 2; }; const g = () => { 3; }; f() + (g() === undefined ? 10 : 20);'), expected: 12 },
   ],
   budget: BUDGET,
   solution: `const value_1 = 3;
@@ -572,8 +556,8 @@ const value_2 = undefined;
 const value_3 = 1;
 const value_4 = 5;
 
-function is_value_producing(component) {
-    return is_declaration(component)
+const is_value_producing = (component) =>
+    is_declaration(component)
            ? false
            : is_block(component)
            ? is_value_producing(block_body(component))
@@ -581,10 +565,9 @@ function is_value_producing(component) {
            ? accumulate((stmt, any) => is_value_producing(stmt) || any,
                         false, sequence_statements(component))
            : true;
-}
 
-function eval_sequence(stmts, env) {
-    function loop(stmts, last) {
+const eval_sequence = (stmts, env) => {
+    const loop = (stmts, last) => {
         if (is_empty_sequence(stmts)) {
             return last;
         } else {
@@ -595,9 +578,9 @@ function eval_sequence(stmts, env) {
                    : loop(rest_statements(stmts),
                           is_value_producing(stmt) ? value : last);
         }
-    }
+    };
     return loop(stmts, undefined);
-}
+};
 `,
 };
 
@@ -606,7 +589,7 @@ const environmentFunctions = ['make_frame', 'frame_symbols', 'frame_values', 'ex
 const recursion: TestSpec = {
   name: 'recursion',
   kind: 'value',
-  expr: run('function fact(n) { return n === 0 ? 1 : n * fact(n - 1); } fact(6);'),
+  expr: run('const fact = (n) => n === 0 ? 1 : n * fact(n - 1); fact(6);'),
   expected: 720,
 };
 const correctness: TestSpec[] = [
@@ -614,7 +597,7 @@ const correctness: TestSpec[] = [
   {
     name: 'assignment and closures',
     kind: 'value',
-    expr: run('let count = 0; function inc() { count = count + 1; return count; } inc(); inc(); inc();'),
+    expr: run('let count = 0; const inc = () => { count = count + 1; return count; }; inc(); inc(); inc();'),
     expected: 3,
   },
 ];
@@ -637,34 +620,31 @@ ${book(...environmentFunctions)}`,
     },
   ],
   budget: BUDGET,
-  solution: `function make_frame(symbols, values) {
-    return is_null(symbols)
+  solution: `const make_frame = (symbols, values) =>
+    is_null(symbols)
            ? null
            : pair(pair(head(symbols), head(values)),
                   make_frame(tail(symbols), tail(values)));
-}
-function frame_symbols(frame) { return map(head, frame); }
+const frame_symbols = (frame) => map(head, frame);
 
-function frame_values(frame) { return map(tail, frame); }
+const frame_values = (frame) => map(tail, frame);
 
-function extend_environment(symbols, vals, base_env) {
-    return length(symbols) === length(vals)
+const extend_environment = (symbols, vals, base_env) =>
+    length(symbols) === length(vals)
            ? pair(make_frame(symbols, vals), base_env)
            : error(pair(symbols, vals),
                    length(symbols) < length(vals)
                    ? "too many arguments supplied"
                    : "too few arguments supplied");
-}
 
-function find_binding(symbol, frame) {
-    return is_null(frame)
+const find_binding = (symbol, frame) =>
+    is_null(frame)
            ? null
            : head(head(frame)) === symbol
            ? head(frame)
            : find_binding(symbol, tail(frame));
-}
 
-function lookup_symbol_value(symbol, env) {
+const lookup_symbol_value = (symbol, env) => {
     if (env === the_empty_environment) {
         return error(symbol, "unbound name");
     } else {
@@ -673,9 +653,9 @@ function lookup_symbol_value(symbol, env) {
                ? lookup_symbol_value(symbol, enclosing_environment(env))
                : tail(binding);
     }
-}
+};
 
-function assign_symbol_value(symbol, val, env) {
+const assign_symbol_value = (symbol, val, env) => {
     if (env === the_empty_environment) {
         return error(symbol, "unbound name -- assignment");
     } else {
@@ -684,7 +664,7 @@ function assign_symbol_value(symbol, val, env) {
                ? assign_symbol_value(symbol, val, enclosing_environment(env))
                : set_tail(binding, val);
     }
-}
+};
 `,
 };
 
@@ -697,9 +677,9 @@ export const exercise_4_10: ExerciseSpec = {
 // binds symbol, it signals an error with unbound_message. Then declare
 // lookup_symbol_value and assign_symbol_value with it.
 
-function scan_environment(symbol, env, found, unbound_message) {
+const scan_environment = (symbol, env, found, unbound_message) => {
     // your answer
-}
+};
 
 ${book('lookup_symbol_value', 'assign_symbol_value')}`,
   tests: [
@@ -715,33 +695,30 @@ ${book('lookup_symbol_value', 'assign_symbol_value')}`,
     { name: 'unbound names are still errors', kind: 'error', call: run('no_such_name;'), message: 'unbound name' },
   ],
   budget: BUDGET,
-  solution: `function scan_environment(symbol, env, found, unbound_message) {
-    function env_loop(env) {
-        function scan(symbols, vals) {
-            return is_null(symbols)
+  solution: `const scan_environment = (symbol, env, found, unbound_message) => {
+    const env_loop = (env) => {
+        const scan = (symbols, vals) =>
+            is_null(symbols)
                    ? env_loop(enclosing_environment(env))
                    : symbol === head(symbols)
                    ? found(vals)
                    : scan(tail(symbols), tail(vals));
-        }
         if (env === the_empty_environment) {
             return error(symbol, unbound_message);
         } else {
             const frame = first_frame(env);
             return scan(frame_symbols(frame), frame_values(frame));
         }
-    }
+    };
     return env_loop(env);
-}
+};
 
-function lookup_symbol_value(symbol, env) {
-    return scan_environment(symbol, env, vals => head(vals), "unbound name");
-}
+const lookup_symbol_value = (symbol, env) =>
+    scan_environment(symbol, env, vals => head(vals), "unbound name");
 
-function assign_symbol_value(symbol, val, env) {
-    return scan_environment(symbol, env, vals => set_head(vals, val),
+const assign_symbol_value = (symbol, val, env) =>
+    scan_environment(symbol, env, vals => set_head(vals, val),
                             "unbound name -- assignment");
-}
 `,
 };
 
@@ -759,16 +736,16 @@ export const exercise_4_11: ExerciseSpec = {
 ${book(...constantFunctions)}`,
   tests: [
     { name: 'assignment to a constant', kind: 'error', call: run('const x = 1; x = 2;') },
-    { name: 'function names are constants', kind: 'error', call: run('function g() { return 1; } g = 5;') },
-    { name: 'constants in a function body', kind: 'error', call: run('function h() { const c = 1; c = 2; return c; } h();') },
+    { name: 'function names are constants', kind: 'error', call: run('const g = () => 1; g = 5;') },
+    { name: 'constants in a function body', kind: 'error', call: run('const h = () => { const c = 1; c = 2; return c; }; h();') },
     { name: 'variables can be assigned', kind: 'value', expr: run('let y = 1; y = y + 1; y;'), expected: 2 },
-    { name: 'parameters can be assigned', kind: 'value', expr: run('function f(x) { x = x + 1; return x; } f(1);'), expected: 2 },
+    { name: 'parameters can be assigned', kind: 'value', expr: run('const f = (x) => { x = x + 1; return x; }; f(1);'), expected: 2 },
     recursion,
   ],
   budget: BUDGET,
   solution: `// A declared name is either a string (a variable) or pair("const", string).
-function scan_out_declarations(component) {
-    return is_sequence(component)
+const scan_out_declarations = (component) =>
+    is_sequence(component)
            ? accumulate(append,
                         null,
                         map(scan_out_declarations,
@@ -778,56 +755,51 @@ function scan_out_declarations(component) {
            : is_declaration(component)
            ? list(pair("const", declaration_symbol(component)))
            : null;
-}
 
 // A frame keeps the kind of each name beside the names.
-function make_frame(symbols, values) {
-    return pair(pair(map(s => is_pair(s) ? tail(s) : s, symbols),
+const make_frame = (symbols, values) =>
+    pair(pair(map(s => is_pair(s) ? tail(s) : s, symbols),
                      map(s => is_pair(s) ? "const" : "let", symbols)),
                 values);
-}
-function frame_symbols(frame) { return head(head(frame)); }
+const frame_symbols = (frame) => head(head(frame));
 
-function frame_kinds(frame) { return tail(head(frame)); }
+const frame_kinds = (frame) => tail(head(frame));
 
-function frame_values(frame) { return tail(frame); }
+const frame_values = (frame) => tail(frame);
 
-function assign_in_frames(symbol, val, env, check) {
-    function env_loop(env) {
-        function scan(symbols, kinds, vals) {
-            return is_null(symbols)
+const assign_in_frames = (symbol, val, env, check) => {
+    const env_loop = (env) => {
+        const scan = (symbols, kinds, vals) =>
+            is_null(symbols)
                    ? env_loop(enclosing_environment(env))
                    : symbol === head(symbols)
                    ? (check && head(kinds) === "const"
                       ? error(symbol, "assignment to constant")
                       : set_head(vals, val))
                    : scan(tail(symbols), tail(kinds), tail(vals));
-        }
         if (env === the_empty_environment) {
             return error(symbol, "unbound name -- assignment");
         } else {
             const frame = first_frame(env);
             return scan(frame_symbols(frame), frame_kinds(frame), frame_values(frame));
         }
-    }
+    };
     return env_loop(env);
-}
+};
 
-function assign_symbol_value(symbol, val, env) {
-    return assign_in_frames(symbol, val, env, true);
-}
+const assign_symbol_value = (symbol, val, env) =>
+    assign_in_frames(symbol, val, env, true);
 
-function assign_constant_value(symbol, val, env) {
-    return assign_in_frames(symbol, val, env, false);
-}
+const assign_constant_value = (symbol, val, env) =>
+    assign_in_frames(symbol, val, env, false);
 
-function eval_declaration(component, env) {
+const eval_declaration = (component, env) => {
     assign_constant_value(
         declaration_symbol(component),
         evaluate(declaration_value_expression(component), env),
         env);
     return undefined;
-}
+};
 `,
 };
 
@@ -842,7 +814,7 @@ ${book('lookup_symbol_value', 'eval_assignment')}`,
     {
       name: 'using a name before its declaration',
       kind: 'error',
-      call: run('const a = 1; function f(x) { const b = a + x; const a = 5; return a + b; } f(10);'),
+      call: run('const a = 1; const f = (x) => { const b = a + x; const a = 5; return a + b; }; f(10);'),
       message: 'unassigned',
     },
     { name: 'assigning before the let declaration', kind: 'error', call: run('x = 1; let x = 2;'), message: 'unassigned' },
@@ -850,35 +822,34 @@ ${book('lookup_symbol_value', 'eval_assignment')}`,
     recursion,
   ],
   budget: BUDGET,
-  solution: `function lookup_symbol_value(symbol, env) {
-    function env_loop(env) {
-        function scan(symbols, vals) {
-            return is_null(symbols)
+  solution: `const lookup_symbol_value = (symbol, env) => {
+    const env_loop = (env) => {
+        const scan = (symbols, vals) =>
+            is_null(symbols)
                    ? env_loop(enclosing_environment(env))
                    : symbol === head(symbols)
                    ? (head(vals) === "*unassigned*"
                       ? error(symbol, "unassigned name")
                       : head(vals))
                    : scan(tail(symbols), tail(vals));
-        }
         if (env === the_empty_environment) {
             return error(symbol, "unbound name");
         } else {
             const frame = first_frame(env);
             return scan(frame_symbols(frame), frame_values(frame));
         }
-    }
+    };
     return env_loop(env);
-}
+};
 
 // Looking the name up first signals the error for a name still unassigned.
-function eval_assignment(component, env) {
+const eval_assignment = (component, env) => {
     lookup_symbol_value(assignment_symbol(component), env);
     const value = evaluate(assignment_value_expression(component),
                            env);
     assign_symbol_value(assignment_symbol(component), value, env);
     return value;
-}
+};
 `,
 };
 
@@ -893,15 +864,15 @@ export const exercise_4_13: ExerciseSpec = {
 
 ${book(...varFunctions)}`,
   tests: [
-    { name: 'a declaration in a block is visible in the whole function', kind: 'value', expr: run('function f() { { const y = 2; } return y; } f();'), expected: 2 },
+    { name: 'a declaration in a block is visible in the whole function', kind: 'value', expr: run('const f = () => { { const y = 2; } return y; }; f();'), expected: 2 },
     { name: 'blocks do not shadow', kind: 'value', expr: run('const x = 1; { const x = 2; } x;'), expected: 2 },
-    { name: 'assignment to an undeclared name declares it globally', kind: 'value', expr: run('function g() { z = 5; return 1; } g() + z;'), expected: 6 },
+    { name: 'assignment to an undeclared name declares it globally', kind: 'value', expr: run('const g = () => { z = 5; return 1; }; g() + z;'), expected: 6 },
     recursion,
   ],
   budget: BUDGET,
   solution: `// Declarations anywhere in a function body, but not in nested functions.
-function scan_out_declarations(component) {
-    return is_sequence(component)
+const scan_out_declarations = (component) =>
+    is_sequence(component)
            ? accumulate(append,
                         null,
                         map(scan_out_declarations,
@@ -914,15 +885,13 @@ function scan_out_declarations(component) {
            ? append(scan_out_declarations(conditional_consequent(component)),
                     scan_out_declarations(conditional_alternative(component)))
            : null;
-}
 
 // A block no longer has a frame of its own.
-function eval_block(component, env) {
-    return evaluate(block_body(component), env);
-}
+const eval_block = (component, env) =>
+    evaluate(block_body(component), env);
 
 // The function's frame holds its parameters and every name in its body.
-function apply(fun, args) {
+const apply = (fun, args) => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(fun, args);
     } else if (is_compound_function(fun)) {
@@ -939,17 +908,16 @@ function apply(fun, args) {
     } else {
         return error(fun, "unknown function type -- apply");
     }
-}
+};
 
-function assign_symbol_value(symbol, val, env) {
-    function env_loop(env) {
-        function scan(symbols, vals) {
-            return is_null(symbols)
+const assign_symbol_value = (symbol, val, env) => {
+    const env_loop = (env) => {
+        const scan = (symbols, vals) =>
+            is_null(symbols)
                    ? env_loop(enclosing_environment(env))
                    : symbol === head(symbols)
                    ? set_head(vals, val)
                    : scan(tail(symbols), tail(vals));
-        }
         if (env === the_empty_environment) {
             const frame = first_frame(the_global_environment);
             set_head(frame, pair(symbol, head(frame)));
@@ -958,9 +926,9 @@ function assign_symbol_value(symbol, val, env) {
             const frame = first_frame(env);
             return scan(frame_symbols(frame), frame_values(frame));
         }
-    }
+    };
     return env_loop(env);
-}
+};
 `,
 };
 
@@ -976,15 +944,15 @@ ${book('apply')}`,
     {
       name: 'one frame fewer',
       kind: 'value',
-      expr: `length(function_environment(${run('function f(x) { const y = x + 1; return () => x * y; } f(1);')}))`,
+      expr: `length(function_environment(${run('const f = (x) => { const y = x + 1; return () => x * y; }; f(1);')}))`,
       expected: 3,
     },
-    { name: 'parameters and local names are both visible', kind: 'value', expr: run('function f(x) { const y = x + 1; return x * y; } f(3);'), expected: 12 },
+    { name: 'parameters and local names are both visible', kind: 'value', expr: run('const f = (x) => { const y = x + 1; return x * y; }; f(3);'), expected: 12 },
     { name: 'lambda expressions with expression bodies', kind: 'value', expr: run('(x => x + 1)(2);'), expected: 3 },
     recursion,
   ],
   budget: BUDGET,
-  solution: `function apply(fun, args) {
+  solution: `const apply = (fun, args) => {
     if (is_primitive_function(fun)) {
         return apply_primitive_function(fun, args);
     } else if (is_compound_function(fun)) {
@@ -1003,7 +971,7 @@ ${book('apply')}`,
     } else {
         return error(fun, "unknown function type -- apply");
     }
-}
+};
 `,
 };
 
@@ -1015,18 +983,17 @@ export const exercise_4_17: ExerciseSpec = {
 
 ${book('evaluate')}`,
   tests: [
-    { name: 'a function used before its declaration', kind: 'value', expr: run('const a = f(2); function f(x) { return x * 10; } a;'), expected: 20 },
-    { name: 'in a block', kind: 'value', expr: run('function g() { const r = h(); function h() { return 7; } return r; } g();'), expected: 7 },
+    { name: 'a function used before its declaration', kind: 'value', expr: run('const a = f(2); const f = (x) => x * 10; a;'), expected: 20 },
+    { name: 'in a block', kind: 'value', expr: run('const g = () => { const r = h(); const h = () => 7; return r; }; g();'), expected: 7 },
     recursion,
   ],
   budget: BUDGET,
-  solution: `function hoist(stmts) {
-    return append(filter(is_function_declaration, stmts),
+  solution: `const hoist = (stmts) =>
+    append(filter(is_function_declaration, stmts),
                   filter(stmt => !is_function_declaration(stmt), stmts));
-}
 
-function evaluate(component, env) {
-    return is_literal(component)
+const evaluate = (component, env) =>
+    is_literal(component)
            ? literal_value(component)
            : is_name(component)
            ? lookup_symbol_value(symbol_of_name(component), env)
@@ -1054,7 +1021,6 @@ function evaluate(component, env) {
            : is_assignment(component)
            ? eval_assignment(component, env)
            : error(component, "unknown syntax -- evaluate");
-}
 `,
 };
 
@@ -1064,11 +1030,10 @@ export const exercise_4_18: ExerciseSpec = {
 // no declarations or assignments inside.
 const fib = n => /* your answer */ undefined;
 
-function f(x) {
-    return ((is_even, is_odd) => is_even(is_even, is_odd, x))
+const f = (x) =>
+    ((is_even, is_odd) => is_even(is_even, is_odd, x))
            ((is_ev, is_od, n) => n === 0 ? true : is_od(/* ?? */),
             (is_ev, is_od, n) => n === 0 ? false : is_ev(/* ?? */));
-}
 `,
   tests: [
     { name: 'fib(1) and fib(2)', kind: 'value', expr: 'fib(1) + fib(2)', expected: 2 },
@@ -1081,17 +1046,16 @@ function f(x) {
   solution: `const fib = n => (fib => fib(fib, n))
                 ((fb, k) => k < 2 ? k : fb(fb, k - 1) + fb(fb, k - 2));
 
-function f(x) {
-    return ((is_even, is_odd) => is_even(is_even, is_odd, x))
+const f = (x) =>
+    ((is_even, is_odd) => is_even(is_even, is_odd, x))
            ((is_ev, is_od, n) => n === 0 ? true : is_od(is_ev, is_od, n - 1),
             (is_ev, is_od, n) => n === 0 ? false : is_ev(is_ev, is_od, n - 1));
-}
 `,
 };
 
 const whileHelpers = `// loop_while(predicate, () => { body }) is parsed as a while loop.
-function with_while_loops(component) {
-    return is_application(component) &&
+const with_while_loops = (component) =>
+    is_application(component) &&
            is_name(function_expression(component)) &&
            symbol_of_name(function_expression(component)) === "loop_while"
            ? list("while_loop",
@@ -1100,15 +1064,14 @@ function with_while_loops(component) {
            : is_pair(component)
            ? pair(with_while_loops(head(component)), with_while_loops(tail(component)))
            : component;
-}
-function evaluate_with_while(input) {
+const evaluate_with_while = (input) => {
     const program = with_while_loops(parse(input));
     const locals = scan_out_declarations(program);
     const output = evaluate(program,
                             extend_environment(locals, list_of_unassigned(locals),
                                                the_global_environment));
     return is_return_value(output) ? return_value_content(output) : output;
-}`;
+};`;
 
 export const exercise_4_20: ExerciseSpec = {
   id: '4.20',
@@ -1130,7 +1093,7 @@ ${pick(analyzingEvaluator, 'analyze')}
     {
       name: 'return from inside a loop',
       kind: 'value',
-      expr: 'evaluate_with_while("function f() { let i = 0; loop_while(true, () => { if (i === 3) { return i; } else {} i = i + 1; }); return 99; } f();")',
+      expr: 'evaluate_with_while("const f = () => { let i = 0; loop_while(true, () => { if (i === 3) { return i; } else {} i = i + 1; }); return 99; }; f();")',
       expected: 3,
     },
     {
@@ -1141,8 +1104,8 @@ ${pick(analyzingEvaluator, 'analyze')}
     },
   ],
   budget: 20_000_000,
-  solution: `function analyze(component) {
-    return is_literal(component)
+  solution: `const analyze = (component) =>
+    is_literal(component)
            ? analyze_literal(component)
            : is_name(component)
            ? analyze_name(component)
@@ -1169,28 +1132,26 @@ ${pick(analyzingEvaluator, 'analyze')}
            : is_assignment(component)
            ? analyze_assignment(component)
            : error(component, "unknown syntax -- analyze");
-}
 
-function is_while_loop(component) {
-    return is_tagged_list(component, "while_loop");
-}
-function while_predicate(component) { return list_ref(component, 1); }
+const is_while_loop = (component) =>
+    is_tagged_list(component, "while_loop");
+const while_predicate = (component) => list_ref(component, 1);
 
-function while_body(component) { return list_ref(component, 2); }
+const while_body = (component) => list_ref(component, 2);
 
-function analyze_while_loop(component) {
+const analyze_while_loop = (component) => {
     const pfun = analyze(while_predicate(component));
     const bfun = analyze(while_body(component));
-    function loop(env) {
+    const loop = (env) => {
         if (is_truthy(pfun(env))) {
             const result = bfun(env);
             return is_return_value(result) ? result : loop(env);
         } else {
             return undefined;
         }
-    }
+    };
     return loop;
-}
+};
 `,
 };
 
@@ -1205,9 +1166,9 @@ const louis_map_receives = "";
 
 // Then repair Louis's idea: return env extended by a primitive map that
 // works for both compound and primitive function arguments.
-function install_map(env) {
+const install_map = (env) => {
     // your answer
-}
+};
 `,
   tests: [
     { name: 'what map is given', kind: 'value', expr: 'louis_map_receives === "a list tagged compound_function"', expected: true },
@@ -1229,13 +1190,12 @@ function install_map(env) {
 
 // The implementation applies its argument with the evaluator's apply, which
 // knows both representations of functions.
-function install_map(env) {
-    return extend_environment(
+const install_map = (env) =>
+    extend_environment(
                list("map"),
                list(list("primitive",
                          (f, xs) => map(x => apply(f, list(x)), xs))),
                env);
-}
 `,
 };
 
@@ -1244,14 +1204,14 @@ export const exercise_4_15: ExerciseSpec = {
   starter: `// Suppose halts(f, a) existed, and consider strange(strange).
 // outcome(answer) is what strange(strange) does when halts(strange, strange)
 // returns answer: "runs forever" or "halts".
-function outcome(answer) {
+const outcome = (answer) => {
     // your answer
-}
+};
 
 // Does that outcome agree with the answer halts gave? true or false.
-function agrees(answer) {
+const agrees = (answer) => {
     // your answer
-}
+};
 
 // Can halts exist?
 const halts_can_exist = true;
@@ -1261,13 +1221,11 @@ const halts_can_exist = true;
     { name: 'if halts says strange runs forever', kind: 'value', expr: 'outcome(false) === "halts" && agrees(false) === false', expected: true },
     { name: 'the conclusion', kind: 'value', expr: 'halts_can_exist', expected: false },
   ],
-  solution: `function outcome(answer) {
-    return answer ? "runs forever" : "halts";
-}
+  solution: `const outcome = (answer) =>
+    answer ? "runs forever" : "halts";
 
-function agrees(answer) {
-    return (outcome(answer) === "halts") === answer;
-}
+const agrees = (answer) =>
+    (outcome(answer) === "halts") === answer;
 
 const halts_can_exist = false;
 `,
@@ -1287,9 +1245,9 @@ const javascript = "";
 // do not call functions: evaluate them in an order in which each comes
 // after the declarations it uses. Given a list of pairs (name, list of the
 // names its value expression uses), return the names in such an order.
-function declaration_order(uses) {
+const declaration_order = (uses) => {
     // your answer
-}
+};
 `,
   tests: [
     { name: 'the three views', kind: 'value', expr: 'ben === 16 && alyssa === "error" && eva === 20', expected: true },
@@ -1314,14 +1272,13 @@ const eva = 20;
 const javascript = "alyssa";
 
 // Repeatedly take a declaration none of whose names is still waiting.
-function declaration_order(uses) {
+const declaration_order = (uses) => {
     const names = map(head, uses);
-    function ready(entry, waiting) {
-        return is_null(filter(name => !is_null(member(name, waiting)) &&
+    const ready = (entry, waiting) =>
+        is_null(filter(name => !is_null(member(name, waiting)) &&
                                       name !== head(entry),
                               tail(entry)));
-    }
-    function order(waiting_entries) {
+    const order = (waiting_entries) => {
         if (is_null(waiting_entries)) {
             return null;
         } else {
@@ -1331,9 +1288,9 @@ function declaration_order(uses) {
             return pair(head(next),
                         order(filter(entry => entry !== next, waiting_entries)));
         }
-    }
+    };
     return order(uses);
-}
+};
 `,
 };
 
@@ -1342,13 +1299,13 @@ export const exercise_4_21: ExerciseSpec = {
   starter: `// Each time a function whose body is a sequence of n statements is
 // applied (n at least 2; parse gives a single statement as itself):
 // how many times does Alyssa's version apply execute_sequence?
-function alyssa_calls(n) {
+const alyssa_calls = (n) => {
     // your answer
-}
+};
 // How many of the functions made by sequentially does the text's apply?
-function text_calls(n) {
+const text_calls = (n) => {
     // your answer
-}
+};
 // Which version tests is_null and takes head and tail at execution time:
 // "alyssa" or "text"?
 const loops_at_execution = "";
@@ -1358,12 +1315,10 @@ const loops_at_execution = "";
     { name: 'ten statements', kind: 'value', expr: 'alyssa_calls(10) === 10 && text_calls(10) === 9', expected: true },
     { name: 'the work left to execution', kind: 'value', expr: 'loops_at_execution', expected: 'alyssa' },
   ],
-  solution: `function alyssa_calls(n) {
-    return n;
-}
-function text_calls(n) {
-    return n - 1;
-}
+  solution: `const alyssa_calls = (n) =>
+    n;
+const text_calls = (n) =>
+    n - 1;
 const loops_at_execution = "alyssa";
 `,
 };
@@ -1374,9 +1329,9 @@ export const exercise_4_22: ExerciseSpec = {
 // read the steps from their output headers. The share of the original
 // evaluator's steps that analysis saves estimates the fraction of its time
 // spent in analysis.
-function analysis_fraction(original_steps, analyzing_steps) {
+const analysis_fraction = (original_steps, analyzing_steps) => {
     // your answer
-}
+};
 const fraction_for_10 = analysis_fraction(0, 0); // your measurements
 const fraction_for_20 = analysis_fraction(0, 0); // your measurements
 
@@ -1389,9 +1344,8 @@ const grows = undefined;
     { name: 'factorial(20)', kind: 'value', expr: 'math_abs(fraction_for_20 - 0.421) < 0.02', expected: true },
     { name: 'growth', kind: 'value', expr: 'grows', expected: true },
   ],
-  solution: `function analysis_fraction(original_steps, analyzing_steps) {
-    return (original_steps - analyzing_steps) / original_steps;
-}
+  solution: `const analysis_fraction = (original_steps, analyzing_steps) =>
+    (original_steps - analyzing_steps) / original_steps;
 const fraction_for_10 = analysis_fraction(76076, 46980);
 const fraction_for_20 = analysis_fraction(152836, 88540);
 

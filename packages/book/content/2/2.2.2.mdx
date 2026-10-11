@@ -166,9 +166,8 @@ should be `list(1, list(4, list(9, 16), 25), list(36, 49))`. Declare `square_tre
 Abstract your answer to Exercise 2.30 to produce a function `tree_map` with the property that `square_tree` could be declared as
 
 ```js
-function square_tree(tree) {
-  return tree_map(square, tree);
-}
+const square_tree = (tree) =>
+  tree_map(square, tree);
 ```
 
 <Solution>

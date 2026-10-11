@@ -11,20 +11,19 @@ Before it can generate the instruction execution functions, the assembler must k
 The `assemble` function is the main entry to the assembler. It takes the controller and the machine model as arguments and returns the instruction sequence to be stored in the model. `assemble` calls `extract_labels` to build the initial instruction list and label table from the supplied controller. The second argument to `extract_labels` is a function to be called to process these results: it uses `update_insts` to generate the instruction execution functions and insert them into the instruction list, and returns the modified list.
 
 ```js
-function assemble(controller, machine) {
-    return extract_labels(controller,
+const assemble = (controller, machine) =>
+    extract_labels(controller,
                           (insts, labels) => {
                               update_insts(insts, labels, machine);
                               return insts;
                           });
-}
 ```
 
 `extract_labels` takes a list `controller` and a function `receive` as arguments. `receive` will be called with two values: (1) a list `insts` of instruction data structures, each containing an instruction from `controller`; and (2) a table called `labels`, which associates each label from `controller` with the position in the list `insts` that the label designates.
 
 ```js
-function extract_labels(controller, receive) {
-    return is_null(controller)
+const extract_labels = (controller, receive) =>
+    is_null(controller)
            ? receive(null, null)
            : extract_labels(
                  tail(controller),
@@ -39,7 +38,6 @@ function extract_labels(controller, receive) {
                                          insts),
                                     labels);
                  });
-}
 ```
 
 `extract_labels` works by sequentially scanning the elements of the controller and accumulating the `insts` and the `labels`. If an element is a string (and thus a label), an appropriate entry is added to the `labels` table. Otherwise the element is accumulated onto the `insts` list.
@@ -47,7 +45,7 @@ function extract_labels(controller, receive) {
 Using `receive` here is a way to get `extract_labels` to return two values, `labels` and `insts`, without explicitly making a compound data structure to hold them. An argument like `receive` that is the next function to be invoked is called a *continuation*; the `amb` evaluator of §4.3.3 used continuations for backtracking. The alternative is to return an explicit pair:
 
 ```js
-function extract_labels(controller) {
+const extract_labels = (controller) => {
     if (is_null(controller)) {
         return pair(null, null);
     } else {
@@ -60,7 +58,7 @@ function extract_labels(controller) {
                       pair(make_label_entry(next_element, insts), labels))
                : pair(pair(make_inst(next_element), insts), labels);
     }
-}
+};
 ```
 
 with `assemble` taking the pair apart. You can consider our use of `receive` as demonstrating an elegant way to return multiple values, or simply an excuse to show off a programming trick.
@@ -68,7 +66,7 @@ with `assemble` taking the pair apart. You can consider our use of `receive` as 
 `update_insts` modifies the instruction list, which initially contains only the controller instructions, to include the corresponding execution functions:
 
 ```js
-function update_insts(insts, labels, machine) {
+const update_insts = (insts, labels, machine) => {
     const pc = get_register(machine, "pc");
     const flag = get_register(machine, "flag");
     const stack = machine("stack");
@@ -80,24 +78,21 @@ function update_insts(insts, labels, machine) {
                                     labels, machine, pc,
                                     flag, stack, ops)),
                     insts);
-}
+};
 ```
 
 The machine instruction data structure simply pairs the controller instruction with the corresponding execution function. The execution function is not yet available when `extract_labels` constructs the instruction, and is inserted later by `update_insts`.
 
 ```js
-function make_inst(inst_controller_instruction) {
-    return pair(inst_controller_instruction, null);
-}
-function inst_controller_instruction(inst) {
-    return head(inst);
-}
-function inst_execution_fun(inst) {
-    return tail(inst);
-}
-function set_inst_execution_fun(inst, fun) {
+const make_inst = (inst_controller_instruction) =>
+    pair(inst_controller_instruction, null);
+const inst_controller_instruction = (inst) =>
+    head(inst);
+const inst_execution_fun = (inst) =>
+    tail(inst);
+const set_inst_execution_fun = (inst, fun) => {
     set_tail(inst, fun);
-}
+};
 ```
 
 The controller instruction is not used by our simulator, but is handy to keep around for debugging (see exercise 5.15).
@@ -105,20 +100,19 @@ The controller instruction is not used by our simulator, but is handy to keep ar
 Elements of the label table are pairs:
 
 ```js
-function make_label_entry(label_name, insts) {
-    return pair(label_name, insts);
-}
+const make_label_entry = (label_name, insts) =>
+    pair(label_name, insts);
 ```
 
 Entries are looked up in the table with
 
 ```js
-function lookup_label(labels, label_name) {
+const lookup_label = (labels, label_name) => {
     const val = assoc(label_name, labels);
     return is_undefined(val)
            ? error(label_name, "undefined label -- assemble")
            : tail(val);
-}
+};
 ```
 
 </Prose>
