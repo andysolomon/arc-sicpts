@@ -1,6 +1,6 @@
 import type { Environment } from '../evaluator/environment.ts';
 import type { MachineHooks } from '../evaluator/machine.ts';
-import { isPair, stringify, type Pair, type Value } from '../evaluator/values.ts';
+import { isPair, isPromise, stringify, type Pair, type Value } from '../evaluator/values.ts';
 import { functionBinding, type Loc, type Node, type Statement } from '../syntax/ast.ts';
 import { excerpt } from './sourceText.ts';
 
@@ -103,7 +103,8 @@ export function heapGraph(
       if (!listed.has(value)) pending.push(value);
       return { kind: 'pair', id: ids.of(value) };
     }
-    if (typeof value === 'object') return { kind: 'function', text: stringify(value) };
+    // A promise is drawn by its text, as an atom: it is not a function.
+    if (typeof value === 'object' && !isPromise(value)) return { kind: 'function', text: stringify(value) };
     return { kind: 'atom', text: stringify(value) };
   };
 
