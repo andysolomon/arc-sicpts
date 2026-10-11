@@ -6,7 +6,7 @@ We have built representations for rational numbers and for algebraic expressions
 
 Informally, a set is a collection of distinct objects. To be more precise we use data abstraction and define "set" by the operations used on it: `union_set`, `intersection_set`, `is_element_of_set` and `adjoin_set`. `is_element_of_set` is a predicate that tells whether a given element is a member of a set. `adjoin_set` takes an object and a set and returns a set with the elements of the original and the adjoined object. `union_set` computes the set of elements in either argument, and `intersection_set` the set of elements in both. Any representation that implements these operations consistently with those meanings will do. (Formally: `is_element_of_set(x, adjoin_set(x, S))` is true for any set `S` and object `x`; `is_element_of_set(x, union_set(S, T))` equals `is_element_of_set(x, S) || is_element_of_set(x, T)`; and `is_element_of_set(x, null)` is false.)
 
-**Sets as unordered lists.** One way to represent a set is as a list of its elements in which no element appears more than once, with the empty set as the empty list. `is_element_of_set` is then like `member` of §2.3.1, except that it uses `equal` instead of `===`, so that the elements need not be numbers or strings. `adjoin_set` returns the set unchanged if the object is already in it, and otherwise uses `pair` to add it. `intersection_set` is recursive: given the intersection of `set2` with the tail of `set1`, we need only decide whether to include the head of `set1`, which depends on whether it is also in `set2`.
+**Sets as unordered lists.** One way to represent a set is as a list of its elements in which no element appears more than once, with the empty set as the empty list. The program names this representation `Set<T>`, another name for `List<T>`. `is_element_of_set` is then like `member` of §2.3.1, except that it uses `equal` instead of `===`, so that the elements need not be numbers or strings. `adjoin_set` returns the set unchanged if the object is already in it, and otherwise uses `pair` to add it. `intersection_set` is recursive: given the intersection of `set2` with the tail of `set1`, we need only decide whether to include the head of `set1`, which depends on whether it is also in `set2`.
 
 </Prose>
 
@@ -25,7 +25,7 @@ In designing a representation, one issue we should be concerned with is efficien
 Ordering helps `is_element_of_set` first: we can stop as soon as we reach an element larger than the one we are looking for.
 
 ```js
-const is_element_of_set = (x, set) =>
+const is_element_of_set = (x: number, set: Set<number>): boolean =>
   is_null(set)
     ? false
     : x === head(set)
@@ -40,7 +40,7 @@ In the worst case the item is the largest in the set and we save nothing. Search
 `intersection_set` gains far more. Compare the first elements, `x1` and `x2`, of the two sets. If they are equal, that gives an element of the intersection, and the rest of the intersection is the intersection of the two tails. If `x1` is less than `x2`, then `x1` cannot be anywhere in `set2`, since `x2` is the smallest element there; so the intersection is that of `set2` with the tail of `set1`. Symmetrically if `x2` is less than `x1`:
 
 ```js
-const intersection_set = (set1, set2) => {
+const intersection_set = (set1: Set<number>, set2: Set<number>): Set<number> => {
   if (is_null(set1) || is_null(set2)) {
     return null;
   } else {
@@ -71,7 +71,7 @@ Each top-level call is one measurement of compound function calls, counting thos
 
 The advantage is this. To check whether *x* is in the set, compare it with the entry at the top. If *x* is smaller, only the left subtree need be searched; if larger, only the right. If the tree is *balanced*, each subtree is about half the size of the whole, so one step reduces a search of size *n* to one of size *n*/2, and the number of steps grows as Θ(log *n*), the halving we saw in fast exponentiation (§1.2.4) and half-interval search (§1.3.3).
 
-We represent a tree as a list of three items: the entry, the left subtree and the right subtree, with the empty list for a missing subtree. The functions `entry`, `left_branch`, `right_branch` and `make_tree` isolate this choice: we represent sets in terms of trees, and trees in terms of lists, a data abstraction built on a data abstraction. `is_element_of_set` follows the strategy just described. `adjoin_set` compares `x` with the entry to decide which branch to adjoin it to, and pieces the new branch together with the original entry and the other branch; adjoining to an empty tree makes a node with empty branches. Figure 2.16 of the book shows three trees for the set of 1, 3, 5, 7, 9 and 11; here they are built and drawn:
+We represent a tree as a list of three items: the entry, the left subtree and the right subtree, with the empty list for a missing subtree. Its type, `Tree<T>`, is a list whose items are entries of type `T` or trees. The functions `entry`, `left_branch`, `right_branch` and `make_tree` isolate this choice: we represent sets in terms of trees, and trees in terms of lists, a data abstraction built on a data abstraction. `is_element_of_set` follows the strategy just described. `adjoin_set` compares `x` with the entry to decide which branch to adjoin it to, and pieces the new branch together with the original entry and the other branch; adjoining to an empty tree makes a node with empty branches. Figure 2.16 of the book shows three trees for the set of 1, 3, 5, 7, 9 and 11; here they are built and drawn:
 
 </Prose>
 
@@ -163,15 +163,15 @@ Give a Θ(*n*) implementation of `union_set` for sets represented as ordered lis
 Each of the following two functions converts a binary tree to a list.
 
 ```js
-const tree_to_list_1 = (tree) =>
+const tree_to_list_1 = <T>(tree: Tree<T>): List<T> =>
   is_null(tree)
     ? null
     : append(tree_to_list_1(left_branch(tree)),
              pair(entry(tree),
                   tree_to_list_1(right_branch(tree))));
 
-const tree_to_list_2 = (tree) => {
-  const copy_to_list = (tree, result_list) =>
+const tree_to_list_2 = <T>(tree: Tree<T>): List<T> => {
+  const copy_to_list = (tree: Tree<T>, result_list: List<T>): List<T> =>
     is_null(tree)
       ? result_list
       : copy_to_list(left_branch(tree),
@@ -198,10 +198,10 @@ Make (b) concrete by writing `append_calls(tree)`, the number of times `append` 
 The following function `list_to_tree` converts an ordered list to a balanced binary tree. The helper `partial_tree` takes as arguments an integer *n* and a list of at least *n* elements, and constructs a balanced tree containing the first *n* elements of the list. The result it returns is a pair whose head is the constructed tree and whose tail is the list of elements not included in the tree.
 
 ```js
-const list_to_tree = (elements) =>
+const list_to_tree = <T>(elements: List<T>): Tree<T> =>
   head(partial_tree(elements, length(elements)));
 
-const partial_tree = (elts, n) => {
+const partial_tree = <T>(elts: List<T>, n: number): Pair<Tree<T>, List<T>> => {
   if (n === 0) {
     return pair(null, elts);
   } else {

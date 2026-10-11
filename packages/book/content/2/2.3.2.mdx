@@ -28,7 +28,7 @@ To embody the rules in a function we indulge in a little wishful thinking, as we
 
 Using these and the primitive predicate `is_number`, the rules become one function, `deriv`, at the top of the program below. It is the complete differentiation algorithm. Since it is written in terms of abstract data, it will work however we represent algebraic expressions, as long as we provide a proper set of selectors and constructors.
 
-**Representing algebraic expressions.** We could represent *ax* + *b* as a list that mirrors the usual notation, `list("a", "*", "x", "+", "b")`. It is more convenient to let the structure of the value reflect the mathematical structure of the expression: `list("+", list("*", "a", "x"), "b")`. Putting an operator in front of its operands is called *prefix notation*, in contrast with the infix notation of §1.1.1. With it, variables are strings, recognised by the primitive `is_string`, and two variables are the same if their strings are `===`. Sums and products are lists whose first element is the string `"+"` or `"*"`; the addend and multiplier are the second item, the augend and multiplicand the third. Here are the representation, the simplest possible constructors, and three derivatives:
+**Representing algebraic expressions.** We could represent *ax* + *b* as a list that mirrors the usual notation, `list("a", "*", "x", "+", "b")`. It is more convenient to let the structure of the value reflect the mathematical structure of the expression: `list("+", list("*", "a", "x"), "b")`. Putting an operator in front of its operands is called *prefix notation*, in contrast with the infix notation of §1.1.1. With it, variables are strings, recognised by the primitive `is_string`, and two variables are the same if their strings are `===`. Sums and products are lists whose first element is the string `"+"` or `"*"`; the addend and multiplier are the second item, the augend and multiplicand the third. The type `Expression` at the top of the program sums this up: an expression is a number, a string, or a list of expressions. Here are the representation, the simplest possible constructors, and three derivatives:
 
 </Prose>
 
@@ -54,7 +54,7 @@ The same three derivatives: 1, `"y"`, and `list("+", list("*", "x", "y"), list("
 
 <UnderTheHood file="packages/lab/src/chapter-2/symbolicData.ts">
 
-`deriv` is one string in `chapter-2/symbolicData.ts`, shared by both editors and by the exercises; only the constructors around it change. The second editor's predicates and selectors are a prelude, evaluated into a frame of its own between the list library and the program, so `deriv` finds them by ordinary lookup. The test `chapter-2/symbolicData.test.ts` asserts all six derivatives above, unsimplified and simplified.
+`deriv` and the type `Expression` are one string in `chapter-2/symbolicData.ts`, shared by both editors and by the exercises; only the constructors around it change. The second editor's predicates and selectors are a prelude, evaluated into a frame of its own between the list library and the program, so `deriv` finds them by ordinary lookup. The test `chapter-2/symbolicData.test.ts` asserts all six derivatives above, unsimplified and simplified.
 
 </UnderTheHood>
 

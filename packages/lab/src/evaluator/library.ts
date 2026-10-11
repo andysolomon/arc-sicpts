@@ -12,7 +12,7 @@ import type { Loc, Program } from '../syntax/ast.ts';
 
 export const listLibrary = `
 type Pair<H, T> = [H, T];
-type List<T> = null | Pair<T, List<T>>;
+type List<T> = null | [T, List<T>];
 
 const equal = (xs: unknown, ys: unknown): boolean =>
   is_pair(xs)
@@ -87,7 +87,7 @@ const accumulate = <T, R>(f: (x: T, acc: R) => R, initial: R, xs: List<T>): R =>
  * These tails are not memoized; §3.5.1 shows how to add that.
  */
 export const streamLibrary = `
-type Stream<T> = null | Pair<T, () => Stream<T>>;
+type Stream<T> = null | [T, () => Stream<T>];
 
 const stream_tail = <T>(s: Stream<T>): Stream<T> =>
   tail(s)();

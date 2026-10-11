@@ -113,9 +113,8 @@ describe('section 2.3.3: sets', () => {
     expect(run(treeSetProgram).value).toBe('true');
     for (const tree of ['tree_a', 'tree_b', 'tree_c']) {
       const inOrder = `${treeSetProgram}
-function flatten(t) {
-  return is_null(t) ? null : append(flatten(head(tail(t))), pair(head(t), flatten(head(tail(tail(t))))));
-}`;
+const flatten = (t: Tree<number>): List<number> =>
+  is_null(t) ? null : append(flatten(head(tail(t))), pair(head(t), flatten(head(tail(tail(t))))));`;
       expect(after(inOrder, `flatten(${tree})`)).toBe('list(1, 3, 5, 7, 9, 11)');
     }
   });
@@ -173,9 +172,8 @@ ${figureHuffmanTreeDefinition}`;
 
   it('frequencies 1, 2, 4, …, 2ⁿ⁻¹ make a vine: 1 bit for the most frequent, n − 1 for the least', () => {
     const powers = `${huffman}
-function powers_of_two(n) {
-  return build_list(i => list("s" + stringify(i), math_pow(2, i)), n);
-}`;
+const powers_of_two = (n: number): List<List<string | number>> =>
+  build_list(i => list("s" + stringify(i), math_pow(2, i)), n);`;
     for (const n of [5, 10]) {
       expect(after(powers, `length(encode(list("s${n - 1}"), generate_huffman_tree(powers_of_two(${n}))))`)).toBe('1');
       expect(after(powers, `length(encode(list("s0"), generate_huffman_tree(powers_of_two(${n}))))`)).toBe(String(n - 1));
