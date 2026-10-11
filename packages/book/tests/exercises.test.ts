@@ -33,14 +33,18 @@ async function passed(spec: ExerciseSpec, source: string): Promise<string> {
   return `${end.passed} / ${end.total}${failures.length > 0 ? ` (${failures.join('; ')})` : ''}`;
 }
 
+// The heaviest checks, such as the amb puzzles of §4.3, evaluate for several
+// seconds; under a full parallel run they need more than the default 5.
+const CHECK_TIMEOUT = 30_000;
+
 describe.each(Object.values(exercises))('exercise $id', (spec) => {
   it('has a reference solution that passes every hidden test', async () => {
     expect(await passed(spec, spec.solution)).toBe(`${spec.tests.length} / ${spec.tests.length}`);
-  });
+  }, CHECK_TIMEOUT);
 
   it('has a starter that does not already pass', async () => {
     expect(await passed(spec, spec.starter)).not.toMatch(new RegExp(`^${spec.tests.length} / `));
-  });
+  }, CHECK_TIMEOUT);
 });
 
 describe('exercise 1.9', () => {

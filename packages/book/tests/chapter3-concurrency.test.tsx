@@ -166,7 +166,8 @@ describe('the §3.4 scenes', () => {
 
   it('runs a program once per seed in the Laboratory and draws the histogram', async () => {
     render(<OutcomesScene source={squareIncrementProgram} count={30} client={inProcessClient()} delayMs={0} />);
-    await waitFor(() => expect(screen.getByRole('slider')).toHaveAttribute('max', '29'), { timeout: 5000 });
+    // Thirty runs of the Laboratory take a few seconds, more under a full parallel test run.
+    await waitFor(() => expect(screen.getByRole('slider')).toHaveAttribute('max', '29'), { timeout: 25_000 });
     const slider = screen.getByRole('slider');
     fireEvent.input(slider, { target: { value: '29' } });
     const bars = screen.getAllByTestId('outcome-bar');
@@ -174,13 +175,13 @@ describe('the §3.4 scenes', () => {
     expect(total).toBe(30);
     expect(bars.map((bar) => bar.dataset['value']).every((v) => ['11', '100', '101', '110', '121'].includes(v ?? ''))).toBe(true);
     expect(screen.getByTestId('caption')).toHaveTextContent(/^30 runs, \d different outcomes/);
-  });
+  }, 30_000);
 
   it('gives runs that never finish a bar of their own', async () => {
     render(<OutcomesScene source={exchangeDeadlockProgram} count={12} budget={5000} client={inProcessClient()} delayMs={0} />);
-    await waitFor(() => expect(screen.getAllByTestId('outcome-bar').length).toBeGreaterThan(0), { timeout: 5000 });
+    await waitFor(() => expect(screen.getAllByTestId('outcome-bar').length).toBeGreaterThan(0), { timeout: 25_000 });
     expect(screen.getAllByTestId('outcome-bar').map((bar) => bar.dataset['value'])).toEqual(['10 20', 'did not finish']);
-  });
+  }, 30_000);
 
   it('draws figure 3.29 step by step', () => {
     render(<TimingDiagram />);
