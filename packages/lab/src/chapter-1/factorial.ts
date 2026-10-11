@@ -4,12 +4,12 @@
  * `processes.test.ts` asserts the claims the section makes about it.
  */
 
-export const factorialDefinitions = `const factorial = (n) =>
+export const factorialDefinitions = `const factorial = (n: number): number =>
   n === 1
     ? 1
     : n * factorial(n - 1);
 
-const fact_iter = (product, counter, max) =>
+const fact_iter = (product: number, counter: number, max: number): number =>
   counter > max
     ? product
     : fact_iter(counter * product, counter + 1, max);

@@ -3,21 +3,23 @@
  * function it works on as an argument.
  */
 
-export const averageDefinition = `const average = (x, y) =>
+export const averageDefinition = `const average = (x: number, y: number): number =>
   (x + y) / 2;
 `;
 
-export const halfIntervalDefinitions = `${averageDefinition}
-const positive = (x) =>
+export const halfIntervalDefinitions = `type NumFn = (x: number) => number;
+
+${averageDefinition}
+const positive = (x: number): boolean =>
   x > 0;
 
-const negative = (x) =>
+const negative = (x: number): boolean =>
   x < 0;
 
-const close_enough = (x, y) =>
+const close_enough = (x: number, y: number): boolean =>
   math_abs(x - y) < 0.001;
 
-const search = (f, neg_point, pos_point) => {
+const search = (f: NumFn, neg_point: number, pos_point: number): number => {
   const midpoint = average(neg_point, pos_point);
   if (close_enough(neg_point, pos_point)) {
     return midpoint;
@@ -31,7 +33,7 @@ const search = (f, neg_point, pos_point) => {
   }
 };
 
-const half_interval_method = (f, a, b) => {
+const half_interval_method = (f: NumFn, a: number, b: number): number => {
   const a_value = f(a);
   const b_value = f(b);
   return negative(a_value) && positive(b_value)
@@ -46,12 +48,14 @@ export const halfIntervalProgram = `${halfIntervalDefinitions}
 half_interval_method(math_sin, 2, 4);
 `;
 
-export const fixedPointDefinitions = `const tolerance = 0.00001;
+export const fixedPointDefinitions = `type NumFn = (x: number) => number;
 
-const fixed_point = (f, first_guess) => {
-  const close_enough = (x, y) =>
+const tolerance = 0.00001;
+
+const fixed_point = (f: NumFn, first_guess: number): number => {
+  const close_enough = (x: number, y: number): boolean =>
     math_abs(x - y) < tolerance;
-  const try_with = (guess) => {
+  const try_with = (guess: number): number => {
     const next = f(guess);
     return close_enough(guess, next)
       ? next

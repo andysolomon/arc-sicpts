@@ -1,9 +1,9 @@
-export const blockStructure = `const sqrt = (x) => {
-  const is_good_enough = (guess) =>
+export const blockStructure = `const sqrt = (x: number): number => {
+  const is_good_enough = (guess: number): boolean =>
     math_abs(guess * guess - x) < 0.001;
-  const improve = (guess) =>
+  const improve = (guess: number): number =>
     (guess + x / guess) / 2;
-  const sqrt_iter = (guess) =>
+  const sqrt_iter = (guess: number): number =>
     is_good_enough(guess)
       ? guess
       : sqrt_iter(improve(guess));
@@ -13,10 +13,10 @@ export const blockStructure = `const sqrt = (x) => {
 sqrt(144);
 `;
 
-export const localNames = `const square = (x) =>
+export const localNames = `const square = (x: number): number =>
   x * x;
 
-const double_square = (x) => {
+const double_square = (x: number): number => {
   const y = square(x);
   return y + y;
 };

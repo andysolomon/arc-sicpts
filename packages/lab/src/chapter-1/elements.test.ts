@@ -9,15 +9,14 @@ const value = (source: string): unknown => {
 };
 
 const sqrt = `
-function abs(x) { return x >= 0 ? x : -x; }
-function square(x) { return x * x; }
-function average(x, y) { return (x + y) / 2; }
-function is_good_enough(guess, x) { return abs(square(guess) - x) < 0.001; }
-function improve(guess, x) { return average(guess, x / guess); }
-function sqrt_iter(guess, x) {
-  return is_good_enough(guess, x) ? guess : sqrt_iter(improve(guess, x), x);
-}
-function sqrt(x) { return sqrt_iter(1, x); }
+const abs = (x: number): number => x >= 0 ? x : -x;
+const square = (x: number): number => x * x;
+const average = (x: number, y: number): number => (x + y) / 2;
+const is_good_enough = (guess: number, x: number): boolean => abs(square(guess) - x) < 0.001;
+const improve = (guess: number, x: number): number => average(guess, x / guess);
+const sqrt_iter = (guess: number, x: number): number =>
+  is_good_enough(guess, x) ? guess : sqrt_iter(improve(guess, x), x);
+const sqrt = (x: number): number => sqrt_iter(1, x);
 `;
 
 describe('section 1.1: the elements of programming', () => {
@@ -27,15 +26,15 @@ describe('section 1.1: the elements of programming', () => {
 
   it('1.1.4 compound functions are used exactly like primitive ones', () => {
     const source = `
-      function square(x) { return x * x; }
-      function sum_of_squares(x, y) { return square(x) + square(y); }
-      function f(a) { return sum_of_squares(a + 1, a * 2); }
+      const square = (x: number): number => x * x;
+      const sum_of_squares = (x: number, y: number): number => square(x) + square(y);
+      const f = (a: number): number => sum_of_squares(a + 1, a * 2);
       f(5);`;
     expect(value(source)).toBe(136);
   });
 
   it('1.1.5 arguments are evaluated before the function is applied', () => {
-    const source = 'const square = x => x * x;\nsquare(2 + 3);';
+    const source = 'const square = (x: number): number => x * x;\nsquare(2 + 3);';
     const tracer = createStepTracer(source);
     evaluate(source, { hooks: [tracer.hooks] });
     const texts = tracer.records.map((r) => r.text);
@@ -47,7 +46,7 @@ describe('section 1.1: the elements of programming', () => {
   });
 
   it('1.1.6 conditionals evaluate only the branch they choose', () => {
-    expect(value('function p() { return p(); } true ? 1 : p();')).toBe(1);
+    expect(value('const p = (): number => p(); true ? 1 : p();')).toBe(1);
     expect(value('false && error("not evaluated");')).toBe(false);
   });
 
@@ -58,14 +57,13 @@ describe('section 1.1: the elements of programming', () => {
 
   it('1.1.8 internal declarations can use the enclosing parameters', () => {
     const source = `
-      function sqrt(x) {
-        function is_good_enough(guess) { return math_abs(guess * guess - x) < 0.001; }
-        function improve(guess) { return (guess + x / guess) / 2; }
-        function sqrt_iter(guess) {
-          return is_good_enough(guess) ? guess : sqrt_iter(improve(guess));
-        }
+      const sqrt = (x: number): number => {
+        const is_good_enough = (guess: number): boolean => math_abs(guess * guess - x) < 0.001;
+        const improve = (guess: number): number => (guess + x / guess) / 2;
+        const sqrt_iter = (guess: number): number =>
+          is_good_enough(guess) ? guess : sqrt_iter(improve(guess));
         return sqrt_iter(1);
-      }
+      };
       sqrt(144);`;
     expect(value(source)).toBeCloseTo(12, 3);
   });

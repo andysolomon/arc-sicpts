@@ -56,15 +56,16 @@ test('an exercise checks for logarithmic growth, not just the value', async ({ p
   // Right values, wrong process: linear and recursive.
   await editor.click();
   await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.type('function fast_expt(b, n) { return n === 0 ? 1 : b * fast_expt(b, n - 1); }');
+  await page.keyboard.type('const fast_expt = (b: number, n: number): number => n === 0 ? 1 : b * fast_expt(b, n - 1);');
   await exercise.getByRole('button', { name: 'Check' }).click();
   await expect(status).toHaveText('2 / 4 hidden tests pass');
 
   await editor.click();
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type(
-    'function fast_expt_iter(a, b, n) { return n === 0 ? a : n % 2 === 0 ? fast_expt_iter(a, b * b, n / 2) : fast_expt_iter(a * b, b, n - 1); } ' +
-      'function fast_expt(b, n) { return fast_expt_iter(1, b, n); }',
+    'const fast_expt_iter = (a: number, b: number, n: number): number => ' +
+      'n === 0 ? a : n % 2 === 0 ? fast_expt_iter(a, b * b, n / 2) : fast_expt_iter(a * b, b, n - 1); ' +
+      'const fast_expt = (b: number, n: number): number => fast_expt_iter(1, b, n);',
   );
   await exercise.getByRole('button', { name: 'Check' }).click();
   await expect(status).toHaveText('4 / 4 hidden tests pass');

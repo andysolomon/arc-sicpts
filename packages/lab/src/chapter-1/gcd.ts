@@ -1,6 +1,6 @@
 /** Section 1.2.5: Euclid's algorithm. */
 
-export const gcdDefinitions = `const gcd = (a, b) =>
+export const gcdDefinitions = `const gcd = (a: number, b: number): number =>
   b === 0
     ? a
     : gcd(b, a % b);

@@ -3,7 +3,7 @@
  * `processes.test.ts` asserts the claims the section makes about them.
  */
 
-export const fibDefinitions = `const fib = (n) =>
+export const fibDefinitions = `const fib = (n: number): number =>
   n === 0
     ? 0
     : n === 1
@@ -16,7 +16,7 @@ export const fibProgram = `${fibDefinitions}
 fib(5);
 `;
 
-export const fibIterDefinitions = `const fib_iter = (a, b, count) =>
+export const fibIterDefinitions = `const fib_iter = (a: number, b: number, count: number): number =>
   count === 0
     ? b
     : fib_iter(a + b, a, count - 1);
@@ -33,10 +33,10 @@ fib_iter(1, 0, 10);
 fib_iter(1, 0, 15);
 `;
 
-export const countChangeDefinitions = `const count_change = (amount) =>
+export const countChangeDefinitions = `const count_change = (amount: number): number =>
   cc(amount, 5);
 
-const cc = (amount, kinds_of_coins) =>
+const cc = (amount: number, kinds_of_coins: number): number =>
   amount === 0
     ? 1
     : amount < 0 || kinds_of_coins === 0
@@ -44,7 +44,7 @@ const cc = (amount, kinds_of_coins) =>
       : cc(amount, kinds_of_coins - 1) +
         cc(amount - first_denomination(kinds_of_coins), kinds_of_coins);
 
-const first_denomination = (kinds_of_coins) =>
+const first_denomination = (kinds_of_coins: number): number =>
   kinds_of_coins === 1
     ? 1
     : kinds_of_coins === 2

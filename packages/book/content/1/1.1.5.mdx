@@ -1,10 +1,10 @@
-export const substitution = `const square = (x) =>
+export const substitution = `const square = (x: number): number =>
   x * x;
 
-const sum_of_squares = (x, y) =>
+const sum_of_squares = (x: number, y: number): number =>
   square(x) + square(y);
 
-const f = (a) =>
+const f = (a: number): number =>
   sum_of_squares(a + 1, a * 2);
 
 f(5);
@@ -12,9 +12,9 @@ f(5);
 
 <Prose>
 
-How does the interpreter apply a function it has never seen before? A first model: to apply a compound function to arguments, evaluate the return expression of the function with each parameter replaced by the corresponding argument.
+How does the interpreter apply a function it has never seen before? A first model: to apply a compound function to arguments, evaluate the body of the function with each parameter replaced by the corresponding argument.
 
-Apply it to `f(5)`. The return expression of `f` is `sum_of_squares(a + 1, a * 2)`. Replacing `a` by 5 gives `sum_of_squares(5 + 1, 5 * 2)`. The operands evaluate to 6 and 10, so the problem becomes `square(6) + square(10)`, then `6 * 6 + 10 * 10`, then `36 + 100`, and finally 136. This is the *substitution model*. It is a way to think, good for every program in the first two chapters.
+Apply it to `f(5)`. The body of `f` is `sum_of_squares(a + 1, a * 2)`. Replacing `a` by 5 gives `sum_of_squares(5 + 1, 5 * 2)`. The operands evaluate to 6 and 10, so the problem becomes `square(6) + square(10)`, then `6 * 6 + 10 * 10`, then `36 + 100`, and finally 136. This is the *substitution model*. It is a way to think, good for every program in the first two chapters.
 
 It is not what the machine does. Step through the same program and read the log. No text is ever rewritten. Where the model says "replace `a` by 5", the interpreter creates a new frame in which `a` is bound to 5 and evaluates the body there. The effect is the same; the mechanism is the environment from §1.1.2, and in Chapter 3 it will matter that the two differ.
 

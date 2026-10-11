@@ -49,7 +49,7 @@ describe('scenes', () => {
   });
 
   it('draws one box per frame with its bindings', () => {
-    const source = 'function square(x) { return x * x; }\nsquare(3);\n';
+    const source = 'const square = (x: number): number => x * x;\nsquare(3);\n';
     const trace = traceOf(source);
     render(<EnvironmentScene source={source} trace={trace} stepIndex={trace.records.length} />);
     const frames = screen.getAllByTestId('frame');
@@ -59,14 +59,14 @@ describe('scenes', () => {
   });
 
   it('compares the two orders side by side', () => {
-    render(<OrderScene source={'function p() { return p(); }\nfunction test(x, y) { return x === 0 ? 0 : y; }\ntest(0, p());'} limit={5} />);
+    render(<OrderScene source={'const p = (): number => p();\nconst test = (x: number, y: number): number => x === 0 ? 0 : y;\ntest(0, p());'} limit={5} />);
     expect(screen.getByTestId('term-applicative')).toHaveTextContent('test(0, p())');
     expect(screen.getByTestId('term-normal')).toHaveTextContent('test(0, p())');
     expect(screen.getByTestId('keyframe-counter')).toHaveTextContent('1 / 6');
   });
 
   it('plots the printed guesses', () => {
-    const source = `function sqrt_iter(guess, x) {\n  display(guess);\n  return math_abs(guess * guess - x) < 0.001 ? guess : sqrt_iter((guess + x / guess) / 2, x);\n}\nsqrt_iter(1, 2);\n`;
+    const source = `const sqrt_iter = (guess: number, x: number): number => {\n  display(guess);\n  return math_abs(guess * guess - x) < 0.001 ? guess : sqrt_iter((guess + x / guess) / 2, x);\n};\nsqrt_iter(1, 2);\n`;
     render(<NewtonScene source={source} trace={traceOf(source)} />);
     expect(screen.getByRole('img', { name: /square root of 2/ })).toBeInTheDocument();
     expect(screen.getByRole('list', { name: 'Guesses' }).children).toHaveLength(4);

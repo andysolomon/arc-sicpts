@@ -1,14 +1,14 @@
-export const conditionals = `const abs = (x) =>
+export const conditionals = `const abs = (x: number): number =>
   x >= 0 ? x : -x;
 
-const sign = (x) =>
+const sign = (x: number): number =>
   x > 0
     ? 1
     : x === 0
       ? 0
       : -1;
 
-const is_between = (x, low, high) =>
+const is_between = (x: number, low: number, high: number): boolean =>
   x >= low && x <= high;
 
 display(abs(-12));
@@ -16,10 +16,10 @@ display(sign(-12));
 is_between(5, 1, 10);
 `;
 
-export const orderTest = `const p = () =>
+export const orderTest = `const p = (): number =>
   p();
 
-const test = (x, y) =>
+const test = (x: number, y: number): number =>
   x === 0 ? 0 : y;
 
 test(0, p());

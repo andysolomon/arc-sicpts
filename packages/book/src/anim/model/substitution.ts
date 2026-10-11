@@ -552,8 +552,8 @@ export function substitution(source: string, { order = 'applicative', maxSteps =
           rule: 'apply',
           caption:
             bindings === ''
-              ? `Apply \`${name}\`, which takes no arguments: its return expression is ${q(body)}.`
-              : `Apply \`${name}\`: replace ${bindings} in its return expression${unevaluated ? ', unevaluated' : ''}, giving ${q(body)}.`,
+              ? `Apply \`${name}\`, which takes no arguments: its body is ${q(body)}.`
+              : `Apply \`${name}\`: replace ${bindings} in its body${unevaluated ? ', unevaluated' : ''}, giving ${q(body)}.`,
         };
       }
       default:

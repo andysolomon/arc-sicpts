@@ -3,18 +3,18 @@
  * recursion to successive squaring.
  */
 
-export const exptDefinitions = `const expt = (b, n) =>
+export const exptDefinitions = `const expt = (b: number, n: number): number =>
   n === 0
     ? 1
     : b * expt(b, n - 1);
 
-const is_even = (n) =>
+const is_even = (n: number): boolean =>
   n % 2 === 0;
 
-const square = (x) =>
+const square = (x: number): number =>
   x * x;
 
-const fast_expt = (b, n) =>
+const fast_expt = (b: number, n: number): number =>
   n === 0
     ? 1
     : is_even(n)
@@ -34,13 +34,13 @@ fast_expt(2, 32);
 fast_expt(2, 64);
 `;
 
-export const fastExptProgram = `const is_even = (n) =>
+export const fastExptProgram = `const is_even = (n: number): boolean =>
   n % 2 === 0;
 
-const square = (x) =>
+const square = (x: number): number =>
   x * x;
 
-const fast_expt = (b, n) =>
+const fast_expt = (b: number, n: number): number =>
   n === 0
     ? 1
     : is_even(n)
