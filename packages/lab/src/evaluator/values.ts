@@ -38,7 +38,21 @@ export interface Label {
   at: number;
 }
 
-export type Value = number | string | boolean | null | undefined | Closure | Primitive | Pair | Label;
+/**
+ * What applying an `async` function returns. It is fulfilled with the
+ * function's result once the function has run to the end; `await` waits for
+ * that. A program cannot reject a promise: an error stops the whole program.
+ */
+export interface PromiseValue {
+  tag: 'promise';
+  state: 'pending' | 'fulfilled';
+  /** The result, once `state` is `fulfilled`. */
+  value: Value;
+  /** Called with the result when the promise is fulfilled. */
+  reactions: ((value: Value) => void)[];
+}
+
+export type Value = number | string | boolean | null | undefined | Closure | Primitive | Pair | Label | PromiseValue;
 
 export function isPair(value: Value): value is Pair {
   return Array.isArray(value);
@@ -56,10 +70,15 @@ export function isLabel(value: Value): value is Label {
   return typeof value === 'object' && value !== null && !Array.isArray(value) && value.tag === 'label';
 }
 
+export function isPromise(value: Value): value is PromiseValue {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && value.tag === 'promise';
+}
+
 export function typeName(value: Value): string {
   if (value === null) return 'null';
   if (isPair(value)) return 'pair';
   if (isLabel(value)) return 'label';
+  if (isPromise(value)) return 'promise';
   if (typeof value === 'object') return 'function';
   return typeof value;
 }
@@ -153,6 +172,7 @@ function atom(value: Exclude<Value, Pair>): string {
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (value.tag === 'closure') return `fn[${value.env.frame.id}]`;
   if (value.tag === 'label') return `<label ${value.name}>`;
+  if (value.tag === 'promise') return value.state === 'pending' ? 'promise[pending]' : `promise[${stringify(value.value)}]`;
   return `primitive[${value.name}]`;
 }
 

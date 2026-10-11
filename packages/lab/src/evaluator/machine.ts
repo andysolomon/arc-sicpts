@@ -1,7 +1,9 @@
 import {
   isDeclaration,
   type Application,
+  type Argument,
   type Assignment,
+  type Await,
   type Binary,
   type Block,
   type Conditional,
@@ -9,6 +11,7 @@ import {
   type If,
   type Lambda,
   type LetDeclaration,
+  type Loc,
   type Logical,
   type Node,
   type Program,
@@ -18,7 +21,21 @@ import {
 import { SourceError } from '../syntax/errors.ts';
 import { assign, declare, define, extend, lookup, type Environment } from './environment.ts';
 import { isLibraryLoc } from './library.ts';
-import { APPLY_PRIMITIVE, ERROR_TEXT, isClosure, isPair, isPrimitive, stringify, typeName, type Closure, type Value } from './values.ts';
+import {
+  APPLY_PRIMITIVE,
+  arrayToList,
+  ERROR_TEXT,
+  isClosure,
+  isPair,
+  isPrimitive,
+  isPromise,
+  listToArray,
+  stringify,
+  typeName,
+  type Closure,
+  type PromiseValue,
+  type Value,
+} from './values.ts';
 
 /**
  * An explicit-control evaluator. Instead of recursing on the JavaScript stack,
@@ -28,7 +45,9 @@ import { APPLY_PRIMITIVE, ERROR_TEXT, isClosure, isPair, isPrimitive, stringify,
  *   - proper tail calls (an iterative process really runs in constant space),
  *   - an exact measure of call depth for `inspect/processShape`,
  *   - threads: `concurrent_execute` gives each function its own stack, and the
- *     machine interleaves their steps (§3.4).
+ *     machine interleaves their steps (§3.4),
+ *   - `await`: an async function that waits lifts its part of the stack off and
+ *     the caller carries on; a queued job puts it back once the value is ready.
  */
 
 export type MachineStatus = 'ready' | 'paused' | 'done' | 'error' | 'budget-exhausted';
@@ -138,7 +157,27 @@ type Continuation =
   /** The bottom of a new thread: apply its function, with nothing to return to. */
   | { k: 'thread'; fn: Value; node: Application; env: Environment }
   /** Below `thread`: the thread's function has returned, so the thread ends. */
-  | { k: 'thread-end' };
+  | { k: 'thread-end' }
+  | { k: 'await'; node: Await; env: Environment }
+  /** Below the call of an `async` function: its result fulfils `promise`. */
+  | { k: 'async'; promise: PromiseValue };
+
+/**
+ * A suspended activation and the value to resume it with. As with JavaScript's
+ * microtasks, a job runs only once the stack is empty.
+ */
+interface Job {
+  stack: Continuation[];
+  depth: number;
+  value: Value;
+  /** True when the job resumes the program itself, after a top-level `await`. */
+  program: boolean;
+}
+
+/** The argument an argument node evaluates: for `...xs`, the list `xs`. */
+const expressionOf = (argument: Argument): Node => (argument.kind === 'spread' ? argument.argument : argument);
+
+const isNullish = (value: Value): value is null | undefined => value === null || value === undefined;
 
 /** A thread's registers while another thread runs. */
 interface Thread {
@@ -179,6 +218,12 @@ export class Machine {
   private threads: Thread[] = [];
   private current = 0;
   private readonly random: () => number;
+  /** Activations waiting to be resumed, in the order their values became ready. */
+  private readonly jobs: Job[] = [];
+  /** The value of the program's last statement, once the program has finished. */
+  private result: { value: Value } | null = null;
+  /** The top-level `await` the program is suspended at, if it is. */
+  private programWaits: Await | null = null;
 
   constructor(program: Program, options: MachineOptions) {
     this.budget = options.budget ?? DEFAULT_BUDGET;
@@ -208,8 +253,16 @@ export class Machine {
     try {
       for (;;) {
         if (!this.evaluating && this.stack.length === 0) {
+          const job = this.jobs.shift();
+          if (job !== undefined) {
+            this.resumeJob(job);
+            continue;
+          }
+          if (this.programWaits !== null) {
+            this.fail('The program is waiting for a promise that is never fulfilled', this.programWaits);
+          }
           this.status = 'done';
-          this.value = this.val;
+          this.value = this.result === null ? this.val : this.result.value;
           break;
         }
         if (this.steps >= this.budget) {
@@ -263,7 +316,7 @@ export class Machine {
     this.val = value;
   }
 
-  private fail(message: string, node: Node): never {
+  private fail(message: string, node: { loc: Loc }): never {
     throw new SourceError('runtime', message, node.loc);
   }
 
@@ -317,6 +370,11 @@ export class Machine {
       case 'assignment':
         this.stack.push({ k: 'assign', node, env });
         this.setEval(node.value, env);
+        return;
+
+      case 'await':
+        this.stack.push({ k: 'await', node, env });
+        this.setEval(node.argument, env);
         return;
 
       case 'const':
@@ -396,6 +454,7 @@ export class Machine {
         frame.i++;
         const following = frame.stmts[frame.i];
         if (following === undefined) {
+          if (frame.top) this.result = { value: frame.last };
           this.setValue(frame.last);
           return;
         }
@@ -406,18 +465,29 @@ export class Machine {
       }
 
       case 'fun': {
+        if (frame.node.optional === true && isNullish(value)) {
+          this.skipChain(frame.node, frame.env);
+          return;
+        }
         const first = frame.node.args[0];
         if (first === undefined) {
           this.apply(value, [], frame.node, frame.env);
           return;
         }
         this.stack.push({ k: 'arg', node: frame.node, env: frame.env, fn: value, args: [], i: 0 });
-        this.setEval(first, frame.env);
+        this.setEval(expressionOf(first), frame.env);
         return;
       }
 
       case 'arg': {
-        frame.args.push(value);
+        const argument = frame.node.args[frame.i];
+        if (argument?.kind === 'spread') {
+          const items = listToArray(value);
+          if (items === null) this.fail(`... expects a list to spread into arguments, got ${typeName(value)}`, argument);
+          else frame.args.push(...items);
+        } else {
+          frame.args.push(value);
+        }
         frame.i++;
         const following = frame.node.args[frame.i];
         if (following === undefined) {
@@ -425,7 +495,7 @@ export class Machine {
           return;
         }
         this.stack.push(frame);
-        this.setEval(following, frame.env);
+        this.setEval(expressionOf(following), frame.env);
         return;
       }
 
@@ -454,6 +524,12 @@ export class Machine {
 
       case 'logical': {
         const { node } = frame;
+        if (node.operator === '??') {
+          // Like `&&` and `||`, the right operand is in tail position.
+          if (isNullish(value)) this.setEval(node.right, frame.env);
+          else this.finish(node, value, frame.env);
+          return;
+        }
         if (typeof value !== 'boolean') {
           this.fail(`${node.operator} expects a boolean on the left, got ${typeName(value)}`, node);
         }
@@ -519,7 +595,82 @@ export class Machine {
       case 'thread-end':
         this.endThread();
         return;
+
+      case 'await':
+        this.suspend(value, frame.node);
+        return;
+
+      case 'async':
+        // The async function has returned: its promise is fulfilled, and
+        // whatever called it, or the job that resumed it, gets the promise.
+        if (value === frame.promise) this.fail('An async function cannot return its own promise', this.node);
+        this.fulfil(frame.promise, value);
+        this.setValue(frame.promise);
+        return;
     }
+  }
+
+  /** `f?.(x)` where `f` is `null` or `undefined`: the call, and the calls chained after it, are skipped. */
+  private skipChain(node: Application, env: Environment): void {
+    let skipped = node;
+    for (;;) {
+      const top = this.stack[this.stack.length - 1];
+      if (top?.k !== 'fun' || top.node.chained !== true || top.node.fun !== skipped) break;
+      this.stack.pop();
+      skipped = top.node;
+    }
+    this.finish(skipped, undefined, env);
+  }
+
+  /**
+   * `await value`: lift the waiting async function's part of the stack off,
+   * from its `async` marker up, and give its caller the function's promise. At
+   * the top level the whole program waits. A job resumes the frames with the
+   * value once it is ready: at once for a value that is not a promise, as in
+   * JavaScript, but never before the stack has emptied.
+   */
+  private suspend(awaited: Value, node: Await): void {
+    let marker = this.stack.length - 1;
+    while (marker >= 0 && this.stack[marker]?.k !== 'async') marker--;
+    const program = marker < 0;
+    const stack = this.stack.splice(Math.max(marker, 0));
+    const depth = stack.filter((frame) => frame.k === 'call').length;
+    this.depth -= depth;
+    const queue = (value: Value): void => {
+      this.jobs.push({ stack, depth, value, program });
+    };
+    if (isPromise(awaited)) this.whenFulfilled(awaited, queue);
+    else queue(awaited);
+    const bottom = stack[0];
+    if (program || bottom?.k !== 'async') {
+      this.programWaits = node;
+      this.setValue(undefined);
+      return;
+    }
+    this.setValue(bottom.promise);
+  }
+
+  private resumeJob(job: Job): void {
+    if (job.program) this.programWaits = null;
+    this.stack = job.stack;
+    this.depth = job.depth;
+    this.setValue(job.value);
+  }
+
+  /** Fulfil `promise` with `value`; a promise as the value is waited for first. */
+  private fulfil(promise: PromiseValue, value: Value): void {
+    if (isPromise(value)) {
+      this.whenFulfilled(value, (result) => this.fulfil(promise, result));
+      return;
+    }
+    promise.state = 'fulfilled';
+    promise.value = value;
+    for (const reaction of promise.reactions.splice(0)) reaction(value);
+  }
+
+  private whenFulfilled(promise: PromiseValue, reaction: (value: Value) => void): void {
+    if (promise.state === 'fulfilled') reaction(promise.value);
+    else promise.reactions.push(reaction);
   }
 
   private finish(node: Node, value: Value, env: Environment): void {
@@ -625,8 +776,10 @@ export class Machine {
 
     const { lambda } = fn;
     const name = lambda.name ?? 'lambda';
-    if (lambda.params.length !== args.length) {
-      this.fail(`${name} expects ${lambda.params.length} argument(s), got ${args.length}`, node);
+    const arity = lambda.params.length;
+    if (lambda.rest === undefined ? args.length !== arity : args.length < arity) {
+      const atLeast = lambda.rest === undefined ? '' : 'at least ';
+      this.fail(`${name} expects ${atLeast}${arity} argument(s), got ${args.length}`, node);
     }
 
     const env = extend(
@@ -635,6 +788,7 @@ export class Machine {
       () => `${name}(${args.map((arg) => stringify(arg, LABEL_TEXT)).join(', ')})`,
     );
     lambda.params.forEach((param, i) => define(env, param, args[i], true));
+    if (lambda.rest !== undefined) define(env, lambda.rest, arrayToList(args.slice(arity)), true);
 
     // A call marker on top of the stack means the caller has nothing left to do
     // but return this call's value: a tail call. Reuse the caller's place.
@@ -645,6 +799,9 @@ export class Machine {
       this.leave(top.lambda);
     } else {
       this.depth++;
+    }
+    if (lambda.async === true) {
+      this.stack.push({ k: 'async', promise: { tag: 'promise', state: 'pending', value: undefined, reactions: [] } });
     }
     this.stack.push({ k: 'call', node, lambda, callerEnv });
     const pending = (this.pending.get(lambda) ?? 0) + 1;

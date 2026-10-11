@@ -22,6 +22,7 @@ export const KEYWORDS: readonly string[] = [
   'false',
   'null',
   'undefined',
+  'await',
 ];
 
 /** JavaScript words that are deliberately not part of this Source subset. */
@@ -43,13 +44,18 @@ const UNSUPPORTED: readonly string[] = [
   'typeof',
   'import',
   'export',
+  'interface',
+  'enum',
 ];
 
 // Longest first, so that `===` wins over `=`.
 const PUNCTUATION: readonly string[] = [
   '===',
   '!==',
+  '...',
   '=>',
+  '??',
+  '?.',
   '<=',
   '>=',
   '&&',
@@ -58,6 +64,8 @@ const PUNCTUATION: readonly string[] = [
   ')',
   '{',
   '}',
+  '[',
+  ']',
   ',',
   ';',
   '?',
@@ -71,6 +79,9 @@ const PUNCTUATION: readonly string[] = [
   '%',
   '!',
   '=',
+  '|',
+  '&',
+  '.',
 ];
 
 const ESCAPES: Readonly<Record<string, string>> = {
@@ -213,7 +224,8 @@ export function tokenize(source: string): Token[] {
       continue;
     }
 
-    const punct = PUNCTUATION.find((p) => rest.startsWith(p));
+    // `a?.5:b` is a conditional, as in JavaScript: `?.` before a digit is not optional chaining.
+    const punct = PUNCTUATION.find((p) => rest.startsWith(p) && !(p === '?.' && /\d/.test(rest[2] ?? '')));
     if (punct !== undefined) {
       if ((punct === '=' || punct === '!') && source[i + 1] === '=') {
         fail(`Use ${punct}== instead of ${punct}=`, i, i + 2);
