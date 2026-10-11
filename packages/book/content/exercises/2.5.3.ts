@@ -22,7 +22,7 @@ put("is_equal_to_zero", list("polynomial"), is_zero_poly);
 
 /** Exercise 2.88: generic negation, and subtraction as adding the negation. */
 const polynomialSubtraction = `const negate = (x: unknown): unknown =>
-  apply_generic("negate", list(x));
+  apply_generic("negate", x);
 
 const negate_terms = (L: TermList): TermList => {
   if (is_empty_termlist(L)) {
@@ -94,7 +94,7 @@ const euclidGcdTerms = `const gcd_terms = (a: TermList, b: TermList): TermList =
 
 /** Exercise 2.94: the generic operation, for numbers. */
 const genericGcd = `const greatest_common_divisor = (a: unknown, b: unknown): unknown =>
-  apply_generic("greatest_common_divisor", list(a, b));
+  apply_generic("greatest_common_divisor", a, b);
 
 put("greatest_common_divisor", list("javascript_number", "javascript_number"),
     gcd);
@@ -282,7 +282,7 @@ export const exercise_2_88: ExerciseSpec = {
 // is_equal_to_zero for polynomials (Exercise 2.87).
 
 const negate = (x: unknown): unknown =>
-  apply_generic("negate", list(x));
+  apply_generic("negate", x);
 
 // your answer: install negate for javascript_number and polynomial,
 // and sub for two polynomials
@@ -417,11 +417,11 @@ const make_dense = (coeffs: List<unknown>): TermList => attach_tag("dense", coef
 const the_empty_termlist = make_sparse(null);
 
 const is_empty_termlist = (L: TermList): boolean =>
-  apply_generic("is_empty_termlist", list(L));
+  apply_generic("is_empty_termlist", L);
 const first_term = (L: TermList): Term =>
-  apply_generic("first_term", list(L));
+  apply_generic("first_term", L);
 const rest_terms = (L: TermList): TermList =>
-  apply_generic("rest_terms", list(L));
+  apply_generic("rest_terms", L);
 const adjoin_term = (term: Term, L: TermList): TermList =>
   is_equal_to_zero(coeff(term))
     ? L
@@ -735,7 +735,7 @@ const gcd_poly = (p1: Poly, p2: Poly): Poly => {
 };
 
 const greatest_common_divisor = (a: unknown, b: unknown): unknown =>
-  apply_generic("greatest_common_divisor", list(a, b));
+  apply_generic("greatest_common_divisor", a, b);
 
 // your answer: install greatest_common_divisor for two numbers and for
 // two polynomials
@@ -921,7 +921,7 @@ const reduce_integers = (n: number, d: number): List<number> => {
 };
 
 const reduce = (n: unknown, d: unknown): List<unknown> =>
-  apply_generic("reduce", list(n, d));
+  apply_generic("reduce", n, d);
 
 put("reduce", list("javascript_number", "javascript_number"), reduce_integers);
 put("reduce", list("polynomial", "polynomial"),
@@ -950,7 +950,7 @@ const reduce_integers = (n: number, d: number): List<number> => {
 };
 
 const reduce = (n: unknown, d: unknown): List<unknown> =>
-  apply_generic("reduce", list(n, d));
+  apply_generic("reduce", n, d);
 
 // your answer: install reduce for two numbers and for two polynomials
 

@@ -1,5 +1,4 @@
 import {
-  applyDefinition,
   applyGenericDefinition,
   complexTypeDefinitions,
   operationTableDefinitions,
@@ -235,12 +234,11 @@ real_part(z1) + real_part(z2);
 // §2.4.3 Data-directed programming and additivity
 
 /**
- * What the §2.4.3 examples take as given: the table, the tags, and `apply`.
+ * What the §2.4.3 examples take as given: the table and the tags.
  * The shared definitions are those of `genericArithmetic.ts`.
  */
 export const dataDirectedPrelude = `${operationTableDefinitions}
-${typeTagDefinitions}
-${applyDefinition}`;
+${typeTagDefinitions}`;
 
 /** The table on its own: a few entries put in, two looked up. */
 export const operationTableProgram = `${operationTableDefinitions}
@@ -311,13 +309,13 @@ export const polarPackageDefinition = `const install_polar_package = (): "done" 
 
 /** The generic selectors and constructors over the table. */
 export const dataDirectedInterfaceDefinitions = `${applyGenericDefinition}
-const real_part = (z: Complex): number => apply_generic("real_part", list(z));
+const real_part = (z: Complex): number => apply_generic("real_part", z);
 
-const imag_part = (z: Complex): number => apply_generic("imag_part", list(z));
+const imag_part = (z: Complex): number => apply_generic("imag_part", z);
 
-const magnitude = (z: Complex): number => apply_generic("magnitude", list(z));
+const magnitude = (z: Complex): number => apply_generic("magnitude", z);
 
-const angle = (z: Complex): number => apply_generic("angle", list(z));
+const angle = (z: Complex): number => apply_generic("angle", z);
 
 const make_from_real_imag = (x: number, y: number): Complex =>
   get("make_from_real_imag", "rectangular")(x, y);
@@ -365,15 +363,15 @@ const make_from_real_imag = (x: number, y: number): Complex => {
   return dispatch;
 };
 
-const apply_generic = (op: string, arg: List<Complex>): number => head(arg)(op);
+const apply_generic = (op: string, ...args: List<Complex>): number => head(args)(op);
 
-const real_part = (z: Complex): number => apply_generic("real_part", list(z));
+const real_part = (z: Complex): number => apply_generic("real_part", z);
 
-const imag_part = (z: Complex): number => apply_generic("imag_part", list(z));
+const imag_part = (z: Complex): number => apply_generic("imag_part", z);
 
-const magnitude = (z: Complex): number => apply_generic("magnitude", list(z));
+const magnitude = (z: Complex): number => apply_generic("magnitude", z);
 
-const angle = (z: Complex): number => apply_generic("angle", list(z));
+const angle = (z: Complex): number => apply_generic("angle", z);
 `;
 
 export const messagePassingProgram = `${messagePassingDefinitions}

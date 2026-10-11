@@ -421,15 +421,15 @@ const make_from_real_imag = (x: number, y: number): Complex => {
   return dispatch;
 };
 
-const apply_generic = (op: string, arg: List<Complex>): number => head(arg)(op);
+const apply_generic = (op: string, ...args: List<Complex>): number => head(args)(op);
 
-const real_part = (z: Complex): number => apply_generic("real_part", list(z));
+const real_part = (z: Complex): number => apply_generic("real_part", z);
 
-const imag_part = (z: Complex): number => apply_generic("imag_part", list(z));
+const imag_part = (z: Complex): number => apply_generic("imag_part", z);
 
-const magnitude = (z: Complex): number => apply_generic("magnitude", list(z));
+const magnitude = (z: Complex): number => apply_generic("magnitude", z);
 
-const angle = (z: Complex): number => apply_generic("angle", list(z));
+const angle = (z: Complex): number => apply_generic("angle", z);
 `;
 
 export const exercise_2_75: ExerciseSpec = {

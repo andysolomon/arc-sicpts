@@ -89,7 +89,7 @@ put_coercion("javascript_number", "javascript_number",
 put_coercion("complex", "complex", complex_to_complex);
 ```
 
-1. With Louis's coercion functions installed, what happens if `apply_generic` is called with two arguments of type `"complex"` or two of type `"javascript_number"` for an operation that is not found in the table for those types? For example, suppose we have a generic exponentiation `exp(x, y)` that calls `apply_generic("exp", list(x, y))`, and have put a method for exponentiation, using `math_pow`, in the JavaScript-number package but not in any other package. What happens if we call `exp` with two complex numbers? Set `exp_on_complex` to your answer.
+1. With Louis's coercion functions installed, what happens if `apply_generic` is called with two arguments of type `"complex"` or two of type `"javascript_number"` for an operation that is not found in the table for those types? For example, suppose we have a generic exponentiation `exp(x, y)` that calls `apply_generic("exp", x, y)`, and have put a method for exponentiation, using `math_pow`, in the JavaScript-number package but not in any other package. What happens if we call `exp` with two complex numbers? Set `exp_on_complex` to your answer.
 2. Is Louis correct that something had to be done about coercion with arguments of the same type, or does `apply_generic` work correctly as is? Set `louis_is_right`.
 3. Modify `apply_generic` so that it doesn't try coercion if the two arguments have the same type.
 
@@ -117,7 +117,7 @@ Suppose you are designing a generic arithmetic system for the tower of types int
 
 <Solution>
 
-**Solution.** An integer *n* becomes the rational *n*/1, a rational *n*/*d* becomes the real number *n* / *d*, and a real *x* becomes the complex number *x* + 0*i*. Each function is installed as `"raise"` under the one-element type list of its type, and `raise(x)` is `apply_generic("raise", list(x))`. With nothing installed for `"complex"`, raising a complex number is an error, as it should be. Inside the rational package the raising function would use `numer` and `denom`; installed from outside, it has to reach into the pair.
+**Solution.** An integer *n* becomes the rational *n*/1, a rational *n*/*d* becomes the real number *n* / *d*, and a real *x* becomes the complex number *x* + 0*i*. Each function is installed as `"raise"` under the one-element type list of its type, and `raise(x)` is `apply_generic("raise", x)`. With nothing installed for `"complex"`, raising a complex number is an error, as it should be. Inside the rational package the raising function would use `numer` and `denom`; installed from outside, it has to reach into the pair.
 
 </Solution>
 </Exercise>

@@ -1,5 +1,4 @@
 import {
-  applyDefinition,
   applyGenericDefinition,
   coercionTableDefinitions,
   complexPackage,
@@ -58,9 +57,8 @@ const dispatched_on = list("complex", "rectangular");
 
 export const exercise_2_78: ExerciseSpec = {
   id: '2.78',
-  prelude: `${operationTableDefinitions}
-${applyDefinition}`,
-  starter: `// The prelude provides put, get and apply.
+  prelude: `${operationTableDefinitions}`,
+  starter: `// The prelude provides put and get.
 
 // your answer: change these three so that a plain number is a
 // "javascript_number" datum with no tag attached.
@@ -118,7 +116,7 @@ export const exercise_2_79: ExerciseSpec = {
 // A rational number's contents are pair(numer, denom).
 
 const is_equal = (x: unknown, y: unknown): boolean =>
-  apply_generic("is_equal", list(x, y));
+  apply_generic("is_equal", x, y);
 
 // your answer: put an "is_equal" method for each type of number
 `,
@@ -129,7 +127,7 @@ const is_equal = (x: unknown, y: unknown): boolean =>
     { name: 'complex numbers in different representations', kind: 'value', expr: 'is_equal(make_complex_from_real_imag(2, 0), make_complex_from_mag_ang(2, 0)) && ! is_equal(make_complex_from_real_imag(2, 0), make_complex_from_mag_ang(2, 1))', expected: true },
   ],
   solution: `const is_equal = (x: unknown, y: unknown): boolean =>
-  apply_generic("is_equal", list(x, y));
+  apply_generic("is_equal", x, y);
 
 put("is_equal", list("javascript_number", "javascript_number"),
     (x, y) => x === y);
@@ -148,7 +146,7 @@ export const exercise_2_80: ExerciseSpec = {
 // A rational number's contents are pair(numer, denom).
 
 const is_equal_to_zero = (x: unknown): boolean =>
-  apply_generic("is_equal_to_zero", list(x));
+  apply_generic("is_equal_to_zero", x);
 
 // your answer: put an "is_equal_to_zero" method for each type of number
 `,
@@ -159,7 +157,7 @@ const is_equal_to_zero = (x: unknown): boolean =>
     { name: 'zero in polar form', kind: 'value', expr: 'is_equal_to_zero(make_complex_from_mag_ang(0, 1)) && ! is_equal_to_zero(make_complex_from_mag_ang(1, 0))', expected: true },
   ],
   solution: `const is_equal_to_zero = (x: unknown): boolean =>
-  apply_generic("is_equal_to_zero", list(x));
+  apply_generic("is_equal_to_zero", x);
 
 put("is_equal_to_zero", list("javascript_number"),
     x => x === 0);
@@ -179,11 +177,11 @@ put_coercion("javascript_number", "complex", javascript_number_to_complex);
 `;
 
 /** The apply_generic of §2.5.2. */
-const twoArgumentApplyGeneric = `const apply_generic = (op: string, args: List<unknown>): unknown => {
+const twoArgumentApplyGeneric = `const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   if (! is_undefined(fun)) {
-    return apply(fun, map(contents, args));
+    return fun(...map(contents, args));
   } else {
     if (length(args) === 2) {
       const type1 = head(type_tags);
@@ -193,9 +191,9 @@ const twoArgumentApplyGeneric = `const apply_generic = (op: string, args: List<u
       const t1_to_t2 = get_coercion(type1, type2);
       const t2_to_t1 = get_coercion(type2, type1);
       return ! is_undefined(t1_to_t2)
-        ? apply_generic(op, list(t1_to_t2(a1), a2))
+        ? apply_generic(op, t1_to_t2(a1), a2)
         : ! is_undefined(t2_to_t1)
-        ? apply_generic(op, list(a1, t2_to_t1(a2)))
+        ? apply_generic(op, a1, t2_to_t1(a2))
         : error(list(op, type_tags), "no method for these types");
     } else {
       return error(list(op, type_tags), "no method for these types");
@@ -225,9 +223,9 @@ put("exp", list("javascript_number", "javascript_number"),
 // your answer: change apply_generic so that it does not try coercion
 // when both arguments have the same type.
 ${twoArgumentApplyGeneric}
-const exp = (x: unknown, y: unknown): unknown => apply_generic("exp", list(x, y));
+const exp = (x: unknown, y: unknown): unknown => apply_generic("exp", x, y);
 
-const add = (x: unknown, y: unknown): unknown => apply_generic("add", list(x, y));
+const add = (x: unknown, y: unknown): unknown => apply_generic("add", x, y);
 
 // What happens with Louis's coercions and the apply_generic of the text,
 // if exp is called with two complex numbers?
@@ -245,11 +243,11 @@ const louis_is_right = undefined;
     { name: 'exp on ordinary numbers still works', kind: 'value', expr: 'exp(2, 10)', expected: 1024 },
     { name: 'mixed types are still coerced', kind: 'value', expr: 'equal(add(5, make_complex_from_real_imag(3, 4)), make_complex_from_real_imag(8, 4))', expected: true },
   ],
-  solution: `const apply_generic = (op: string, args: List<unknown>): unknown => {
+  solution: `const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   if (! is_undefined(fun)) {
-    return apply(fun, map(contents, args));
+    return fun(...map(contents, args));
   } else {
     if (length(args) === 2) {
       const type1 = head(type_tags);
@@ -262,9 +260,9 @@ const louis_is_right = undefined;
         const t1_to_t2 = get_coercion(type1, type2);
         const t2_to_t1 = get_coercion(type2, type1);
         return ! is_undefined(t1_to_t2)
-          ? apply_generic(op, list(t1_to_t2(a1), a2))
+          ? apply_generic(op, t1_to_t2(a1), a2)
           : ! is_undefined(t2_to_t1)
-          ? apply_generic(op, list(a1, t2_to_t1(a2)))
+          ? apply_generic(op, a1, t2_to_t1(a2))
           : error(list(op, type_tags), "no method for these types");
       }
     } else {
@@ -273,9 +271,9 @@ const louis_is_right = undefined;
   }
 };
 
-const exp = (x: unknown, y: unknown): unknown => apply_generic("exp", list(x, y));
+const exp = (x: unknown, y: unknown): unknown => apply_generic("exp", x, y);
 
-const add = (x: unknown, y: unknown): unknown => apply_generic("add", list(x, y));
+const add = (x: unknown, y: unknown): unknown => apply_generic("add", x, y);
 
 const exp_on_complex = "loops forever";
 
@@ -302,14 +300,14 @@ put("add3", list("complex", "complex", "complex"),
   starter: `// The prelude is the plain-number system with a coercion table holding
 // javascript_number to complex, javascript_number to rational and
 // rational to complex, and an "add3" method for three complex numbers
-// only. apply handles up to three arguments.
+// only.
 
 // your answer: coerce any number of arguments, trying the type of each
 // argument in turn as the type to coerce all of them to.
 ${twoArgumentApplyGeneric}
-const add = (x: unknown, y: unknown): unknown => apply_generic("add", list(x, y));
+const add = (x: unknown, y: unknown): unknown => apply_generic("add", x, y);
 
-const add3 = (x: unknown, y: unknown, z: unknown): unknown => apply_generic("add3", list(x, y, z));
+const add3 = (x: unknown, y: unknown, z: unknown): unknown => apply_generic("add3", x, y, z);
 
 // Which of these calls does your strategy fail on, although every
 // argument could be coerced to complex? Answer 1, 2 or 3.
@@ -341,7 +339,7 @@ const coerce_all = (args: List<unknown>, target: string): List<unknown> | undefi
   }
 };
 
-const apply_generic = (op: string, args: List<unknown>): unknown => {
+const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const try_types = (targets: List<string>): unknown => {
     if (is_null(targets)) {
@@ -353,18 +351,18 @@ const apply_generic = (op: string, args: List<unknown>): unknown => {
         : get(op, map(type_tag, coerced));
       return is_undefined(fun)
         ? try_types(tail(targets))
-        : apply(fun, map(contents, coerced));
+        : fun(...map(contents, coerced));
     }
   };
   const fun = get(op, type_tags);
   return ! is_undefined(fun)
-    ? apply(fun, map(contents, args))
+    ? fun(...map(contents, args))
     : try_types(type_tags);
 };
 
-const add = (x: unknown, y: unknown): unknown => apply_generic("add", list(x, y));
+const add = (x: unknown, y: unknown): unknown => apply_generic("add", x, y);
 
-const add3 = (x: unknown, y: unknown, z: unknown): unknown => apply_generic("add3", list(x, y, z));
+const add3 = (x: unknown, y: unknown, z: unknown): unknown => apply_generic("add3", x, y, z);
 
 const not_general_enough = 3;
 `,
@@ -376,7 +374,6 @@ const not_general_enough = 3;
  */
 const towerSystemWith = (applyGeneric: string): string => `${operationTableDefinitions}
 ${typeTagDefinitions}
-${applyDefinition}
 ${applyGeneric}
 ${genericOperationDefinitions}
 const install_integer_package = (): "done" => {
@@ -425,7 +422,7 @@ const towerComment = `// The prelude is a generic arithmetic system for the towe
 // number's contents are pair(numer, denom).`;
 
 const raiseSolution = `const raise = (x: unknown): unknown =>
-  apply_generic("raise", list(x));
+  apply_generic("raise", x);
 
 const integer_to_rational = (n: number): Tagged<Rational> =>
   make_rational(n, 1);
@@ -447,7 +444,7 @@ export const exercise_2_83: ExerciseSpec = {
   starter: `${towerComment}
 
 const raise = (x: unknown): unknown =>
-  apply_generic("raise", list(x));
+  apply_generic("raise", x);
 
 // your answer: a raising function for integer, rational and real,
 // each installed in the table as "raise"
@@ -467,18 +464,18 @@ const level = (x: unknown): number =>
     ? 0
     : 1 + level(raise(x));
 
-const apply_generic = (op: string, args: List<unknown>): unknown => {
+const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   if (! is_undefined(fun)) {
-    return apply(fun, map(contents, args));
+    return fun(...map(contents, args));
   } else if (length(args) === 2 &&
              head(type_tags) !== head(tail(type_tags))) {
     const a1 = head(args);
     const a2 = head(tail(args));
     return level(a1) > level(a2)
-      ? apply_generic(op, list(raise(a1), a2))
-      : apply_generic(op, list(a1, raise(a2)));
+      ? apply_generic(op, raise(a1), a2)
+      : apply_generic(op, a1, raise(a2));
   } else {
     return error(list(op, type_tags), "no method for these types");
   }
@@ -513,7 +510,7 @@ export const exercise_2_85: ExerciseSpec = {
   prelude: `${towerSystemWith(raisingApplyGeneric)}
 ${raiseSolution}
 const is_equal = (x: unknown, y: unknown): boolean =>
-  apply_generic("is_equal", list(x, y));
+  apply_generic("is_equal", x, y);
 put("is_equal", list("integer", "integer"), (x, y) => x === y);
 put("is_equal", list("rational", "rational"),
     (x, y) => head(x) * tail(y) === head(y) * tail(x));
@@ -527,7 +524,7 @@ put("is_equal", list("complex", "complex"),
 // every level, and apply_generic raises as in Exercise 2.84.
 
 const project = (x: unknown): unknown =>
-  apply_generic("project", list(x));
+  apply_generic("project", x);
 
 // your answer: install "project" for complex, real and rational
 // (math_round gives the nearest integer), then write drop.
@@ -547,7 +544,7 @@ ${genericOperationDefinitions}`,
   ],
   budget: 1_000_000,
   solution: `const project = (x: unknown): unknown =>
-  apply_generic("project", list(x));
+  apply_generic("project", x);
 
 put("project", list("complex"),
     z => make_real(real_part(z)));
@@ -574,19 +571,19 @@ const level = (x: unknown): number =>
 const is_arithmetic = (op: string): boolean =>
   op === "add" || op === "sub" || op === "mul" || op === "div";
 
-const apply_generic = (op: string, args: List<unknown>): unknown => {
+const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   if (! is_undefined(fun)) {
-    const result = apply(fun, map(contents, args));
+    const result = fun(...map(contents, args));
     return is_arithmetic(op) ? drop(result) : result;
   } else if (length(args) === 2 &&
              head(type_tags) !== head(tail(type_tags))) {
     const a1 = head(args);
     const a2 = head(tail(args));
     return level(a1) > level(a2)
-      ? apply_generic(op, list(raise(a1), a2))
-      : apply_generic(op, list(a1, raise(a2)));
+      ? apply_generic(op, raise(a1), a2)
+      : apply_generic(op, a1, raise(a2));
   } else {
     return error(list(op, type_tags), "no method for these types");
   }
@@ -598,13 +595,12 @@ ${genericOperationDefinitions}`,
 /** For Exercise 2.86: ordinary and rational numbers, with coercion from rational to ordinary. */
 const genericPartsPrelude = `${operationTableDefinitions}
 ${plainNumberTagDefinitions}
-${applyDefinition}
 ${coercionTableDefinitions}
-const apply_generic = (op: string, args: List<unknown>): unknown => {
+const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   if (! is_undefined(fun)) {
-    return apply(fun, map(contents, args));
+    return fun(...map(contents, args));
   } else if (length(args) === 2 &&
              head(type_tags) !== head(tail(type_tags))) {
     const type1 = head(type_tags);
@@ -614,9 +610,9 @@ const apply_generic = (op: string, args: List<unknown>): unknown => {
     const t1_to_t2 = get_coercion(type1, type2);
     const t2_to_t1 = get_coercion(type2, type1);
     return ! is_undefined(t1_to_t2)
-      ? apply_generic(op, list(t1_to_t2(a1), a2))
+      ? apply_generic(op, t1_to_t2(a1), a2)
       : ! is_undefined(t2_to_t1)
-      ? apply_generic(op, list(a1, t2_to_t1(a2)))
+      ? apply_generic(op, a1, t2_to_t1(a2))
       : error(list(op, type_tags), "no method for these types");
   } else {
     return error(list(op, type_tags), "no method for these types");
@@ -645,10 +641,10 @@ export const exercise_2_86: ExerciseSpec = {
 // coerces a rational to an ordinary number when the two are mixed.
 // A rational number's contents are pair(numer, denom).
 
-const sine = (x: unknown): number => apply_generic("sine", list(x));
-const cosine = (x: unknown): number => apply_generic("cosine", list(x));
-const square_root = (x: unknown): number => apply_generic("square_root", list(x));
-const arctan = (y: unknown, x: unknown): number => apply_generic("arctan", list(y, x));
+const sine = (x: unknown): number => apply_generic("sine", x);
+const cosine = (x: unknown): number => apply_generic("cosine", x);
+const square_root = (x: unknown): number => apply_generic("square_root", x);
+const arctan = (y: unknown, x: unknown): number => apply_generic("arctan", y, x);
 // your answer: install sine, cosine, square_root and arctan for
 // ordinary and rational numbers
 
@@ -667,10 +663,10 @@ ${complexSelectorsInstall}`,
     { name: 'ordinary parts still work', kind: 'value', expr: 'magnitude(make_complex_from_real_imag(3, 4)) === 5 && equal(sub(make_complex_from_real_imag(3, 4), make_complex_from_real_imag(1, 1)), make_complex_from_real_imag(2, 3))', expected: true },
   ],
   budget: 500_000,
-  solution: `const sine = (x: unknown): number => apply_generic("sine", list(x));
-const cosine = (x: unknown): number => apply_generic("cosine", list(x));
-const square_root = (x: unknown): number => apply_generic("square_root", list(x));
-const arctan = (y: unknown, x: unknown): number => apply_generic("arctan", list(y, x));
+  solution: `const sine = (x: unknown): number => apply_generic("sine", x);
+const cosine = (x: unknown): number => apply_generic("cosine", x);
+const square_root = (x: unknown): number => apply_generic("square_root", x);
+const arctan = (y: unknown, x: unknown): number => apply_generic("arctan", y, x);
 
 const rational_value = (r: Rational): number => head(r) / tail(r);
 
@@ -736,10 +732,10 @@ const install_polar_package = (): "done" => {
   return "done";
 };
 
-const real_part = (z: Complex): unknown => apply_generic("real_part", list(z));
-const imag_part = (z: Complex): unknown => apply_generic("imag_part", list(z));
-const magnitude = (z: Complex): unknown => apply_generic("magnitude", list(z));
-const angle = (z: Complex): unknown => apply_generic("angle", list(z));
+const real_part = (z: Complex): unknown => apply_generic("real_part", z);
+const imag_part = (z: Complex): unknown => apply_generic("imag_part", z);
+const magnitude = (z: Complex): unknown => apply_generic("magnitude", z);
+const angle = (z: Complex): unknown => apply_generic("angle", z);
 
 const install_complex_package = (): "done" => {
   const make_from_real_imag = (x: unknown, y: unknown): Complex =>

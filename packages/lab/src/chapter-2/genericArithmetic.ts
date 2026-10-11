@@ -76,34 +76,24 @@ const contents = <T>(datum: Tagged<T>): T =>
     : error(datum, "bad tagged datum -- contents");
 `;
 
-/** `apply` for the one, two or three arguments the generic operations take. */
-export const applyDefinition = `// apply takes the list of arguments apart by hand: one, two or three of them.
-const apply = (fun: Operation, args: List<unknown>): unknown =>
-  is_null(tail(args))
-    ? fun(head(args))
-    : is_null(tail(tail(args)))
-    ? fun(head(args), head(tail(args)))
-    : fun(head(args), head(tail(args)), head(tail(tail(args))));
-`;
-
 /** `apply_generic` of §2.4.3: dispatch on the list of type tags, no coercion. */
-export const applyGenericDefinition = `const apply_generic = (op: string, args: List<unknown>): unknown => {
+export const applyGenericDefinition = `const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   return ! is_undefined(fun)
-    ? apply(fun, map(contents, args))
+    ? fun(...map(contents, args))
     : error(list(op, type_tags), "no method for these types -- apply_generic");
 };
 `;
 
 /** The four generic arithmetic operations of §2.5.1. */
-export const genericOperationDefinitions = `const add = (x: unknown, y: unknown): unknown => apply_generic("add", list(x, y));
+export const genericOperationDefinitions = `const add = (x: unknown, y: unknown): unknown => apply_generic("add", x, y);
 
-const sub = (x: unknown, y: unknown): unknown => apply_generic("sub", list(x, y));
+const sub = (x: unknown, y: unknown): unknown => apply_generic("sub", x, y);
 
-const mul = (x: unknown, y: unknown): unknown => apply_generic("mul", list(x, y));
+const mul = (x: unknown, y: unknown): unknown => apply_generic("mul", x, y);
 
-const div = (x: unknown, y: unknown): unknown => apply_generic("div", list(x, y));
+const div = (x: unknown, y: unknown): unknown => apply_generic("div", x, y);
 `;
 
 /** The ordinary-number package of §2.5.1. */
@@ -232,13 +222,13 @@ const install_polar_package = (): "done" => {
   return "done";
 };
 
-const real_part = (z: Complex): number => apply_generic("real_part", list(z));
+const real_part = (z: Complex): number => apply_generic("real_part", z);
 
-const imag_part = (z: Complex): number => apply_generic("imag_part", list(z));
+const imag_part = (z: Complex): number => apply_generic("imag_part", z);
 
-const magnitude = (z: Complex): number => apply_generic("magnitude", list(z));
+const magnitude = (z: Complex): number => apply_generic("magnitude", z);
 
-const angle = (z: Complex): number => apply_generic("angle", list(z));
+const angle = (z: Complex): number => apply_generic("angle", z);
 `;
 
 /** The complex-number package of §2.5.1, built on the rectangular and polar packages. */
@@ -292,10 +282,9 @@ put("magnitude", list("complex"), magnitude);
 put("angle", list("complex"), angle);
 `;
 
-/** The base every package plugs into: the table, tags, `apply` and `apply_generic`, and add, sub, mul, div. */
+/** The base every package plugs into: the table, tags, `apply_generic`, and add, sub, mul, div. */
 export const genericBaseDefinitions = `${operationTableDefinitions}
 ${typeTagDefinitions}
-${applyDefinition}
 ${applyGenericDefinition}
 ${genericOperationDefinitions}`;
 
@@ -322,7 +311,6 @@ install_complex_package();
  */
 export const plainNumberArithmeticDefinitions = `${operationTableDefinitions}
 ${plainNumberTagDefinitions}
-${applyDefinition}
 ${applyGenericDefinition}
 ${genericOperationDefinitions}
 ${javascriptNumberPackage}
@@ -414,11 +402,11 @@ const get_coercion = (type1: string, type2: string): Coercion | undefined => {
 `;
 
 /** `apply_generic` of §2.5.2: when no method fits, coerce one argument to the other's type. */
-export const applyGenericWithCoercion = `const apply_generic = (op: string, args: List<unknown>): unknown => {
+export const applyGenericWithCoercion = `const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   if (! is_undefined(fun)) {
-    return apply(fun, map(contents, args));
+    return fun(...map(contents, args));
   } else {
     if (length(args) === 2) {
       const type1 = head(type_tags);
@@ -428,9 +416,9 @@ export const applyGenericWithCoercion = `const apply_generic = (op: string, args
       const t1_to_t2 = get_coercion(type1, type2);
       const t2_to_t1 = get_coercion(type2, type1);
       return ! is_undefined(t1_to_t2)
-        ? apply_generic(op, list(t1_to_t2(a1), a2))
+        ? apply_generic(op, t1_to_t2(a1), a2)
         : ! is_undefined(t2_to_t1)
-        ? apply_generic(op, list(a1, t2_to_t1(a2)))
+        ? apply_generic(op, a1, t2_to_t1(a2))
         : error(list(op, type_tags), "no method for these types");
     } else {
       return error(list(op, type_tags), "no method for these types");
@@ -449,7 +437,7 @@ put_coercion("javascript_number", "complex",
 
 ${applyGenericWithCoercion}
 // add again, so that it calls this apply_generic
-const add = (x: unknown, y: unknown): unknown => apply_generic("add", list(x, y));
+const add = (x: unknown, y: unknown): unknown => apply_generic("add", x, y);
 
 const z = make_complex_from_real_imag(3, 4);
 add(make_javascript_number(5), z);

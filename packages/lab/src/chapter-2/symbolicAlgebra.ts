@@ -57,25 +57,19 @@ const contents = <T>(datum: Tagged<T>): T =>
     ? tail(datum)
     : error("bad tagged datum -- contents", datum);
 
-// Our operations take one or two arguments, taken out of the list by hand.
-const apply_in_underlying_javascript = (fun: Operation, args: List<unknown>): unknown =>
-  is_null(tail(args))
-    ? fun(head(args))
-    : fun(head(args), head(tail(args)));
-
-const apply_generic = (op: string, args: List<unknown>): unknown => {
+const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   return is_undefined(fun)
     ? error("no method for these types -- apply_generic", list(op, type_tags))
-    : apply_in_underlying_javascript(fun, map(contents, args));
+    : fun(...map(contents, args));
 };
 
-const add = (x: unknown, y: unknown): unknown => apply_generic("add", list(x, y));
-const sub = (x: unknown, y: unknown): unknown => apply_generic("sub", list(x, y));
-const mul = (x: unknown, y: unknown): unknown => apply_generic("mul", list(x, y));
-const div = (x: unknown, y: unknown): unknown => apply_generic("div", list(x, y));
-const is_equal_to_zero = (x: unknown): boolean => apply_generic("is_equal_to_zero", list(x));
+const add = (x: unknown, y: unknown): unknown => apply_generic("add", x, y);
+const sub = (x: unknown, y: unknown): unknown => apply_generic("sub", x, y);
+const mul = (x: unknown, y: unknown): unknown => apply_generic("mul", x, y);
+const div = (x: unknown, y: unknown): unknown => apply_generic("div", x, y);
+const is_equal_to_zero = (x: unknown): boolean => apply_generic("is_equal_to_zero", x);
 
 const install_javascript_number_package = (): "done" => {
   const nn = list("javascript_number", "javascript_number");

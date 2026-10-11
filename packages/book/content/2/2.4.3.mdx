@@ -27,22 +27,22 @@ Because his functions are declared inside the installation function, Ben need no
 The complex-arithmetic selectors reach the table through one general function, `apply_generic`, which looks in the table under the name of the operation and the types of the arguments, and applies the function it finds to the contents of the arguments:
 
 ```js
-const apply_generic = (op: string, args: List<unknown>): unknown => {
+const apply_generic = (op: string, ...args: List<unknown>): unknown => {
   const type_tags = map(type_tag, args);
   const fun = get(op, type_tags);
   return ! is_undefined(fun)
-    ? apply(fun, map(contents, args))
+    ? fun(...map(contents, args))
     : error(list(op, type_tags), "no method for these types -- apply_generic");
 };
 ```
 
-The book's JavaScript calls a function on a list of arguments with `apply_in_underlying_javascript`. Here `apply` takes the list apart by hand for one, two or three arguments, which is all the generic operations of this chapter need. The generic selectors are now one line each, and they do not change at all when a representation is added: `real_part(z)` is `apply_generic("real_part", list(z))`. The constructors are extracted from the table too, rectangular from real and imaginary parts and polar from magnitude and angle, as before.
+`apply_generic` takes any number of arguments after the operation's name: the rest parameter `...args` collects them into a list, which is what the type tags are read from. To call the function it finds, it spreads the list of contents back into arguments, `fun(...map(contents, args))`, so an operation of one argument, two or more is dispatched the same way. The book's JavaScript, whose Source had neither rest nor spread, passes the arguments as a list and calls the function with `apply_in_underlying_javascript`. The generic selectors are now one line each, and they do not change at all when a representation is added: `real_part(z)` is `apply_generic("real_part", z)`. The constructors are extracted from the table too, rectangular from real and imaginary parts and polar from magnitude and angle, as before.
 
 </Prose>
 
 <Example index={1} file="data_directed.sicp" source={dataDirectedProgram} prelude={dataDirectedPrelude} anim="operation-table">
 
-`put` and `get`, `attach_tag`, `type_tag` and `contents`, and `apply` are predefined; the rest is shown. The two installations fill the table one column at a time, Ben's and then Alyssa's, figure 2.22 assembled by the program itself. Then every lookup lights its cell: the two constructors, `magnitude` for the rectangular `z1`, and `real_part` for the polar `z2`. Neither `apply_generic` nor the selectors mention a type; a third package would add a column and change nothing else.
+`put` and `get`, `attach_tag`, `type_tag` and `contents` are predefined; the rest is shown. The two installations fill the table one column at a time, Ben's and then Alyssa's, figure 2.22 assembled by the program itself. Then every lookup lights its cell: the two constructors, `magnitude` for the rectangular `z1`, and `real_part` for the polar `z2`. Neither `apply_generic` nor the selectors mention a type; a third package would add a column and change nothing else.
 
 </Example>
 
@@ -68,7 +68,7 @@ This style of programming is called *message passing*: a data object is an entit
 
 <UnderTheHood file="packages/lab/src/chapter-2/multipleRepresentations.ts">
 
-The table, the tags and `apply` are Source declarations shared with §2.5, in `chapter-2/genericArithmetic.ts`. The table scene, `anim/scenes/OperationTableScene.tsx`, reads the calls of `put` and `get` out of the trace with their arguments, and the values `get` returned. The test `chapter-2/multipleRepresentations.test.ts` asserts that the two packages make 12 calls of `put`, that the data-directed program then calls `get` exactly four times, with the keys the animation lights, that `real_part` of a `"cartesian"` datum stops with "no method for these types", and that the message-passing `z` is a function whose real part is 3.
+The table and the tags are Source declarations shared with §2.5, in `chapter-2/genericArithmetic.ts`. The table scene, `anim/scenes/OperationTableScene.tsx`, reads the calls of `put` and `get` out of the trace with their arguments, and the values `get` returned. The test `chapter-2/multipleRepresentations.test.ts` asserts that the two packages make 12 calls of `put`, that the data-directed program then calls `get` exactly four times, with the keys the animation lights, that `real_part` of a `"cartesian"` datum stops with "no method for these types", and that the message-passing `z` is a function whose real part is 3.
 
 </UnderTheHood>
 
