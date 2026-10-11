@@ -1,9 +1,9 @@
 /**
  * Programs of §3.4, shared by the Book's examples and the Laboratory's tests.
  *
- * The serializers here protect functions of no arguments, which is what
- * `concurrent_execute` takes: a call with arguments is protected by wrapping it
- * in a function of none, as in `protect(() => withdraw(amount))()`.
+ * A serializer takes a function of any number of arguments and returns one
+ * that takes the same arguments, as in SICP: `protect(withdraw)` is a
+ * serialized withdrawal. `concurrent_execute` takes functions of none.
  */
 
 /** §3.4.1: Peter and Paul withdraw from a joint account at the same time. */
@@ -98,14 +98,14 @@ const clear = (cell: List<boolean>): void => {
 
 /** §3.4.2: a serializer is a mutex shared by every function it protects. */
 export const serializerDefinitions = `${mutexDefinitions}
-type Serializer = <T>(f: () => T) => () => T;
+type Serializer = <R>(f: (...args: List<unknown>) => R) => (...args: List<unknown>) => R;
 
 const make_serializer = (): Serializer => {
     const mutex = make_mutex();
-    return <T>(f: () => T): (() => T) => {
-               const serialized_f = (): T => {
+    return f => {
+               const serialized_f = (...args: List<unknown>): unknown => {
                    mutex("acquire");
-                   const val = f();
+                   const val = f(...args);
                    mutex("release");
                    return val;
                };
@@ -144,9 +144,9 @@ const make_account = (balance: number): Account => {
     const protect = make_serializer();
     const dispatch = (m: "withdraw" | "deposit" | "balance"): Transaction | number =>
         m === "withdraw"
-               ? amount => protect(() => withdraw(amount))()
+               ? protect(withdraw)
                : m === "deposit"
-               ? amount => protect(() => deposit(amount))()
+               ? protect(deposit)
                : m === "balance"
                ? balance
                : error(m, "unknown request -- make_account");
@@ -218,7 +218,7 @@ const make_account_and_serializer = (balance: number): Account => {
 const serialized_exchange = (account1: Account, account2: Account): void => {
     const serializer1 = account1("serializer");
     const serializer2 = account2("serializer");
-    return serializer1(serializer2(() => exchange(account1, account2)))();
+    return serializer1(serializer2(exchange))(account1, account2);
 };
 `;
 

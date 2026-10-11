@@ -295,8 +295,8 @@ const make_account = (balance: number): Account => {
         return balance;
     };
     const protect = make_serializer();
-    const protected_withdraw = (amount: number): number | string => protect(() => withdraw(amount))();
-    const protected_deposit = (amount: number): number => protect(() => deposit(amount))();
+    const protected_withdraw = protect(withdraw);
+    const protected_deposit = protect(deposit);
     const dispatch = (m: "withdraw" | "deposit" | "balance"): Transaction | number =>
         m === "withdraw"
                ? protected_withdraw
@@ -339,8 +339,8 @@ const make_plain_account = (balance: number): Account => {
 const make_account = (balance: number): Account => {
     const plain = make_plain_account(balance);
     const protect = make_serializer();
-    return m => m === "withdraw" ? amount => protect(() => plain("withdraw")(amount))()
-              : m === "deposit" ? amount => protect(() => plain("deposit")(amount))()
+    return m => m === "withdraw" ? protect(plain("withdraw"))
+              : m === "deposit" ? protect(plain("deposit"))
               : plain(m);
 };
 
@@ -354,7 +354,7 @@ ${accountExchangeDefinitions}
 const serialized_exchange = (account1: Account, account2: Account): void => {
     const serializer1 = account1("serializer");
     const serializer2 = account2("serializer");
-    return serializer1(serializer2(() => exchange(account1, account2)))();
+    return serializer1(serializer2(exchange))(account1, account2);
 };
 
 const exchange_trials = (
@@ -472,8 +472,8 @@ const make_account = (balance: number): Account => {
         return balance;
     };
     const protect = make_serializer();
-    return m => m === "withdraw" ? amount => protect(() => withdraw(amount))()
-              : m === "deposit" ? amount => protect(() => deposit(amount))()
+    return m => m === "withdraw" ? protect(withdraw)
+              : m === "deposit" ? protect(deposit)
               : m === "balance" ? balance
               : error(m, "unknown request -- make_account");
 };
@@ -536,9 +536,9 @@ export const exercise_3_45: ExerciseSpec = {
   id: '3.45',
   starter: `// Louis serializes withdrawals and deposits automatically, and exports the serializer:
 //   return m => m === "withdraw"
-//               ? amount => balance_serializer(() => withdraw(amount))()
+//               ? balance_serializer(withdraw)
 //               : m === "deposit"
-//               ? amount => balance_serializer(() => deposit(amount))()
+//               ? balance_serializer(deposit)
 //               : m === "balance"
 //               ? balance
 //               : m === "serializer"
@@ -807,7 +807,7 @@ const make_account_and_serializer = (balance: number): Account => {
 const serialized_exchange = (account1: Account, account2: Account): void => {
     const serializer1 = account1("serializer");
     const serializer2 = account2("serializer");
-    return serializer1(serializer2(() => exchange(account1, account2)))();
+    return serializer1(serializer2(exchange))(account1, account2);
 };
 `,
   tests: [
@@ -868,7 +868,7 @@ const make_account_and_serializer = (balance: number): Account => {
 const serialized_exchange = (account1: Account, account2: Account): void => {
     const first = account1("number") < account2("number") ? account1 : account2;
     const second = first === account1 ? account2 : account1;
-    return first("serializer")(second("serializer")(() => exchange(account1, account2)))();
+    return first("serializer")(second("serializer")(exchange))(account1, account2);
 };
 `,
 };

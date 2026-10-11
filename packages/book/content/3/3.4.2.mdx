@@ -43,7 +43,7 @@ Five final values, as SICP predicts. 101 and 121 are the two serial orders. 110:
 
 A *serializer* is made by `make_serializer()`. It takes a function and returns a function that behaves the same way but is serialized: functions returned by the same serializer belong to one serialized set. With one serializer `s` for both threads, the program can only end with 101 or 121.
 
-Our serializers protect functions *of no arguments*, which is exactly what `concurrent_execute` wants. Their type, `Serializer` in the program below, says so: `<T>(f: () => T) => () => T`. To protect a call that does take arguments, wrap it in a function of none and call that: `protect(() => withdraw(amount))()`. The serializer's code is at the top of the program below; how it works is the subject of "Implementing serializers", further down.
+A serializer protects a function of any number of arguments: the function it returns takes the same arguments, collects them with a rest parameter and passes them on with a spread, `f(...args)`. So `protect(withdraw)` is a serialized withdrawal, called as `protect(withdraw)(10)`, and the functions of no arguments that `concurrent_execute` takes are protected the same way. The type `Serializer` in the program below says this: `<R>(f: (...args: List<unknown>) => R) => (...args: List<unknown>) => R`. The serializer's code is at the top of the program below; how it works is the subject of "Implementing serializers", further down.
 
 </Prose>
 
@@ -95,7 +95,7 @@ One fix is to let the accounts' serializers out: each account answers the messag
 const deposit = (account: Account, amount: number): void => {
     const s = account("serializer");
     const d = account("deposit");
-    s(() => d(amount))();
+    s(d)(amount);
 };
 ```
 
@@ -252,9 +252,9 @@ Louis Reasoner thinks exporting the serializer was a mistake. He makes `make_acc
 
 ```js
 return m => m === "withdraw"
-            ? amount => balance_serializer(() => withdraw(amount))()
+            ? balance_serializer(withdraw)
             : m === "deposit"
-            ? amount => balance_serializer(() => deposit(amount))()
+            ? balance_serializer(deposit)
             : m === "balance"
             ? balance
             : m === "serializer"

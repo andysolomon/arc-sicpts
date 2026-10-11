@@ -172,8 +172,8 @@ describe('section 3.4.2: mechanisms for controlling concurrency', () => {
           const withdraw = (amount: number): number => { balance = balance - amount; return balance; };
           const deposit = (amount: number): number => { balance = balance + amount; return balance; };
           const balance_serializer = make_serializer();
-          return m => m === "withdraw" ? amount => balance_serializer(() => withdraw(amount))()
-                    : m === "deposit" ? amount => balance_serializer(() => deposit(amount))()
+          return m => m === "withdraw" ? balance_serializer(withdraw)
+                    : m === "deposit" ? balance_serializer(deposit)
                     : m === "balance" ? balance
                     : balance_serializer;
       };
@@ -185,7 +185,7 @@ describe('section 3.4.2: mechanisms for controlling concurrency', () => {
       const serialized_exchange = (account1: Account, account2: Account): void => {
           const serializer1 = account1("serializer");
           const serializer2 = account2("serializer");
-          return serializer1(serializer2(() => exchange(account1, account2)))();
+          return serializer1(serializer2(exchange))(account1, account2);
       };
       serialized_exchange(make_account_and_serializer(10), make_account_and_serializer(20));`;
     expect(evaluate(louis, { budget: 50_000 }).status).toBe('budget-exhausted');
